@@ -198,7 +198,10 @@ onBeforeUnmount(() => {
                         class="styledesk_timepicker__opt flex items-center gap-2.5"
                         :class="{ 'styledesk_timepicker__opt--on': isSelected(country.code) }"
                         @click="toggleOption(country.code)">
-                    <span class="h-4 w-4 rounded border grid place-items-center shrink-0"
+                    <!-- A checkbox is a promise that more than one can be
+                         ticked. In single mode that promise is false, so the
+                         selected row is marked with a tick alone. -->
+                    <span v-if="!single" class="h-4 w-4 rounded border grid place-items-center shrink-0"
                           :class="isSelected(country.code) ? 'bg-brand border-brand' : 'border-stroke'">
                         <svg v-if="isSelected(country.code)" width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                             <path d="M5 12l5 5 9-11" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -210,6 +213,10 @@ onBeforeUnmount(() => {
                           @click.stop="makePrimary(country.code)" @keydown.enter.stop="makePrimary(country.code)">
                         Make primary
                     </span>
+                    <svg v-if="single && isSelected(country.code)" class="shrink-0 text-brand"
+                         width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M5 12l5 5 9-11" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
                 </button>
 
                 <p v-if="!matches.length" class="px-3 py-2.5 text-[13px] text-sub">Nothing matches “{{ query }}”.</p>

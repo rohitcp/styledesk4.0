@@ -100,10 +100,16 @@ onBeforeUnmount(() => {
 
                     <button v-for="category in matches" :key="category.id" type="button" role="option"
                             :aria-selected="String(category.id) === String(modelValue)"
-                            class="styledesk_timepicker__opt"
+                            class="styledesk_timepicker__opt flex items-center gap-2.5"
                             :class="{ 'styledesk_timepicker__opt--on': String(category.id) === String(modelValue) }"
                             @click="choose(category)">
-                        {{ category.name }}
+                        <span class="flex-1 text-left">{{ category.name }}</span>
+                        <!-- Highlight alone is easy to miss once the list is
+                             scrolled; the tick says which one is chosen. -->
+                        <svg v-if="String(category.id) === String(modelValue)" class="shrink-0 text-brand"
+                             width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M5 12l5 5 9-11" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
                     </button>
 
                     <p v-if="!matches.length" class="px-3 py-2.5 text-[13px] text-sub">

@@ -1,6 +1,8 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { onboarding } from '../stores/onboarding';
+import ConfirmDialog from './ConfirmDialog.vue';
+import MultiSelect from './MultiSelect.vue';
 
 /**
  * Repeatable team member rows for onboarding step 4.
@@ -12,6 +14,13 @@ defineProps({
     initial: { type: Array, default: () => [] },
 });
 
+const ROLES = {
+    'administrator': 'Administrator',
+    'manager': 'Manager',
+    'front-desk': 'Front desk',
+    'service-provider': 'Service provider',
+};
+
 const blank = () => ({ first_name: '', last_name: '', email: '', phone: '', role: 'service-provider', job_title: '' });
 
 const rows = ref([]);
@@ -22,8 +31,39 @@ function add() {
     rows.value.push(blank());
 }
 
-function remove(index) {
-    rows.value.splice(index, 1);
+/**
+ * Which row the confirmation is asking about, or null when it is closed.
+ *
+ * An index rather than a boolean plus a separate "pending" variable: two
+ * pieces of state can disagree, and the disagreement here would delete the
+ * wrong person.
+ */
+const pendingRemoval = ref(null);
+
+const pendingName = computed(() => {
+    const row = pendingRemoval.value === null ? null : rows.value[pendingRemoval.value];
+
+    if (!row) {
+        return '';
+    }
+
+    return `${row.first_name} ${row.last_name}`.trim();
+});
+
+const confirmMessage = computed(() => (pendingName.value
+    ? `${pendingName.value} will be taken off the list. Nothing has been sent yet, so they will not be notified.`
+    : 'This row will be removed from the list.'));
+
+function confirmRemove(index) {
+    pendingRemoval.value = index;
+}
+
+function removeConfirmed() {
+    if (pendingRemoval.value !== null) {
+        rows.value.splice(pendingRemoval.value, 1);
+    }
+
+    pendingRemoval.value = null;
 }
 </script>
 
@@ -58,18 +98,19 @@ function remove(index) {
                            type="email" class="sd-input">
                 </div>
                 <div>
-                    <label :for="`member-role-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Role</label>
-                    <select :id="`member-role-${i}`" v-model="row.role" :name="`members[${i}][role]`" class="sd-input">
-                        <option value="administrator">Administrator</option>
-                        <option value="manager">Manager</option>
-                        <option value="front-desk">Front desk</option>
-                        <option value="service-provider">Service provider</option>
-                    </select>
+                    <span class="block text-[13px] font-medium text-ink mb-1.5">Role</span>
+                    <!-- Single mode, so the panel marks the chosen role with a
+                         tick. A checkbox here would suggest a person could
+                         hold two roles at once, which the server rejects. -->
+                    <MultiSelect :options="ROLES" :model-value="[row.role]" :name="`members[${i}][role]`"
+                                 single placeholder="Select a role" search-placeholder="Search roles…"
+                                 :aria-label="`Role for team member ${i + 1}`"
+                                 @update:model-value="(value) => { row.role = value[0] ?? 'service-provider'; }" />
                 </div>
             </div>
 
             <div class="mt-3 flex justify-end">
-                <button type="button" @click="remove(i)"
+                <button type="button" @click="confirmRemove(i)"
                         class="h-8 px-3 rounded-md text-[13px] font-semibold text-sub hover:text-danger hover:bg-hover transition-colors">
                     Remove
                 </button>
@@ -80,5 +121,11 @@ function remove(index) {
                 class="h-10 px-4 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
             Add team member
         </button>
+
+        <!-- One dialog for the whole repeater, not one per row: N dialogs mean
+             N Escape handlers competing for the same keypress. -->
+        <ConfirmDialog :open="pendingRemoval !== null" title="Remove this team member?"
+                       :message="confirmMessage" confirm-label="Remove"
+                       @confirm="removeConfirmed" @cancel="pendingRemoval = null" />
     </div>
 </template>
