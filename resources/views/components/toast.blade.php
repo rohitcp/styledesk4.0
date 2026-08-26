@@ -24,10 +24,17 @@
     @if ($toast)
         <div class="styledesk_toast__body" role="status">
             <span class="styledesk_toast__icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4"
-                          stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                @if (($toast['type'] ?? 'success') === 'danger')
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M12 7.5v5M12 16v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                @else
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4"
+                              stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                @endif
             </span>
             <span class="min-w-0 flex-1">{{ $toast['message'] }}</span>
             <button type="button" class="styledesk_toast__close" data-toast-close aria-label="Dismiss">
@@ -66,13 +73,17 @@
                     }, 180);
                 }
 
+                var TICK = '<path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>';
+                var ALERT = '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>' +
+                            '<path d="M12 7.5v5M12 16v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+
                 function show(message, type) {
                     window.clearTimeout(timer);
                     host.className = 'styledesk_toast styledesk_toast--' + (type || 'success');
                     host.innerHTML =
-                        '<div class="styledesk_toast__body" role="status">' +
+                        '<div class="styledesk_toast__body" role="' + (type === 'danger' ? 'alert' : 'status') + '">' +
                           '<span class="styledesk_toast__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-                          '<path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+                          (type === 'danger' ? ALERT : TICK) + '</svg></span>' +
                           '<span class="min-w-0 flex-1"></span>' +
                           '<button type="button" class="styledesk_toast__close" data-toast-close aria-label="Dismiss">' +
                           '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
@@ -86,6 +97,12 @@
                 }
 
                 function arm() {
+                    /* Errors stay until dismissed. A success is a receipt and
+                       can expire; a failure is an instruction to do something,
+                       and one that disappears while being read is the same as
+                       one that was never shown. */
+                    if (host.classList.contains('styledesk_toast--danger')) return;
+
                     timer = window.setTimeout(dismiss, 4000);
                 }
 

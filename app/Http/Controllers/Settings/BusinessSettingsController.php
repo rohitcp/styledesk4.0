@@ -12,7 +12,11 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use RuntimeException;
+use Throwable;
 
 /**
  * The Business settings module: company-level information only.
@@ -81,6 +85,27 @@ class BusinessSettingsController extends Controller
             'default_appointment_interval' => ['nullable', Rule::in(array_keys(config('business_profile.appointment_intervals')))],
             'default_tax_behavior' => ['nullable', Rule::in(array_keys(config('business_profile.tax_behaviors')))],
             'default_staff_assignment' => ['nullable', Rule::in(array_keys(config('business_profile.staff_assignment')))],
+        ], [
+            /**
+             * Written as instructions rather than as descriptions of a rule.
+             *
+             * "The business email field must be a valid email address" names
+             * the validator; "Enter a valid email address" names what to do,
+             * and it is read inches from the box it is about.
+             */
+            'name.required' => 'Business name is required.',
+            'business_email.required' => 'Primary email is required.',
+            'business_email.email' => 'Enter a valid email address.',
+            'support_email.email' => 'Enter a valid email address.',
+            'booking_email.email' => 'Enter a valid email address.',
+            'website.url' => 'Enter a valid website URL, including https://',
+            'instagram_url.url' => 'Enter a valid Instagram URL, including https://',
+            'facebook_url.url' => 'Enter a valid Facebook URL, including https://',
+            'tiktok_url.url' => 'Enter a valid TikTok URL, including https://',
+            'google_business_url.url' => 'Enter a valid Google Business URL, including https://',
+            'status.required' => 'Choose whether the business is active.',
+            'status.in' => 'Choose whether the business is active.',
+            'location_id.exists' => 'Choose one of your own locations.',
         ]);
 
         // The project capitalisation rule. Emails and URLs are deliberately
@@ -90,17 +115,61 @@ class BusinessSettingsController extends Controller
         $typeIds = $data['business_type_ids'] ?? [];
         unset($data['business_type_ids']);
 
-        $tenant->forceFill($data)->save();
-        $tenant->businessTypes()->sync($typeIds);
+        try {
+            /**
+             * Both writes in one transaction.
+             *
+             * The tenant row and the business-type pivot are one change as far
+             * as the user is concerned. Committing the first and failing the
+             * second would leave the screen showing a business whose types no
+             * longer match what was saved, with nothing to indicate it.
+             */
+            DB::transaction(function () use ($tenant, $data, $typeIds) {
+                $tenant->forceFill($data);
+
+                if ($tenant->save() !== true) {
+                    // save() returning false means the write did not happen.
+                    // Success must never be reported on the strength of having
+                    // reached this line.
+                    throw new RuntimeException('The business record reported an unsuccessful save.');
+                }
+
+                $tenant->businessTypes()->sync($typeIds);
+            });
+        } catch (Throwable $e) {
+            /**
+             * The reason is logged, never shown.
+             *
+             * A driver message can carry table names, credentials and the
+             * shape of the schema; the person who pressed Save can act on none
+             * of it and should not be handed it.
+             */
+            Log::error('Business settings could not be saved.', [
+                'tenant_id' => $tenant->getTenantKey(),
+                'user_id' => $request->user()->id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            $message = "We couldn't save your changes right now. Please try again.";
+
+            // Stay on the edit page. Redirecting away would discard everything
+            // typed, for a failure that was not the user's doing.
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 500);
+            }
+
+            return back()->withInput()->with('toast', ['type' => 'danger', 'message' => $message]);
+        }
 
         /**
-         * The toast is flashed either way, and the read-only view renders it.
+         * Re-read before reporting success.
          *
-         * The form posts over fetch so that validation errors appear without
-         * losing what was typed; on success it follows `redirect` here. Both
-         * paths therefore end on the same page with the same confirmation, and
-         * the form still works with no JavaScript at all.
+         * The confirmation the user sees should rest on what the database now
+         * holds, not on the request having been accepted — and the view that
+         * renders next reads this same instance.
          */
+        $tenant->refresh();
+
         $request->session()->flash('toast', [
             'type' => 'success',
             'message' => 'Business settings updated successfully.',

@@ -73,12 +73,14 @@
         have their own settings pages.
       </p>
 
-      {{-- Rendered server-side for a no-JavaScript submit, and reused as the
-           target the async submit writes into, so both paths report failure in
-           the same place. --}}
-      <div id="businessErrors" class="sd-alert sd-alert--danger mt-5" role="alert" @if (! $errors->any()) hidden @endif>
-        <p class="min-w-0">{{ $errors->first() }}</p>
-      </div>
+      {{-- The no-JavaScript path still needs somewhere to report a failure;
+           with JavaScript the same information arrives as a centred toast plus
+           a message under each offending field. --}}
+      @if ($errors->any())
+        <div class="sd-alert sd-alert--danger mt-5" role="alert">
+          <p class="min-w-0">Please correct the highlighted fields and try again.</p>
+        </div>
+      @endif
 
       <form id="businessForm" method="POST" action="{{ route('settings.business.update') }}" class="mt-6">
         @csrf
@@ -296,7 +298,6 @@
       if (!form) return;
 
       var save = document.getElementById('businessSave');
-      var errors = document.getElementById('businessErrors');
 
       /* ---- unsaved changes -------------------------------------------------
          Compared against a snapshot rather than tracked with a dirty flag: a
@@ -324,9 +325,9 @@
         e.returnValue = '';
       });
 
-      /* Back is a link, so leaving it to beforeunload would work — but only
-         with the browser's own wording. Asking here lets the question name
-         what is at stake. */
+      /* Back is a link, so beforeunload would cover it — but only in the
+         browser's own wording. Asking here lets the question name what is at
+         stake. */
       var back = document.querySelector('[data-back]');
       if (back) {
         back.addEventListener('click', function (e) {
@@ -339,11 +340,78 @@
         });
       }
 
+      /* ---- per-field errors ------------------------------------------------
+         Laravel keys errors by field, including nested ones like
+         business_type_ids.0. The message belongs under the control it is
+         about; a single banner at the top of a long form is a message about
+         something the reader cannot see. */
+      function clearFieldErrors() {
+        form.querySelectorAll('[data-field-error]').forEach(function (el) { el.remove(); });
+        form.querySelectorAll('.is-invalid').forEach(function (el) {
+          el.classList.remove('is-invalid');
+          el.removeAttribute('aria-invalid');
+        });
+      }
+
+      function fieldElement(name) {
+        var base = name.split('.')[0];
+
+        return form.querySelector('[name="' + base + '"]')
+            || form.querySelector('[name="' + base + '[]"]')
+            /* Combos post through a hidden input, so the visible control is
+               its sibling rather than the named element itself. */
+            || form.querySelector('[name="' + base + '"] , [name="' + base + '"]');
+      }
+
+      function showFieldErrors(errors) {
+        clearFieldErrors();
+
+        var firstEl = null;
+
+        Object.keys(errors).forEach(function (name) {
+          var el = fieldElement(name);
+          if (!el) return;
+
+          /* A hidden input has nothing to outline, so the message and the
+             highlight go on the wrapper the user can actually see. */
+          var anchor = el.type === 'hidden' ? el.parentElement : el;
+          var container = anchor.closest('div') || anchor.parentElement;
+
+          if (anchor.classList) {
+            anchor.classList.add('is-invalid');
+            anchor.setAttribute('aria-invalid', 'true');
+          }
+
+          var p = document.createElement('p');
+          p.className = 'mt-1.5 text-[12px] text-danger';
+          p.setAttribute('data-field-error', '');
+          p.textContent = errors[name][0];
+          container.appendChild(p);
+
+          if (!firstEl) firstEl = container;
+        });
+
+        if (firstEl) {
+          firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          var focusable = firstEl.querySelector('input:not([type=hidden]), textarea, button');
+          if (focusable) focusable.focus({ preventScroll: true });
+        }
+      }
+
+      function toast(message, type) {
+        if (window.styledesk && window.styledesk.toast) {
+          window.styledesk.toast(message, type);
+        } else {
+          window.alert(message);   // last resort; the message must reach them
+        }
+      }
+
       /* ---- save ------------------------------------------------------------
-         Submitted over fetch so a validation failure keeps the page and
-         everything typed into it. On success the browser follows the redirect
-         the server hands back, landing on the read-only view where the toast
-         is waiting in the session. */
+         Submitted over fetch so a failure keeps the page and everything typed
+         into it. Success follows the address the server returns, landing on
+         the read-only view where the confirmation is already in the session —
+         so the success message can only appear after the database write
+         actually committed. */
       var saving = false;
 
       form.addEventListener('submit', function (e) {
@@ -354,7 +422,7 @@
         saving = true;
         save.disabled = true;
         save.textContent = 'Saving…';
-        errors.hidden = true;
+        clearFieldErrors();
 
         fetch(form.action, {
           method: 'POST',                   // _method=PATCH travels in the body
@@ -373,22 +441,19 @@
           }
 
           if (result.response.status === 422) {
-            var first = Object.keys(result.body.errors || {})[0];
-            errors.querySelector('p').textContent = first
-              ? result.body.errors[first][0]
-              : 'Some fields need attention.';
+            showFieldErrors(result.body.errors || {});
+            toast('Please correct the highlighted fields and try again.', 'danger');
+          } else if (result.response.status === 500) {
+            /* The server's own words are logged, never shown: they can name
+               tables, hosts and credentials. */
+            toast("We couldn't save your changes right now. Please try again.", 'danger');
           } else {
-            /* Never the server's own words for anything but validation: they
-               can name hosts and internal reasons. */
-            errors.querySelector('p').textContent = 'Something went wrong saving your changes. Please try again.';
+            toast('Unable to save business settings. Your changes were not saved. Please try again.', 'danger');
           }
 
-          errors.hidden = false;
-          errors.scrollIntoView({ behavior: 'smooth', block: 'center' });
           reset();
         }).catch(function () {
-          errors.querySelector('p').textContent = 'We could not reach StyleDesk. Check your connection and try again.';
-          errors.hidden = false;
+          toast('Unable to save business settings. Your changes were not saved. Please try again.', 'danger');
           reset();
         });
       });

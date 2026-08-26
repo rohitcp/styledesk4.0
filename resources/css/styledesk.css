@@ -688,3 +688,12 @@ a.styledesk_settingcard:focus-visible {
     margin: 0.5rem 0.75rem;
     background: #e5e7eb;
 }
+
+/* A field the server rejected. Outline plus the message beneath it — colour
+   alone is not a signal for everyone who has to read it. */
+.sd-input.is-invalid,
+.styledesk_timepicker__field.is-invalid {
+    border-color: var(--color-danger, #ef4444);
+    outline: 1px solid var(--color-danger, #ef4444);
+    outline-offset: -2px;
+}

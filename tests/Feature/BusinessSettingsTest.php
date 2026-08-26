@@ -11,6 +11,7 @@ use App\Models\User;
 use Database\Seeders\BusinessTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -350,6 +351,103 @@ class BusinessSettingsTest extends TestCase
             ]))
             ->assertStatus(422)
             ->assertJsonValidationErrors('website');
+    }
+
+    // ----------------------------------------------------- save failures
+
+    /**
+     * The confirmation must rest on the database write, not on the request
+     * having been accepted.
+     */
+    public function test_a_database_failure_reports_a_plain_message_and_saves_nothing(): void
+    {
+        Log::spy();
+
+        // Break the write the way a real outage would, after validation has
+        // passed and the controller is committed to saving.
+        DB::shouldReceive('transaction')->once()->andThrow(
+            new \RuntimeException("SQLSTATE[HY000] [2002] Connection refused for user 'root'@'db-primary'")
+        );
+
+        $response = $this->actingAs($this->member('owner'))
+            ->postJson('http://styledesk.test/settings/business', $this->validPayload([
+                '_method' => 'PATCH',
+                'legal_name' => 'Should Not Persist',
+            ]));
+
+        $response->assertStatus(500)
+            ->assertJsonPath('message', "We couldn't save your changes right now. Please try again.");
+
+        $body = $response->getContent();
+
+        // None of the driver's words reach the browser.
+        $this->assertStringNotContainsString('SQLSTATE', $body);
+        $this->assertStringNotContainsString('Connection refused', $body);
+        $this->assertStringNotContainsString('db-primary', $body);
+        $this->assertStringNotContainsString('root', $body);
+
+        // No success toast on a failed save.
+        $response->assertSessionMissing('toast');
+
+        Log::shouldHaveReceived('error')
+            ->withArgs(fn (string $message, array $context) => $message === 'Business settings could not be saved.'
+                && str_contains($context['exception'], 'SQLSTATE'))
+            ->once();
+    }
+
+    public function test_a_failed_save_keeps_the_user_on_the_form_with_their_input(): void
+    {
+        DB::shouldReceive('transaction')->once()->andThrow(new \RuntimeException('boom'));
+
+        // The non-JavaScript path: back to the form, input intact, error toast.
+        $response = $this->actingAs($this->member('owner'))
+            ->from('http://styledesk.test/settings/business/edit')
+            ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                'legal_name' => 'Typed and worth keeping',
+            ]));
+
+        $response->assertRedirect('http://styledesk.test/settings/business/edit');
+        $response->assertSessionHasInput('legal_name', 'Typed and worth keeping');
+        $response->assertSessionHas('toast', fn ($toast) => $toast['type'] === 'danger');
+    }
+
+    public function test_validation_messages_say_what_to_do(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->postJson('http://styledesk.test/settings/business', [
+                '_method' => 'PATCH',
+                'name' => '',
+                'status' => 'active',
+                'business_email' => 'not-an-email',
+                'website' => 'nadiahair',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.name.0', 'Business name is required.')
+            ->assertJsonPath('errors.business_email.0', 'Enter a valid email address.')
+            ->assertJsonPath('errors.website.0', 'Enter a valid website URL, including https://');
+    }
+
+    /**
+     * The tenant row and the business-type pivot are one change to the user.
+     * Committing half of it would leave the page showing types that no longer
+     * match what was saved, with nothing to say so.
+     */
+    public function test_the_business_and_its_types_are_saved_together_or_not_at_all(): void
+    {
+        $this->seed(BusinessTypeSeeder::class);
+        $type = BusinessType::where('slug', 'hair-salon')->first();
+
+        $this->actingAs($this->member('owner'))
+            ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                'name' => 'Renamed Studio',
+                'business_type_ids' => [$type->id],
+            ]))
+            ->assertRedirect(route('settings.business.show'));
+
+        $tenant = $this->tenant->fresh();
+
+        $this->assertSame('Renamed Studio', $tenant->name);
+        $this->assertSame([$type->id], $tenant->businessTypes->pluck('id')->all());
     }
 
     public function test_the_settings_directory_links_to_the_module(): void
