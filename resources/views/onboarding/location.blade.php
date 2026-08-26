@@ -29,7 +29,7 @@
         </div>
 
             @php
-                $selectedCountry = old('country', $location?->country ?? 'US');
+                $selectedCountry = $countryCode;
                 $selectedState = old('state', $location?->state);
                 $countryRegions = $regions[$selectedCountry] ?? [];
             @endphp
@@ -39,13 +39,16 @@
              meaningful. --}}
         <div class="grid sm:grid-cols-2 gap-x-4 gap-y-5">
             <div>
-                <label for="country" class="block text-[13px] font-medium text-ink mb-1.5">Country</label>
-                <select id="country" name="country" class="sd-input" required>
-                    @foreach ($countries as $iso => $label)
-                        <option value="{{ $iso }}" @selected($selectedCountry === $iso)>{{ $label }}</option>
-                    @endforeach
-                </select>
-                <p class="mt-1.5 text-[12px] text-sub">Sets your currency. Changeable in Settings.</p>
+                <label class="block text-[13px] font-medium text-ink mb-1.5">Country</label>
+                {{-- Read-only: chosen on the business step and carried through,
+                     so the two screens cannot disagree about where the business
+                     operates. The value is not posted at all — the server reads
+                     it from the tenant. --}}
+                <div class="sd-input flex items-center justify-between text-sub">
+                    <span>{{ $countryName }}</span>
+                    <a href="{{ route('onboarding.business') }}" class="text-[12px] text-link font-medium hover:underline">Change</a>
+                </div>
+                <p class="mt-1.5 text-[12px] text-sub">Set on the business step. Regions and timezones below follow it.</p>
             </div>
             <div>
                 <label for="{{ $countryRegions ? 'state' : 'state_text' }}" class="block text-[13px] font-medium text-ink mb-1.5">
@@ -148,8 +151,10 @@
         {{-- A link, not a form post: going back only re-reads an earlier step,
              so it must not submit anything or move current_step. --}}
         @if ($previousStep)
+            {{-- ml-auto: Back sits on the opposite side from Continue, so
+                 the button that moves forward stays where the eye lands. --}}
             <a href="{{ route('onboarding.'.$previousStep) }}"
-               class="inline-flex items-center gap-1.5 h-11 px-4 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+               class="ml-auto inline-flex items-center gap-1.5 h-11 px-4 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Back
             </a>
@@ -204,7 +209,6 @@
            keeps reading .value as if nothing had changed. */
         if (window.SD && typeof window.SD.combo === 'function') {
             SD.combo(document.getElementById('state'), { searchPlaceholder: 'Search state…', width: '220px' });
-            SD.combo(document.getElementById('country'), { searchPlaceholder: 'Search country…', width: '260px' });
             SD.combo(document.getElementById('timezone'), { searchPlaceholder: 'Search timezone…', width: '320px' });
 
             document.querySelectorAll('#stepForm select[name^="hours"]').forEach(function (el) {
@@ -247,20 +251,14 @@
                 : 'Open ' + open + ' ' + (open === 1 ? 'day' : 'days') + ' a week';
         }
 
-        /* ---- Region list follows the country -----------------------------
-           A country with regions shows the combo; one without shows a free
-           text field. Both exist in the markup and the unused one is disabled,
-           so exactly one `state` value posts and the combo never has to be
-           torn down and rebuilt. */
-        var REGIONS = @json($regions);
+        /* ---- Timezone suggested for this country -------------------------
+           The country is fixed by the business step, so there is nothing to
+           repaint here — only the region-level refinement below. */
         var REGION_ZONES = @json($regionTimezones);
         var COUNTRY_ZONES = @json($countryTimezones);
+        var COUNTRY = @json($countryCode);
 
-        var countryEl = document.getElementById('country');
         var stateEl = document.getElementById('state');
-        var stateTextEl = document.getElementById('state_text');
-        var selectWrap = document.getElementById('state-select-wrap');
-        var textWrap = document.getElementById('state-text-wrap');
         var tzEl = document.getElementById('timezone');
         var tzHint = document.getElementById('tz-hint');
         var tzTouched = false;
@@ -272,8 +270,6 @@
 
             tzEl.value = zone;
 
-            // The visible control is the combo button, not the select, so it
-            // has to be told the value changed underneath it.
             if (window.SD && typeof window.SD.comboRefresh === 'function') {
                 SD.comboRefresh(tzEl);
             }
@@ -282,63 +278,18 @@
             paintPreview();
         }
 
-        function paintRegions(keepValue) {
-            var country = countryEl.value;
-            var regions = REGIONS[country];
-            var previous = keepValue ? stateEl.value : '';
-
-            if (regions) {
-                var options = ['<option value="">Select…</option>'];
-
-                Object.keys(regions).forEach(function (code) {
-                    options.push('<option value="' + code + '">' + regions[code] + '</option>');
-                });
-
-                stateEl.innerHTML = options.join('');
-                stateEl.value = regions[previous] ? previous : '';
-
-                selectWrap.classList.remove('hidden');
-                textWrap.classList.add('hidden');
-                stateEl.disabled = false;
-                stateTextEl.disabled = true;
-
-                // The combo reads select.options each time it opens, so the
-                // new list is picked up on its own; only the button label,
-                // which is painted once, has to be told.
-                if (window.SD && typeof window.SD.comboRefresh === 'function') {
-                    SD.comboRefresh(stateEl);
-                }
-            } else {
-                selectWrap.classList.add('hidden');
-                textWrap.classList.remove('hidden');
-                stateEl.disabled = true;
-                stateTextEl.disabled = false;
-            }
-        }
-
-        countryEl.addEventListener('change', function () {
-            paintRegions(false);
-
-            // A new country means a new default zone; the region-level guess
-            // below refines it once a region is chosen.
-            applyZone(
-                COUNTRY_ZONES[countryEl.value],
-                'Set from your country — change it if that is not right.'
-            );
-
-            paintPreview();
-        });
-
         /* ---- Timezone refined by the region -------------------------------
            The spec asks for the timezone to be worked out from the address
            where possible. It is a suggestion, not a decision: once the user
            picks a zone themselves we stop overriding it, because silently
            changing it back would be worse than not helping at all. */
-        stateEl.addEventListener('change', function () {
-            var byRegion = (REGION_ZONES[countryEl.value] || {})[stateEl.value];
+        if (stateEl) {
+            stateEl.addEventListener('change', function () {
+                var byRegion = (REGION_ZONES[COUNTRY] || {})[stateEl.value];
 
-            applyZone(byRegion, 'Set from your state — change it if that is not right.');
-        });
+                applyZone(byRegion, 'Set from your state — change it if that is not right.');
+            });
+        }
 
         // Delegated: SD.combo moves each select inside a new wrapper, and a
         // listener bound to the element before that still fires, but new

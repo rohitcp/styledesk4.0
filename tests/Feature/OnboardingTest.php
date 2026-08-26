@@ -206,6 +206,12 @@ class OnboardingTest extends TestCase
                 'name' => 'Bella Beauty Studio',
                 'slug' => 'bella',
                 'business_phone' => '555 0100',
+            'country_codes' => ['US'],
+            'currency_codes' => ['USD'],
+            'default_language' => 'en',
+                'country_codes' => ['US'],
+                'currency_codes' => ['USD'],
+                'default_language' => 'en',
                 'business_email' => 'hello@bella.test',
                 'business_type_ids' => [$type->id],
             ])
@@ -239,6 +245,12 @@ class OnboardingTest extends TestCase
             ->post('http://styledesk.test/onboarding/business', [
                 'name' => 'bella beauty studio',
                 'business_phone' => '555 0100',
+            'country_codes' => ['US'],
+            'currency_codes' => ['USD'],
+            'default_language' => 'en',
+                'country_codes' => ['US'],
+                'currency_codes' => ['USD'],
+                'default_language' => 'en',
                 'business_type_ids' => [$type->id],
             ])
             ->assertRedirect(route('onboarding.location'));
@@ -259,6 +271,12 @@ class OnboardingTest extends TestCase
             ->post('http://styledesk.test/onboarding/business', [
                 'name' => 'BELLA MedSpa',
                 'business_phone' => '555 0100',
+            'country_codes' => ['US'],
+            'currency_codes' => ['USD'],
+            'default_language' => 'en',
+                'country_codes' => ['US'],
+                'currency_codes' => ['USD'],
+                'default_language' => 'en',
                 'business_type_ids' => [$type->id],
             ]);
 
@@ -286,6 +304,9 @@ class OnboardingTest extends TestCase
         $this->post('http://styledesk.test/onboarding/business', [
             'name' => 'Bella Beauty Studio',
             'business_phone' => '555 0100',
+            'country_codes' => ['US'],
+            'currency_codes' => ['USD'],
+            'default_language' => 'en',
             'business_type_ids' => [$type->id],
         ])->assertRedirect(route('onboarding.location'));
 
@@ -329,12 +350,169 @@ class OnboardingTest extends TestCase
             ->assertSessionHasErrors('logo');
     }
 
+    public function test_country_currency_and_language_are_stored_against_the_tenant(): void
+    {
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $user = $this->user();
+
+        $this->actingAs($user)
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Mumbai Salon',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+                'country_codes' => ['IN'],
+                'currency_codes' => ['INR'],
+                'default_language' => 'ar',
+            ])
+            ->assertRedirect(route('onboarding.location'));
+
+        $tenant = $user->fresh()->tenant;
+
+        $this->assertSame('IN', $tenant->country_code);
+        $this->assertSame('INR', $tenant->currency_code);
+        $this->assertSame('ar', $tenant->default_language);
+    }
+
+    public function test_multiple_countries_and_currencies_are_stored_with_a_primary(): void
+    {
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $user = $this->user();
+
+        $this->actingAs($user)
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Cross Border Salon',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+                'country_codes' => ['IN', 'AE', 'GB'],
+                'currency_codes' => ['INR', 'AED'],
+                'default_language' => 'ar',
+            ])
+            ->assertRedirect(route('onboarding.location'));
+
+        $tenant = $user->fresh()->tenant;
+
+        $this->assertSame(['IN', 'AE', 'GB'], $tenant->countries->pluck('country_code')->all());
+        $this->assertSame(['INR', 'AED'], $tenant->currencies->pluck('currency_code')->all());
+
+        // The first of each is mirrored onto the tenant, and that mirror is
+        // what every later screen filters and prices on.
+        $this->assertSame('IN', $tenant->country_code);
+        $this->assertSame('INR', $tenant->currency_code);
+    }
+
+    public function test_reordering_changes_which_country_is_primary(): void
+    {
+        $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
+
+        $tenant->syncCountries(['US', 'CA']);
+        $this->assertSame('US', $tenant->fresh()->country_code);
+
+        // Promoting Canada is simply putting it first — there is no separate
+        // flag that could disagree with the ordering.
+        $tenant->syncCountries(['CA', 'US']);
+        $this->assertSame('CA', $tenant->fresh()->country_code);
+        $this->assertSame(['CA', 'US'], $tenant->fresh()->countries->pluck('country_code')->all());
+    }
+
+    public function test_removing_a_country_drops_it_from_the_list(): void
+    {
+        $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
+
+        $tenant->syncCountries(['US', 'CA', 'GB']);
+        $tenant->syncCountries(['CA']);
+
+        $this->assertSame(['CA'], $tenant->fresh()->countries->pluck('country_code')->all());
+        $this->assertSame('CA', $tenant->fresh()->country_code);
+    }
+
+    public function test_an_empty_country_or_currency_list_is_refused(): void
+    {
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Acme',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+                'country_codes' => [],
+                'currency_codes' => [],
+                'default_language' => 'en',
+            ])
+            ->assertSessionHasErrors(['country_codes', 'currency_codes']);
+    }
+
+    public function test_country_currency_and_language_are_required(): void
+    {
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Acme',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+            ])
+            ->assertSessionHasErrors(['country_codes', 'currency_codes', 'default_language']);
+    }
+
+    public function test_only_supported_languages_are_accepted(): void
+    {
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Acme',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+                'country_codes' => ['US'],
+                'currency_codes' => ['USD'],
+                'default_language' => 'zz',
+            ])
+            ->assertSessionHasErrors('default_language');
+    }
+
+    public function test_the_location_step_uses_the_country_from_the_business_step(): void
+    {
+        // The country must not be re-asked or accepted from the request: the
+        // two screens would otherwise be able to disagree.
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Mumbai Salon', 'slug' => 'mumbai', 'country_code' => 'IN']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'location']);
+
+        $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/onboarding/location')
+            ->assertOk()
+            ->assertSee('India')
+            ->assertSee('Karnataka')          // an Indian state is offered
+            ->assertDontSee('Alberta');       // a Canadian province is not
+
+        // A crafted country in the request must be ignored.
+        $this->actingAs($user->fresh())
+            ->post('http://styledesk.test/onboarding/location', [
+                'name' => 'Main Location',
+                'address_line1' => '1 MG Road',
+                'city' => 'Bengaluru',
+                'postal_code' => '560001',
+                'country' => 'CA',
+                'timezone' => 'Asia/Kolkata',
+            ])->assertRedirect(route('onboarding.services'));
+
+        $this->assertSame('IN', $tenant->locations()->first()->country);
+    }
+
     public function test_business_type_is_required(): void
     {
         $this->actingAs($this->user())
             ->post('http://styledesk.test/onboarding/business', [
                 'name' => 'Bella Beauty Studio',
                 'business_phone' => '555 0100',
+            'country_codes' => ['US'],
+            'currency_codes' => ['USD'],
+            'default_language' => 'en',
+                'country_codes' => ['US'],
+                'currency_codes' => ['USD'],
+                'default_language' => 'en',
             ])
             ->assertSessionHasErrors('business_type_ids');
 
@@ -349,6 +527,12 @@ class OnboardingTest extends TestCase
             ->post('http://styledesk.test/onboarding/business', [
                 'name' => 'Bella Beauty Studio',
                 'business_phone' => '555 0100',
+            'country_codes' => ['US'],
+            'currency_codes' => ['USD'],
+            'default_language' => 'en',
+                'country_codes' => ['US'],
+                'currency_codes' => ['USD'],
+                'default_language' => 'en',
                 'business_type_ids' => [$type->id],
             ])
             ->assertRedirect(route('onboarding.location'));
@@ -366,6 +550,12 @@ class OnboardingTest extends TestCase
             ->post('http://styledesk.test/onboarding/business', [
                 'name' => 'Bella Beauty Studio',
                 'business_phone' => '555 0100',
+            'country_codes' => ['US'],
+            'currency_codes' => ['USD'],
+            'default_language' => 'en',
+                'country_codes' => ['US'],
+                'currency_codes' => ['USD'],
+                'default_language' => 'en',
                 'business_type_ids' => [$type->id],
             ])
             ->assertRedirect(route('onboarding.location'));

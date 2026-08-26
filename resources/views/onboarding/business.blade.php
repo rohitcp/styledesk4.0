@@ -80,6 +80,28 @@
                 </fieldset>
             </div>
 
+            {{-- Countries, currencies and language are one island: the
+                 currency suggestion depends on the primary country, and split
+                 across separate islands that would need an event bus to cross
+                 between two Vue apps. --}}
+            @php
+                $marketProps = [
+                    'countries' => $countries,
+                    'currencies' => $currencies,
+                    'countryCurrencies' => $countryCurrencies,
+                    'languages' => $languages,
+                    'selectedCountries' => $selectedCountries,
+                    'selectedCurrencies' => $selectedCurrencies,
+                    'selectedLanguage' => old('default_language', $tenant?->default_language ?? config('currencies.default_language')),
+                ];
+            @endphp
+
+            <div data-vue-component="OperatingMarkets" data-props='@json($marketProps)'></div>
+
+            @error('country_codes')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+            @error('currency_codes')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+            @error('default_language')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+
             <div class="grid sm:grid-cols-2 gap-x-5 gap-y-5">
                 <div>
                     <label for="bizPhone" class="block text-[13px] font-medium text-ink mb-1.5">
@@ -197,7 +219,7 @@
         </section>
     </form>
 
-    <div class="pt-6">
+    <div class="flex flex-wrap items-center gap-3 pt-6">
         <button type="submit" form="stepForm"
                 class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
             Continue

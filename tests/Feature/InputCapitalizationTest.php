@@ -82,6 +82,9 @@ class InputCapitalizationTest extends TestCase
         $this->actingAs($user)->post('http://styledesk.test/onboarding/business', [
             'name' => 'bella beauty studio',
             'business_phone' => '555 0100',
+            'country_codes' => ['US'],
+            'currency_codes' => ['USD'],
+            'default_language' => 'en',
             'business_type_ids' => [$type->id],
         ]);
 
@@ -98,6 +101,9 @@ class InputCapitalizationTest extends TestCase
         $this->actingAs($user)->post('http://styledesk.test/onboarding/business', [
             'name' => 'bella beauty studio',
             'business_phone' => '555 0100',
+            'country_codes' => ['US'],
+            'currency_codes' => ['USD'],
+            'default_language' => 'en',
             'business_type_ids' => [$type->id],
         ]);
 
@@ -118,7 +124,6 @@ class InputCapitalizationTest extends TestCase
             'address_line1' => '128 grand street',
             'city' => 'brooklyn',
             'postal_code' => '11211',
-            'country' => 'US',
             'timezone' => 'America/New_York',
         ]);
 

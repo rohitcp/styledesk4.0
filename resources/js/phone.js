@@ -84,6 +84,9 @@ export function initPhoneFields(root = document) {
             return;
         }
 
+        // Keep the widget reachable so the primary country can drive it.
+        el.sdPhone = field;
+
         const sync = () => {
             const value = field.value();
 
@@ -94,10 +97,50 @@ export function initPhoneFields(root = document) {
 
         // The widget exposes no change event, so sync on the interactions that
         // can alter the country, plus once on submit as a backstop.
+        // A deliberate country choice stops the primary country overriding it.
+        el.querySelector('[data-phone-pop]')?.addEventListener('click', () => {
+            el.dataset.phoneCountryTouched = '1';
+        });
+
         el.addEventListener('click', sync);
         el.addEventListener('keyup', sync);
         el.closest('form')?.addEventListener('submit', sync);
 
         sync();
+    });
+
+    /**
+     * Follow the primary country of operation.
+     *
+     * The spec lists the phone country code among the things the country
+     * controls. The country lives in a Vue island and the phone widget does
+     * not, so the island announces the change on the document and this
+     * listens — a narrower coupling than either one importing the other.
+     *
+     * Only the dialling code moves; a number already typed is left alone,
+     * because reformatting someone's digits under them is worse than a
+     * mismatched flag.
+     */
+    document.addEventListener('styledesk:primary-country', (event) => {
+        const iso = event.detail?.country;
+
+        if (!iso) {
+            return;
+        }
+
+        root.querySelectorAll('[data-phone]').forEach((el) => {
+            const field = el.sdPhone;
+            const hidden = el.querySelector('[data-phone-country-value]');
+
+            if (!field || el.dataset.phoneCountryTouched === '1') {
+                return;
+            }
+
+            field.set(field.value()?.national ?? '', iso);
+
+            if (hidden) {
+                hidden.value = iso;
+            }
+        });
     });
 }

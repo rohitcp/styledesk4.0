@@ -70,6 +70,12 @@ class OnboardingController extends Controller
         return view('onboarding.business', [
             'tenant' => $request->user()->tenant,
             'businessTypes' => BusinessType::active()->get(),
+            'countries' => config('locations.countries'),
+            'currencies' => $this->currencyOptions(),
+            'countryCurrencies' => config('currencies.country_currencies'),
+            'languages' => config('currencies.languages'),
+            'selectedCountries' => $request->user()->tenant?->countries->pluck('country_code')->all() ?? [],
+            'selectedCurrencies' => $request->user()->tenant?->currencies->pluck('currency_code')->all() ?? [],
             'progress' => $this->progress('business'),
             'previousStep' => $this->previousStep('business'),
         ]);
@@ -92,6 +98,13 @@ class OnboardingController extends Controller
                 Rule::notIn(self::RESERVED_SLUGS),
                 Rule::unique('tenants', 'slug')->ignore($tenantId, 'id'),
             ],
+            // Arrays, first entry primary. min:1 rather than required alone,
+            // so an empty array is refused as clearly as a missing field.
+            'country_codes' => ['required', 'array', 'min:1'],
+            'country_codes.*' => [Rule::in(array_keys(config('locations.countries')))],
+            'currency_codes' => ['required', 'array', 'min:1'],
+            'currency_codes.*' => [Rule::in(array_keys(config('currencies.currencies')))],
+            'default_language' => ['required', 'string', Rule::in(array_keys(config('currencies.languages')))],
             'business_phone' => ['required', 'string', 'max:32'],
             'business_phone_country' => ['nullable', 'string', 'size:2'],
             'business_email' => ['nullable', 'email', 'max:255'],
@@ -112,6 +125,7 @@ class OnboardingController extends Controller
             'business_phone_country' => $data['business_phone_country'] ?? null,
             'business_email' => $data['business_email'] ?? null,
             'website' => $this->joinWebsite($data['website_scheme'] ?? null, $data['website'] ?? null),
+            'default_language' => $data['default_language'],
         ];
 
         if ($request->hasFile('logo')) {
@@ -150,6 +164,11 @@ class OnboardingController extends Controller
             }
 
             $tenant->businessTypes()->sync($data['business_type_ids']);
+
+            // Both write their own mirrored primary, so country_code and
+            // currency_code are set here rather than in $attributes.
+            $tenant->syncCountries($data['country_codes']);
+            $tenant->syncCurrencies($data['currency_codes']);
 
             $this->onboardingFor($tenant)->update([
                 'business_completed' => true,
@@ -190,9 +209,18 @@ class OnboardingController extends Controller
 
     public function location(Request $request): View
     {
+        $tenant = $request->user()->tenant;
+
         return view('onboarding.location', [
-            'location' => $request->user()->tenant?->locations()->where('is_primary', true)->first(),
-            'countries' => config('locations.countries'),
+            'location' => $tenant?->locations()->where('is_primary', true)->first(),
+            /**
+             * Carried from the business step rather than asked again. The spec
+             * requires the country chosen there to drive the country-specific
+             * options on every later screen, so offering a second country
+             * field here would let the two disagree.
+             */
+            'countryCode' => $tenant?->countryCode() ?? 'US',
+            'countryName' => config('locations.countries.'.($tenant?->countryCode() ?? 'US')),
             'regions' => config('locations.regions'),
             'regionTimezones' => config('locations.region_timezones'),
             'countryTimezones' => config('locations.country_timezones'),
@@ -213,7 +241,10 @@ class OnboardingController extends Controller
             'city' => ['required', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['required', 'string', 'max:20'],
-            'country' => ['required', 'string', 'size:2'],
+            // Not accepted from the request: the country belongs to the
+            // tenant, and taking it from input would let a crafted form set a
+            // location in a country the business never chose.
+            'country' => ['nullable'],
             'phone' => ['nullable', 'string', 'max:32'],
             'phone_country' => ['nullable', 'string', 'size:2'],
             'timezone' => ['required', 'timezone'],
@@ -228,7 +259,7 @@ class OnboardingController extends Controller
         DB::transaction(function () use ($tenant, $data, $request) {
             $location = $tenant->locations()->updateOrCreate(
                 ['is_primary' => true],
-                collect($data)->except('hours')->all()
+                collect($data)->except('hours')->merge(['country' => $tenant->countryCode()])->all()
             );
 
             foreach (range(0, 6) as $day) {
@@ -241,10 +272,6 @@ class OnboardingController extends Controller
                     'closes_at' => $isOpen ? ($row['closes_at'] ?? '17:00') : null,
                 ]);
             }
-
-            // Never asked for during onboarding, so it is inferred once from
-            // the location and stays editable in Settings.
-            $tenant->update(['currency' => $this->currencyFor($data['country'])]);
 
             $this->onboardingFor($tenant)->update([
                 'location_completed' => true,
@@ -616,14 +643,18 @@ class OnboardingController extends Controller
     }
 
     /**
-     * Currency is never asked for, so it is inferred from the location's
-     * country once and remains editable in Settings.
+     * Currencies labelled the way the specification shows them.
+     *
+     * @return array<string, string>
      */
-    private function currencyFor(string $country): string
+    private function currencyOptions(): array
     {
-        return [
-            'US' => 'USD', 'CA' => 'CAD', 'GB' => 'GBP', 'AU' => 'AUD',
-            'MX' => 'MXN', 'FR' => 'EUR', 'DE' => 'EUR', 'ES' => 'EUR',
-        ][strtoupper($country)] ?? 'USD';
+        $options = [];
+
+        foreach (config('currencies.currencies') as $code => $currency) {
+            $options[$code] = sprintf('%s — %s (%s)', $code, $currency['name'], $currency['symbol']);
+        }
+
+        return $options;
     }
 }

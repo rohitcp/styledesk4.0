@@ -178,7 +178,12 @@
 .styledesk_timepicker__col:last-child { border-right: 0; }
 
 .styledesk_timepicker__opt {
-    display: block;
+    /* flex, not block: the custom layer loads after Tailwind, so `display:
+       block` here beat the `flex` utility on multi-select rows and stacked the
+       checkbox above its label. Flex is correct for both uses — a time column
+       has a single child, so it lays out identically. */
+    display: flex;
+    align-items: center;
     width: 100%;
     padding: 0.3125rem 0.75rem;
     font-size: 13px;

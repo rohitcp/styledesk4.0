@@ -65,10 +65,11 @@ class Tenant extends BaseTenant
             'business_email',
             'website',
             'logo_path',
-            'currency',
+            'country_code',
+            'currency_code',
             'owner_user_id',
             'timezone',
-            'locale',
+            'default_language',
             'trial_started_at',
             'trial_ends_at',
             'subscription_status',
@@ -85,6 +86,93 @@ class Tenant extends BaseTenant
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function countries(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TenantCountry::class)->orderBy('position');
+    }
+
+    /**
+     * Replace the set of operating countries.
+     *
+     * The first code given becomes the primary and is mirrored into
+     * country_code, which is what every later screen filters on. Writing both
+     * in one place is what stops the mirror drifting from the table.
+     *
+     * @param  array<int, string>  $codes
+     */
+    public function syncCountries(array $codes): void
+    {
+        $codes = array_values(array_unique(array_filter($codes)));
+
+        if ($codes === []) {
+            return;
+        }
+
+        $this->countries()->whereNotIn('country_code', $codes)->delete();
+
+        foreach ($codes as $position => $code) {
+            TenantCountry::withoutGlobalScopes()->updateOrCreate(
+                ['tenant_id' => $this->getTenantKey(), 'country_code' => $code],
+                ['position' => $position]
+            );
+        }
+
+        $this->forceFill(['country_code' => $codes[0]])->save();
+    }
+
+    public function currencies(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TenantCurrency::class)->orderBy('position');
+    }
+
+    /**
+     * Replace the set of trading currencies.
+     *
+     * Mirrors the first into currency_code, the same arrangement as countries:
+     * the list is the record, the mirrored column is what the rest of the app
+     * reads.
+     *
+     * @param  array<int, string>  $codes
+     */
+    public function syncCurrencies(array $codes): void
+    {
+        $codes = array_values(array_unique(array_filter($codes)));
+
+        if ($codes === []) {
+            return;
+        }
+
+        $this->currencies()->whereNotIn('currency_code', $codes)->delete();
+
+        foreach ($codes as $position => $code) {
+            TenantCurrency::withoutGlobalScopes()->updateOrCreate(
+                ['tenant_id' => $this->getTenantKey(), 'currency_code' => $code],
+                ['position' => $position]
+            );
+        }
+
+        $this->forceFill(['currency_code' => $codes[0]])->save();
+    }
+
+    /**
+     * The operating country, with a fallback.
+     *
+     * Onboarding always sets this at the business step, but a tenant created
+     * another way — a seeder, a fixture, a row migrated before the column
+     * existed — may not have it. One accessor means the controller and the
+     * view cannot disagree about what the fallback is.
+     */
+    public function countryCode(): string
+    {
+        return $this->country_code ?: 'US';
+    }
+
+    /** The currency symbol for display, falling back to the code itself. */
+    public function currencySymbol(): string
+    {
+        return config('currencies.currencies.'.$this->currency_code.'.symbol', (string) $this->currency_code);
     }
 
     public function businessTypes(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
