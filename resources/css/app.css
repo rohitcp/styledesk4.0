@@ -1,0 +1,55 @@
+@import 'tailwindcss';
+@import './styledesk.css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+/* ------------------------------------------------------------------
+   Design tokens — the single source of truth for colour and type.
+   Ported from the prototype's tailwind.config.js (html/assets/js).
+   ------------------------------------------------------------------ */
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Text */
+    --color-head: #0f0f10;  /* headings / near-black */
+    --color-ink: #23272f;   /* primary body text */
+    --color-sub: #6b7280;   /* secondary text */
+    --color-faint: #9ca3af; /* muted / placeholder */
+
+    /* Surfaces & borders */
+    --color-line: #e5e7eb;   /* hairline borders */
+    --color-stroke: #d1d5db; /* input borders, slightly stronger */
+    --color-hover: #f3f4f6;  /* hover fill */
+    --color-sel: #eef1f4;    /* selected fill */
+    --color-canvas: #ffffff; /* page background */
+
+    /* Status */
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-danger: #ef4444;
+
+    --radius-card: 10px;
+}
+
+/* ------------------------------------------------------------------
+   Brand tokens.
+   `@theme inline` matters here: it makes utilities emit var(--sd-brand)
+   verbatim instead of resolving the colour at build time, which is what
+   lets Branding repaint a tenant's palette at runtime.
+
+   Consequence: opacity modifiers (bg-brand/10) do not work on these —
+   Tailwind rewrites those to rgb(<channels> / alpha) and a var() holding
+   a full colour has no channels to give. Use a literal tint instead.
+   ------------------------------------------------------------------ */
+@theme inline {
+    --color-brand: var(--sd-brand);           /* primary CTA + app bar surface */
+    --color-brand-dark: var(--sd-brand-dark); /* primary hover / pressed */
+    --color-banner: var(--sd-banner);         /* announcement strip above the app bar */
+    --color-link: var(--sd-link);             /* hyperlinks */
+    --color-accent: var(--sd-accent);         /* highlights, badges, chart marks */
+    --color-btn: var(--sd-btn);               /* button fill, if it differs from brand */
+    --color-btn-ink: var(--sd-btn-ink);       /* text on that fill */
+    --color-secondary: var(--sd-secondary);
+}

@@ -1,0 +1,65 @@
+/* StyleDesk — custom layer on top of Tailwind
+   ------------------------------------------------------------------
+   Everything hand-written (i.e. not a Tailwind utility) lives here and
+   carries the `styledesk_` prefix, so a class in a Blade template is
+   instantly identifiable as ours rather than Tailwind's or a vendor's.
+
+   Naming: styledesk_block__element--modifier
+     styledesk_card
+     styledesk_card__header
+     styledesk_badge--active
+
+   The static prototype in html/ ships the same design system under the
+   shorter `sd-` prefix (291 classes in html/assets/css/styles.css).
+   Those are the reference implementation; as each page is ported to
+   Blade its styles move here under `styledesk_`.
+   ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------
+   Brand tokens
+   ------------------------------------------------------------------
+   Defaults only. App Settings > Branding overrides these on :root at
+   runtime, which is why every brand colour below is a custom property
+   rather than a literal — a rule that hardcodes #3d348b is a rule that
+   ignores the tenant's own palette.
+   ------------------------------------------------------------------ */
+:root {
+    --sd-brand: #3d348b;
+    --sd-brand-dark: #2f2870;
+    --sd-banner: #3c096c;
+    --sd-link: #2563eb;
+    --sd-accent: #b45309;
+    --sd-btn: #3d348b;
+    --sd-btn-ink: #ffffff;
+    --sd-secondary: #0d9488;
+}
+
+/* Tailwind's display utilities (.flex, .grid, .block) sit after Preflight's
+   [hidden] rule and share its specificity, so `hidden` on an element that
+   also carries a display class does nothing. Make the attribute win. */
+[hidden] {
+    display: none !important;
+}
+
+html,
+body {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d6d6d9;
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
