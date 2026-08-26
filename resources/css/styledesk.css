@@ -87,3 +87,148 @@
     outline: 2px solid var(--sd-brand);
     outline-offset: 2px;
 }
+
+/* ------------------------------------------------------------------
+   Time picker (Ant Design style)
+   ------------------------------------------------------------------
+   A column-scroll picker rather than a long dropdown: choosing 14:45 means
+   picking an hour and a minute, which is two short lists instead of one list
+   of ninety-six entries.
+
+   Scroll behaviour is the part that needs real CSS. Each column scrolls
+   independently and the selected row is scrolled to the top, so padding-bottom
+   equal to the column height is what lets the last item reach the top rather
+   than sticking at the bottom.
+   ------------------------------------------------------------------ */
+
+.styledesk_timepicker {
+    position: relative;
+}
+
+.styledesk_timepicker__field {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 2.75rem;
+    padding: 0 0.75rem;
+    border-radius: 0.375rem;
+    background: #fff;
+    font-size: 14px;
+    color: #23272f;
+    text-align: left;
+    outline: 1px solid #d1d5db;
+    outline-offset: -1px;
+    cursor: pointer;
+    transition: outline-color 0.12s ease;
+}
+
+.styledesk_timepicker__field:hover { outline-color: #9ca3af; }
+
+.styledesk_timepicker__field:focus-visible,
+.styledesk_timepicker--open .styledesk_timepicker__field {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: -2px;
+}
+
+.styledesk_timepicker__field[disabled] {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.styledesk_timepicker__value { flex: 1 1 auto; }
+.styledesk_timepicker__value--empty { color: #9ca3af; }
+
+.styledesk_timepicker__icon { color: #9ca3af; flex-shrink: 0; }
+
+.styledesk_timepicker__panel {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    box-shadow: 0 10px 30px rgb(15 15 16 / 12%);
+    overflow: hidden;
+}
+
+/* Opens upward when there is not enough room below. */
+.styledesk_timepicker__panel--above {
+    top: auto;
+    bottom: calc(100% + 4px);
+}
+
+.styledesk_timepicker__cols {
+    display: flex;
+    height: 224px;
+}
+
+.styledesk_timepicker__col {
+    flex: 1 1 0;
+    min-width: 58px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-bottom: 196px; /* lets the final row scroll to the top */
+    border-right: 1px solid #e5e7eb;
+}
+
+.styledesk_timepicker__col:last-child { border-right: 0; }
+
+.styledesk_timepicker__opt {
+    display: block;
+    width: 100%;
+    padding: 0.3125rem 0.75rem;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #23272f;
+    text-align: left;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.styledesk_timepicker__opt:hover { background: #f3f4f6; }
+
+.styledesk_timepicker__opt--on {
+    background: #eef1f4;
+    font-weight: 600;
+    color: var(--sd-brand);
+}
+
+.styledesk_timepicker__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.styledesk_timepicker__now {
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--sd-link);
+    cursor: pointer;
+}
+
+.styledesk_timepicker__now:hover { text-decoration: underline; }
+
+.styledesk_timepicker__ok {
+    height: 1.75rem;
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: 0.25rem;
+    background: var(--sd-brand);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.styledesk_timepicker__ok:hover { background: var(--sd-brand-dark); }

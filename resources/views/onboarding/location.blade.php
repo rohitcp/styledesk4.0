@@ -4,16 +4,6 @@
 @section('heading', 'Where do you operate?')
 @section('subheading', 'Your primary location and the hours you are open. Add more locations later in Settings.')
 
-@php
-    // Built once and reused by all fourteen hour selects rather than
-    // regenerated per row.
-    $times = [];
-    for ($minutes = 0; $minutes < 24 * 60; $minutes += 15) {
-        $value = sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
-        $times[$value] = date('g:i A', mktime(0, $minutes));
-    }
-@endphp
-
 @section('form')
     <form id="stepForm" method="POST" action="{{ route('onboarding.location.store') }}" class="mt-6 space-y-5">
         @csrf
@@ -92,46 +82,25 @@
             @error('timezone')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
         </div>
 
-        {{-- One row per weekday. A row per day rather than a JSON blob because
-             availability gets queried when working out bookable slots. --}}
-        <fieldset class="pt-2">
-            <div class="flex flex-wrap items-center gap-3 mb-2.5">
-                <legend class="text-[13px] font-medium text-ink">Opening hours</legend>
-                <button type="button" id="copy-monday"
-                        class="ml-auto h-8 px-3 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[12px] font-semibold transition-colors">
-                    Copy Monday to Tuesday–Friday
-                </button>
-            </div>
-            <div class="rounded-card border border-line divide-y divide-line">
-                @foreach (['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as $day => $label)
-                    @php
-                        $saved = $location?->hours->firstWhere('day_of_week', $day);
-                        $isOpen = old("hours.$day.is_open", $saved?->is_open ?? ($day !== 0));
-                    @endphp
-                    <div class="flex flex-wrap items-center gap-3 px-4 py-3">
-                        <label class="flex items-center gap-2.5 cursor-pointer w-[150px]">
-                            <input type="checkbox" name="hours[{{ $day }}][is_open]" value="1" class="sd-check" @checked($isOpen)>
-                            <span class="text-[13px] text-ink">{{ $label }}</span>
-                        </label>
-                        @php
-                            $opensAt = old("hours.$day.opens_at", $saved?->opens_at ? substr($saved->opens_at, 0, 5) : '09:00');
-                            $closesAt = old("hours.$day.closes_at", $saved?->closes_at ? substr($saved->closes_at, 0, 5) : '17:00');
-                        @endphp
-                        <select name="hours[{{ $day }}][opens_at]" aria-label="{{ $label }} opening time" class="sd-input w-auto">
-                            @foreach ($times as $value => $display)
-                                <option value="{{ $value }}" @selected($opensAt === $value)>{{ $display }}</option>
-                            @endforeach
-                        </select>
-                        <span class="text-sub">to</span>
-                        <select name="hours[{{ $day }}][closes_at]" aria-label="{{ $label }} closing time" class="sd-input w-auto">
-                            @foreach ($times as $value => $display)
-                                <option value="{{ $value }}" @selected($closesAt === $value)>{{ $display }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                @endforeach
-            </div>
-        </fieldset>
+        {{-- Business hours are one Vue island rather than fourteen loose
+             pickers: "Copy Monday to Tuesday–Friday" writes across rows, and
+             that is only clean when one component owns them all. The rows
+             still post ordinary hours[day][field] inputs. --}}
+        @php
+            $hoursInitial = collect(range(0, 6))->map(function (int $day) use ($location) {
+                $saved = $location?->hours->firstWhere('day_of_week', $day);
+
+                return [
+                    'is_open' => (bool) old("hours.$day.is_open", $saved?->is_open ?? ($day !== 0)),
+                    'opens_at' => old("hours.$day.opens_at", $saved?->opens_at ? substr($saved->opens_at, 0, 5) : '09:00'),
+                    'closes_at' => old("hours.$day.closes_at", $saved?->closes_at ? substr($saved->closes_at, 0, 5) : '17:00'),
+                ];
+            })->all();
+
+            $hoursProps = ['initial' => $hoursInitial];
+        @endphp
+
+        <div data-vue-component="BusinessHours" data-props='@json($hoursProps)'></div>
 
     </form>
 
@@ -238,10 +207,6 @@
             paintPreview();
         });
 
-        var button = document.getElementById('copy-monday');
-
-        if (!button) return;
-
         /* ---- Location preview ------------------------------------------
            Mirrors the form into the rail. */
         var pv = {
@@ -279,27 +244,6 @@
 
         paintPreview();
 
-        button.addEventListener('click', function () {
-            var source = {
-                open: document.querySelector('[name="hours[1][is_open]"]'),
-                from: document.querySelector('[name="hours[1][opens_at]"]'),
-                to: document.querySelector('[name="hours[1][closes_at]"]'),
-            };
-
-            [2, 3, 4, 5].forEach(function (day) {
-                var open = document.querySelector('[name="hours[' + day + '][is_open]"]');
-                var from = document.querySelector('[name="hours[' + day + '][opens_at]"]');
-                var to = document.querySelector('[name="hours[' + day + '][closes_at]"]');
-
-                if (open) open.checked = source.open.checked;
-                if (from) from.value = source.from.value;
-                if (to) to.value = source.to.value;
-            });
-
-            // Setting .checked in script fires no change event, so the
-            // preview would silently fall out of step with the form.
-            paintPreview();
-        });
     });
 </script>
 @endpush
