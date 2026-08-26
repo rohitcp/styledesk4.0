@@ -154,7 +154,20 @@ return [
          * disable asset() helper tenancy and explicitly use tenant_asset() calls in places
          * where you want to use tenant-specific assets (product images, avatars, etc).
          */
-        'asset_helper_tenancy' => true,
+        /**
+         * Disabled deliberately.
+         *
+         * With this on, every asset() call is rewritten to the tenant asset
+         * route once tenancy initializes — including the ones @vite emits, so
+         * the compiled CSS and JS resolve to /tenancy/assets/build/... and
+         * 404. The symptom is an authenticated page rendering with no styling
+         * at all while the unauthenticated pages look fine.
+         *
+         * Compiled front-end assets are global by definition: one build serves
+         * every tenant. Tenant-owned files (logos, uploads) are the exception
+         * and must use tenant_asset() explicitly.
+         */
+        'asset_helper_tenancy' => false,
     ],
 
     /**

@@ -73,3 +73,35 @@ export function mountVueIslands(root = document) {
 }
 
 document.addEventListener('DOMContentLoaded', () => mountVueIslands());
+
+/**
+ * Password reveal toggles.
+ *
+ * The prototype wires these per page; login.html uses data-eye and signup.html
+ * uses data-reveal. Both are handled here so every form gets the behaviour
+ * without each Blade view carrying its own copy.
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-reveal], [data-eye]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-reveal') || btn.getAttribute('data-eye');
+            const field = document.getElementById(id);
+
+            if (!field) {
+                return;
+            }
+
+            const show = field.type === 'password';
+            field.type = show ? 'text' : 'password';
+            btn.setAttribute('aria-pressed', String(show));
+            btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+
+            const open = btn.querySelector('[data-eye-open]');
+            const shut = btn.querySelector('[data-eye-shut]');
+            if (open && shut) {
+                open.hidden = show;
+                shut.hidden = !show;
+            }
+        });
+    });
+});

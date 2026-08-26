@@ -93,5 +93,6 @@
     </aside>
 </div>
 
+@stack('scripts')
 </body>
 </html>

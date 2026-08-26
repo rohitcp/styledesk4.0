@@ -50,10 +50,12 @@ class AuthFlowTest extends TestCase
         $this->assertAuthenticated();
 
         // A brand-new account has no business yet, so the dashboard must still
-        // render rather than blowing up on a null tenant.
+        // render rather than blowing up on a null tenant. The account cluster
+        // is JS-rendered from this server-supplied boot payload.
         $this->get('http://styledesk.test/dashboard')
             ->assertOk()
-            ->assertSee('No business linked to this account yet');
+            ->assertSee('Rohit Philip')
+            ->assertSee('No business yet');
     }
 
     public function test_dashboard_shows_the_tenant_resolved_from_the_user(): void
@@ -73,7 +75,7 @@ class AuthFlowTest extends TestCase
             ->get('http://styledesk.test/dashboard')
             ->assertOk()
             ->assertSee('Acme Salon')
-            ->assertSee('Tenancy resolved from your account');
+            ->assertSee('Rohit Philip');
     }
 
     public function test_registration_requires_accepting_the_terms(): void

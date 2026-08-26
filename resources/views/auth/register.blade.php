@@ -5,7 +5,7 @@
 @section('subheading', 'Set up your business and start managing bookings, clients, staff, and services.')
 
 @section('form')
-    <form method="POST" action="{{ route('register.store') }}" class="mt-8 space-y-5">
+    <form id="signup" method="POST" action="{{ route('register.store') }}" class="mt-8 space-y-5">
         @csrf
 
         <div class="grid sm:grid-cols-2 gap-x-4 gap-y-5">
@@ -122,3 +122,79 @@
         @endforeach
     </ul>
 @endsection
+
+@push('scripts')
+<script>
+    /*
+     * Password strength meter, rules list and reveal toggles.
+     *
+     * Ported from signup.html's page-local script. The scoring itself is not
+     * reimplemented here — SD.checkPassword and SD.PASSWORD_RULES come from the
+     * shared prototype module, so the app and the prototype grade a password
+     * the same way. The prototype's localStorage draft and its client-side
+     * email-uniqueness probe are deliberately left out: the server owns both.
+     */
+    document.addEventListener('DOMContentLoaded', function () {
+        // Must wait for DOMContentLoaded: resources/js/app.js is a deferred
+        // module, so window.SD does not exist while this inline script is
+        // being parsed. Running immediately would hit the guard below and
+        // silently do nothing.
+        var password = document.getElementById('password');
+        var confirm = document.getElementById('password_confirmation');
+        var meter = document.getElementById('meter');
+        var strength = document.getElementById('password-strength');
+        var rulesList = document.getElementById('password-rules');
+
+        if (!password || !window.SD) return;
+
+        var CHECK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="currentColor"/><path d="M8 12l2.5 2.5L16 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        var DOT = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/></svg>';
+
+        rulesList.innerHTML = SD.PASSWORD_RULES.map(function (rule) {
+            return '<li data-rule="' + rule.id + '" class="flex items-center gap-1.5 text-[12px] text-faint">' +
+                   '<span class="shrink-0">' + DOT + '</span>' + rule.label +
+                   '</li>';
+        }).join('');
+
+        function paintPassword() {
+            var result = SD.checkPassword(password.value);
+
+            result.rules.forEach(function (r) {
+                var li = rulesList.querySelector('[data-rule="' + r.id + '"]');
+                if (!li) return;
+                li.className = 'flex items-center gap-1.5 text-[12px] ' + (r.pass ? 'text-success' : 'text-faint');
+                li.firstElementChild.innerHTML = r.pass ? CHECK : DOT;
+            });
+
+            meter.setAttribute('data-level', String(result.score));
+            strength.textContent = result.label || '—';
+            strength.className = 'text-[12px] font-medium w-[46px] text-right ' +
+                (result.score >= 4 ? 'text-success' : result.score === 3 ? 'text-link'
+                 : result.score === 2 ? 'text-warning' : result.score === 1 ? 'text-danger' : 'text-faint');
+
+            return result;
+        }
+
+        function matchCheck() {
+            if (!confirm) return true;
+            if (confirm.value && confirm.value !== password.value) {
+                SD.setError(confirm, 'Passwords do not match.');
+                return false;
+            }
+            SD.setError(confirm, '');
+            return true;
+        }
+
+        password.addEventListener('input', function () {
+            paintPassword();
+            if (password.classList.contains('is-error')) SD.setError(password, '');
+            if (confirm && confirm.value) matchCheck();
+        });
+
+        if (confirm) confirm.addEventListener('input', matchCheck);
+
+        // Repaint on load so a browser-restored value is graded, not left blank.
+        if (password.value) paintPassword();
+    });
+</script>
+@endpush
