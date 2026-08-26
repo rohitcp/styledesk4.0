@@ -92,10 +92,11 @@
             </div>
         </div>
 
-            <div>
-                <label for="phone" class="block text-[13px] font-medium text-ink mb-1.5">Location phone <span class="text-faint font-normal">(optional)</span></label>
-                <input id="phone" name="phone" type="tel" class="sd-input" autocomplete="tel"
-                       value="{{ old('phone', $location?->phone) }}">
+        <div>
+            <label for="phone" class="block text-[13px] font-medium text-ink mb-1.5">Location phone <span class="text-faint font-normal">(optional)</span></label>
+            <input id="phone" name="phone" type="tel" class="sd-input" autocomplete="tel"
+                   value="{{ old('phone', $location?->phone) }}">
+        </div>
 
         <div>
             <label for="timezone" class="block text-[13px] font-medium text-ink mb-1.5">Timezone</label>
@@ -128,7 +129,13 @@
             $hoursProps = ['initial' => $hoursInitial];
         @endphp
 
-        <div data-vue-component="BusinessHours" data-props='@json($hoursProps)'></div>
+        {{-- Divider before the hours: everything above describes where the
+             business is, everything below describes when it is open. The rule
+             lives on a wrapper rather than the island's own element, which Vue
+             takes over on mount. --}}
+        <div class="pt-5 border-t border-line">
+            <div data-vue-component="BusinessHours" data-props='@json($hoursProps)'></div>
+        </div>
 
     </form>
 
