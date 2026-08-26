@@ -12,12 +12,12 @@ use App\Models\ServiceCategory;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
+use App\Support\InputCase;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use App\Support\InputCase;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -283,7 +283,7 @@ class OnboardingController extends Controller
 
         $data = InputCase::apply($data, ['name', 'city', 'state']);
 
-        DB::transaction(function () use ($tenant, $data, $request) {
+        DB::transaction(function () use ($tenant, $data) {
             $location = $tenant->locations()->updateOrCreate(
                 ['is_primary' => true],
                 collect($data)->except('hours')->merge(['country' => $tenant->countryCode()])->all()
@@ -412,9 +412,24 @@ class OnboardingController extends Controller
         $tenant = $request->user()->tenant;
 
         return view('onboarding.team', [
+            'tenant' => $tenant,
             'owner' => $request->user(),
             'staff' => $tenant->staff()->with('services')->get(),
             'services' => $tenant->services()->get(),
+            /**
+             * Invitations already sent, newest last so the list reads in the
+             * order they were added. Rendered server-side as well as through
+             * the island, so a reload after sending shows the same list.
+             */
+            'invitations' => $tenant->teamInvitations()->with(['location', 'services'])->orderBy('id')->get(),
+            /**
+             * Offered only when there is a choice to make. A single-location
+             * business has nothing to assign, and a select with one option is
+             * a question with one answer.
+             */
+            'locations' => $tenant->locations()->count() > 1
+                ? $tenant->locations()->orderByDesc('is_primary')->get(['id', 'name'])
+                : collect(),
             'progress' => $this->progress('team'),
             'previousStep' => $this->previousStep('team'),
         ]);
@@ -429,20 +444,9 @@ class OnboardingController extends Controller
             'provides_services' => ['required', 'boolean'],
             'owner_services' => ['array'],
             'owner_services.*' => ['integer', 'exists:services,id'],
-            'members' => ['array'],
-            'members.*.first_name' => ['required', 'string', 'max:100'],
-            'members.*.last_name' => ['required', 'string', 'max:100'],
-            'members.*.email' => ['nullable', 'email', 'max:255'],
-            'members.*.phone' => ['nullable', 'string', 'max:32'],
-            'members.*.role' => ['nullable', Rule::in(self::ROLES)],
-            'members.*.job_title' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $data = InputCase::apply($data, [
-            'members.*.first_name', 'members.*.last_name', 'members.*.job_title',
-        ]);
-
-        DB::transaction(function () use ($tenant, $user, $data) {
+        DB::transaction(function () use ($user, $data) {
             // The owner is always staff member one — the prototype's team step
             // renders them pre-populated rather than asking them to add
             // themselves.
@@ -461,20 +465,7 @@ class OnboardingController extends Controller
             // selection rather than leaving orphaned rows behind.
             $owner->services()->sync($data['provides_services'] ? ($data['owner_services'] ?? []) : []);
 
-            $tenant->staff()->whereNull('user_id')->delete();
-
-            foreach ($data['members'] ?? [] as $row) {
-                Staff::create([
-                    'first_name' => $row['first_name'],
-                    'last_name' => $row['last_name'],
-                    'email' => $row['email'] ?? null,
-                    'phone' => $row['phone'] ?? null,
-                    'role' => $row['role'] ?? 'service-provider',
-                    'job_title' => $row['job_title'] ?? null,
-                ]);
-            }
-
-            $this->onboardingFor($tenant)->update([
+            $this->onboardingFor($user->tenant)->update([
                 'team_completed' => true,
                 'current_step' => 'booking',
             ]);

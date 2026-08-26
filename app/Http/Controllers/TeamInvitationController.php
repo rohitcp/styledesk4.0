@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Actions\Team\InviteTeamMember;
 use App\Mail\TeamInvitationMail;
 use App\Models\Location;
+use App\Models\Service;
 use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -124,7 +125,7 @@ class TeamInvitationController extends Controller
     }
 
     /**
-     * @return array{first_name: string, last_name: string, email: string, role: string, job_title: string|null, location_id: int|null, message: string|null}
+     * @return array{first_name: string, last_name: string, email: string, role: string, job_title: string|null, location_id: int|null, message: string|null, service_ids: array<int>|null}
      */
     private function validated(Request $request): array
     {
@@ -145,6 +146,15 @@ class TeamInvitationController extends Controller
                 Rule::exists(Location::class, 'id')->where('tenant_id', $request->user()->tenant_id),
             ],
             'message' => ['nullable', 'string', 'max:500'],
+            'service_ids' => ['nullable', 'array'],
+            /**
+             * Scoped to the tenant's own services, for the same reason as
+             * location_id: a bare exists rule would accept another business's
+             * service id and make the new member bookable for it.
+             */
+            'service_ids.*' => [
+                Rule::exists(Service::class, 'id')->where('tenant_id', $request->user()->tenant_id),
+            ],
         ], [
             'role.in' => 'Choose a role for this person. Only the account owner can hold the Owner role.',
         ]);
@@ -190,6 +200,7 @@ class TeamInvitationController extends Controller
             'role' => $invitation->role,
             'role_label' => TeamInvitationMail::roleLabel($invitation->role),
             'job_title' => $invitation->job_title,
+            'service_ids' => $invitation->services->pluck('id'),
             'status' => $invitation->effectiveStatus(),
             'status_label' => $invitation->statusLabel(),
             'can_resend' => $invitation->isResendable(),

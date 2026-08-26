@@ -733,50 +733,6 @@ class OnboardingTest extends TestCase
         $this->assertTrue($owner->provides_services);
     }
 
-    public function test_an_invited_member_keeps_the_role_chosen_for_them(): void
-    {
-        $user = $this->user();
-        $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
-        $user->tenant_id = $tenant->getTenantKey();
-        $user->save();
-        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'team']);
-
-        // The role combo posts a hidden input under this name. Renaming it
-        // would silently fall back to service-provider for everyone.
-        $this->actingAs($user->fresh())
-            ->post('http://styledesk.test/onboarding/team', [
-                'provides_services' => '1',
-                'members' => [
-                    ['first_name' => 'Nadia', 'last_name' => 'Rao', 'role' => 'manager'],
-                ],
-            ])
-            ->assertRedirect(route('onboarding.booking'));
-
-        $member = Staff::whereNull('user_id')->first();
-
-        $this->assertSame('manager', $member->role);
-    }
-
-    public function test_a_role_outside_the_offered_list_is_rejected(): void
-    {
-        $user = $this->user();
-        $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
-        $user->tenant_id = $tenant->getTenantKey();
-        $user->save();
-        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'team']);
-
-        $this->actingAs($user->fresh())
-            ->post('http://styledesk.test/onboarding/team', [
-                'provides_services' => '1',
-                'members' => [
-                    ['first_name' => 'Nadia', 'last_name' => 'Rao', 'role' => 'superuser'],
-                ],
-            ])
-            ->assertSessionHasErrors('members.0.role');
-
-        $this->assertSame(0, Staff::whereNull('user_id')->count());
-    }
-
     public function test_an_owner_who_does_not_provide_services_gets_none_assigned(): void
     {
         $user = $this->user();

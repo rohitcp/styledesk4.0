@@ -39,7 +39,9 @@ class AcceptTeamInvitation
                 'email_verified_at' => $user->email_verified_at ?? now(),
             ])->save();
 
-            Staff::withoutGlobalScopes()->updateOrCreate(
+            $serviceIds = $invitation->services()->pluck('services.id');
+
+            $staff = Staff::withoutGlobalScopes()->updateOrCreate(
                 ['tenant_id' => $invitation->tenant_id, 'user_id' => $user->id],
                 [
                     'first_name' => $user->first_name,
@@ -48,11 +50,17 @@ class AcceptTeamInvitation
                     'role' => $invitation->role,
                     'job_title' => $invitation->job_title,
                     'location_id' => $invitation->location_id,
-                    // Anyone can be given services later; the role decides
-                    // whether they are bookable by default.
-                    'provides_services' => $invitation->role === 'service-provider',
+                    /**
+                     * Being assigned services is what makes someone bookable,
+                     * whatever their role — a manager who also cuts hair is
+                     * ordinary. The role only decides the default for someone
+                     * who was assigned none.
+                     */
+                    'provides_services' => $serviceIds->isNotEmpty() || $invitation->role === 'service-provider',
                 ]
             );
+
+            $staff->services()->sync($serviceIds->all());
 
             /**
              * The token is rotated on acceptance too.

@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\DB;
 class InviteTeamMember
 {
     /**
-     * @param  array{first_name: string, last_name: string, email: string, role?: string, job_title?: string|null, location_id?: int|null, message?: string|null}  $data
+     * @param  array{first_name: string, last_name: string, email: string, role?: string, job_title?: string|null, location_id?: int|null, message?: string|null, service_ids?: array<int>|null}  $data
      */
     public function create(Tenant $tenant, User $inviter, array $data): TeamInvitation
     {
@@ -48,6 +48,10 @@ class InviteTeamMember
 
             $invitation->regenerateToken();
             $invitation->save();
+
+            // Inside the transaction: an invitation saved without the services
+            // it promised is one the accepting member silently joins without.
+            $invitation->services()->sync($data['service_ids'] ?? []);
 
             return $invitation;
         });

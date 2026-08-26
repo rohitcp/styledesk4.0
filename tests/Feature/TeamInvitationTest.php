@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\SendTeamInvitationEmail;
 use App\Mail\TeamInvitationMail;
 use App\Models\Location;
+use App\Models\Service;
 use App\Models\Staff;
 use App\Models\TeamInvitation;
 use App\Models\TeamInvitationDelivery;
@@ -389,6 +390,55 @@ class TeamInvitationTest extends TestCase
         $staff = Staff::withoutGlobalScopes()->where('email', 'amelia@example.com')->first();
 
         $this->assertSame($location->id, $staff->location_id);
+    }
+
+    public function test_assigned_services_are_applied_and_make_the_member_bookable(): void
+    {
+        $cut = Service::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(), 'name' => 'Cut', 'duration_minutes' => 30,
+        ]);
+        $colour = Service::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(), 'name' => 'Colour', 'duration_minutes' => 90,
+        ]);
+
+        // Deliberately a manager: being assigned services is what makes
+        // someone bookable, not their role.
+        [, $invitation, $token] = $this->inviteAmelia([
+            'role' => 'manager',
+            'service_ids' => [$cut->id, $colour->id],
+        ]);
+
+        $this->assertEqualsCanonicalizing(
+            [$cut->id, $colour->id],
+            $invitation->services()->pluck('services.id')->all()
+        );
+
+        $this->post('http://styledesk.test/invite/team/'.$token.'/register', [
+            'first_name' => 'Amelia', 'last_name' => 'Hart',
+            'password' => 'Str0ng!Pass', 'password_confirmation' => 'Str0ng!Pass', 'terms' => '1',
+        ])->assertRedirect(route('dashboard'));
+
+        $staff = Staff::withoutGlobalScopes()->where('email', 'amelia@example.com')->first();
+
+        $this->assertEqualsCanonicalizing(
+            [$cut->id, $colour->id],
+            $staff->services()->pluck('services.id')->all()
+        );
+        $this->assertTrue($staff->provides_services);
+    }
+
+    public function test_a_service_belonging_to_another_business_cannot_be_assigned(): void
+    {
+        $otherTenant = Tenant::create(['name' => 'Rival Spa', 'slug' => 'rival']);
+        $foreign = Service::withoutGlobalScopes()->create([
+            'tenant_id' => $otherTenant->getTenantKey(), 'name' => 'Rival Cut', 'duration_minutes' => 30,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->postJson('http://styledesk.test/team/invitations', $this->invitePayload(['service_ids' => [$foreign->id]]))
+            ->assertJsonValidationErrors('service_ids.0');
+
+        $this->assertSame(0, TeamInvitation::withoutGlobalScopes()->count());
     }
 
     public function test_the_email_on_the_form_cannot_be_swapped_for_another_address(): void

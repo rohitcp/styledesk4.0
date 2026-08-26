@@ -2,7 +2,7 @@
 
 @section('title', 'Team')
 @section('heading', 'Who works with you?')
-@section('subheading', 'You are already set up as the owner. Invite anyone else who takes bookings.')
+@section('subheading', 'You are already set up as the owner. Invite anyone else who takes bookings — they are emailed straight away.')
 
 @section('form')
     <form id="stepForm" method="POST" action="{{ route('onboarding.team.store') }}" class="mt-6 space-y-6">
@@ -54,9 +54,35 @@
             @endif
         </div>
 
-        <div data-vue-component="TeamRepeater" data-props='@json(["initial" => []])'></div>
-
     </form>
+
+    {{-- Outside the step form on purpose.
+         Inviting is its own request that fires on Send, not something the
+         Continue button submits — and a nested <form> would be dropped by the
+         browser anyway. --}}
+    @php
+        $teamInviteProps = [
+            'invitations' => $invitations->map(fn ($i) => [
+                'id' => $i->id,
+                'first_name' => $i->first_name,
+                'last_name' => $i->last_name,
+                'name' => $i->name,
+                'email' => $i->email,
+                'role' => $i->role,
+                'role_label' => \App\Mail\TeamInvitationMail::roleLabel($i->role),
+                'status' => $i->effectiveStatus(),
+                'status_label' => $i->statusLabel(),
+                'can_resend' => $i->isResendable(),
+            ])->values(),
+            'locations' => $locations,
+            'services' => $services->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values(),
+            'tenantId' => $tenant?->getTenantKey(),
+            'endpoint' => url('/team/invitations'),
+            'csrf' => csrf_token(),
+        ];
+    @endphp
+
+    <div class="mt-6" data-vue-component="TeamInvites" data-props='@json($teamInviteProps)'></div>
 
     {{-- Sibling form, see services.blade.php. --}}
     <div class="flex flex-wrap items-center gap-3 pt-6">
@@ -88,7 +114,7 @@
 
 @section('rail')
     <h2 class="text-[15px] font-semibold text-head">Who will be in your workspace</h2>
-    <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Nobody is emailed until setup is finished.</p>
+    <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Everyone you invite is emailed straight away.</p>
 
     @php
         $ownerInitials = strtoupper(mb_substr($owner->first_name, 0, 1).mb_substr($owner->last_name, 0, 1));
@@ -101,7 +127,7 @@
         @foreach ([
             'Role decides what someone can see and change. Only the Owner can bill or delete the workspace.',
             'Anyone assigned services becomes bookable, so clients can pick them by name.',
-            'Invitations go out in one batch when you finish — you can still edit or remove people first.',
+            'Invitations are emailed the moment you send them, and expire after seven days. You can resend or cancel any that are still pending.',
         ] as $point)
             <li class="flex items-start gap-3">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>

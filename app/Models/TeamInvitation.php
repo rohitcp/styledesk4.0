@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
@@ -74,6 +75,18 @@ class TeamInvitation extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    /**
+     * What this person will be bookable for once they accept.
+     *
+     * Mirrors service_staff, which is where these are copied on acceptance.
+     * Kept here rather than on a staff row created up front, so an invitation
+     * that is never accepted leaves nothing a booking could point at.
+     */
+    public function services(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'service_team_invitation');
     }
 
     public function deliveries(): HasMany
