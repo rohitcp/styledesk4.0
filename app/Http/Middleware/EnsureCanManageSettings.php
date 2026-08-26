@@ -37,6 +37,11 @@ class EnsureCanManageSettings
          */
         return redirect()
             ->route('dashboard')
-            ->with('status', 'App Settings is available to the account owner and administrators.');
+            ->with('toast', [
+                // Not 'success': being turned away is a notice, and a green
+                // tick against it would be the wrong thing to say.
+                'type' => 'info',
+                'message' => 'App Settings is available to the account owner and administrators.',
+            ]);
     }
 }

@@ -454,3 +454,102 @@ a.styledesk_settingcard:focus-visible {
 .styledesk_badge--active { background: #dcfce7; color: #166534; }
 .styledesk_badge--setup  { background: #fef3c7; color: #92400e; }
 .styledesk_badge--soon   { background: #f1f2f4; color: #6b7280; }
+
+/* ------------------------------------------------------------------
+   Toast
+   ------------------------------------------------------------------
+   A transient confirmation, centred at the top of the viewport.
+
+   position: fixed with a left/right inset rather than a width plus a
+   translate: the inset pair keeps it centred at any width and gives it the
+   page's own padding on a phone, where a width-based toast either touches
+   both edges or overflows one.
+   ------------------------------------------------------------------ */
+
+.styledesk_toast {
+    position: fixed;
+    /* Clears the 36px announcement bar plus the 56px app bar, then the
+       24-32px the spec asks for beneath them. */
+    top: calc(92px + 1.75rem);
+    left: 1rem;
+    right: 1rem;
+    z-index: 70;
+    display: flex;
+    justify-content: center;
+    /* The bar spans the viewport so the toast can centre inside it, but must
+       not swallow clicks on the page it floats over. */
+    pointer-events: none;
+}
+
+.styledesk_toast__body {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    max-width: 26rem;
+    padding: 0.75rem 0.875rem 0.75rem 1rem;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    background: #f0fdf4;
+    color: #14532d;
+    box-shadow: 0 8px 28px rgb(15 15 16 / 12%);
+    font-size: 13px;
+    line-height: 1.5;
+    pointer-events: auto;
+    animation: styledesk_toast_in 0.18s ease-out;
+}
+
+.styledesk_toast--info .styledesk_toast__body {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #1e3a8a;
+}
+
+.styledesk_toast--danger .styledesk_toast__body {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #7f1d1d;
+}
+
+.styledesk_toast__icon { flex-shrink: 0; margin-top: 1px; }
+
+.styledesk_toast__close {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    height: 1.25rem;
+    width: 1.25rem;
+    margin-left: 0.25rem;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: currentColor;
+    opacity: 0.55;
+    cursor: pointer;
+}
+
+.styledesk_toast__close:hover { opacity: 1; background: rgb(0 0 0 / 6%); }
+
+/* Leaving, driven by a class rather than a timeout alone, so a manual
+   dismiss and an automatic one exit the same way. */
+.styledesk_toast.is-leaving .styledesk_toast__body {
+    animation: styledesk_toast_out 0.16s ease-in forwards;
+}
+
+@keyframes styledesk_toast_in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes styledesk_toast_out {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-8px); }
+}
+
+/* Honour a reduced-motion preference: the toast still appears and still
+   leaves, it just does not slide. */
+@media (prefers-reduced-motion: reduce) {
+    .styledesk_toast__body,
+    .styledesk_toast.is-leaving .styledesk_toast__body {
+        animation-duration: 0.01ms;
+    }
+}

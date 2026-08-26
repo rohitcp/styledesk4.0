@@ -54,16 +54,31 @@
         <span class="text-ink">Edit</span>
       </nav>
 
-      <h1 class="mt-3 text-[24px] sm:text-[28px] font-bold text-head tracking-tight">Edit business</h1>
+      <div class="mt-3 flex flex-wrap items-start gap-4">
+        <div class="min-w-0 flex-1">
+          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">Edit business</h1>
+        </div>
+
+        {{-- A link, not a button: going back does not submit anything, so it
+             must not sit inside the form or look like it might save. The
+             unsaved-changes guard intercepts it. --}}
+        <a href="{{ route('settings.business.show') }}" data-back
+           class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Back
+        </a>
+      </div>
       <p class="text-[14px] text-sub mt-2 max-w-[640px] leading-relaxed">
-        Company-level details. Locations, hours, currencies and booking rules have their own settings pages.
+        Update your business information and operating details. Locations, hours, currencies and booking rules
+        have their own settings pages.
       </p>
 
-      @if ($errors->any())
-        <div class="sd-alert sd-alert--danger mt-5" role="alert">
-          <p class="min-w-0">{{ $errors->first() }}</p>
-        </div>
-      @endif
+      {{-- Rendered server-side for a no-JavaScript submit, and reused as the
+           target the async submit writes into, so both paths report failure in
+           the same place. --}}
+      <div id="businessErrors" class="sd-alert sd-alert--danger mt-5" role="alert" @if (! $errors->any()) hidden @endif>
+        <p class="min-w-0">{{ $errors->first() }}</p>
+      </div>
 
       <form id="businessForm" method="POST" action="{{ route('settings.business.update') }}" class="mt-6">
         @csrf
@@ -188,7 +203,7 @@
                 Addresses belong to locations, so they are edited there — a business with three branches has three
                 addresses and no single one to put here.
               </p>
-              <a href="{{ route('settings.index') }}" class="inline-flex items-center h-9 px-3.5 mt-3 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+              <a href="{{ route('settings.index') }}" class="inline-flex items-center h-9 px-3 mt-3 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
                 Manage locations →
               </a>
             </section>
@@ -260,12 +275,12 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3 mt-6">
-          <button type="submit"
-                  class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+          <button type="submit" id="businessSave"
+                  class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
             Save changes
           </button>
           <a href="{{ route('settings.business.show') }}" data-cancel
-             class="h-11 px-4 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+             class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
             Cancel
           </a>
         </div>
@@ -276,32 +291,113 @@
 
 @push('scripts')
   <script>
-    /* Warn before leaving with unsaved changes.
-       Compared against a snapshot rather than tracked with a dirty flag: a
-       flag set on the first keystroke fires the warning even when someone
-       types a character and deletes it again. */
     (function () {
       var form = document.getElementById('businessForm');
       if (!form) return;
 
+      var save = document.getElementById('businessSave');
+      var errors = document.getElementById('businessErrors');
+
+      /* ---- unsaved changes -------------------------------------------------
+         Compared against a snapshot rather than tracked with a dirty flag: a
+         flag set on the first keystroke still fires after someone types a
+         character and deletes it again. */
       function snapshot() {
         return new URLSearchParams(new FormData(form)).toString();
       }
 
-      /* Taken after the Vue islands have mounted their hidden inputs — before
-         that the combos contribute nothing and every one of them would read as
-         a change the moment it appeared. */
+      /* Taken after the Vue islands have mounted their hidden inputs. Before
+         that the combos contribute nothing, and every one of them would read
+         as a change the moment it appeared. */
       var initial = null;
       window.setTimeout(function () { initial = snapshot(); }, 400);
 
-      var saving = false;
-      form.addEventListener('submit', function () { saving = true; });
+      var leaving = false;
+
+      function isDirty() {
+        return initial !== null && !leaving && snapshot() !== initial;
+      }
 
       window.addEventListener('beforeunload', function (e) {
-        if (saving || initial === null || snapshot() === initial) return;
+        if (!isDirty()) return;
         e.preventDefault();
         e.returnValue = '';
       });
+
+      /* Back is a link, so leaving it to beforeunload would work — but only
+         with the browser's own wording. Asking here lets the question name
+         what is at stake. */
+      var back = document.querySelector('[data-back]');
+      if (back) {
+        back.addEventListener('click', function (e) {
+          if (!isDirty()) return;
+          if (window.confirm('You have unsaved changes. Leave without saving?')) {
+            leaving = true;
+            return;
+          }
+          e.preventDefault();
+        });
+      }
+
+      /* ---- save ------------------------------------------------------------
+         Submitted over fetch so a validation failure keeps the page and
+         everything typed into it. On success the browser follows the redirect
+         the server hands back, landing on the read-only view where the toast
+         is waiting in the session. */
+      var saving = false;
+
+      form.addEventListener('submit', function (e) {
+        if (!window.fetch) return;          // no fetch: plain form post
+        e.preventDefault();
+
+        if (saving) return;                 // no duplicate saves in flight
+        saving = true;
+        save.disabled = true;
+        save.textContent = 'Saving…';
+        errors.hidden = true;
+
+        fetch(form.action, {
+          method: 'POST',                   // _method=PATCH travels in the body
+          body: new FormData(form),
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        }).then(function (response) {
+          return response.json().catch(function () { return {}; }).then(function (body) {
+            return { response: response, body: body };
+          });
+        }).then(function (result) {
+          if (result.response.ok && result.body.redirect) {
+            leaving = true;                 // a saved form is not unsaved work
+            window.location.href = result.body.redirect;
+            return;                         // stays disabled through the nav
+          }
+
+          if (result.response.status === 422) {
+            var first = Object.keys(result.body.errors || {})[0];
+            errors.querySelector('p').textContent = first
+              ? result.body.errors[first][0]
+              : 'Some fields need attention.';
+          } else {
+            /* Never the server's own words for anything but validation: they
+               can name hosts and internal reasons. */
+            errors.querySelector('p').textContent = 'Something went wrong saving your changes. Please try again.';
+          }
+
+          errors.hidden = false;
+          errors.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          reset();
+        }).catch(function () {
+          errors.querySelector('p').textContent = 'We could not reach StyleDesk. Check your connection and try again.';
+          errors.hidden = false;
+          reset();
+        });
+      });
+
+      function reset() {
+        saving = false;
+        save.disabled = false;
+        save.textContent = 'Save changes';
+      }
     }());
   </script>
 @endpush

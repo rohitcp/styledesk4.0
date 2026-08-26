@@ -9,6 +9,7 @@ use App\Models\BusinessType;
 use App\Models\Tenant;
 use App\Support\InputCase;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -42,7 +43,7 @@ class BusinessSettingsController extends Controller
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request): RedirectResponse|JsonResponse
     {
         $tenant = $request->user()->tenant;
 
@@ -92,9 +93,24 @@ class BusinessSettingsController extends Controller
         $tenant->forceFill($data)->save();
         $tenant->businessTypes()->sync($typeIds);
 
-        return redirect()
-            ->route('settings.business.show')
-            ->with('status', 'Business settings updated successfully.');
+        /**
+         * The toast is flashed either way, and the read-only view renders it.
+         *
+         * The form posts over fetch so that validation errors appear without
+         * losing what was typed; on success it follows `redirect` here. Both
+         * paths therefore end on the same page with the same confirmation, and
+         * the form still works with no JavaScript at all.
+         */
+        $request->session()->flash('toast', [
+            'type' => 'success',
+            'message' => 'Business settings updated successfully.',
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['redirect' => route('settings.business.show')]);
+        }
+
+        return redirect()->route('settings.business.show');
     }
 
     /**

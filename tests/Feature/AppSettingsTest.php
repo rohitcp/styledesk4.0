@@ -90,7 +90,7 @@ class AppSettingsTest extends TestCase
             ->get('http://styledesk.test/settings');
 
         $response->assertRedirect(route('dashboard'));
-        $response->assertSessionHas('status');
+        $response->assertSessionHas('toast');
 
         $this->assertNotSame(403, $response->getStatusCode());
         $this->assertNotSame(401, $response->getStatusCode());

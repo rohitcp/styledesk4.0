@@ -214,6 +214,8 @@
     </div>
   </header>
 
+<x-toast />
+
 @yield('content')
 
   <footer class="border-t border-line bg-white">

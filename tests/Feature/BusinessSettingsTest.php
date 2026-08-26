@@ -206,7 +206,10 @@ class BusinessSettingsTest extends TestCase
             ]));
 
         $response->assertRedirect(route('settings.business.show'));
-        $response->assertSessionHas('status', 'Business settings updated successfully.');
+        $response->assertSessionHas('toast', [
+            'type' => 'success',
+            'message' => 'Business settings updated successfully.',
+        ]);
 
         $tenant = $this->tenant->fresh();
 
@@ -298,6 +301,55 @@ class BusinessSettingsTest extends TestCase
                 'status' => 'archived',
             ]))
             ->assertSessionHasErrors(['date_format', 'default_tax_behavior', 'status']);
+    }
+
+    public function test_both_screens_offer_a_back_link(): void
+    {
+        $owner = $this->member('owner');
+
+        // The view goes back to the directory it was opened from.
+        $this->actingAs($owner)->get('http://styledesk.test/settings/business')
+            ->assertOk()
+            ->assertSee('Back')
+            ->assertSee(route('settings.index'), false);
+
+        // The edit screen goes back to the view, not to the directory.
+        $this->actingAs($owner)->get('http://styledesk.test/settings/business/edit')
+            ->assertOk()
+            ->assertSee('Back')
+            ->assertSee(route('settings.business.show'), false);
+    }
+
+    /**
+     * The form posts over fetch, so a save answers with the address to go to
+     * rather than a redirect the request follows itself. Without this the
+     * script has no way to know where it landed.
+     */
+    public function test_an_async_save_answers_with_the_view_address(): void
+    {
+        $response = $this->actingAs($this->member('owner'))
+            ->postJson('http://styledesk.test/settings/business', $this->validPayload([
+                '_method' => 'PATCH',
+                'legal_name' => 'Nadia Ltd',
+            ]));
+
+        $response->assertOk()->assertJsonPath('redirect', route('settings.business.show'));
+        $response->assertSessionHas('toast');
+
+        $this->assertSame('Nadia Ltd', $this->tenant->fresh()->legal_name);
+    }
+
+    public function test_an_async_save_reports_validation_without_redirecting(): void
+    {
+        // 422 with the messages, so the page can show them and keep everything
+        // that was typed rather than reloading the form empty.
+        $this->actingAs($this->member('owner'))
+            ->postJson('http://styledesk.test/settings/business', $this->validPayload([
+                '_method' => 'PATCH',
+                'website' => 'not-a-url',
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('website');
     }
 
     public function test_the_settings_directory_links_to_the_module(): void

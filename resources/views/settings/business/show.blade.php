@@ -27,20 +27,22 @@
           </p>
         </div>
 
-        <a href="{{ route('settings.business.edit') }}"
-           class="shrink-0 inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
-          Edit business
-        </a>
-      </div>
+        {{-- Back and Edit sit together as one action group. Secondary first,
+             so the eye lands on the primary action last and closest to the
+             edge it will click. --}}
+        <div class="shrink-0 flex items-center gap-2">
+          <a href="{{ route('settings.index') }}"
+             class="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Back
+          </a>
 
-      @if (session('status'))
-        {{-- Rendered as an alert rather than a floating toast: a toast that
-             disappears on a timer is unreadable to anyone who looked away, and
-             this one confirms a write. --}}
-        <div class="sd-alert sd-alert--success mt-5" role="status">
-          <p class="min-w-0">{{ session('status') }}</p>
+          <a href="{{ route('settings.business.edit') }}"
+             class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+            Edit business
+          </a>
         </div>
-      @endif
+      </div>
 
       {{-- Two columns on desktop, stacked below. Identity and how to reach the
            business on the left; the settings that are summarised from other
