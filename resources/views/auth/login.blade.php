@@ -35,11 +35,7 @@
                 <div class="relative">
                     <input id="password" name="password" type="password" class="sd-input has-suffix"
                            autocomplete="current-password" required>
-                    <button type="button" data-eye="password" aria-controls="password" aria-pressed="false"
-                            class="absolute right-2 top-1/2 -translate-y-1/2 sd-iconbtn grid" aria-label="Show password">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" data-eye-open><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" data-eye-shut hidden><path d="M4 4l16 16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M9.9 5.8A9.5 9.5 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 01-3 3.8M6.5 8.2A17 17 0 002.5 12S6 18.5 12 18.5c.8 0 1.5-.1 2.2-.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                    </button>
+                    <x-password-toggle for="password" />
                 </div>
                 @error('password')
                     <p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>

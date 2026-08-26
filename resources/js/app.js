@@ -79,33 +79,44 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Password reveal toggles.
+ * Password visibility toggles.
  *
- * The prototype wires these per page; login.html uses data-eye and signup.html
- * uses data-reveal. Both are handled here so every form gets the behaviour
- * without each Blade view carrying its own copy.
+ * The icon reflects the field's current state rather than the action: while
+ * the password is masked the eye-off icon is shown, and it becomes a plain eye
+ * once the characters are readable. The accessible name says the opposite,
+ * because a button's label should describe what pressing it does.
+ *
+ * Delegated from the document so fields added after load — a Vue island, a
+ * re-rendered form — are covered without re-binding.
  */
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[data-reveal], [data-eye]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const id = btn.getAttribute('data-reveal') || btn.getAttribute('data-eye');
-            const field = document.getElementById(id);
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-password-toggle]');
 
-            if (!field) {
-                return;
-            }
+    if (!button) {
+        return;
+    }
 
-            const show = field.type === 'password';
-            field.type = show ? 'text' : 'password';
-            btn.setAttribute('aria-pressed', String(show));
-            btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    const field = document.getElementById(button.getAttribute('data-password-toggle'));
 
-            const open = btn.querySelector('[data-eye-open]');
-            const shut = btn.querySelector('[data-eye-shut]');
-            if (open && shut) {
-                open.hidden = show;
-                shut.hidden = !show;
-            }
-        });
-    });
+    if (!field) {
+        return;
+    }
+
+    const willReveal = field.type === 'password';
+    field.type = willReveal ? 'text' : 'password';
+
+    button.setAttribute('aria-pressed', String(willReveal));
+    button.setAttribute('aria-label', willReveal ? 'Hide password' : 'Show password');
+
+    const hiddenIcon = button.querySelector('[data-icon-hidden]');
+    const visibleIcon = button.querySelector('[data-icon-visible]');
+
+    if (hiddenIcon && visibleIcon) {
+        // toggleAttribute, not .hidden: `hidden` is an IDL property of
+        // HTMLElement, and these are SVG elements. Assigning svg.hidden only
+        // creates a JS expando — it never writes the attribute the CSS keys
+        // on, so the icons would silently never swap.
+        hiddenIcon.toggleAttribute('hidden', willReveal);
+        visibleIcon.toggleAttribute('hidden', !willReveal);
+    }
 });

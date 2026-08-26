@@ -293,7 +293,9 @@
         function showLogo(file) {
             preview.src = URL.createObjectURL(file);
             preview.hidden = false;
-            if (placeholder) placeholder.hidden = true;
+            // toggleAttribute: the placeholder is an <svg>, and .hidden is an
+            // HTMLElement property that SVG elements do not implement.
+            if (placeholder) placeholder.toggleAttribute('hidden', true);
             remove.hidden = false;
             fileName.textContent = file.name;
         }
@@ -305,7 +307,7 @@
             }
             preview.hidden = true;
             preview.removeAttribute('src');
-            if (placeholder) placeholder.hidden = false;
+            if (placeholder) placeholder.toggleAttribute('hidden', false);
             remove.hidden = true;
             fileName.textContent = '';
         }

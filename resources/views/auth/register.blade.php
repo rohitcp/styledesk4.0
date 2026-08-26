@@ -52,11 +52,7 @@
             <div class="relative">
                 <input id="password" name="password" type="password" autocomplete="new-password"
                        class="sd-input has-suffix" required>
-                <button type="button" data-reveal="password"
-                        class="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-faint hover:text-sub hover:bg-hover transition-colors"
-                        aria-label="Show password" aria-pressed="false">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
-                </button>
+                <x-password-toggle for="password" class="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-faint hover:text-sub hover:bg-hover transition-colors" />
             </div>
             @error('password')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
 
@@ -78,11 +74,7 @@
             <div class="relative">
                 <input id="password_confirmation" name="password_confirmation" type="password"
                        autocomplete="new-password" class="sd-input has-suffix" required>
-                <button type="button" data-reveal="password_confirmation"
-                        class="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-faint hover:text-sub hover:bg-hover transition-colors"
-                        aria-label="Show password" aria-pressed="false">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
-                </button>
+                <x-password-toggle for="password_confirmation" class="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-faint hover:text-sub hover:bg-hover transition-colors" />
             </div>
         </div>
 
