@@ -65,6 +65,16 @@
                     <span class="styledesk_badge {{ $module['status_class'] }}">{{ $module['status_label'] }}</span>
                   </span>
                   <span class="block text-[13px] text-sub mt-1 leading-relaxed">{{ $module['description'] }}</span>
+
+                  @if (! empty($module['counts']))
+                    <span class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+                      @foreach ($module['counts'] as $count)
+                        <span class="text-[12px] text-sub">
+                          <span class="font-semibold text-ink">{{ $count['value'] }}</span> {{ $count['label'] }}
+                        </span>
+                      @endforeach
+                    </span>
+                  @endif
                 </span>
 
                 @if ($module['url'])

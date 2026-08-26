@@ -17,8 +17,8 @@ use App\Models\User;
  */
 class TeamInvitationPolicy
 {
-    /** Roles that may bring someone into the business. */
-    private const INVITERS = ['owner', 'administrator'];
+    /** Bringing someone into the business is one permission, not a role. */
+    private const INVITE = 'staff.invite';
 
     public function viewAny(User $user): bool
     {
@@ -27,17 +27,17 @@ class TeamInvitationPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole(...self::INVITERS);
+        return $user->hasPermission(self::INVITE, 'all');
     }
 
     public function resend(User $user, TeamInvitation $invitation): bool
     {
-        return $this->sameTenant($user, $invitation) && $user->hasRole(...self::INVITERS);
+        return $this->sameTenant($user, $invitation) && $user->hasPermission(self::INVITE, 'all');
     }
 
     public function revoke(User $user, TeamInvitation $invitation): bool
     {
-        return $this->sameTenant($user, $invitation) && $user->hasRole(...self::INVITERS);
+        return $this->sameTenant($user, $invitation) && $user->hasPermission(self::INVITE, 'all');
     }
 
     private function sameTenant(User $user, TeamInvitation $invitation): bool

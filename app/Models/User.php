@@ -97,7 +97,62 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function canManageSettings(): bool
     {
-        return $this->hasRole(...EnsureCanManageSettings::ROLES);
+        return $this->hasPermission(EnsureCanManageSettings::PERMISSION, 'all');
+    }
+
+    /**
+     * This user's Role record in their tenant, or null.
+     *
+     * The owner is resolved from tenants.owner_user_id rather than from a
+     * staff row, for the same reason roleInTenant() does: the owner exists
+     * from the moment the business is created, before onboarding has seeded
+     * them as staff.
+     */
+    public function role(): ?Role
+    {
+        if ($this->tenant_id === null) {
+            return null;
+        }
+
+        if ($this->tenant?->owner_user_id === $this->id) {
+            return Role::withoutGlobalScopes()
+                ->where('tenant_id', $this->tenant_id)
+                ->where('key', Role::OWNER)
+                ->first();
+        }
+
+        $staff = Staff::withoutGlobalScopes()
+            ->with('roleRecord.permissions')
+            ->where('tenant_id', $this->tenant_id)
+            ->where('user_id', $this->id)
+            ->first();
+
+        return $staff?->roleRecord;
+    }
+
+    /**
+     * Whether this user may do something, at least at the given scope.
+     *
+     * `$scope` is what the *caller* needs, not what the user holds: asking for
+     * 'own' means "may they do this to their own records", and someone granted
+     * 'all' satisfies it. Defaulting to 'own' makes the loosest question the
+     * default, so a caller that forgets to think about scope asks the safest
+     * version rather than the widest.
+     */
+    public function hasPermission(string $permission, string $scope = 'own'): bool
+    {
+        return (bool) $this->role()?->grants($permission, $scope);
+    }
+
+    /** The widest scope this user holds for a permission, or null. */
+    public function permissionScope(string $permission): ?string
+    {
+        return $this->role()?->scopeFor($permission);
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->tenant_id !== null && $this->tenant?->owner_user_id === $this->id;
     }
 
     public function hasRole(string ...$roles): bool

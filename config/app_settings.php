@@ -115,10 +115,13 @@ return [
                 ],
                 [
                     'key' => 'staff',
-                    'name' => 'Staff',
-                    'description' => 'Staff defaults, availability rules and how the team appears when booking.',
+                    'name' => 'Staff Members',
+                    'description' => 'Team members, locations, working hours, service access and employment status.',
                     'icon' => 'users',
-                    'keywords' => ['team', 'employee', 'stylist', 'therapist', 'provider'],
+                    'keywords' => ['team', 'employee', 'stylist', 'therapist', 'provider', 'staff', 'hours', 'availability'],
+                    // Counts are resolved at render time by the controller;
+                    // the config says which to show, not what they are.
+                    'counts' => ['active_staff', 'pending_invites'],
                 ],
                 [
                     'key' => 'calendar-scheduling',
@@ -284,9 +287,10 @@ return [
                 [
                     'key' => 'roles-permissions',
                     'name' => 'Roles & Permissions',
-                    'description' => 'Control Owner, Admin, Manager, Front desk, Service provider and custom role access.',
+                    'description' => 'Control what Owners, Admins, Managers, Receptionists, Service Providers and custom roles can access.',
                     'icon' => 'user-shield',
-                    'keywords' => ['role', 'permission', 'access', 'admin', 'manager', 'receptionist'],
+                    'keywords' => ['role', 'permission', 'access', 'admin', 'manager', 'receptionist', 'custom role', 'matrix'],
+                    'counts' => ['roles'],
                 ],
                 [
                     'key' => 'security',

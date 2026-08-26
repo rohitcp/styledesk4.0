@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\Role;
+use App\Models\TeamInvitation;
 use App\Support\Icon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * The App Settings landing page.
@@ -20,14 +24,15 @@ use Illuminate\Contracts\View\View;
  */
 class AppSettingsController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(Request $request): View
     {
         $statuses = config('app_settings.statuses');
+        $counts = $this->counts($request);
 
         $groups = collect(config('app_settings.groups'))
             ->map(fn (array $group) => [
                 ...$group,
-                'modules' => collect($group['modules'])->map(function (array $module) use ($statuses) {
+                'modules' => collect($group['modules'])->map(function (array $module) use ($statuses, $counts) {
                     /**
                      * Status defaults to coming-soon.
                      *
@@ -41,6 +46,16 @@ class AppSettingsController extends Controller
 
                     return [
                         ...$module,
+                        /**
+                         * The card's live figures, resolved here rather than
+                         * in the view: a Blade template counting rows is a
+                         * query nobody can see when the page gets slow.
+                         */
+                        'counts' => collect($module['counts'] ?? [])
+                            ->map(fn (string $key) => $counts[$key] ?? null)
+                            ->filter(fn ($count) => $count !== null && $count['value'] > 0)
+                            ->values()
+                            ->all(),
                         'status' => $status,
                         'status_label' => $statuses[$status]['label'],
                         'status_class' => $statuses[$status]['class'],
@@ -70,5 +85,37 @@ class AppSettingsController extends Controller
             ->all();
 
         return view('settings.index', ['groups' => $groups]);
+    }
+
+    /**
+     * Figures a card can display, per §2.
+     *
+     * Computed once for the page rather than per card, because two cards
+     * asking the same question is two queries for one answer.
+     *
+     * @return array<string, array{value: int, label: string}>
+     */
+    private function counts(Request $request): array
+    {
+        $tenant = $request->user()->tenant;
+
+        if ($tenant === null) {
+            return [];
+        }
+
+        $activeStaff = $tenant->staff()->where('is_active', true)->count();
+
+        $pendingInvites = $tenant->teamInvitations()
+            ->where('status', TeamInvitation::STATUS_PENDING)
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->count();
+
+        $roles = Role::withoutGlobalScopes()->where('tenant_id', $tenant->getTenantKey())->count();
+
+        return [
+            'active_staff' => ['value' => $activeStaff, 'label' => Str::plural('active member', $activeStaff)],
+            'pending_invites' => ['value' => $pendingInvites, 'label' => Str::plural('pending invite', $pendingInvites)],
+            'roles' => ['value' => $roles, 'label' => Str::plural('role', $roles)],
+        ];
     }
 }

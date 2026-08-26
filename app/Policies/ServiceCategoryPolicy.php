@@ -17,11 +17,11 @@ use App\Models\User;
  */
 class ServiceCategoryPolicy
 {
-    /** Roles allowed to change the category configuration. */
-    private const MANAGERS = ['owner', 'administrator', 'manager'];
+    /** Changing the category configuration. */
+    private const MANAGE = 'services.manage_categories';
 
-    /** Roles allowed to remove or archive one. */
-    private const DESTROYERS = ['owner', 'administrator'];
+    /** Removing or archiving one sits with whoever may delete services. */
+    private const DESTROY = 'services.delete';
 
     public function viewAny(User $user): bool
     {
@@ -35,24 +35,24 @@ class ServiceCategoryPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole(...self::MANAGERS);
+        return $user->hasPermission(self::MANAGE, 'all');
     }
 
     public function update(User $user, ServiceCategory $category): bool
     {
-        return $this->sameTenant($user, $category) && $user->hasRole(...self::MANAGERS);
+        return $this->sameTenant($user, $category) && $user->hasPermission(self::MANAGE, 'all');
     }
 
     public function reorder(User $user): bool
     {
         // Reordering changes what everyone sees, so it sits with the roles
         // that own the configuration rather than with Manager.
-        return $user->hasRole(...self::DESTROYERS);
+        return $user->hasPermission(self::DESTROY, 'all');
     }
 
     public function delete(User $user, ServiceCategory $category): bool
     {
-        return $this->sameTenant($user, $category) && $user->hasRole(...self::DESTROYERS);
+        return $this->sameTenant($user, $category) && $user->hasPermission(self::DESTROY, 'all');
     }
 
     private function sameTenant(User $user, ServiceCategory $category): bool

@@ -29,6 +29,29 @@ class Staff extends Model
         ];
     }
 
+    /**
+     * Keep role_id in step with the role string.
+     *
+     * Every existing caller writes `role` as a string — onboarding, invitation
+     * acceptance, the seeders, the tests. Resolving the id here means none of
+     * them has to change and none of them can forget, which matters because a
+     * staff row with a role name but no role_id resolves to no permissions at
+     * all: an owner locked out of their own business by a save.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $staff) {
+            if ($staff->role_id !== null || $staff->role === null || $staff->tenant_id === null) {
+                return;
+            }
+
+            $staff->role_id = Role::withoutGlobalScopes()
+                ->where('tenant_id', $staff->tenant_id)
+                ->where('key', $staff->role)
+                ->value('id');
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -44,6 +67,20 @@ class Staff extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    /**
+     * Not named role().
+     *
+     * `staff.role` is still a string column, and Eloquent resolves an
+     * attribute before a relation of the same name — so $staff->role would
+     * hand back "manager" rather than the Role model, silently, wherever a
+     * model was expected. The column stays for now because every existing
+     * caller writes it; the relation takes a name that cannot collide.
+     */
+    public function roleRecord(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
     }
 
     public function services(): BelongsToMany

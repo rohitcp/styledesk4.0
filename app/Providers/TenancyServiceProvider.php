@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Actions\Roles\ProvisionSystemRoles;
+use App\Models\ServiceCategory;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -43,7 +46,19 @@ class TenancyServiceProvider extends ServiceProvider
                  * console command — gets them too.
                  */
                 function (Events\TenantCreated $event) {
-                    \App\Models\ServiceCategory::seedDefaultsFor($event->tenant);
+                    ServiceCategory::seedDefaultsFor($event->tenant);
+                },
+
+                /**
+                 * Every tenant gets its own copy of the system roles.
+                 *
+                 * Hung off the event rather than done in onboarding so a
+                 * tenant created any other way — a seeder, an import, a
+                 * console command — has roles too. A business without them
+                 * has no way to express who may do what.
+                 */
+                function (Events\TenantCreated $event) {
+                    app(ProvisionSystemRoles::class)->forTenant($event->tenant);
                 },
             ],
             Events\SavingTenant::class => [],
@@ -138,7 +153,6 @@ class TenancyServiceProvider extends ServiceProvider
             // Even higher priority than the initialization middleware
             Middleware\PreventAccessFromCentralDomains::class,
 
-
             Middleware\InitializeTenancyByDomain::class,
             Middleware\InitializeTenancyBySubdomain::class,
             Middleware\InitializeTenancyByDomainOrSubdomain::class,
@@ -147,7 +161,7 @@ class TenancyServiceProvider extends ServiceProvider
         ];
 
         foreach (array_reverse($tenancyMiddleware) as $middleware) {
-            $this->app[\Illuminate\Contracts\Http\Kernel::class]->prependToMiddlewarePriority($middleware);
+            $this->app[Kernel::class]->prependToMiddlewarePriority($middleware);
         }
     }
 }

@@ -18,7 +18,17 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureCanManageSettings
 {
-    /** Roles with full access. Everyone else is not merely limited, but out. */
+    /**
+     * The permission App Settings requires.
+     *
+     * A permission rather than a role list: a custom role granted
+     * settings.view should reach the module, and the three copies of
+     * ['owner', 'administrator'] this replaced were already a set of lists
+     * waiting to disagree with each other.
+     */
+    public const PERMISSION = 'settings.view';
+
+    /** Roles seeded with that permission. Kept for callers that still ask. */
     public const ROLES = ['owner', 'administrator'];
 
     public function handle(Request $request, Closure $next): Response
