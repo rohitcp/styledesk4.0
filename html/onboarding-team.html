@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your team — StyleDesk setup</title>
+
+  <!--
+    StyleDesk — Onboarding step 4: Team (§13, §14)
+    The owner is already a member and cannot be removed. Asking whether the
+    owner takes clients (§14) creates their provider profile here, so they
+    never have to add themselves again as an employee. Invitations are sent
+    after onboarding, not on this screen.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <header class="bg-brand">
+    <div class="w-full px-4 sm:px-6 h-14 flex items-center gap-3">
+      <span class="text-white/70 text-[13px] truncate" data-bizname>Set up your business</span>
+      <div class="ml-auto flex items-center gap-3">
+        <span class="hidden md:inline-flex sd-pill-dark" data-trial>14 days left in your free trial</span>
+        <a href="signup.html" data-logout class="text-white/70 hover:text-white text-[13px] font-medium transition-colors">Log out</a>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- Two columns from lg up, matching the other wizard steps. -->
+  <div class="flex-1 lg:grid lg:grid-cols-12">
+
+  <main class="lg:col-span-8 min-w-0 w-full px-4 sm:px-6 pt-7 sm:pt-10 pb-[200px]">
+    <div class="max-w-[780px]">
+
+      <div class="pb-5 mb-6 border-b border-line">
+        <div class="flex flex-wrap items-start gap-x-4 gap-y-1">
+          <div class="min-w-0">
+            <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">Add your team</h1>
+            <p class="text-[14px] text-sub mt-1.5">Invitations go out once your setup is finished — nobody is emailed yet.</p>
+          </div>
+          <span class="ml-auto shrink-0 pt-1 text-[12px] font-medium text-sub" data-step-label>Step — of 7</span>
+        </div>
+        <div class="sd-progress mt-4"><span data-progress style="width:0%"></span></div>
+      </div>
+
+      <form id="team" class="mt-6 space-y-4" novalidate>
+
+        <!-- Owner — always present, never removable -->
+        <section class="bg-white border border-line rounded-card p-5">
+          <div class="flex flex-wrap items-center gap-3">
+            <span id="owner-avatar" class="h-10 w-10 rounded-full bg-brand text-white grid place-items-center text-[13px] font-bold shrink-0">You</span>
+            <div class="min-w-0">
+              <p class="text-[14px] font-semibold text-head truncate" id="owner-name">You</p>
+              <p class="text-[12px] text-faint truncate" id="owner-email"></p>
+            </div>
+            <span class="ml-auto inline-flex items-center h-6 px-2.5 rounded-md text-[12px] font-medium shrink-0" style="color:#16a34a;background:#dcfce7">Owner</span>
+          </div>
+
+          <!-- §14 owner as service provider -->
+          <div class="mt-5 pt-5 border-t border-line">
+            <fieldset>
+              <legend class="text-[13px] font-medium text-ink mb-2.5">Do you provide services to clients?</legend>
+              <div class="flex flex-wrap gap-x-6 gap-y-2.5">
+                <label class="flex items-center gap-2.5 text-[14px] text-ink cursor-pointer">
+                  <input type="radio" name="provider" value="yes" class="sd-radio" /> Yes — add me as a service provider
+                </label>
+                <label class="flex items-center gap-2.5 text-[14px] text-ink cursor-pointer">
+                  <input type="radio" name="provider" value="no" class="sd-radio" checked /> No — I manage the business
+                </label>
+              </div>
+            </fieldset>
+
+            <div id="owner-services" hidden class="mt-4">
+              <span class="block text-[13px] font-medium text-ink mb-2" id="owner-services-label">Which services do you provide?</span>
+              <div id="owner-service-list" class="grid sm:grid-cols-2 gap-2" role="group" aria-labelledby="owner-services-label"></div>
+            </div>
+          </div>
+        </section>
+
+        <div id="list" class="space-y-4"></div>
+
+        <button type="button" id="add"
+                class="w-full h-12 rounded-card border border-dashed border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Add team member
+        </button>
+
+        <p id="team-status" role="status" aria-live="polite" class="sr-only"></p>
+
+        <div class="flex flex-wrap items-center gap-3 pt-1">
+          <button id="continue" type="submit" class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">Continue</button>
+          <a href="onboarding-services.html" class="h-11 px-5 grid place-items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[14px] font-semibold transition-colors">Back</a>
+          <button type="button" id="later" class="h-11 px-4 rounded-lg text-sub hover:bg-hover text-[14px] font-semibold transition-colors">I'll do this later</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+    <!-- ===================== Context rail ===================== -->
+    <aside class="lg:col-span-4 min-w-0 hidden lg:block border-l border-line bg-gradient-to-b from-white via-[#faf9fd] to-[#f2effa]">
+      <div class="sticky top-0 px-8 py-10 max-w-[420px]">
+
+        <h2 class="text-[15px] font-semibold text-head">Who will be in your workspace</h2>
+        <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Nobody is emailed until setup is finished.</p>
+
+        <!-- Mirrors the rows as they are filled in. Hidden below lg, so it is
+             never the only place a value appears. -->
+        <div class="mt-5 rounded-card border border-line bg-white shadow-sm overflow-hidden" aria-hidden="true">
+          <ul id="pv-team" class="divide-y divide-line"></ul>
+          <div class="px-4 py-2.5 bg-hover/40 border-t border-line">
+            <p id="pv-summary" class="text-[12px] text-sub">Just you for now.</p>
+          </div>
+        </div>
+
+        <ul class="mt-8 space-y-4">
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Role decides what someone can see and change. Only the Owner can bill or delete the workspace.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Anyone assigned services becomes bookable, so clients can pick them by name.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Invitations go out in one batch when you finish — you can still edit or remove people first.</span>
+          </li>
+        </ul>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script>
+    (function () {
+      if (!SD.guard('team')) return;
+      SD.renderProgress('team');
+
+      var state = SD.read();
+      document.querySelector('[data-trial]').textContent = SD.trialRemaining() + ' days left in your free trial';
+      document.querySelector('[data-logout]').addEventListener('click', function () { SD.reset(); });
+      if (state.tenant && state.tenant.name) document.querySelector('[data-bizname]').textContent = state.tenant.name;
+
+      var ROLES = ['Owner','Administrator','Manager','Front Desk','Service Provider'];
+      var SERVICES = (state.services || []).map(function (s) { return s.name; }).filter(Boolean);
+
+      /* ---- owner card ---- */
+      var user = state.user || {};
+      var full = [user.firstName, user.lastName].filter(Boolean).join(' ');
+      var initials = ((user.firstName || '').charAt(0) + (user.lastName || '').charAt(0)).toUpperCase() || '?';
+      document.getElementById('owner-name').textContent = full || 'Your account';
+      document.getElementById('owner-email').textContent = user.email || '';
+      document.getElementById('owner-avatar').textContent = initials;
+
+      /* ---- owner as provider (§14) ---- */
+      var ownerServices = (state.ownerServices || []).slice();
+      var panel = document.getElementById('owner-services');
+      var serviceHost = document.getElementById('owner-service-list');
+
+      function paintOwnerServices() {
+        if (!SERVICES.length) {
+          serviceHost.innerHTML = '<p class="text-[12px] text-faint sm:col-span-2">' +
+            'You haven’t added services yet — you can pick them once you have.</p>';
+          return;
+        }
+        serviceHost.innerHTML = SERVICES.map(function (name) {
+          var on = ownerServices.indexOf(name) !== -1;
+          return '<label class="flex items-center gap-2.5 h-10 px-3 rounded-lg border text-[13px] cursor-pointer transition-colors ' +
+                 (on ? 'border-brand ring-1 ring-brand bg-white text-ink font-medium' : 'border-stroke bg-white text-ink hover:bg-hover') + '">' +
+                 '<input type="checkbox" class="sd-check" data-owner-service="' + SD.escapeHtml(name) + '"' + (on ? ' checked' : '') + ' />' +
+                 '<span class="truncate">' + SD.escapeHtml(name) + '</span></label>';
+        }).join('');
+      }
+      paintOwnerServices();
+
+      serviceHost.addEventListener('change', function (e) {
+        var box = e.target.closest('[data-owner-service]');
+        if (!box) return;
+        var name = box.getAttribute('data-owner-service');
+        var i = ownerServices.indexOf(name);
+        if (box.checked && i === -1) ownerServices.push(name);
+        if (!box.checked && i !== -1) ownerServices.splice(i, 1);
+        // Restyle the label in place rather than re-rendering, so focus stays
+        // on the checkbox the user just toggled.
+        var label = box.closest('label');
+        label.className = 'flex items-center gap-2.5 h-10 px-3 rounded-lg border text-[13px] cursor-pointer transition-colors ' +
+          (box.checked ? 'border-brand ring-1 ring-brand bg-white text-ink font-medium'
+                       : 'border-stroke bg-white text-ink hover:bg-hover');
+      });
+
+      document.querySelectorAll('input[name="provider"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+          panel.hidden = radio.value !== 'yes';
+          paintPreview();
+        });
+      });
+      if (state.ownerIsProvider) {
+        document.querySelector('input[name="provider"][value="yes"]').checked = true;
+        panel.hidden = false;
+      }
+
+      /* ---- team member rows ---- */
+      var list = document.getElementById('list');
+      var seq = 0;
+
+      /* ---- context-rail preview ---- */
+      var pvList = document.getElementById('pv-team');
+      var pvSummary = document.getElementById('pv-summary');
+
+      function paintPreview() {
+        var rows = [{
+          name: full || 'You',
+          role: 'Owner',
+          initials: initials,
+          provider: document.querySelector('input[name="provider"]:checked').value === 'yes'
+        }];
+
+        list.querySelectorAll('[data-member]').forEach(function (host) {
+          function f(n) { return host.querySelector('[data-f="' + n + '"]'); }
+          var name = [f('firstName').value.trim(), f('lastName').value.trim()].filter(Boolean).join(' ');
+          if (!name) return;
+          rows.push({
+            name: name,
+            role: f('role').value,
+            initials: (f('firstName').value.trim().charAt(0) + f('lastName').value.trim().charAt(0)).toUpperCase() || '?',
+            provider: host.querySelectorAll('[data-service]:checked').length > 0
+          });
+        });
+
+        pvList.innerHTML = rows.map(function (r) {
+          return '<li class="flex items-center gap-2.5 px-4 py-2.5">' +
+                   '<span class="h-6 w-6 rounded-full bg-brand text-white grid place-items-center text-[9px] font-bold shrink-0">' +
+                     SD.escapeHtml(r.initials) + '</span>' +
+                   '<span class="min-w-0 flex-1">' +
+                     '<span class="block text-[13px] text-ink truncate">' + SD.escapeHtml(r.name) + '</span>' +
+                     (r.provider ? '<span class="block text-[11px] text-faint">Takes bookings</span>' : '') +
+                   '</span>' +
+                   '<span class="text-[11px] text-faint shrink-0">' + SD.escapeHtml(r.role) + '</span>' +
+                 '</li>';
+        }).join('');
+
+        var invites = rows.length - 1;
+        pvSummary.textContent = invites
+          ? invites + (invites === 1 ? ' invitation' : ' invitations') + ' will go out after setup'
+          : 'Just you for now.';
+      }
+
+      function row(member) {
+        var id = 'tm' + (++seq);
+        return '' +
+        '<section class="bg-white border border-line rounded-card overflow-hidden" data-member>' +
+          '<div class="flex items-center gap-3 px-5 py-3 border-b border-line bg-hover/40">' +
+            '<span class="text-[13px] font-semibold text-ink truncate" data-title>New team member</span>' +
+            '<button type="button" data-remove class="ml-auto h-8 w-8 grid place-items-center rounded-md text-faint hover:bg-hover hover:text-danger shrink-0 transition-colors" aria-label="Remove this team member">' +
+              '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M8 7l.7 12h6.6L16 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '</button>' +
+          '</div>' +
+          '<div class="p-5 space-y-5">' +
+            '<div class="grid sm:grid-cols-2 gap-x-5 gap-y-5">' +
+              '<div>' +
+                '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-first">First name <span class="text-danger" aria-hidden="true">*</span></label>' +
+                '<input id="' + id + '-first" data-f="firstName" type="text" class="sd-input" value="' + SD.escapeHtml(member.firstName) + '" />' +
+                '<p data-error-for="' + id + '-first" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>' +
+              '</div>' +
+              '<div>' +
+                '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-last">Last name <span class="text-danger" aria-hidden="true">*</span></label>' +
+                '<input id="' + id + '-last" data-f="lastName" type="text" class="sd-input" value="' + SD.escapeHtml(member.lastName) + '" />' +
+                '<p data-error-for="' + id + '-last" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>' +
+              '</div>' +
+              '<div>' +
+                '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-email">Email <span class="text-danger" aria-hidden="true">*</span></label>' +
+                '<input id="' + id + '-email" data-f="email" type="email" class="sd-input" value="' + SD.escapeHtml(member.email) + '" />' +
+                '<p data-error-for="' + id + '-email" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>' +
+              '</div>' +
+              '<div>' +
+                '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-phone">Phone <span class="font-normal text-faint">Optional</span></label>' +
+                '<input id="' + id + '-phone" data-f="phone" type="tel" class="sd-input" value="' + SD.escapeHtml(member.phone) + '" />' +
+              '</div>' +
+              '<div>' +
+                '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-role">Role <span class="text-danger" aria-hidden="true">*</span></label>' +
+                '<select id="' + id + '-role" data-f="role" class="sd-input has-value">' +
+                  ROLES.filter(function (r) { return r !== 'Owner'; }).map(function (r) {
+                    return '<option' + (r === member.role ? ' selected' : '') + '>' + r + '</option>';
+                  }).join('') +
+                '</select>' +
+              '</div>' +
+              '<div>' +
+                '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-title">Job title <span class="font-normal text-faint">Optional</span></label>' +
+                '<input id="' + id + '-title" data-f="jobTitle" type="text" class="sd-input" placeholder="Senior Stylist" value="' + SD.escapeHtml(member.jobTitle) + '" />' +
+              '</div>' +
+            '</div>' +
+
+            (SERVICES.length
+              ? '<div>' +
+                  '<span class="block text-[13px] font-medium text-ink mb-2" id="' + id + '-svclabel">Services provided</span>' +
+                  '<div class="grid sm:grid-cols-2 gap-2" role="group" aria-labelledby="' + id + '-svclabel">' +
+                    SERVICES.map(function (name) {
+                      var on = (member.services || []).indexOf(name) !== -1;
+                      return '<label class="flex items-center gap-2.5 h-10 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-[13px] cursor-pointer transition-colors">' +
+                             '<input type="checkbox" class="sd-check" data-service="' + SD.escapeHtml(name) + '"' + (on ? ' checked' : '') + ' />' +
+                             '<span class="truncate">' + SD.escapeHtml(name) + '</span></label>';
+                    }).join('') +
+                  '</div>' +
+                '</div>'
+              : '<p class="text-[12px] text-faint">Add services first and you’ll be able to assign them here.</p>') +
+          '</div>' +
+        '</section>';
+      }
+
+      function blank() {
+        return { firstName: '', lastName: '', email: '', phone: '', role: 'Service Provider', jobTitle: '', services: [] };
+      }
+
+      /* Re-run after every insert — combo() no-ops on an upgraded select. */
+      function upgradeCombos() {
+        SD.comboAll(list, { searchPlaceholder: 'Search role…' });
+      }
+
+      function add(member) {
+        list.insertAdjacentHTML('beforeend', row(member || blank()));
+        upgradeCombos();
+        paintPreview();
+      }
+
+      list.addEventListener('click', function (e) {
+        var remove = e.target.closest('[data-remove]');
+        if (!remove) return;
+        var section = remove.closest('[data-member]');
+        var title = section.querySelector('[data-title]').textContent;
+        section.remove();
+        paintPreview();
+        document.getElementById('team-status').textContent = title + ' removed.';
+      });
+
+      list.addEventListener('input', function (e) {
+        if (!e.target.matches('[data-f="firstName"], [data-f="lastName"]')) return;
+        var host = e.target.closest('[data-member]');
+        var name = [host.querySelector('[data-f="firstName"]').value.trim(),
+                    host.querySelector('[data-f="lastName"]').value.trim()].filter(Boolean).join(' ');
+        host.querySelector('[data-title]').textContent = name || 'New team member';
+        if (e.target.classList.contains('is-error')) SD.setError(e.target, '');
+        paintPreview();
+      });
+
+      list.addEventListener('change', paintPreview);
+
+      document.getElementById('add').addEventListener('click', function () {
+        add();
+        var first = list.lastElementChild.querySelector('[data-f="firstName"]');
+        if (first) first.focus();
+      });
+
+      /* Restore any members added earlier (the owner is index 0 and lives
+         in the pinned card, so it is not re-rendered here). */
+      (state.team || []).forEach(function (m) { if (m.role !== 'Owner') add(m); });
+      paintPreview();
+
+      /* ---- submit ---- */
+      function collect() {
+        var out = [];
+        var ok = true;
+        list.querySelectorAll('[data-member]').forEach(function (host) {
+          function f(n) { return host.querySelector('[data-f="' + n + '"]'); }
+          var first = f('firstName'), last = f('lastName'), email = f('email');
+          var member = {
+            firstName: first.value.trim(), lastName: last.value.trim(),
+            email: SD.normalizeEmail(email.value), phone: f('phone').value.trim(),
+            role: f('role').value, jobTitle: f('jobTitle').value.trim(),
+            services: Array.prototype.slice.call(host.querySelectorAll('[data-service]:checked'))
+                        .map(function (b) { return b.getAttribute('data-service'); }),
+            invited: false
+          };
+          if (!member.firstName && !member.lastName && !member.email) return;   // untouched row
+
+          if (!member.firstName) ok = SD.setError(first, 'Enter a first name.') && ok;
+          if (!member.lastName)  ok = SD.setError(last,  'Enter a last name.')  && ok;
+          if (!SD.isEmail(member.email)) ok = SD.setError(email, 'Enter a valid email address.') && ok;
+          out.push(member);
+        });
+        return { members: out, ok: ok };
+      }
+
+      function owner() {
+        var isProvider = document.querySelector('input[name="provider"]:checked').value === 'yes';
+        return {
+          firstName: user.firstName || '', lastName: user.lastName || '',
+          email: user.email || '', role: 'Owner', jobTitle: '',
+          isProvider: isProvider,
+          services: isProvider ? ownerServices : []
+        };
+      }
+
+      document.getElementById('team').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var form = document.getElementById('team');
+        SD.clearErrors(form);
+
+        var result = collect();
+        if (!result.ok) { SD.focusFirstError(form); return; }
+
+        var release = SD.lockSubmit(document.getElementById('continue'), 'Saving…');
+        if (!release) return;
+
+        var o = owner();
+        var s = SD.read();
+        if (result.members.length) delete s.skipped.team; else s.skipped.team = true;
+        s.team = [o].concat(result.members);
+        s.ownerIsProvider = o.isProvider;
+        s.ownerServices = o.services;
+        SD.write(s);
+
+        window.setTimeout(function () { window.location.href = 'onboarding-booking.html'; }, 350);
+      });
+
+      document.getElementById('later').addEventListener('click', function () {
+        var o = owner();
+        var s = SD.read();
+        s.team = [o];
+        s.ownerIsProvider = o.isProvider;
+        s.ownerServices = o.services;
+        s.skipped.team = true;
+        SD.write(s);
+        window.location.href = 'onboarding-booking.html';
+      });
+    }());
+  </script>
+</body>
+</html>

@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Booking — StyleDesk</title>
+
+  <!--
+    StyleDesk — New Booking
+    One screen on a 3/6/3 grid: the client, an accordion of the five
+    booking decisions, and a summary that ends in the commit.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
+             aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ===== Page ===== -->
+  <main class="flex-1 w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
+
+    <div class="flex flex-wrap items-start gap-x-4 gap-y-3 mb-4">
+      <div class="min-w-0">
+        <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight">New Booking</h1>
+        <p class="text-[13px] text-sub mt-1" data-mode-note>Find the client, or take a walk-in.</p>
+      </div>
+      <div class="ml-auto shrink-0">
+        <div class="sd-subnav" role="tablist" aria-label="Booking type">
+          <button type="button" class="sd-subnav__item" role="tab" aria-selected="true" aria-current="page" data-mode="booking">Booking</button>
+          <button type="button" class="sd-subnav__item" role="tab" aria-selected="false" data-mode="walkin">Walk-in</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start pb-6">
+
+      <!-- ===== Column 1 — Client (3/12) ===== -->
+      <section class="lg:col-span-3" aria-label="Client">
+        <div class="sd-card !p-0 overflow-hidden">
+          <div class="px-4 pt-4 pb-3">
+            <h2 class="sd-eyebrow">Client</h2>
+          </div>
+
+          <div class="px-4 pb-4" data-client-search>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.9"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+              </span>
+              <label for="cq" class="sr-only">Search client by name, phone or email</label>
+              <input id="cq" type="search" class="sd-input !pl-9" placeholder="Search by name, phone or email…" autocomplete="off" />
+            </div>
+
+            <div data-client-results></div>
+
+            <div class="sd-or my-4">OR</div>
+
+            <button type="button" class="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-new-client>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+              Add Client
+            </button>
+            <button type="button" class="w-full mt-2 h-9 rounded-lg text-[12.5px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors" data-guest hidden>Book an anonymous walk-in</button>
+          </div>
+
+          <div data-client-card hidden></div>
+        </div>
+      </section>
+
+      <!-- ===== Column 2 — Booking (6/12) ===== -->
+      <section class="lg:col-span-6 min-w-0 space-y-3" aria-label="Booking">
+        <section class="sd-acc" data-acc="service" data-open>
+          <h3>
+            <button type="button" class="sd-acc__head" data-acc-head aria-expanded="true" aria-controls="acc-service">
+              <span class="sd-acc__tick" data-acc-tick aria-hidden="true">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="sd-acc__title">Service</span>
+              <span class="sd-acc__meta" data-acc-meta></span>
+              <svg class="sd-acc__chev" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </h3>
+          <div class="sd-acc__body" id="acc-service" data-acc-body>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.9"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+              </span>
+              <label for="sq" class="sr-only">Search services</label>
+              <input id="sq" type="search" class="sd-input !pl-9" placeholder="Search services…" autocomplete="off" />
+            </div>
+
+            <div class="mt-3" data-suggest></div>
+            <div class="mt-3" data-chosen></div>
+            <div class="mt-3" data-service-list></div>
+          </div>
+        </section>
+        <section class="sd-acc" data-acc="when">
+          <h3>
+            <button type="button" class="sd-acc__head" data-acc-head aria-expanded="false" aria-controls="acc-when">
+              <span class="sd-acc__tick" data-acc-tick aria-hidden="true">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="sd-acc__title">Who with + when</span>
+              <span class="sd-acc__meta" data-acc-meta></span>
+              <svg class="sd-acc__chev" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </h3>
+          <div class="sd-acc__body" id="acc-when" data-acc-body hidden>
+            <div data-staff-list></div>
+          </div>
+        </section>
+        <section class="sd-acc" data-acc="details">
+          <h3>
+            <button type="button" class="sd-acc__head" data-acc-head aria-expanded="false" aria-controls="acc-details">
+              <span class="sd-acc__tick" data-acc-tick aria-hidden="true">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="sd-acc__title">Booking details</span>
+              <span class="sd-acc__meta" data-acc-meta></span>
+              <svg class="sd-acc__chev" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </h3>
+          <div class="sd-acc__body" id="acc-details" data-acc-body hidden>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label for="bSource" class="block text-[13px] font-medium text-ink mb-1.5">Booking source</label>
+                <select id="bSource" class="sd-input"></select>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <label for="bNotes" class="block text-[13px] font-medium text-ink mb-1.5">Appointment note</label>
+              <textarea id="bNotes" rows="2" class="sd-input !h-auto py-2.5" placeholder="Client wants the same haircut but slightly shorter today."></textarea>
+              <p class="text-[12px] text-faint mt-1.5">This booking only. It never becomes a permanent client note.</p>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-line" data-clientnote-wrap>
+              <label for="bClientNote" class="block text-[13px] font-medium text-ink mb-1.5">
+                Client note <span class="font-normal text-sub">— kept on the client profile</span>
+              </label>
+              <textarea id="bClientNote" rows="2" class="sd-input !h-auto py-2.5" placeholder="Sensitive scalp — no heat directly on the roots."></textarea>
+              <p class="text-[12px] text-faint mt-1.5" data-clientnote-hint>Saved to the client when the booking is confirmed. Everyone booking them sees it.</p>
+            </div>
+          </div>
+        </section>
+        <section class="sd-acc" data-acc="payment">
+          <h3>
+            <button type="button" class="sd-acc__head" data-acc-head aria-expanded="false" aria-controls="acc-payment">
+              <span class="sd-acc__tick" data-acc-tick aria-hidden="true">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="sd-acc__title">Deposit / payment</span>
+              <span class="sd-acc__meta" data-acc-meta></span>
+              <svg class="sd-acc__chev" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </h3>
+          <div class="sd-acc__body" id="acc-payment" data-acc-body hidden>
+            <fieldset>
+              <legend class="block text-[13px] font-medium text-ink mb-2">Payment type</legend>
+              <div class="grid sm:grid-cols-2 gap-2" data-paytype></div>
+            </fieldset>
+            <div class="mt-4" data-deposit hidden></div>
+          </div>
+        </section>
+        <section class="sd-acc" data-acc="comms">
+          <h3>
+            <button type="button" class="sd-acc__head" data-acc-head aria-expanded="false" aria-controls="acc-comms">
+              <span class="sd-acc__tick" data-acc-tick aria-hidden="true">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="sd-acc__title">Communication</span>
+              <span class="sd-acc__meta" data-acc-meta></span>
+              <svg class="sd-acc__chev" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </h3>
+          <div class="sd-acc__body" id="acc-comms" data-acc-body hidden>
+            <fieldset>
+              <legend class="block text-[13px] font-medium text-ink mb-2">Send confirmation</legend>
+              <div class="flex flex-wrap gap-1.5" data-commchoice></div>
+            </fieldset>
+            <div class="mt-4 space-y-2.5" data-commto></div>
+          </div>
+        </section>
+      </section>
+
+      <!-- ===== Column 3 — Booking summary (3/12) ===== -->
+      <section class="lg:col-span-3 lg:sticky lg:top-[73px]" aria-label="Booking summary">
+        <div class="sd-card !p-0 overflow-hidden flex flex-col">
+          <div class="px-4 pt-4 pb-3 border-b border-line">
+            <h2 class="sd-eyebrow">Booking summary</h2>
+          </div>
+
+          <div class="sd-sumscroll" data-summary></div>
+
+          <div class="px-4 py-3.5 border-t border-line bg-white">
+            <p class="text-[12.5px] text-sub mb-2.5" data-blocker></p>
+            <button type="button" class="w-full h-11 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors" data-confirm-booking>Confirm Booking</button>
+            <div class="flex items-center gap-2 mt-2">
+              <button type="button" class="flex-1 h-9 rounded-lg border border-stroke bg-white text-ink text-[12.5px] font-semibold hover:bg-hover transition-colors" data-draft>Save as draft</button>
+              <a href="dashboard.html" class="flex-1 h-9 rounded-lg text-center leading-9 text-[12.5px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">Cancel</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title></h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body></p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Delete</button>
+        <button type="button" data-confirm-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="sd-modal" data-newclient hidden role="dialog" aria-modal="true" aria-labelledby="ncTitle">
+    <div class="sd-scrim is-open" data-nc-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="ncTitle" class="text-[17px] font-semibold text-head">Add Client</h2>
+      <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Just enough to take the booking. The rest can be filled in later from their profile.</p>
+      <form class="mt-4 space-y-3.5" data-nc-form novalidate>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="ncFirst" class="block text-[13px] font-medium text-ink mb-1.5">First name<span class="text-danger"> *</span></label>
+            <input id="ncFirst" type="text" class="sd-input" autocomplete="off" />
+            <p class="text-[12px] text-danger mt-1.5" data-error-for="ncFirst" hidden></p>
+          </div>
+          <div>
+            <label for="ncLast" class="block text-[13px] font-medium text-ink mb-1.5">Last name</label>
+            <input id="ncLast" type="text" class="sd-input" autocomplete="off" />
+          </div>
+        </div>
+        <div>
+          <label for="ncEmail" class="block text-[13px] font-medium text-ink mb-1.5">Email address</label>
+          <input id="ncEmail" type="email" class="sd-input" placeholder="name@example.com" autocomplete="off" />
+          <p class="text-[12px] text-danger mt-1.5" data-error-for="ncEmail" hidden></p>
+        </div>
+        <div>
+          <label for="ncPhone" class="block text-[13px] font-medium text-ink mb-1.5">Phone number</label>
+          <input id="ncPhone" type="tel" class="sd-input" placeholder="(202) 555-0123" autocomplete="off" />
+          <p class="text-[12px] text-danger mt-1.5" data-error-for="ncPhone" hidden></p>
+        </div>
+        <p class="text-[12px] text-faint">A phone or an email — one of the two, so the confirmation has somewhere to go.</p>
+        <div class="sd-alert sd-alert--warn" data-nc-dupe hidden></div>
+        <div class="flex items-center gap-2.5 pt-1">
+          <button type="submit" class="h-10 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">Add Client</button>
+          <button type="button" class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-nc-cancel>Cancel</button>
+          <a href="add-client.html" class="ml-auto text-[12.5px] font-semibold text-brand hover:underline">Full client form</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="sd-modal" data-done hidden role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="sd-scrim is-open"></div>
+    <div class="sd-modal__panel">
+      <div class="flex items-start gap-3">
+        <span class="sd-tick" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <div class="min-w-0">
+          <h2 id="doneTitle" class="text-[19px] font-bold text-head" data-done-title>Booking Confirmed</h2>
+          <div class="mt-2.5" data-done-body></div>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 mt-5">
+        <a href="dashboard.html" class="h-10 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors inline-flex items-center">View Booking</a>
+        <button type="button" class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-done-another>Add Another Booking</button>
+        <button type="button" class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-done-same>Add Another Service</button>
+        <button type="button" class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-done-resend hidden>Send Confirmation Again</button>
+        <button type="button" class="ml-auto text-[13px] font-semibold text-sub hover:text-ink" data-done-close>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/resources.js"></script>
+  <script src="assets/js/services.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script src="assets/js/bookings.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    /* When the row is too narrow to hold every section, the one you are
+       on can start off-screen to the right. Nudge it into view — without
+       scrolling the page itself, which scrollIntoView would do. */
+    (function () {
+      var nav = document.querySelector('[data-subnav]');
+      if (!nav) return;
+      var here = nav.querySelector('[aria-current="page"]');
+      if (!here) return;
+      var over = here.offsetLeft + here.offsetWidth - (nav.scrollLeft + nav.clientWidth);
+      if (over > 0) nav.scrollLeft += over + 4;
+      else if (here.offsetLeft < nav.scrollLeft) nav.scrollLeft = Math.max(0, here.offsetLeft - 4);
+    }());
+
+    var esc = SDR.esc;
+
+    /* One booking under construction. Every column reads it and writes to
+       it, so nothing can be true in one place and false in another. */
+    var bk = {
+      mode: 'booking',        /* booking | walkin */
+      clientId: '',
+      guest: null,
+      serviceIds: [],
+      addonIds: [],
+      staffId: '',            /* '' = any available team member */
+      locationId: 'loc1',
+      date: SDR.today(0),
+      start: '',
+      overrideHours: false,   /* §23 — set only by an explicit Override & Book */
+      source: 'Front desk',
+      notes: '',
+      clientNote: '',
+      payType: 'none',        /* none | deposit */
+      depositAmount: 0,
+      depositAction: 'later', /* now | link | later | waive */
+      waiveReason: '',
+      comm: 'both',           /* sms | email | both | none */
+      smsTo: '',
+      emailTo: ''
+    };
+
+    var SECTIONS = ['service', 'when', 'details', 'payment', 'comms'];
+    var active = 'service';
+
+    function money(v) { return SDS.money(v); }
+    function client() { return bk.clientId ? SDC.byId(bk.clientId) : null; }
+    function services() { return bk.serviceIds.map(SDS.byId).filter(Boolean); }
+    function addons() { return bk.addonIds.map(SDS.addonById).filter(Boolean); }
+
+    /* Add-ons lengthen the appointment as well as the bill, so the room
+       and the staff member are both held longer — the duration used for
+       availability has to include them or the next client is booked on
+       top of this one. */
+    function minutes() {
+      return SDB.minutesFor(bk.serviceIds, bk.staffId) +
+        addons().reduce(function (t, a) { return t + (Number(a.durationMin) || 0); }, 0);
+    }
+    function servicesTotal() {
+      return SDB.priceFor(bk.serviceIds, { staffId: bk.staffId, locationId: bk.locationId });
+    }
+    function addonsTotal() {
+      return addons().reduce(function (t, a) { return t + (Number(a.price) || 0); }, 0);
+    }
+    function discount() { return 0; }   /* no discount rules in this build */
+    function total() { return servicesTotal() + addonsTotal() - discount(); }
+    function dueNow() {
+      if (bk.payType !== 'deposit') return 0;
+      if (bk.depositAction === 'waive' || bk.depositAction === 'later') return 0;
+      return Number(bk.depositAmount) || 0;
+    }
+
+    function who() {
+      var c = client();
+      if (c) return { name: SDC.fullName(c), initials: SDC.initials(c), isGuest: false };
+      if (bk.guest) return { name: bk.guest.name || 'Walk-in guest', initials: 'WI', isGuest: true };
+      return null;
+    }
+
+    function slotCheck() {
+      if (!bk.start) return null;
+      return SDB.checkSlot({
+        serviceIds: bk.serviceIds, staffId: bk.staffId, locationId: bk.locationId,
+        date: bk.date, start: bk.start, overrideHours: bk.overrideHours
+      });
+    }
+
+    /* ================= Accordion ================= */
+
+    document.querySelectorAll('[data-acc-head]').forEach(function (head) {
+      head.addEventListener('click', function () {
+        var sec = head.closest('[data-acc]');
+        var open = sec.hasAttribute('data-open');
+        setOpen(sec.dataset.acc, !open);
+        if (!open) active = sec.dataset.acc;
+        paintAccordion();
+      });
+    });
+
+    function setOpen(id, open) {
+      var sec = document.querySelector('[data-acc="' + id + '"]');
+      if (!sec) return;
+      if (open) sec.setAttribute('data-open', ''); else sec.removeAttribute('data-open');
+      sec.querySelector('[data-acc-head]').setAttribute('aria-expanded', open ? 'true' : 'false');
+      sec.querySelector('[data-acc-body]').hidden = !open;
+    }
+
+    function openOnly(id) {
+      setOpen(id, true);
+      active = id;
+      paintAccordion();
+      var sec = document.querySelector('[data-acc="' + id + '"]');
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    /* A tick means "this section has everything the booking needs from
+       it" — the same list the Confirm button checks. A tick that meant
+       "visited" would tell the receptionist nothing. */
+    function sectionState(id) {
+      if (id === 'service') {
+        return bk.serviceIds.length
+          ? { done: true, meta: SDS.durationText(minutes()) + ' · ' + money(total()) }
+          : { done: false, meta: '' };
+      }
+      if (id === 'when') {
+        if (!bk.start) return { done: false, meta: bk.serviceIds.length ? '' : 'Choose a service first' };
+        var c = slotCheck();
+        if (c && !c.ok) return { done: false, meta: 'Not available' };
+        return {
+          done: true,
+          meta: (bk.staffId ? SD.staffName(bk.staffId).split(' ')[0] : 'Any') + ' · ' +
+                SDR.dateShort(bk.date).replace(/, \d{4}$/, '') + ' ' + SDR.timeLabel(bk.start)
+        };
+      }
+      if (id === 'details') return { done: true, meta: bk.source };
+      if (id === 'payment') {
+        return {
+          done: true,
+          meta: bk.payType === 'none' ? 'No payment' :
+            money(bk.depositAmount) + ' · ' + depositActionLabel()
+        };
+      }
+      if (id === 'comms') {
+        return { done: true, meta: commLabel() };
+      }
+      return { done: false, meta: '' };
+    }
+
+    function depositActionLabel() {
+      var hit = SDB.DEPOSIT_ACTIONS.filter(function (a) { return a.id === bk.depositAction; })[0];
+      return hit ? hit.short : '';
+    }
+
+    function commLabel() {
+      return { sms: 'SMS', email: 'Email', both: 'SMS + Email', none: 'Not sent' }[bk.comm];
+    }
+
+    function paintAccordion() {
+      SECTIONS.forEach(function (id) {
+        var sec = document.querySelector('[data-acc="' + id + '"]');
+        if (!sec) return;
+        var st = sectionState(id);
+        sec.classList.toggle('is-done', st.done);
+        sec.classList.toggle('is-active', id === active);
+        sec.querySelector('[data-acc-meta]').textContent = st.meta;
+      });
+    }
+
+    /* ================= Mode ================= */
+
+    document.querySelectorAll('[data-mode]').forEach(function (b) {
+      b.addEventListener('click', function () { setMode(b.dataset.mode); });
+    });
+
+    function setMode(mode) {
+      bk.mode = mode;
+      document.querySelectorAll('[data-mode]').forEach(function (b) {
+        var on = b.dataset.mode === mode;
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+      });
+      document.querySelector('[data-mode-note]').textContent = mode === 'walkin'
+        ? 'Someone at the desk now. Find them, or book them as a guest.'
+        : 'Find the client, or take a walk-in.';
+      document.querySelector('[data-guest]').hidden = mode !== 'walkin';
+      if (mode === 'walkin') {
+        bk.date = SDR.today(0);
+        bk.start = '';
+        bk.source = 'Walk-in';
+      } else if (bk.source === 'Walk-in') {
+        bk.source = 'Front desk';
+      }
+      renderAll();
+    }
+
+    /* ================= Column 1 — client ================= */
+
+    var results = document.querySelector('[data-client-results]');
+    var qBox = document.getElementById('cq');
+    var qTimer = null;
+
+    qBox.addEventListener('input', function () {
+      var v = this.value;
+      window.clearTimeout(qTimer);
+      qTimer = window.setTimeout(function () { searchClients(v); }, 140);
+    });
+
+    function searchClients(term) {
+      var q = String(term || '').trim();
+      if (q.length < 2) { results.innerHTML = ''; return; }
+
+      /* Search spans every contact method, not just the primary one — a
+         client who gives the number they actually answer has to be
+         findable by it. */
+      var hits = SDC.search(SDC.live(), q).slice(0, 6);
+
+      results.innerHTML = hits.length
+        ? '<ul class="sd-hits mt-2">' + hits.map(function (c) {
+            var st = SDB.standing(c.id);
+            return '<li><button type="button" class="sd-hit" data-pick="' + c.id + '">' +
+              '<span class="sd-avatar sd-avatar--sm">' + esc(SDC.initials(c)) + '</span>' +
+              '<span class="min-w-0 flex-1 text-left">' +
+                '<span class="block text-[13px] font-semibold text-head truncate">' + esc(SDC.fullName(c)) + '</span>' +
+                '<span class="block text-[11.5px] text-sub truncate">' + esc(SDC.primaryPhoneText(c)) + '</span>' +
+                '<span class="block text-[11.5px] text-sub truncate">' + esc(SDC.primaryEmailText(c)) + '</span>' +
+              '</span>' +
+              (st ? '<span class="sd-badge ' + st.badge + ' shrink-0">' + st.label + '</span>' : '') +
+            '</button></li>';
+          }).join('') + '</ul>'
+        : '<p class="text-[13px] text-sub px-1 pt-2.5">Nobody matches “' + esc(q) + '”.</p>';
+    }
+
+    results.addEventListener('click', function (e) {
+      var pick = e.target.closest('[data-pick]');
+      if (pick) chooseClient(pick.dataset.pick);
+    });
+
+    document.querySelector('[data-new-client]').addEventListener('click', function () {
+      openNewClient(qBox.value);
+    });
+
+    document.querySelector('[data-guest]').addEventListener('click', function () {
+      bk.guest = { name: qBox.value.trim() || 'Walk-in guest' };
+      bk.clientId = '';
+      results.innerHTML = '';
+      qBox.value = '';
+      renderAll();
+    });
+
+    function chooseClient(id) {
+      bk.clientId = id;
+      bk.guest = null;
+      results.innerHTML = '';
+      qBox.value = '';
+
+      var c = SDC.byId(id);
+      bk.smsTo = SDC.primaryPhoneText(c) || '';
+      bk.emailTo = SDC.primaryEmailText(c) || '';
+      bk.clientNote = (SDB.prefs(id).notes || []).join('\n');
+
+      /* Their history is the best guess available, so it is applied
+         rather than merely displayed — overriding it is one click, which
+         is fewer actions than building the booking from nothing. */
+      pickLocation();
+
+      var sig = SDB.staffSignals(id)[0];
+      if (sig && SDB.eligibleStaff(bk.serviceIds, bk.locationId).indexOf(sig.staffId) !== -1) {
+        bk.staffId = sig.staffId;
+      } else if (sig && !bk.serviceIds.length) {
+        bk.staffId = sig.staffId;
+      }
+
+      renderAll();
+    }
+
+    function clearClient() {
+      /* §9 — clearing the client removes their suggestions, their
+         preferred-staff highlighting and their history, but the services
+         already chosen stay: the receptionist picked those deliberately.
+         Prices are re-read from the services, so any client-specific
+         figure falls away with the client. */
+      bk.clientId = '';
+      bk.guest = null;
+      bk.staffId = '';
+      bk.start = '';
+      bk.smsTo = '';
+      bk.emailTo = '';
+      bk.clientNote = '';
+      syncDeposit();
+      renderAll();
+      qBox.focus();
+    }
+
+    function stars(n) {
+      if (!n) return '<span class="text-faint">—</span>';
+      var full = Math.round(n), out = '';
+      for (var i = 1; i <= 5; i++) out += '<span class="' + (i <= full ? 'text-warning' : 'text-line') + '">★</span>';
+      return '<span class="sd-stars" aria-label="' + n + ' out of 5">' + out + '</span>';
+    }
+
+    var moreStaff = false;
+    var moreTags = false;
+
+    function renderClientCard() {
+      var box = document.querySelector('[data-client-card]');
+      var searchBox = document.querySelector('[data-client-search]');
+      var w = who();
+
+      box.hidden = !w;
+      searchBox.hidden = !!w;
+      if (!w) return;
+
+      var c = client();
+
+      if (!c) {
+        box.innerHTML =
+          '<div class="px-4 pb-4">' +
+            '<div class="flex items-start gap-3">' +
+              '<span class="sd-avatar">WI</span>' +
+              '<div class="min-w-0 flex-1">' +
+                '<span class="block text-[15px] font-semibold text-head">' + esc(w.name) + '</span>' +
+                '<span class="sd-badge sd-badge--lead mt-1">Walk-in guest</span>' +
+              '</div>' +
+              '<button type="button" class="sd-iconbtn shrink-0" data-clear-client aria-label="Remove this client from the booking">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>' +
+            '</div>' +
+            '<p class="text-[12.5px] text-sub mt-3 leading-relaxed">No record is kept beyond this appointment. ' +
+              '<button type="button" class="font-semibold text-brand hover:underline" data-new-client2>Add them as a client</button> to keep their history.</p>' +
+          '</div>';
+        return;
+      }
+
+      var st = SDB.standing(c.id);
+      var signals = SDB.staffSignals(c.id);
+      var last = SDB.lastVisit(c.id);
+      var recent = SDB.recentVisits(c.id, 3);
+      var pr = SDB.prefs(c.id);
+      var cad = SDB.cadence(c.id);
+      var win = SDB.timeWindow(c.id);
+      var rating = SDB.averageRating(c.id);
+
+      /* §10 — a long tag list would fill the card and push the history
+         below the fold, which is the part that speeds up a booking. */
+      var tags = (c.tags || []).filter(function (t) {
+        return !(st && t.toLowerCase() === st.label.toLowerCase());
+      });
+      var shownTags = moreTags ? tags : tags.slice(0, 2);
+
+      var html =
+        '<div class="px-4 pb-4 border-b border-line">' +
+          '<div class="flex items-start gap-3">' +
+            '<span class="sd-avatar">' + esc(SDC.initials(c)) + '</span>' +
+            '<div class="min-w-0 flex-1">' +
+              '<a href="client-profile.html?id=' + c.id + '" class="block text-[15px] font-semibold text-head hover:text-brand transition-colors truncate">' +
+                esc(SDC.fullName(c)) + '</a>' +
+              '<span class="block text-[12px] text-sub truncate">' + esc(SDC.primaryPhoneText(c)) + '</span>' +
+              '<span class="block text-[12px] text-sub truncate">' + esc(SDC.primaryEmailText(c)) + '</span>' +
+            '</div>' +
+            '<button type="button" class="sd-iconbtn shrink-0" data-clear-client aria-label="Remove this client from the booking">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>' +
+          '</div>' +
+          '<div class="flex flex-wrap items-center gap-1.5 mt-2.5">' +
+            (st ? '<span class="sd-badge ' + st.badge + '">' + st.label + '</span>' : '') +
+            shownTags.map(function (t) { return '<span class="sd-tag sd-tag--plain">' + esc(t) + '</span>'; }).join('') +
+            (tags.length > 2 && !moreTags
+              ? '<button type="button" class="sd-tag sd-tag--plain" data-more-tags>+' + (tags.length - 2) + '</button>'
+              : '') +
+          '</div>' +
+        '</div>';
+
+      /* §11/§12 — three separate facts, each labelled with where it came
+         from. "Preferred" only ever means asked-for; the diary's opinion
+         is reported as the diary's opinion. */
+      if (signals.length) {
+        var shown = moreStaff ? signals : signals.slice(0, 2);
+        html += '<div class="px-4 py-3 border-b border-line">' +
+          shown.map(function (s) {
+            return '<button type="button" class="sd-sig' + (s.staffId === bk.staffId ? ' is-on' : '') +
+              '" data-pick-staff="' + s.staffId + '">' +
+              '<span class="sd-sig__kind">' +
+                (s.kind === 'preferred' ? '<span class="text-danger" aria-hidden="true">♥</span> ' : '') +
+                esc(SDB.SIGNAL_LABELS[s.kind]) + '</span>' +
+              '<span class="block text-[13px] font-semibold text-head">' + esc(s.name) + '</span>' +
+              '<span class="block text-[11.5px] text-sub">' + esc(s.role) + ' · ' + esc(s.why) + '</span>' +
+            '</button>';
+          }).join('') +
+          (signals.length > 2 && !moreStaff
+            ? '<button type="button" class="sd-again mt-1.5" data-more-staff>View more</button>' : '') +
+        '</div>';
+      }
+
+      if (last) {
+        html += '<div class="px-4 py-3 border-b border-line">' +
+          '<p class="sd-eyebrow">Last booking</p>' +
+          '<p class="text-[13px] font-semibold text-head mt-1">' + esc(SDB.serviceNames(last.serviceIds)) + '</p>' +
+          '<p class="text-[12px] text-sub mt-0.5">' + esc(SDR.dateShort(last.date)) + ' · ' +
+            esc(SD.staffName(last.staffIds[0])) + ' · ' + money(last.price) + '</p>' +
+          '<button type="button" class="sd-again" data-book-again>Book the same again</button>' +
+        '</div>';
+      }
+
+      if (recent.length) {
+        html += '<div class="px-4 py-3 border-b border-line">' +
+          '<p class="sd-eyebrow">Last ' + recent.length + ' visit' + (recent.length === 1 ? '' : 's') +
+            (rating ? ' · ' + rating + ' avg' : '') + '</p>' +
+          '<ul class="mt-1.5 space-y-1.5">' + recent.map(function (v) {
+            return '<li class="flex items-baseline gap-2 text-[12px]">' +
+              '<span class="text-sub w-[42px] shrink-0">' + esc(SDR.dateShort(v.date).replace(/, \d{4}$/, '')) + '</span>' +
+              '<span class="min-w-0 flex-1 text-ink truncate">' + esc(SDB.serviceNames(v.serviceIds)) + '</span>' +
+              '<span class="text-sub shrink-0">' + esc((SD.staffName(v.staffIds[0]) || '').split(' ')[0]) + '</span>' +
+              '<span class="shrink-0 text-[11px]">' + stars(v.rating) + '</span>' +
+            '</li>';
+          }).join('') + '</ul></div>';
+      }
+
+      var facts = [];
+      if (cad) facts.push('Books about every ' + cad.weeks + ' weeks');
+      if (win) facts.push('Usually ' + win.label);
+      pr.likes.forEach(function (l) { facts.push(l); });
+
+      if (facts.length) {
+        html += '<div class="px-4 py-3 border-b border-line">' +
+          '<p class="sd-eyebrow">Preferences</p>' +
+          '<ul class="sd-bullets mt-1.5">' + facts.map(function (f) {
+            return '<li>' + esc(f) + '</li>';
+          }).join('') + '</ul></div>';
+      }
+
+      if (pr.notes.length) {
+        html += '<div class="px-4 py-3">' +
+          '<p class="sd-eyebrow">Notes</p>' +
+          '<ul class="sd-bullets mt-1.5">' + pr.notes.map(function (n) {
+            return '<li>' + esc(n) + '</li>';
+          }).join('') + '</ul>' +
+          '<p class="text-[11.5px] text-faint mt-2">Kept on the client. Notes for this visit only go in the booking.</p>' +
+        '</div>';
+      }
+
+      box.innerHTML = html;
+    }
+
+    document.querySelector('[data-client-card]').addEventListener('click', function (e) {
+      if (e.target.closest('[data-clear-client]')) { clearClient(); return; }
+      if (e.target.closest('[data-new-client2]')) { openNewClient(''); return; }
+      if (e.target.closest('[data-more-staff]')) { moreStaff = true; renderClientCard(); return; }
+      if (e.target.closest('[data-more-tags]')) { moreTags = true; renderClientCard(); return; }
+      var s = e.target.closest('[data-pick-staff]');
+      if (s) { bk.staffId = s.dataset.pickStaff; bk.start = ''; renderAll(); return; }
+      if (e.target.closest('[data-book-again]')) bookAgain();
+    });
+
+    /* §14 — copy the shape of the last booking, never its date, its time,
+       or its price. A price copied from a visit in June is simply wrong
+       by August, and the date is the one thing the receptionist is
+       actually here to decide. */
+    function bookAgain() {
+      var last = SDB.lastVisit(bk.clientId);
+      if (!last) return;
+
+      var alive = last.serviceIds.filter(function (id) {
+        var s = SDS.byId(id);
+        return s && s.status === 'active';
+      });
+      var gone = last.serviceIds.length - alive.length;
+
+      bk.serviceIds = alive;
+      bk.addonIds = [];
+      bk.locationId = last.locationId || 'loc1';
+      bk.start = '';
+
+      pickLocation();
+      var wanted = (last.staffIds || [])[0] || '';
+      var canDo = SDB.eligibleStaff(bk.serviceIds, bk.locationId);
+      bk.staffId = canDo.indexOf(wanted) !== -1 ? wanted : '';
+
+      syncDeposit();
+      renderAll();
+
+      if (gone) {
+        SD.toast(gone + ' service' + (gone === 1 ? ' is' : 's are') + ' no longer offered and ' +
+          (gone === 1 ? 'was' : 'were') + ' left off.');
+      } else if (wanted && !bk.staffId) {
+        SD.toast(esc(SD.staffName(wanted)) + ' cannot take this booking any more — choose someone else.');
+      }
+      openOnly('when');
+    }
+
+    /* ================= Column 2 — Service ================= */
+
+    var sq = document.getElementById('sq');
+    var sqTimer = null;
+    var sqTerm = '';
+
+    sq.addEventListener('input', function () {
+      var v = this.value;
+      window.clearTimeout(sqTimer);
+      sqTimer = window.setTimeout(function () { sqTerm = v; renderServiceList(); }, 140);
+    });
+
+    /* The receptionist has answered one question, so the next one opens
+       itself. It only ever moves forward to a section that is still
+       unanswered, and never closes anything — going back to change a
+       service must not cost the time already chosen. */
+    function advance() {
+      if (!bk.serviceIds.length) return;
+      var next = sectionState('when').done ? null : 'when';
+      if (!next) return;
+      setOpen(next, true);
+      active = next;
+    }
+
+    /* The location was pinned to the first site, so a spa-only service
+       looked like it had no qualified staff. It has to follow what has
+       been chosen: the sites where *every* selected service is offered,
+       preferring the one already set, then wherever this client usually
+       goes, then the first that works. */
+    function commonLocations() {
+      if (!bk.serviceIds.length) return SDR.LOCATIONS.map(function (l) { return l.id; });
+      var sets = services().map(function (s) { return SDS.locationIds(s); });
+      return sets[0].filter(function (id) {
+        return sets.every(function (set) { return set.indexOf(id) !== -1; });
+      });
+    }
+
+    function pickLocation() {
+      var ok = commonLocations();
+      if (!ok.length) return;                       /* reported, not silently fixed */
+      if (ok.indexOf(bk.locationId) !== -1) return;
+
+      var last = bk.clientId ? SDB.lastVisit(bk.clientId) : null;
+      if (last && ok.indexOf(last.locationId) !== -1) { bk.locationId = last.locationId; return; }
+      bk.locationId = ok[0];
+    }
+
+    function afterServiceChange() {
+      pickLocation();
+
+      /* Adding a service can disqualify the chosen team member — she may
+         do the cut but not the colour. Booking someone who cannot deliver
+         it is worse than asking again. */
+      if (bk.staffId && SDB.eligibleStaff(bk.serviceIds, bk.locationId).indexOf(bk.staffId) === -1) {
+        dropped = SD.staffName(bk.staffId);
+        bk.staffId = '';
+      }
+      /* An add-on whose service has gone should go with it. */
+      var offered = {};
+      services().forEach(function (s) { (s.addonIds || []).forEach(function (a) { offered[a] = true; }); });
+      bk.addonIds = bk.addonIds.filter(function (a) { return offered[a]; });
+
+      bk.start = '';
+      syncDeposit();
+      advance();
+      renderAll();
+    }
+
+    function renderChosen() {
+      var box = document.querySelector('[data-chosen]');
+      var list = services();
+
+      if (!list.length) { box.innerHTML = ''; return; }
+
+      var offered = [];
+      list.forEach(function (s) {
+        (s.addonIds || []).forEach(function (id) {
+          var a = SDS.addonById(id);
+          if (a && a.active && offered.indexOf(a) === -1) offered.push(a);
+        });
+      });
+
+      box.innerHTML =
+        '<ul class="space-y-2">' + list.map(function (s, i) {
+          return '<li class="sd-svc">' +
+            '<span class="sd-dot mt-1.5" style="background:' + SDS.colorHex(s.color) + '"></span>' +
+            '<span class="min-w-0 flex-1">' +
+              '<span class="block text-[13px] font-semibold text-head">' + esc(s.name) + '</span>' +
+              '<span class="block text-[12px] text-sub mt-0.5">' + SDS.durationText(SDS.serviceMinutes(s)) + ' · ' +
+                money(SDS.priceFor(s, { staffId: bk.staffId, locationId: bk.locationId })) + '</span>' +
+            '</span>' +
+            '<span class="flex items-center gap-1 shrink-0">' +
+              '<a href="add-service.html?id=' + s.id + '" class="sd-linkbtn">Edit</a>' +
+              '<button type="button" class="sd-linkbtn sd-linkbtn--danger" data-drop-service="' + i + '">Remove</button>' +
+            '</span>' +
+          '</li>';
+        }).join('') + '</ul>' +
+
+        (offered.length
+          ? '<div class="mt-3"><p class="sd-eyebrow mb-1.5">Add-ons</p>' +
+            '<div class="flex flex-wrap gap-1.5">' + offered.map(function (a) {
+              var on = bk.addonIds.indexOf(a.id) !== -1;
+              return '<button type="button" class="sd-svcchip' + (on ? ' is-on' : '') +
+                '" data-addon="' + a.id + '" aria-pressed="' + on + '">' + esc(a.name) +
+                '<span class="text-sub font-normal">+' + money(a.price) +
+                (Number(a.durationMin) ? ' · ' + SDS.durationText(a.durationMin) : '') + '</span></button>';
+            }).join('') + '</div></div>'
+          : '') +
+
+        '<div class="sd-svctotal mt-3">' +
+          '<span>Total</span>' +
+          '<b>' + SDS.durationText(minutes()) + ' · ' + money(total()) + '</b>' +
+        '</div>';
+    }
+
+    document.querySelector('[data-chosen]').addEventListener('click', function (e) {
+      var d = e.target.closest('[data-drop-service]');
+      if (d) { bk.serviceIds.splice(Number(d.dataset.dropService), 1); afterServiceChange(); return; }
+      var a = e.target.closest('[data-addon]');
+      if (!a) return;
+      var at = bk.addonIds.indexOf(a.dataset.addon);
+      if (at === -1) bk.addonIds.push(a.dataset.addon); else bk.addonIds.splice(at, 1);
+      bk.start = '';
+      renderAll();
+    });
+
+    /* §21 — shortcuts, never restrictions. The full list stays below. */
+    function renderSuggestions() {
+      var box = document.querySelector('[data-suggest]');
+      var c = client();
+      if (!c) { box.innerHTML = ''; return; }
+
+      var sigs = SDB.serviceSignals(c.id).filter(function (sig) {
+        return sig.serviceIds.join('+') !== bk.serviceIds.slice().sort().join('+');
+      });
+      if (!sigs.length) { box.innerHTML = ''; return; }
+
+      var LABEL = { usual: 'Usually books', last: 'Last booked', due: 'Recommended rebooking' };
+
+      box.innerHTML = '<p class="sd-eyebrow mb-1.5">From their history</p>' +
+        '<div class="flex flex-wrap gap-1.5">' + sigs.map(function (sig) {
+          return '<button type="button" class="sd-sugg" data-suggest-ids="' + esc(sig.serviceIds.join(',')) + '">' +
+            '<span class="block text-[11px] font-semibold uppercase tracking-wide text-faint">' + esc(LABEL[sig.kind] || sig.kind) + '</span>' +
+            '<span class="block text-[12.5px] font-semibold text-head">' + esc(SDB.serviceNames(sig.serviceIds)) + '</span>' +
+            '<span class="block text-[11px] text-sub">' + esc(sig.why) + '</span>' +
+          '</button>';
+        }).join('') + '</div>';
+    }
+
+    document.querySelector('[data-suggest]').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-suggest-ids]');
+      if (!b) return;
+      bk.serviceIds = b.dataset.suggestIds.split(',');
+      afterServiceChange();
+    });
+
+    function renderServiceList() {
+      var box = document.querySelector('[data-service-list]');
+      var list = SDS.all().filter(function (s) { return s.status === 'active'; });
+      var q = sqTerm.trim();
+      if (q) list = SDS.search(list, q);
+
+      if (!list.length) {
+        box.innerHTML = '<p class="text-[13px] text-sub py-2">No active service matches “' + esc(q) + '”.</p>';
+        return;
+      }
+
+      var byCat = {};
+      list.forEach(function (s) { (byCat[s.categoryId] = byCat[s.categoryId] || []).push(s); });
+
+      box.innerHTML = SDS.categories().filter(function (cat) { return byCat[cat.id]; })
+        .map(function (cat) {
+          return '<div class="mb-3 last:mb-0">' +
+            '<p class="sd-eyebrow mb-1.5">' + esc(cat.name) + '</p>' +
+            '<div class="flex flex-wrap gap-1.5">' + byCat[cat.id].map(function (s) {
+              var on = bk.serviceIds.indexOf(s.id) !== -1;
+              return '<button type="button" class="sd-svcchip' + (on ? ' is-on' : '') +
+                '" data-add-service="' + s.id + '" aria-pressed="' + on + '">' +
+                '<span class="sd-dot" style="background:' + SDS.colorHex(s.color) + '"></span>' +
+                esc(s.name) +
+                '<span class="text-sub font-normal">' + SDS.durationText(SDS.serviceMinutes(s)) + '</span>' +
+              '</button>';
+            }).join('') + '</div></div>';
+        }).join('');
+    }
+
+    document.querySelector('[data-service-list]').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-add-service]');
+      if (!b) return;
+      var id = b.dataset.addService;
+      var at = bk.serviceIds.indexOf(id);
+      if (at === -1) bk.serviceIds.push(id); else bk.serviceIds.splice(at, 1);
+      afterServiceChange();
+    });
+
+    /* ================= Column 2 — Who with + when ================= */
+
+    var dropped = '';
+
+    function dayLabel(d) {
+      return new Date(d + 'T12:00:00').toLocaleDateString(undefined,
+        { weekday: 'long', month: 'long', day: 'numeric' });
+    }
+
+    function shiftDate(days) {
+      var d = new Date(bk.date + 'T12:00:00');
+      d.setDate(d.getDate() + days);
+      var iso = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+      if (iso < SDR.today(0)) return;
+      bk.date = iso;
+      bk.start = '';
+      bk.overrideHours = false;
+      renderAll();
+    }
+
+    /* Whether this user may knowingly book past closing. The role comes
+       from the signed-in staff record, so a receptionist simply never
+       sees the option rather than seeing it and being refused. */
+    function canOverride() {
+      if (typeof SDT === 'undefined' || typeof SDA === 'undefined') return false;
+
+      /* Match on the login address rather than the name: two people can
+         share a name, and only one of them can hold the account. */
+      var email = String((SDA.read().user || {}).email || '').toLowerCase();
+      var me = SDT.all().filter(function (x) {
+        return x.access && x.access.enabled &&
+               String(x.access.loginEmail || '').toLowerCase() === email;
+      })[0];
+      if (!me || !me.access.roleId) return false;
+      return SDT.can(me.access.roleId, 'hours.override');
+    }
+
+    /* An empty day has two very different causes and the receptionist
+       needs to know which: a full diary means try tomorrow, a closed
+       site means tomorrow may be shut too. */
+    function closedReason(staffId) {
+      if (typeof SDH !== 'undefined' && bk.locationId) {
+        var state = SDH.spansOn(bk.locationId, bk.date);
+        if (!state.spans.length) {
+          var ex = state.exception;
+          return ex
+            ? (ex.name || 'Closed') + ' — ' + SDR.locationName(bk.locationId) + ' is shut all day.'
+            : SDR.locationName(bk.locationId) + ' is closed on this day.';
+        }
+      }
+      return 'Nothing free on this day. Try the next one.';
+    }
+
+    /* The window the grid scans. It used to be a hardcoded 9-to-7, which
+       quietly hid the airport site's 6 AM starts and made the
+       outside-hours toggle below incapable of showing anything. It now
+       follows the day the location actually keeps, widened by an hour
+       either side when someone has asked to see closed times. */
+    function scanWindow() {
+      var from = 9 * 60, to = 19 * 60;
+      if (typeof SDH !== 'undefined' && bk.locationId) {
+        var spans = SDH.spansOn(bk.locationId, bk.date).spans;
+        if (spans.length) {
+          from = Math.min.apply(null, spans.map(function (x) { return SDH.toMin(x[0]); }));
+          to = Math.max.apply(null, spans.map(function (x) { return SDH.toMin(x[1]); }));
+        }
+      }
+      if (showClosed) { from = Math.max(0, from - 120); to = Math.min(24 * 60, to + 120); }
+      return { from: SDR.fromMin(from), to: SDR.fromMin(to) };
+    }
+
+    function slotsFor(staffId) {
+      var win = scanWindow();
+      var rows = SDB.daySlots({
+        serviceIds: bk.serviceIds, staffId: staffId || '', locationId: bk.locationId, date: bk.date
+      }, { from: win.from, to: win.to, stepMin: 30 });
+
+      /* Today's gone hours are not availability. */
+      if (bk.date === SDR.today(0)) {
+        var n = new Date();
+        var nowMin = n.getHours() * 60 + n.getMinutes();
+        rows = rows.filter(function (r) { return SDR.toMin(r.start) >= nowMin; });
+      }
+      /* §23 — a slot that fails *only* because the site is shut is a
+         different animal from one where the stylist is already booked.
+         The first is a decision the front desk is allowed to make; the
+         second is not. So it is kept in the list, marked, and costs a
+         confirmation. */
+      return rows.filter(function (r) {
+        return r.result.ok || (showClosed && r.result.overridable);
+      });
+    }
+
+    /* Off by default: the ordinary case is a receptionist looking for a
+       time the salon is open, and burying those among greyed-out
+       after-hours slots would slow down every normal booking to make
+       one rare one faster. */
+    var showClosed = false;
+
+    function renderStaff() {
+      var box = document.querySelector('[data-staff-list]');
+
+      if (!bk.serviceIds.length) {
+        box.innerHTML = '<p class="text-[13px] text-sub">Choose a service first — only the people who can perform it are offered.</p>';
+        return;
+      }
+
+      /* Two services offered at different sites cannot be one
+         appointment. Saying so beats an empty staff list. */
+      var where = commonLocations();
+      if (!where.length) {
+        box.innerHTML = '<div class="sd-alert sd-alert--warn">' +
+          esc(SDB.serviceNames(bk.serviceIds)) +
+          ' are not all offered at the same location, so they cannot be one appointment. ' +
+          'Book them separately, or drop one.</div>';
+        return;
+      }
+
+      var picker = where.length > 1
+        ? '<div class="flex flex-wrap items-center gap-2 mb-2.5">' +
+            '<span class="text-[12.5px] text-sub">At</span>' +
+            where.map(function (l) {
+              return '<button type="button" class="sd-radiochip' + (l === bk.locationId ? ' is-on' : '') +
+                '" data-pick-loc="' + l + '">' + esc(SDR.locationName(l)) + '</button>';
+            }).join('') +
+          '</div>'
+        : '<p class="text-[12.5px] text-sub mb-2.5">At ' + esc(SDR.locationName(bk.locationId)) + '</p>';
+
+      var opts = SDB.staffOptions({
+        serviceIds: bk.serviceIds, locationId: bk.locationId, date: bk.date
+      }, bk.clientId);
+
+      if (!opts.length) {
+        box.innerHTML = picker + '<div class="sd-alert sd-alert--warn">Nobody is qualified for ' +
+          esc(SDB.serviceNames(bk.serviceIds)) + ' at ' + esc(SDR.locationName(bk.locationId)) +
+          '. Check the service\'s Staff section.</div>';
+        return;
+      }
+
+      var KIND = SDB.SIGNAL_LABELS;
+      var anyOn = bk.staffId === '';
+
+      /* §24/§25 — the date navigation and the slots live *inside* the
+         chosen card. Splitting "who" from "when" makes the receptionist
+         hold one answer in their head while they look for the other. */
+      function when(staffId) {
+        var free = slotsFor(staffId);
+        return '<div class="sd-when">' +
+          '<div class="flex flex-wrap items-center gap-2 mb-2.5">' +
+            '<button type="button" class="sd-iconbtn" data-day="-1"' +
+              (bk.date <= SDR.today(0) ? ' disabled' : '') + ' aria-label="Previous day">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+            '<span class="text-[13px] font-semibold text-head">' + esc(dayLabel(bk.date)) +
+              (bk.date === SDR.today(0) ? ' · today' : '') + '</span>' +
+            '<button type="button" class="sd-iconbtn" data-day="1" aria-label="Next day">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+            '<span class="text-[12px] text-sub ml-auto">' + SDS.durationText(minutes()) + ' needed</span>' +
+          '</div>' +
+          (free.length
+            ? '<div class="sd-slots">' + free.map(function (r) {
+                var out = !r.result.ok;
+                var whoWith = r.result.staff.map(function (s) { return SD.staffName(s); }).join(', ');
+                var why = out
+                  ? (r.result.failures.filter(function (f) { return f.kind === 'hours'; })[0] || {}).detail
+                  : '';
+                return '<button type="button" class="sd-slot ' + (out ? 'is-out' : 'is-ok') +
+                  (r.start === bk.start && staffId === bk.staffId ? ' is-picked' : '') + '"' +
+                  ' data-slot="' + r.start + '" data-slot-staff="' + (staffId || '') + '"' +
+                  (out ? ' data-slot-out="1"' : '') +
+                  ' title="' + esc(out ? r.label + ' — ' + why : r.label + ' — ' + whoWith) + '">' + r.label +
+                  (out
+                    ? '<span class="sd-slot__who">closed</span>'
+                    : (!staffId ? '<span class="sd-slot__who">' + esc(whoWith.split(',')[0].split(' ')[0]) + '</span>' : '')) +
+                  '</button>';
+              }).join('') + '</div>'
+            : '<p class="text-[12.5px] text-danger">' + esc(closedReason(staffId)) + '</p>') +
+          (canOverride()
+            ? '<label class="flex items-center gap-2 mt-2.5 text-[12px] text-sub cursor-pointer">' +
+                '<input type="checkbox" class="sd-check" data-show-closed' +
+                (showClosed ? ' checked' : '') + ' /> Also show times outside business hours</label>'
+            : '') +
+          (bk.start && staffId === bk.staffId
+            ? '<p class="text-[13px] font-semibold text-head mt-2.5">' +
+              esc(SDR.timeLabel(bk.start)) + ' – ' +
+              esc(SDR.timeLabel(SDR.fromMin(SDR.toMin(bk.start) + minutes()))) + '</p>'
+            : '') +
+        '</div>';
+      }
+
+      box.innerHTML =
+        picker +
+        (dropped
+          ? '<div class="sd-alert sd-alert--warn mb-2.5">' + esc(dropped) +
+            ' cannot do everything on this booking, so the choice is open again.</div>'
+          : '') +
+
+        '<div class="sd-staffcard' + (anyOn ? ' is-on' : '') + '">' +
+          '<button type="button" class="sd-staffrow" data-pick-any>' +
+            '<span class="sd-avatar sd-avatar--sm sd-avatar--any" aria-hidden="true">' +
+              '<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 12h16M12 4v16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>' +
+            '<span class="min-w-0 flex-1 text-left">' +
+              '<span class="block text-[13px] font-semibold text-head">Any available team member</span>' +
+              '<span class="block text-[11.5px] text-sub">Earliest across ' + opts.length + ' qualified</span>' +
+            '</span>' +
+          '</button>' +
+          (anyOn ? when('') : '') +
+        '</div>' +
+
+        opts.map(function (o) {
+          var on = o.staffId === bk.staffId;
+          var badge = o.kind !== 'other'
+            ? '<span class="sd-sig__kind">' + (o.kind === 'preferred' ? '<span class="text-danger" aria-hidden="true">♥</span> ' : '') +
+              esc(KIND[o.kind]) + '</span>' : '';
+          return '<div class="sd-staffcard' + (on ? ' is-on' : '') + '">' +
+            '<button type="button" class="sd-staffrow" data-pick-staff2="' + o.staffId + '">' +
+              '<span class="sd-avatar sd-avatar--sm">' +
+                esc(o.name.split(' ').map(function (x) { return x[0]; }).join('').slice(0, 2)) + '</span>' +
+              '<span class="min-w-0 flex-1 text-left">' + badge +
+                '<span class="block text-[13px] font-semibold text-head">' + esc(o.name) + '</span>' +
+                '<span class="block text-[11.5px] text-sub">' + esc(o.role) + (o.why ? ' · ' + esc(o.why) : '') + '</span>' +
+              '</span>' +
+              '<span class="shrink-0 text-right">' +
+                (o.next
+                  ? '<span class="block text-[11px] text-sub">Next available</span>' +
+                    '<span class="block text-[12.5px] font-semibold text-head">' + esc(o.next.label) + '</span>' +
+                    '<span class="block text-[11px] text-sub">' +
+                      esc(o.next.date === SDR.today(0) ? 'today' : SDR.dateShort(o.next.date).replace(/, \d{4}$/, '')) + '</span>'
+                  : '<span class="block text-[11.5px] text-danger">Nothing this week</span>') +
+              '</span>' +
+            '</button>' +
+            (on ? when(o.staffId) : '') +
+          '</div>';
+        }).join('');
+    }
+
+    document.querySelector('[data-staff-list]').addEventListener('change', function (e) {
+      if (!e.target.matches('[data-show-closed]')) return;
+      showClosed = e.target.checked;
+      renderAll();
+    });
+
+    document.querySelector('[data-staff-list]').addEventListener('click', function (e) {
+      var loc = e.target.closest('[data-pick-loc]');
+      if (loc) {
+        bk.locationId = loc.dataset.pickLoc;
+        if (SDB.eligibleStaff(bk.serviceIds, bk.locationId).indexOf(bk.staffId) === -1) bk.staffId = '';
+        bk.start = '';
+        bk.overrideHours = false;
+        renderAll();
+        return;
+      }
+      var day = e.target.closest('[data-day]');
+      if (day) { shiftDate(Number(day.dataset.day)); return; }
+
+      var slot = e.target.closest('[data-slot]');
+      if (slot) {
+        /* §23 — an outside-hours slot is a decision, not a click. The
+           warning names the hours it is stepping outside, so "Override"
+           is answering a question rather than dismissing a nag. */
+        if (slot.hasAttribute('data-slot-out')) {
+          var start = slot.dataset.slot;
+          var who = slot.dataset.slotStaff || '';
+          var state = SDH.spansOn(bk.locationId, bk.date);
+          var open = state.spans.length
+            ? SDR.locationName(bk.locationId) + ' is open ' + SDH.spansText(state.spans) +
+              ' that day.'
+            : SDR.locationName(bk.locationId) + ' is closed that day.';
+
+          confirmDialog({
+            title: 'Outside business hours',
+            body: 'This appointment is outside the location\u2019s business hours. ' + open +
+                  ' Booking it anyway will be recorded against your name.',
+            okLabel: 'Override & Book',
+            onOk: function () {
+              bk.staffId = who;
+              bk.start = start;
+              bk.overrideHours = true;
+              renderAll();
+            }
+          });
+          return;
+        }
+        bk.staffId = slot.dataset.slotStaff || '';
+        bk.start = slot.dataset.slot;
+        bk.overrideHours = false;
+        renderAll();
+        return;
+      }
+      if (e.target.closest('[data-show-closed]')) return;   /* handled on change */
+      if (e.target.closest('[data-pick-any]')) {
+        bk.staffId = ''; dropped = ''; bk.start = ''; renderAll(); return;
+      }
+      var b = e.target.closest('[data-pick-staff2]');
+      if (!b) return;
+      dropped = '';
+      bk.staffId = b.dataset.pickStaff2;
+      bk.start = '';
+      renderAll();
+    });
+
+    /* ================= Column 2 — Booking details ================= */
+
+    document.getElementById('bSource').addEventListener('change', function () {
+      bk.source = this.value;
+      paintAccordion();
+      renderSummary();
+    });
+    document.getElementById('bNotes').addEventListener('input', function () {
+      bk.notes = this.value;
+      renderSummary();
+    });
+    document.getElementById('bClientNote').addEventListener('input', function () {
+      bk.clientNote = this.value;
+      renderSummary();
+    });
+
+    function renderDetails() {
+      var sel = document.getElementById('bSource');
+      sel.innerHTML = SDB.SOURCES.map(function (s) {
+        return '<option value="' + esc(s) + '"' + (s === bk.source ? ' selected' : '') + '>' + esc(s) + '</option>';
+      }).join('');
+      sel.value = bk.source;
+      SD.comboRefresh(sel);
+
+      var note = document.getElementById('bClientNote');
+      if (note.value !== bk.clientNote) note.value = bk.clientNote;
+
+      var c = client();
+      document.querySelector('[data-clientnote-wrap]').hidden = !c;
+      document.querySelector('[data-clientnote-hint]').textContent = c
+        ? 'Saved to ' + SDC.fullName(c) + ' when the booking is confirmed. Everyone booking them sees it.'
+        : '';
+    }
+
+    /* ================= Column 2 — Deposit / payment ================= */
+
+    /* The amount the service rules ask for. Editable afterwards, but this
+       is what it starts at, so the desk does not have to look it up. */
+    function requiredDeposit() {
+      var due = 0;
+      services().forEach(function (s) {
+        if (!s.online.requireDeposit) return;
+        var p = SDS.priceFor(s, { staffId: bk.staffId, locationId: bk.locationId });
+        due += s.online.depositType === 'percent'
+          ? Math.round(p * Number(s.online.depositAmount) / 100)
+          : Number(s.online.depositAmount);
+      });
+      return due;
+    }
+
+    var depositTouched = false;
+
+    function syncDeposit() {
+      var req = requiredDeposit();
+      if (depositTouched) return;
+      bk.payType = req > 0 ? 'deposit' : 'none';
+      bk.depositAmount = req;
+    }
+
+    function renderPayment() {
+      var req = requiredDeposit();
+      var TYPES = [
+        { id: 'none', label: 'No payment required', note: 'Nothing is taken now or at booking.' },
+        { id: 'deposit', label: 'Deposit required',
+          note: req > 0 ? 'Service rules ask for ' + money(req) + '.' : 'Set an amount below.' }
+      ];
+
+      document.querySelector('[data-paytype]').innerHTML = TYPES.map(function (t) {
+        var on = t.id === bk.payType;
+        return '<label class="sd-pick' + (on ? ' is-on' : '') + '">' +
+          '<input type="radio" name="paytype" class="sd-radio" value="' + t.id + '"' + (on ? ' checked' : '') + ' />' +
+          '<span class="min-w-0"><span class="block text-[13px] font-semibold text-ink">' + esc(t.label) + '</span>' +
+          '<span class="block text-[12px] text-sub mt-0.5 leading-snug">' + esc(t.note) + '</span></span></label>';
+      }).join('');
+
+      var box = document.querySelector('[data-deposit]');
+      box.hidden = bk.payType !== 'deposit';
+      if (box.hidden) return;
+
+      box.innerHTML =
+        '<div class="grid sm:grid-cols-2 gap-4">' +
+          '<div>' +
+            '<label for="depAmt" class="block text-[13px] font-medium text-ink mb-1.5">Deposit amount</label>' +
+            '<div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-sub text-[13px] pointer-events-none">$</span>' +
+            '<input id="depAmt" type="number" min="0" step="1" class="sd-input !pl-7" value="' + esc(bk.depositAmount) + '" /></div>' +
+            (req > 0 && Number(bk.depositAmount) !== req
+              ? '<p class="text-[12px] text-warning mt-1.5">Changed from the ' + money(req) + ' the service rules ask for.</p>'
+              : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="grid sm:grid-cols-2 gap-2 mt-3">' + SDB.DEPOSIT_ACTIONS.map(function (a) {
+          var on = a.id === bk.depositAction;
+          return '<label class="sd-pick' + (on ? ' is-on' : '') + '">' +
+            '<input type="radio" name="depaction" class="sd-radio" value="' + a.id + '"' + (on ? ' checked' : '') + ' />' +
+            '<span class="min-w-0"><span class="block text-[13px] font-semibold text-ink">' + esc(a.label) +
+              (a.restricted ? ' <span class="sd-tag sd-tag--plain">Manager</span>' : '') + '</span>' +
+            '<span class="block text-[12px] text-sub mt-0.5 leading-snug">' + esc(a.note) + '</span></span></label>';
+        }).join('') + '</div>' +
+        (bk.depositAction === 'waive'
+          ? '<div class="mt-3">' +
+              '<label for="waiveWhy" class="block text-[13px] font-medium text-ink mb-1.5">Reason for the waiver<span class="text-danger"> *</span></label>' +
+              '<input id="waiveWhy" type="text" class="sd-input" placeholder="VIP client" value="' + esc(bk.waiveReason) + '" autocomplete="off" />' +
+              '<p class="text-[12px] text-faint mt-1.5">Recorded with your name, the time, and the ' + money(bk.depositAmount) + ' that was waived.</p>' +
+            '</div>'
+          : '');
+    }
+
+    document.querySelector('[data-acc="payment"]').addEventListener('change', function (e) {
+      if (e.target.matches('[name="paytype"]')) {
+        depositTouched = true;
+        bk.payType = e.target.value;
+        if (bk.payType === 'deposit' && !Number(bk.depositAmount)) bk.depositAmount = requiredDeposit();
+        renderPayment(); paintAccordion(); renderSummary();
+        return;
+      }
+      if (e.target.matches('[name="depaction"]')) {
+        /* Waiving a required deposit is a manager's call, so it is
+           confirmed out loud rather than being a radio anyone can select
+           in passing. Cancelling puts the choice back. */
+        if (e.target.value === 'waive') {
+          confirmDialog({
+            title: 'Waive the ' + money(bk.depositAmount) + ' deposit?',
+            body: 'This needs a manager. The waiver is recorded with your name, the time, the reason and the original amount.',
+            okLabel: 'Waive it',
+            onOk: function () { bk.depositAction = 'waive'; renderPayment(); paintAccordion(); renderSummary(); },
+            onCancel: function () { renderPayment(); }
+          });
+          return;
+        }
+        bk.depositAction = e.target.value;
+        renderPayment(); paintAccordion(); renderSummary();
+      }
+    });
+
+    document.querySelector('[data-acc="payment"]').addEventListener('input', function (e) {
+      if (e.target.id === 'depAmt') {
+        depositTouched = true;
+        bk.depositAmount = Number(e.target.value) || 0;
+        paintAccordion(); renderSummary();
+      }
+      if (e.target.id === 'waiveWhy') {
+        bk.waiveReason = e.target.value;
+        renderSummary();
+      }
+    });
+
+    /* ================= Column 2 — Communication ================= */
+
+    function renderComms() {
+      var CHOICES = [
+        { id: 'sms', label: 'SMS' },
+        { id: 'email', label: 'Email' },
+        { id: 'both', label: 'SMS + Email' },
+        { id: 'none', label: 'Do not send' }
+      ];
+      document.querySelector('[data-commchoice]').innerHTML = CHOICES.map(function (ch) {
+        var on = ch.id === bk.comm;
+        return '<label class="sd-radiochip' + (on ? ' is-on' : '') + '">' +
+          '<input type="radio" name="comm" class="sr-only" value="' + ch.id + '"' + (on ? ' checked' : '') + ' />' +
+          esc(ch.label) + '</label>';
+      }).join('');
+
+      var box = document.querySelector('[data-commto]');
+      var c = client();
+
+      if (bk.comm === 'none') {
+        box.innerHTML = '<p class="text-[12.5px] text-sub">Nothing is sent. The booking still appears on the calendar.</p>';
+        return;
+      }
+      if (!c) {
+        box.innerHTML = '<p class="text-[12.5px] text-sub">A walk-in guest has no contact details on file, so nothing can be sent.</p>';
+        return;
+      }
+
+      var phones = SDC.allPhones(c);
+      var emails = SDC.allEmails(c);
+      var out = '';
+
+      function opts(list, chosen, kind) {
+        return list.map(function (r) {
+          var text = kind === 'sms' ? SDC.phoneText(r) : r.email;
+          return '<option value="' + esc(text) + '"' + (text === chosen ? ' selected' : '') + '>' +
+            esc(text) + ' · ' + esc(SDC.contactLabel(r)) + '</option>';
+        }).join('');
+      }
+
+      if (bk.comm === 'sms' || bk.comm === 'both') {
+        out += '<div class="flex flex-wrap items-center gap-2.5">' +
+          '<span class="text-[13px] text-ink w-[64px]">SMS to</span>' +
+          (phones.length
+            ? '<select class="sd-input !h-9 flex-1 min-w-[200px]" data-comm-to="sms" aria-label="Send the text to">' +
+              opts(phones, bk.smsTo, 'sms') + '</select>'
+            : '<span class="text-[12.5px] text-danger">No phone number on file</span>') +
+        '</div>';
+      }
+      if (bk.comm === 'email' || bk.comm === 'both') {
+        out += '<div class="flex flex-wrap items-center gap-2.5">' +
+          '<span class="text-[13px] text-ink w-[64px]">Email to</span>' +
+          (emails.length
+            ? '<select class="sd-input !h-9 flex-1 min-w-[200px]" data-comm-to="email" aria-label="Send the email to">' +
+              opts(emails, bk.emailTo, 'email') + '</select>'
+            : '<span class="text-[12.5px] text-danger">No email address on file</span>') +
+        '</div>';
+      }
+      out += '<p class="text-[12px] text-faint">Defaults to whichever is marked primary. Change it if they asked you to.</p>';
+      box.innerHTML = out;
+    }
+
+    document.querySelector('[data-acc="comms"]').addEventListener('change', function (e) {
+      if (e.target.matches('[name="comm"]')) {
+        bk.comm = e.target.value;
+        renderComms(); paintAccordion(); renderSummary();
+        SD.comboAll(document.querySelector('[data-commto]'));
+        return;
+      }
+      var to = e.target.closest('[data-comm-to]');
+      if (to) {
+        bk[to.dataset.commTo === 'sms' ? 'smsTo' : 'emailTo'] = to.value;
+        renderSummary();
+      }
+    });
+
+    /* ================= Column 3 — the summary ================= */
+
+    function row(label, value) {
+      return '<div class="sd-sumrow"><dt>' + label + '</dt><dd>' + value + '</dd></div>';
+    }
+
+    function renderSummary() {
+      var box = document.querySelector('[data-summary]');
+      var w = who();
+      var c = client();
+      var check = slotCheck();
+
+      var html = '';
+
+      html += '<div class="sd-sumblock">' +
+        '<p class="sd-eyebrow">Client</p>' +
+        (w
+          ? '<p class="text-[13.5px] font-semibold text-head mt-1">' + esc(w.name) + '</p>' +
+            (c ? '<p class="text-[12px] text-sub">' + esc(SDC.primaryPhoneText(c)) + '</p>' : '') +
+            (c && (c.tags || []).length
+              ? '<div class="flex flex-wrap gap-1 mt-1.5">' + (c.tags || []).slice(0, 3).map(function (t) {
+                  return '<span class="sd-tag sd-tag--plain">' + esc(t) + '</span>';
+                }).join('') + '</div>'
+              : '')
+          : '<p class="text-[13px] text-sub mt-1">Not chosen</p>') +
+      '</div>';
+
+      html += '<div class="sd-sumblock">' +
+        '<p class="sd-eyebrow">Service</p>' +
+        (bk.serviceIds.length
+          ? '<ul class="mt-1 space-y-1.5">' + services().map(function (s) {
+              return '<li><span class="block text-[13px] font-semibold text-head">' + esc(s.name) + '</span>' +
+                '<span class="block text-[12px] text-sub">' + SDS.durationText(SDS.serviceMinutes(s)) + ' · ' +
+                money(SDS.priceFor(s, { staffId: bk.staffId, locationId: bk.locationId })) + '</span></li>';
+            }).join('') +
+            addons().map(function (a) {
+              return '<li><span class="block text-[12.5px] text-ink">+ ' + esc(a.name) + '</span>' +
+                '<span class="block text-[12px] text-sub">' + money(a.price) +
+                (Number(a.durationMin) ? ' · ' + SDS.durationText(a.durationMin) : '') + '</span></li>';
+            }).join('') + '</ul>'
+          : '<p class="text-[13px] text-sub mt-1">Not chosen</p>') +
+      '</div>';
+
+      html += '<div class="sd-sumblock">' +
+        '<p class="sd-eyebrow">Team member</p>' +
+        (bk.staffId
+          ? '<p class="text-[13.5px] font-semibold text-head mt-1">' + esc(SD.staffName(bk.staffId)) + '</p>' +
+            (c && (SDB.staffSignals(c.id).filter(function (s) {
+              return s.staffId === bk.staffId && s.kind === 'preferred';
+            }).length)
+              ? '<p class="text-[12px] text-danger">♥ Preferred</p>' : '')
+          : check && check.ok
+            ? '<p class="text-[13.5px] font-semibold text-head mt-1">' +
+              esc(check.staff.map(function (s) { return SD.staffName(s); }).join(', ')) + '</p>' +
+              '<p class="text-[12px] text-sub">Any available</p>'
+            : '<p class="text-[13px] text-sub mt-1">Any available</p>') +
+      '</div>';
+
+      html += '<div class="sd-sumblock">' +
+        '<p class="sd-eyebrow">Date &amp; time</p>' +
+        (bk.start
+          ? '<p class="text-[13.5px] font-semibold text-head mt-1">' + esc(dayLabel(bk.date)) + '</p>' +
+            '<p class="text-[13px] text-ink">' + esc(SDR.timeLabel(bk.start)) + ' – ' +
+              esc(SDR.timeLabel(SDR.fromMin(SDR.toMin(bk.start) + minutes()))) + '</p>' +
+            (check && check.ok && check.assigned.length
+              ? '<p class="text-[12px] text-sub mt-0.5">' +
+                esc(check.assigned.map(function (a) { return a.name; }).join(', ')) + '</p>' : '')
+          : '<p class="text-[13px] text-sub mt-1">Not chosen</p>') +
+      '</div>';
+
+      html += '<div class="sd-sumblock">' +
+        '<p class="sd-eyebrow">Booking source</p>' +
+        '<p class="text-[13px] text-ink mt-1">' + esc(bk.source) + '</p>' +
+      '</div>';
+
+      html += '<div class="sd-sumblock">' +
+        '<p class="sd-eyebrow">Payment</p>' +
+        (bk.payType === 'none'
+          ? '<p class="text-[13px] text-ink mt-1">No payment required</p>'
+          : '<p class="text-[13px] text-ink mt-1">Deposit ' + money(bk.depositAmount) + '</p>' +
+            '<p class="text-[12px] text-sub">' + esc(depositActionLabel()) + '</p>' +
+            (bk.depositAction === 'waive' && bk.waiveReason
+              ? '<p class="text-[12px] text-sub">Reason: ' + esc(bk.waiveReason) + '</p>' : '')) +
+      '</div>';
+
+      html += '<div class="sd-sumblock">' +
+        '<p class="sd-eyebrow">Confirmation</p>' +
+        '<p class="text-[13px] text-ink mt-1">' + esc(commLabel()) + '</p>' +
+        (bk.comm !== 'none' && (bk.comm === 'sms' || bk.comm === 'both') && bk.smsTo
+          ? '<p class="text-[12px] text-sub">' + esc(bk.smsTo) + '</p>' : '') +
+        (bk.comm !== 'none' && (bk.comm === 'email' || bk.comm === 'both') && bk.emailTo
+          ? '<p class="text-[12px] text-sub truncate">' + esc(bk.emailTo) + '</p>' : '') +
+      '</div>';
+
+      /* §49 — the two kinds of note are shown apart, because one of them
+         outlives this appointment and the other does not. */
+      var existingNote = c ? (SDB.prefs(c.id).notes || []).join('\n') : '';
+      if (bk.notes || (bk.clientNote && bk.clientNote !== existingNote)) {
+        html += '<div class="sd-sumblock">' +
+          (bk.notes
+            ? '<p class="sd-eyebrow">Appointment note</p>' +
+              '<p class="text-[12.5px] text-ink mt-1 leading-relaxed">' + esc(bk.notes) + '</p>'
+            : '') +
+          (bk.clientNote && bk.clientNote !== existingNote
+            ? '<p class="sd-eyebrow' + (bk.notes ? ' mt-2.5' : '') + '">Client note — will be saved to the profile</p>' +
+              '<p class="text-[12.5px] text-ink mt-1 leading-relaxed">' + esc(bk.clientNote) + '</p>'
+            : '') +
+        '</div>';
+      }
+
+      /* §50 — what the appointment costs and what is taken today are two
+         different numbers, and conflating them is how a receptionist
+         charges a deposit twice. */
+      html += '<div class="sd-sumblock sd-sumblock--money">' +
+        '<div class="sd-money"><span>Services</span><span>' + money(servicesTotal()) + '</span></div>' +
+        (addonsTotal() ? '<div class="sd-money"><span>Add-ons</span><span>' + money(addonsTotal()) + '</span></div>' : '') +
+        (discount() ? '<div class="sd-money"><span>Discount</span><span>-' + money(discount()) + '</span></div>' : '') +
+        '<div class="sd-money sd-money--total"><span>Appointment total</span><span>' + money(total()) + '</span></div>' +
+        (bk.payType === 'deposit'
+          ? '<div class="sd-money"><span>Deposit</span><span>' + money(bk.depositAmount) +
+            (bk.depositAction === 'waive' ? ' waived' : '') + '</span></div>' : '') +
+        '<div class="sd-money sd-money--due"><span>Due now</span><span>' + money(dueNow()) + '</span></div>' +
+      '</div>';
+
+      box.innerHTML = html;
+      renderConfirm();
+    }
+
+    /* §52 — the button explains itself. A disabled control with no reason
+       is a dead end; naming the missing piece turns it into an
+       instruction. */
+    function missing() {
+      if (!who()) return 'Choose a client to continue.';
+      if (!bk.serviceIds.length) return 'Choose at least one service to continue.';
+
+      var opts = SDB.staffOptions({ serviceIds: bk.serviceIds, locationId: bk.locationId, date: bk.date }, bk.clientId);
+      if (!opts.length) return 'Nobody is qualified for this service here.';
+      if (!bk.start) return 'Select an appointment time to continue.';
+
+      var check = slotCheck();
+      if (check && !check.ok) {
+        return check.failures.map(function (f) { return f.detail; })[0] + '.';
+      }
+      if (bk.payType === 'deposit' && !(Number(bk.depositAmount) > 0) && bk.depositAction !== 'waive') {
+        return 'Set a deposit amount, or switch to no payment required.';
+      }
+      if (bk.payType === 'deposit' && bk.depositAction === 'waive' && !bk.waiveReason.trim()) {
+        return 'A waived deposit needs a reason.';
+      }
+      if ((bk.comm === 'sms' || bk.comm === 'both') && !bk.smsTo) {
+        return 'No phone number for the SMS — change the confirmation setting.';
+      }
+      if ((bk.comm === 'email' || bk.comm === 'both') && !bk.emailTo) {
+        return 'No email address — change the confirmation setting.';
+      }
+      return '';
+    }
+
+    function renderConfirm() {
+      var why = missing();
+      var go = document.querySelector('[data-confirm-booking]');
+      go.disabled = !!why;
+      go.classList.toggle('opacity-50', !!why);
+      go.classList.toggle('pointer-events-none', !!why);
+      /* An overridden booking is fine to save but should never read as
+         "everything checks out" — the whole point is that one thing
+         does not, and somebody chose to proceed. */
+      var el = document.querySelector('[data-blocker]');
+      el.textContent = why
+        || (bk.overrideHours
+              ? 'Outside business hours. Booking anyway.'
+              : bk.mode === 'walkin' ? 'Ready to check in.' : 'Everything checks out.');
+      el.className = 'text-[12.5px] mb-2.5 ' +
+        (why ? 'text-sub' : bk.overrideHours ? 'text-amber-600 font-semibold' : 'text-success font-semibold');
+    }
+
+    /* ================= Save ================= */
+
+    function persist(status) {
+      var check = SDB.checkSlot({
+        serviceIds: bk.serviceIds, staffId: bk.staffId, locationId: bk.locationId,
+        date: bk.date, start: bk.start, overrideHours: bk.overrideHours
+      });
+      if (status !== 'draft' && !check.ok) return null;
+
+      var w = who();
+      var c = client();
+
+      /* A client note typed here is persistent, so it is written to the
+         client rather than buried in one appointment. */
+      if (c && bk.clientNote.trim() &&
+          bk.clientNote !== (SDB.prefs(c.id).notes || []).join('\n')) {
+        SDB.savePrefs(c.id, { notes: bk.clientNote.split('\n').filter(function (l) { return l.trim(); }) });
+      }
+
+      return SDB.save({
+        clientId: bk.clientId,
+        guestName: bk.clientId ? '' : (w ? w.name : ''),
+        serviceIds: bk.serviceIds.slice(),
+        addonIds: bk.addonIds.slice(),
+        staffIds: check.ok ? check.staff.slice() : (bk.staffId ? [bk.staffId] : []),
+        resourceIds: check.ok ? check.assigned.map(function (a) { return a.id; }) : [],
+        date: bk.date,
+        start: bk.start,
+        end: SDR.fromMin(SDR.toMin(bk.start) + minutes()),
+        locationId: bk.locationId,
+        status: status,
+        paymentStatus: bk.payType === 'none' ? 'unpaid'
+          : bk.depositAction === 'now' ? 'deposit' : 'unpaid',
+        price: total(),
+        depositAmount: bk.payType === 'deposit' ? Number(bk.depositAmount) : 0,
+        depositAction: bk.payType === 'deposit' ? bk.depositAction : '',
+        waiveReason: bk.depositAction === 'waive' ? bk.waiveReason : '',
+        waivedBy: bk.depositAction === 'waive' ? 'You' : '',
+        waivedAt: bk.depositAction === 'waive' ? new Date().toISOString() : '',
+        source: bk.source,
+        notes: bk.notes,
+        comm: bk.comm,
+        rating: 0
+      });
+    }
+
+    document.querySelector('[data-confirm-booking]').addEventListener('click', function () {
+      var saved = persist(bk.mode === 'walkin' ? 'checkedin' : 'confirmed');
+      if (!saved) { SD.toast('That slot is no longer free. Pick another.'); renderAll(); return; }
+      showDone(saved);
+    });
+
+    document.querySelector('[data-draft]').addEventListener('click', function () {
+      if (!bk.start) { SD.toast('Pick a time before saving a draft.'); return; }
+      showDone(persist('draft'));
+    });
+
+    var doneModal = document.querySelector('[data-done]');
+
+    function sentList() {
+      var out = [];
+      if (bk.comm === 'sms' || bk.comm === 'both') { if (bk.smsTo) out.push('SMS to ' + bk.smsTo); }
+      if (bk.comm === 'email' || bk.comm === 'both') { if (bk.emailTo) out.push('email to ' + bk.emailTo); }
+      return out;
+    }
+
+    function showDone(saved) {
+      var w = who();
+      var sent = saved.status === 'draft' ? [] : sentList();
+
+      document.querySelector('[data-done-title]').textContent =
+        saved.status === 'draft' ? 'Held as a Draft'
+          : bk.mode === 'walkin' ? 'Checked In' : 'Booking Confirmed';
+
+      document.querySelector('[data-done-body]').innerHTML =
+        '<p class="text-[15px] font-semibold text-head">' + esc(w.name) + '</p>' +
+        '<p class="text-[13px] text-ink mt-1">' + esc(SDB.serviceNames(saved.serviceIds)) +
+          (saved.addonIds && saved.addonIds.length
+            ? ' + ' + esc(saved.addonIds.map(function (a) { return (SDS.addonById(a) || {}).name; }).filter(Boolean).join(' + '))
+            : '') + '</p>' +
+        '<p class="text-[13px] text-ink">' +
+          esc(saved.staffIds.map(function (s) { return SD.staffName(s); }).join(', ')) + '</p>' +
+        '<p class="text-[13px] text-sub mt-1">' + esc(dayLabel(saved.date)) + '</p>' +
+        '<p class="text-[13px] text-sub">' + esc(SDB.timeRange(saved)) + '</p>' +
+        (saved.resourceIds.length
+          ? '<p class="text-[12.5px] text-sub mt-0.5">' +
+            esc(saved.resourceIds.map(function (r) { return (SDR.resourceById(r) || {}).name; }).filter(Boolean).join(', ')) + '</p>'
+          : '') +
+        '<p class="text-[15px] font-bold text-head mt-2">' + money(saved.price) + '</p>' +
+        (sent.length
+          ? '<p class="text-[12.5px] text-sub mt-2.5">Sent: ' + esc(sent.join(' and ')) + '.</p>'
+          : saved.status === 'draft'
+            ? '<p class="text-[12.5px] text-sub mt-2.5">Nothing sent — a draft holds the slot without telling the client.</p>'
+            : '<p class="text-[12.5px] text-sub mt-2.5">No confirmation sent.</p>');
+
+      document.querySelector('[data-done-resend]').hidden = !sent.length;
+      doneModal.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-done-another]').focus();
+    }
+
+    function closeDone() {
+      doneModal.hidden = true;
+      document.body.classList.remove('sd-locked');
+    }
+
+    document.querySelector('[data-done-close]').addEventListener('click', closeDone);
+    document.querySelector('[data-done-resend]').addEventListener('click', function () {
+      SD.toast('Confirmation sent again to ' + esc(sentList().join(' and ')) + '.');
+    });
+
+    function resetBooking(keepClient) {
+      if (!keepClient) { bk.clientId = ''; bk.guest = null; bk.clientNote = ''; }
+      bk.serviceIds = []; bk.addonIds = []; bk.staffId = ''; bk.start = '';
+      bk.notes = ''; bk.waiveReason = ''; bk.depositAction = 'later';
+      depositTouched = false;
+      dropped = ''; moreStaff = false; moreTags = false;
+      document.getElementById('bNotes').value = '';
+      syncDeposit();
+      SECTIONS.forEach(function (id) { setOpen(id, id === 'service'); });
+      active = 'service';
+      renderAll();
+    }
+
+    document.querySelector('[data-done-another]').addEventListener('click', function () {
+      closeDone(); resetBooking(false); qBox.focus();
+    });
+
+    /* Booking a second appointment for the same person is common enough —
+       a colour today, a cut in six weeks — to be worth its own button. */
+    document.querySelector('[data-done-same]').addEventListener('click', function () {
+      closeDone(); resetBooking(true); sq.focus();
+    });
+
+    /* ================= Add Client modal ================= */
+
+    var ncModal = document.querySelector('[data-newclient]');
+
+    function openNewClient(seedName) {
+      var v = String(seedName || '').trim();
+      var isPhone = /^[\d\s()+-]{6,}$/.test(v);
+      var isEmail = /@/.test(v);
+      var parts = v.split(/\s+/);
+
+      document.getElementById('ncFirst').value = (isPhone || isEmail) ? '' : (parts[0] || '');
+      document.getElementById('ncLast').value = (isPhone || isEmail) ? '' : parts.slice(1).join(' ');
+      document.getElementById('ncPhone').value = isPhone ? v : '';
+      document.getElementById('ncEmail').value = isEmail ? v : '';
+
+      SD.clearErrors(document.querySelector('[data-nc-form]'));
+      document.querySelector('[data-nc-dupe]').hidden = true;
+      delete document.querySelector('[data-nc-form]').dataset.forced;
+      ncModal.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.getElementById('ncFirst').focus();
+    }
+
+    function closeNewClient() {
+      ncModal.hidden = true;
+      document.body.classList.remove('sd-locked');
+    }
+
+    document.querySelector('[data-nc-cancel]').addEventListener('click', closeNewClient);
+    document.querySelector('[data-nc-scrim]').addEventListener('click', closeNewClient);
+
+    document.querySelector('[data-nc-form]').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var form = e.currentTarget;
+      SD.clearErrors(form);
+
+      var first = document.getElementById('ncFirst');
+      var phone = document.getElementById('ncPhone');
+      var email = document.getElementById('ncEmail');
+      var ok = true;
+
+      if (!first.value.trim()) { SD.setError(first, 'A first name at least.'); ok = false; }
+      if (!phone.value.trim() && !email.value.trim()) {
+        SD.setError(phone, 'A phone or an email — the confirmation needs somewhere to go.');
+        ok = false;
+      }
+      if (email.value.trim() && !SD.isEmail(email.value.trim())) {
+        SD.setError(email, 'That does not look like an email address.');
+        ok = false;
+      }
+      if (phone.value.trim() && phone.value.replace(/\D/g, '').length < 7) {
+        SD.setError(phone, 'That does not look like a phone number.');
+        ok = false;
+      }
+      if (!ok) { SD.focusFirstError(form); return; }
+
+      var candidate = {
+        firstName: first.value.trim(),
+        lastName: document.getElementById('ncLast').value.trim(),
+        emails: email.value.trim()
+          ? [{ email: email.value.trim(), type: 'Personal', isPrimary: true, active: true }] : [],
+        phones: phone.value.trim()
+          ? [{ iso: 'US', dial: '+1', national: phone.value.replace(/\D/g, ''), type: 'Mobile', isPrimary: true, active: true }]
+          : []
+      };
+
+      /* The same duplicate check the full client form runs. Taking a
+         booking is exactly when a second record for an existing client
+         gets created, and it is the worst moment for it — their history
+         is the thing that makes this screen fast. */
+      var dupes = SDC.duplicates(candidate);
+      if (dupes.length && !form.dataset.forced) {
+        var box = document.querySelector('[data-nc-dupe]');
+        box.innerHTML = '<b>This may already be a client.</b> ' +
+          dupes.map(function (d) {
+            return '<button type="button" class="underline font-semibold" data-nc-use="' + d.client.id + '">' +
+              esc(SDC.fullName(d.client)) + '</button> has the same ' +
+              esc(d.matches.map(function (m) { return m.label + ' (' + m.value + ')'; }).join(' and '));
+          }).join('; ') +
+          '. <button type="button" class="underline font-semibold" data-nc-force>Add anyway</button>';
+        box.hidden = false;
+        return;
+      }
+
+      var made = SDC.create(Object.assign({}, candidate, {
+        source: bk.mode === 'walkin' ? 'Walk-in' : 'Front desk', status: 'active'
+      }));
+      delete form.dataset.forced;
+      closeNewClient();
+      chooseClient(made.id);
+      SD.toast('<b>' + esc(SDC.fullName(made)) + '</b> added.');
+    });
+
+    document.querySelector('[data-nc-dupe]').addEventListener('click', function (e) {
+      var use = e.target.closest('[data-nc-use]');
+      if (use) { closeNewClient(); chooseClient(use.dataset.ncUse); return; }
+      if (e.target.closest('[data-nc-force]')) {
+        document.querySelector('[data-nc-form]').dataset.forced = '1';
+        document.querySelector('[data-nc-form]').requestSubmit();
+      }
+    });
+
+    /* ================= Render ================= */
+
+    function renderAll() {
+      renderClientCard();
+      renderSuggestions();
+      renderChosen();
+      renderServiceList();
+      renderStaff();
+      renderDetails();
+      renderPayment();
+      renderComms();
+      renderSummary();
+      paintAccordion();
+      SD.comboAll(document);
+    }
+
+    /* ---------- Confirmation dialog ---------- */
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmFn = null;
+
+    function confirmDialog(o) {
+      document.querySelector('[data-confirm-title]').textContent = o.title;
+      document.querySelector('[data-confirm-body]').textContent = o.body;
+      document.querySelector('[data-confirm-ok]').textContent = o.okLabel || 'Delete';
+      confirmFn = o.onOk;
+      confirmCancelFn = o.onCancel || null;
+      confirmEl.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-confirm-cancel]').focus();
+      document.addEventListener('keydown', confirmKeys, true);
+    }
+    var confirmCancelFn = null;
+    function closeConfirm(viaCancel) {
+      confirmEl.hidden = true;
+      document.body.classList.remove('sd-locked');
+      document.removeEventListener('keydown', confirmKeys, true);
+      var back = confirmCancelFn;
+      confirmFn = null;
+      confirmCancelFn = null;
+      /* A dialog that changes a control has to be able to put it back
+         when the answer is no — otherwise the radio stays where the user
+         clicked it and the screen disagrees with the decision. */
+      if (viaCancel && back) back();
+    }
+    function confirmKeys(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeConfirm(true); return; }
+      if (e.key !== 'Tab') return;
+      var f = Array.prototype.filter.call(confirmEl.querySelectorAll('button'),
+        function (el) { return !!(el.offsetWidth || el.offsetHeight); });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmFn; closeConfirm(); if (fn) fn();
+    });
+
+    var preset = new URLSearchParams(window.location.search);
+    if (preset.get('walkin')) setMode('walkin');
+    if (preset.get('client') && SDC.byId(preset.get('client'))) chooseClient(preset.get('client'));
+
+    syncDeposit();
+    renderAll();
+
+    var landed = SD.takeFlash();
+    if (landed) SD.toast(landed);
+
+  }());
+  </script>
+</body>
+</html>

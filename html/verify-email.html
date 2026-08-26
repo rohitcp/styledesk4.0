@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Check your email — StyleDesk</title>
+
+  <!--
+    StyleDesk — Email verification (§4)
+    Same two-panel shell as signup.html so the pair reads as one flow.
+    Resend is rate-limited with a visible cooldown (§19); the real link is
+    signed, expiring and single-use, and lands on onboarding-business.html.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-white text-ink text-[13px]">
+
+  <div class="min-h-screen lg:grid lg:grid-cols-2">
+
+    <!-- ===================== Verification ===================== -->
+    <div class="flex items-center justify-center px-5 sm:px-8 py-10 sm:py-14">
+      <div class="w-full max-w-[420px]">
+
+        <a href="designsystem.html" class="inline-flex items-center gap-2.5 text-head mb-10">
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M6.5 21.5 L14 6 L18.5 6 L11 21.5 Z"/><path d="M14.5 21.5 L22 6 L26.5 6 L19 21.5 Z"/><rect x="4" y="24.6" width="24" height="3.6" rx="1.8"/></svg>
+          <span class="text-[18px] font-bold tracking-tight">StyleDesk</span>
+        </a>
+
+        <span class="h-12 w-12 rounded-xl bg-hover grid place-items-center text-sub mb-6" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M4 7l8 5.5L20 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+
+        <h1 class="text-[28px] sm:text-[32px] font-bold text-head tracking-tight leading-[1.15]">Check your email</h1>
+        <p class="text-[15px] text-sub mt-3 leading-relaxed">
+          We sent a verification link to
+          <span id="address" class="text-ink font-semibold break-all">your email address</span>.
+          Click it to verify your account and continue setting up StyleDesk.
+        </p>
+
+        <div class="mt-8">
+          <button id="resend" type="button"
+                  class="w-full h-11 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[14px] font-semibold transition-colors">
+            Resend verification email
+          </button>
+          <p id="resend-status" role="status" aria-live="polite" class="mt-2 text-[12px] text-sub min-h-[16px]"></p>
+        </div>
+
+        <div class="mt-2">
+          <button id="change-toggle" type="button" class="text-[13px] text-link font-medium hover:underline"
+                  aria-expanded="false" aria-controls="change-panel">
+            Change email address
+          </button>
+
+          <form id="change-panel" hidden class="mt-4" novalidate>
+            <label for="new-email" class="block text-[13px] font-medium text-ink mb-1.5">New email address</label>
+            <input id="new-email" type="email" autocomplete="email" class="sd-input" aria-describedby="new-email-error" />
+            <p id="new-email-error" data-error-for="new-email" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+            <div class="flex items-center gap-2 mt-3">
+              <button type="submit" class="h-9 px-4 rounded-md bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">Update and resend</button>
+              <button type="button" id="change-cancel" class="h-9 px-3 rounded-md text-sub hover:bg-hover text-[13px] font-semibold transition-colors">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="flex items-center gap-3 my-7">
+          <div class="h-px flex-1 bg-line"></div>
+          <span class="text-[13px] text-faint">or</span>
+          <div class="h-px flex-1 bg-line"></div>
+        </div>
+
+        <!-- Static prototype: there is no mail server, so this stands in for
+             clicking the signed link. Remove once /verify/{token} exists. -->
+        <button id="simulate" type="button"
+                class="w-full h-11 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+          Open the verification link
+        </button>
+        <p class="text-[12px] text-faint mt-2 text-center">Prototype shortcut — stands in for the emailed link.</p>
+
+        <p class="text-center mt-7 text-[13px] text-sub">
+          <a href="signup.html" id="logout" class="text-link font-medium hover:underline">Log out</a>
+        </p>
+
+        <p class="text-center mt-10 text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+
+      </div>
+    </div>
+
+    <!-- ===================== Value panel ===================== -->
+    <aside class="hidden lg:flex items-center border-l border-line bg-gradient-to-b from-white via-[#faf9fd] to-[#f2effa] px-10 xl:px-16 py-14">
+      <div class="w-full max-w-[520px] mx-auto">
+
+        <h2 class="text-[26px] xl:text-[29px] font-bold text-head tracking-tight leading-[1.25]">
+          Run the whole salon <span class="text-[#9a93c4]">from one screen.</span>
+        </h2>
+
+        <ul class="mt-8 space-y-5">
+          <li class="flex items-start gap-3.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[15px] text-ink leading-relaxed">Let clients book themselves in, day or night, from one link.</span>
+          </li>
+          <li class="flex items-start gap-3.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[15px] text-ink leading-relaxed">See every appointment, staff schedule and client note on one calendar.</span>
+          </li>
+          <li class="flex items-start gap-3.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[15px] text-ink leading-relaxed">Automatic reminders and cancellation rules cut no-shows.</span>
+          </li>
+        </ul>
+
+        <!--
+          PLACEHOLDER WORDMARKS — invented businesses, not real customers.
+          Swap these for your own customers' logos (and only with permission);
+          do not ship invented names under a "trusted by" heading.
+        -->
+        <div class="mt-16">
+          <p class="text-[13px] text-sub">Built for salons, spas and studios</p>
+          <div class="mt-7 grid grid-cols-3 gap-x-6 gap-y-9 text-faint">
+            <span class="text-[15px] font-bold tracking-tight text-center">Bella Beauty</span>
+            <span class="text-[15px] font-semibold tracking-[0.14em] uppercase text-center">Lumen</span>
+            <span class="text-[15px] font-bold tracking-tight text-center">Aster&nbsp;&amp;&nbsp;Ivy</span>
+            <span class="text-[15px] font-medium tracking-tight text-center">The Cutting Room</span>
+            <span class="text-[15px] font-bold tracking-tight text-center">Glasshouse</span>
+            <span class="text-[15px] font-semibold tracking-[0.14em] uppercase text-center">Verve</span>
+            <span class="text-[15px] font-medium tracking-tight text-center">Northside Barbers</span>
+            <span class="text-[15px] font-bold tracking-tight text-center">Studio Ninety</span>
+            <span class="text-[15px] font-semibold tracking-tight text-center">Rosewood Spa</span>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script>
+    (function () {
+      var state = SD.read();
+      var addressEl = document.getElementById('address');
+      var status = document.getElementById('resend-status');
+
+      function showAddress() {
+        var email = state.user && state.user.email;
+        addressEl.textContent = email || 'your email address';
+      }
+      showAddress();
+
+      /* ---- resend + cooldown ---- */
+      var resend = document.getElementById('resend');
+      var timer = null;
+
+      function cooldown(seconds) {
+        var left = seconds;
+        resend.disabled = true;
+        resend.classList.add('opacity-60', 'pointer-events-none');
+        timer = window.setInterval(function () {
+          left--;
+          if (left <= 0) {
+            window.clearInterval(timer);
+            resend.disabled = false;
+            resend.classList.remove('opacity-60', 'pointer-events-none');
+            status.textContent = '';
+          } else {
+            status.textContent = 'You can request another email in ' + left + 's.';
+          }
+        }, 1000);
+      }
+
+      resend.addEventListener('click', function () {
+        status.textContent = 'Verification email sent to ' + (state.user ? state.user.email : 'your address') + '.';
+        cooldown(30);
+      });
+
+      /* ---- change address ---- */
+      var toggle = document.getElementById('change-toggle');
+      var panel  = document.getElementById('change-panel');
+      var input  = document.getElementById('new-email');
+
+      toggle.addEventListener('click', function () {
+        var open = panel.hidden;
+        panel.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+        if (open) { input.value = (state.user && state.user.email) || ''; input.focus(); }
+      });
+      document.getElementById('change-cancel').addEventListener('click', function () {
+        panel.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.focus();
+      });
+
+      panel.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var value = SD.normalizeEmail(input.value);
+        if (!SD.isEmail(value)) return SD.setError(input, 'Please enter a valid email address.');
+        if (SD.emailTaken(value)) return SD.setError(input, 'An account already exists with this email address.');
+        SD.setError(input, '');
+
+        state.user = state.user || {};
+        state.user.email = value;
+        state.user.emailVerifiedAt = null;
+        SD.write(state);
+
+        showAddress();
+        panel.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+        status.textContent = 'Verification email sent to ' + value + '.';
+        cooldown(30);
+      });
+
+      /* ---- verified → continue into onboarding (§5) ---- */
+      document.getElementById('simulate').addEventListener('click', function () {
+        state.user = state.user || { firstName: '', lastName: '', email: 'you@yourbusiness.com' };
+        state.user.emailVerifiedAt = new Date().toISOString();
+        SD.write(state);
+        window.location.href = 'onboarding-business.html';
+      });
+
+      document.getElementById('logout').addEventListener('click', function () { SD.reset(); });
+    }());
+  </script>
+</body>
+</html>

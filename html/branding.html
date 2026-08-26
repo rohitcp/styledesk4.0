@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Branding — StyleDesk</title>
+
+  <!--
+    StyleDesk — Branding
+    The business identity, everywhere it is seen — and a contrast check so it stays readable.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
+             aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ===== Page ===== -->
+  <main class="flex-1 w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
+    <nav class="flex items-center gap-1.5 text-[12px] text-sub mb-2" aria-label="Breadcrumb">
+      <a href="app-settings.html" class="hover:text-ink transition-colors">App Settings</a>
+      <span class="text-faint">/</span>
+      <span class="text-ink font-medium">Branding</span>
+    </nav>
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-3 mb-5">
+      <div class="min-w-0">
+        <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight">Branding</h1>
+        <p class="text-[13px] text-sub mt-1 max-w-[620px] leading-relaxed">Configure the business identity used across the application, online booking, customer communications and receipts.</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2 shrink-0">
+        <button type="button" data-reset class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12a8 8 0 108-8 8 8 0 00-5.7 2.4L4 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 4v5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Reset to Default
+        </button>
+      </div>
+    </div>
+
+    <div class="grid xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
+
+      <div class="min-w-0 space-y-4">
+
+        <!-- Business Identity -->
+        <section class="sd-card" aria-label="Business identity">
+          <h2 class="text-[15px] font-semibold text-head">Business Identity</h2>
+          <p class="text-[12.5px] text-sub mt-1 leading-relaxed">Three names because they are used in three places: clients see the display name, contracts and tax documents need the legal name, and small spaces need something short.</p>
+
+          <div class="grid sm:grid-cols-2 gap-4 mt-4">
+            <div class="sm:col-span-2">
+              <label for="bName" class="block text-[13px] font-medium text-ink mb-1.5">Business display name<span class="text-danger"> *</span></label>
+              <input id="bName" type="text" class="sd-input" autocomplete="off" data-f="identity.displayName" />
+              <p class="text-[12px] text-faint mt-1.5">What clients see when booking, and on every email and receipt.</p>
+              <p class="text-[12px] text-danger mt-1.5" data-err="displayName" hidden></p>
+            </div>
+            <div>
+              <label for="bLegal" class="block text-[13px] font-medium text-ink mb-1.5">Legal business name <span class="text-faint font-normal">— optional</span></label>
+              <input id="bLegal" type="text" class="sd-input" autocomplete="off" data-f="identity.legalName" />
+              <p class="text-[12px] text-faint mt-1.5">Used on invoices and tax documents. Blank uses the display name.</p>
+            </div>
+            <div>
+              <label for="bShort" class="block text-[13px] font-medium text-ink mb-1.5">Brand / short name <span class="text-faint font-normal">— optional</span></label>
+              <input id="bShort" type="text" class="sd-input" autocomplete="off" maxlength="24" data-f="identity.shortName" />
+              <p class="text-[12px] text-faint mt-1.5">For SMS, tabs and anywhere narrow.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Logo -->
+        <section class="sd-card" aria-label="Logo">
+          <h2 class="text-[15px] font-semibold text-head">Logo</h2>
+          <p class="text-[12.5px] text-sub mt-1 leading-relaxed">PNG, JPG, SVG or WebP, up to 512&nbsp;KB. Only the primary logo is required — the rest fall back to it.</p>
+          <div class="grid sm:grid-cols-2 gap-4 mt-4" data-logos></div>
+        </section>
+
+        <!-- Favicon -->
+        <section class="sd-card" aria-label="Favicon">
+          <h2 class="text-[15px] font-semibold text-head">Favicon</h2>
+          <p class="text-[12.5px] text-sub mt-1 leading-relaxed">The browser-tab icon. Square, and legible at 16&nbsp;pixels — a full lockup will not be.</p>
+
+          <div class="flex flex-wrap items-end gap-5 mt-4">
+            <div class="min-w-0">
+              <span class="block text-[13px] font-medium text-ink mb-2">How it will look</span>
+              <div class="pt-2 px-2 rounded-t-lg bg-[#eef1f4] inline-block">
+                <span class="sd-tabpreview">
+                  <img class="sd-tabpreview__icon" data-fav-img alt="" hidden />
+                  <span class="sd-tabpreview__icon grid place-items-center bg-brand text-white text-[8px] font-bold" data-fav-fallback aria-hidden="true">SD</span>
+                  <span class="sd-tabpreview__name" data-fav-name>StyleDesk</span>
+                </span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="favFile" type="file" class="sr-only" data-fav-input accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+              <button type="button" data-fav-pick class="h-9 px-3.5 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-fav-verb>Upload favicon</button>
+              <button type="button" data-fav-clear class="h-9 px-3 rounded-lg text-[13px] font-medium text-sub hover:text-ink hover:bg-hover transition-colors" hidden>Remove</button>
+            </div>
+          </div>
+          <p class="text-[12px] text-danger mt-2.5" data-fav-err hidden></p>
+        </section>
+
+        <!-- Brand Colours -->
+        <section class="sd-card" aria-label="Brand colours">
+          <div class="flex flex-wrap items-start gap-x-4 gap-y-2">
+            <div class="min-w-0">
+              <h2 class="text-[15px] font-semibold text-head">Brand Colours</h2>
+              <p class="text-[12.5px] text-sub mt-1 leading-relaxed">Pick a colour or enter your own. Hover shades and button text are worked out for you.</p>
+            </div>
+            <p class="sd-ratio ml-auto shrink-0 mt-1" data-verdict></p>
+          </div>
+
+          <div class="mt-4">
+            <span class="block text-[13px] font-medium text-ink mb-2">Primary brand colour</span>
+            <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Preset brand colours" data-swatches></div>
+          </div>
+
+          <div class="mt-4" data-colors></div>
+
+          <div class="sd-alert sd-alert--warn mt-4" data-contrast-warn hidden>
+            <p class="text-[13px] font-semibold" data-contrast-head></p>
+            <ul class="mt-1.5 space-y-0.5 text-[12px]" data-contrast-list></ul>
+            <p class="text-[12px] mt-2">You can still save this — it is your brand. But anyone with low vision, or reading a confirmation on a phone in daylight, will struggle.</p>
+          </div>
+        </section>
+
+        <!-- Where branding is applied -->
+        <section class="sd-card" aria-label="Where branding is applied">
+          <h2 class="text-[15px] font-semibold text-head">Where Branding Is Applied</h2>
+          <p class="text-[12.5px] text-sub mt-1 leading-relaxed">Turn a surface off to leave it on the StyleDesk default.</p>
+          <div class="grid sm:grid-cols-2 gap-x-6 mt-3" data-surfaces></div>
+          <p class="sd-alert sd-alert--info mt-3.5">Surfaces marked <span class="font-semibold">not built yet</span> keep the setting for when they arrive.</p>
+        </section>
+
+        <!-- Email branding -->
+        <section class="sd-card" aria-label="Email branding">
+          <h2 class="text-[15px] font-semibold text-head">Email Branding</h2>
+          <p class="text-[12.5px] text-sub mt-1 leading-relaxed">Applies to confirmations, reminders, cancellations and receipts.</p>
+
+          <div class="divide-y divide-line mt-3">
+            <label class="flex items-start gap-3 py-3 cursor-pointer">
+              <input type="checkbox" class="sd-check mt-0.5" data-f="email.useLogo" />
+              <span class="min-w-0">
+                <span class="block text-[13px] font-medium text-ink">Show the logo in the email header</span>
+                <span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off falls back to the business name set in large type.</span>
+              </span>
+            </label>
+          </div>
+
+          <fieldset class="mt-4">
+            <legend class="block text-[13px] font-medium text-ink mb-2">Header background</legend>
+            <div class="grid sm:grid-cols-3 gap-2" data-email-header></div>
+          </fieldset>
+
+          <div class="grid sm:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label for="eFooter" class="block text-[13px] font-medium text-ink mb-1.5">Footer business name</label>
+              <input id="eFooter" type="text" class="sd-input" autocomplete="off" data-f="email.footerName" />
+            </div>
+            <div>
+              <label for="eContact" class="block text-[13px] font-medium text-ink mb-1.5">Contact details</label>
+              <input id="eContact" type="text" class="sd-input" autocomplete="off" data-f="email.contact" />
+            </div>
+            <div>
+              <label for="eWeb" class="block text-[13px] font-medium text-ink mb-1.5">Website</label>
+              <input id="eWeb" type="text" class="sd-input" autocomplete="off" data-f="email.website" />
+            </div>
+            <div>
+              <label for="eSocial" class="block text-[13px] font-medium text-ink mb-1.5">Social link</label>
+              <input id="eSocial" type="text" class="sd-input" autocomplete="off" data-f="email.social" />
+            </div>
+          </div>
+
+          <div class="divide-y divide-line mt-2">
+            <label class="flex items-start gap-3 py-3 cursor-pointer" data-powered-row>
+              <input type="checkbox" class="sd-check mt-0.5" data-f="email.poweredBy" />
+              <span class="min-w-0">
+                <span class="block text-[13px] font-medium text-ink">Show &ldquo;Powered by StyleDesk&rdquo;</span>
+                <span class="block text-[12px] text-sub mt-0.5 leading-relaxed" data-powered-note></span>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Receipt & invoice branding -->
+        <section class="sd-card" aria-label="Receipt and invoice branding">
+          <h2 class="text-[15px] font-semibold text-head">Receipt &amp; Invoice Branding</h2>
+          <p class="text-[12.5px] text-sub mt-1 leading-relaxed">What appears on receipts, invoices and anything printed.</p>
+
+          <div class="divide-y divide-line mt-3">
+            <label class="flex items-start gap-3 py-3 cursor-pointer">
+              <input type="checkbox" class="sd-check mt-0.5" data-f="receipt.useLogo" />
+              <span class="min-w-0">
+                <span class="block text-[13px] font-medium text-ink">Show the logo on receipts</span>
+                <span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off prints the business name instead, which is cheaper on a thermal printer.</span>
+              </span>
+            </label>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-4 mt-4">
+            <div class="sm:col-span-2">
+              <label for="rName" class="block text-[13px] font-medium text-ink mb-1.5">Business name</label>
+              <input id="rName" type="text" class="sd-input" autocomplete="off" data-f="receipt.businessName" />
+            </div>
+            <div class="sm:col-span-2">
+              <label for="rAddr" class="block text-[13px] font-medium text-ink mb-1.5">Address</label>
+              <input id="rAddr" type="text" class="sd-input" autocomplete="off" data-f="receipt.address" />
+            </div>
+            <div>
+              <label for="rPhone" class="block text-[13px] font-medium text-ink mb-1.5">Phone</label>
+              <input id="rPhone" type="tel" class="sd-input" autocomplete="off" data-f="receipt.phone" />
+            </div>
+            <div>
+              <label for="rEmail" class="block text-[13px] font-medium text-ink mb-1.5">Email</label>
+              <input id="rEmail" type="email" class="sd-input" autocomplete="off" data-f="receipt.email" />
+            </div>
+            <div>
+              <label for="rWeb" class="block text-[13px] font-medium text-ink mb-1.5">Website</label>
+              <input id="rWeb" type="text" class="sd-input" autocomplete="off" data-f="receipt.website" />
+            </div>
+            <div>
+              <label for="rTax" class="block text-[13px] font-medium text-ink mb-1.5">Tax / registration line</label>
+              <input id="rTax" type="text" class="sd-input" autocomplete="off" data-f="receipt.taxLine" />
+              <p class="text-[12px] text-faint mt-1.5">Where your jurisdiction requires it.</p>
+            </div>
+            <div class="sm:col-span-2">
+              <label for="rFoot" class="block text-[13px] font-medium text-ink mb-1.5">Footer message</label>
+              <textarea id="rFoot" rows="2" maxlength="160" class="sd-input !h-auto py-2.5" data-f="receipt.footer"></textarea>
+              <p class="text-[11.5px] text-faint mt-1" data-foot-count></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Actions -->
+        <div class="sd-card">
+          <p class="text-[12px] text-danger mb-2.5" data-save-err hidden></p>
+          <div class="flex items-center gap-2.5">
+            <button type="button" data-save class="h-10 px-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-45" disabled>Save Changes</button>
+            <button type="button" data-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors disabled:opacity-45" disabled>Cancel</button>
+            <span class="text-[12px] text-sub" data-dirty hidden>Unsaved changes</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live preview -->
+      <div class="min-w-0">
+        <section class="sd-card xl:sticky xl:top-4" aria-label="Preview">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h2 class="sd-eyebrow">Live Preview</h2>
+            <span class="ml-auto text-[11px] text-faint" data-pv-state>Saved</span>
+          </div>
+
+          <div class="sd-seg mt-3 w-full" role="tablist" aria-label="Preview surface">
+            <button type="button" class="sd-seg__btn is-on flex-1" role="tab" aria-selected="true" data-pv="app">App</button>
+            <button type="button" class="sd-seg__btn flex-1" role="tab" aria-selected="false" data-pv="booking">Booking</button>
+            <button type="button" class="sd-seg__btn flex-1" role="tab" aria-selected="false" data-pv="email">Email</button>
+            <button type="button" class="sd-seg__btn flex-1" role="tab" aria-selected="false" data-pv="receipt">Receipt</button>
+          </div>
+
+          <div class="mt-3" data-pv-stage></div>
+
+          <p class="text-[11.5px] text-faint mt-2.5 leading-relaxed" data-pv-note></p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title></h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body></p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Delete</button>
+        <button type="button" data-confirm-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/resources.js"></script>
+  <script src="assets/js/services.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script src="assets/js/bookings.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    /* When the row is too narrow to hold every section, the one you are
+       on can start off-screen to the right. Nudge it into view — without
+       scrolling the page itself, which scrollIntoView would do. */
+    (function () {
+      var nav = document.querySelector('[data-subnav]');
+      if (!nav) return;
+      var here = nav.querySelector('[aria-current="page"]');
+      if (!here) return;
+      var over = here.offsetLeft + here.offsetWidth - (nav.scrollLeft + nav.clientWidth);
+      if (over > 0) nav.scrollLeft += over + 4;
+      else if (here.offsetLeft < nav.scrollLeft) nav.scrollLeft = Math.max(0, here.offsetLeft - 4);
+    }());
+
+    var esc = SDR.esc;
+
+    /* ---------- Confirmation dialog ---------- */
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmFn = null;
+
+    function confirmDialog(o) {
+      document.querySelector('[data-confirm-title]').textContent = o.title;
+      document.querySelector('[data-confirm-body]').textContent = o.body;
+      document.querySelector('[data-confirm-ok]').textContent = o.okLabel || 'Delete';
+      confirmFn = o.onOk;
+      confirmCancelFn = o.onCancel || null;
+      confirmEl.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-confirm-cancel]').focus();
+      document.addEventListener('keydown', confirmKeys, true);
+    }
+    var confirmCancelFn = null;
+    function closeConfirm(viaCancel) {
+      confirmEl.hidden = true;
+      document.body.classList.remove('sd-locked');
+      document.removeEventListener('keydown', confirmKeys, true);
+      var back = confirmCancelFn;
+      confirmFn = null;
+      confirmCancelFn = null;
+      /* A dialog that changes a control has to be able to put it back
+         when the answer is no — otherwise the radio stays where the user
+         clicked it and the screen disagrees with the decision. */
+      if (viaCancel && back) back();
+    }
+    function confirmKeys(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeConfirm(true); return; }
+      if (e.key !== 'Tab') return;
+      var f = Array.prototype.filter.call(confirmEl.querySelectorAll('button'),
+        function (el) { return !!(el.offsetWidth || el.offsetHeight); });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmFn; closeConfirm(); if (fn) fn();
+    });
+
+    /* ================================================================
+       Branding
+       ----------------------------------------------------------------
+       One working copy, `draft`, edited freely and only written to the
+       store on Save. Everything on screen — the colour rows, the
+       contrast verdict, the four preview panes — reads from that draft,
+       so the preview shows what you are about to save rather than what
+       is already saved.
+
+       The preview paints the same custom properties the real app uses,
+       onto its own container. That is deliberate: if the preview had
+       its own colour logic it would eventually disagree with the app,
+       and the whole point of a preview is that it does not.
+       ================================================================ */
+
+    var esc = SDBR.esc;
+
+    var draft = JSON.parse(JSON.stringify(SDBR.read()));
+    var saved = JSON.stringify(draft);
+    var pane = 'app';
+
+    function dirty() { return JSON.stringify(draft) !== saved; }
+
+    /* ---------- Reading and writing nested fields ---------------------
+       The form declares its target as data-f="email.footerName" rather
+       than wiring each input by hand — thirty fields of bespoke
+       plumbing is thirty chances to bind one to the wrong key. */
+
+    function getPath(obj, path) {
+      return path.split('.').reduce(function (o, k) { return o == null ? o : o[k]; }, obj);
+    }
+
+    function setPath(obj, path, value) {
+      var keys = path.split('.');
+      var last = keys.pop();
+      var target = keys.reduce(function (o, k) { return o[k]; }, obj);
+      target[last] = value;
+    }
+
+    function bindFields() {
+      document.querySelectorAll('[data-f]').forEach(function (el) {
+        var path = el.dataset.f;
+        var value = getPath(draft, path);
+
+        if (el.type === 'checkbox') el.checked = !!value;
+        else el.value = value == null ? '' : value;
+
+        var ev = el.type === 'checkbox' ? 'change' : 'input';
+        el.addEventListener(ev, function () {
+          setPath(draft, path, el.type === 'checkbox' ? el.checked : el.value);
+          onChange();
+        });
+      });
+    }
+
+    /* ---------- Logos --------------------------------------------------- */
+
+    function logoSlot(slot) {
+      var img = draft.logos[slot.id];
+      var dark = slot.bg === 'dark';
+
+      return '<div class="sd-logoslot" data-slot="' + slot.id + '">' +
+        '<div class="sd-logoslot__stage' + (dark ? ' is-dark' : '') + '">' +
+          (img
+            ? '<img src="' + esc(img) + '" alt="" class="sd-logoslot__img" />'
+            : '<span class="text-[12px] ' + (dark ? 'text-white/70' : 'text-faint') +
+              ' text-center px-2">Drop a file here, or choose one below</span>') +
+        '</div>' +
+        '<div class="sd-logoslot__body">' +
+          '<p class="text-[13px] font-semibold text-head">' + esc(slot.label) +
+            (slot.required ? '<span class="text-danger"> *</span>' : '') + '</p>' +
+          '<p class="text-[11.5px] text-sub mt-0.5 leading-relaxed">' + esc(slot.note) + '</p>' +
+          '<p class="text-[11px] text-faint mt-1">' + esc(slot.ratio) + '</p>' +
+          '<input type="file" class="sr-only" data-logo-input="' + slot.id +
+            '" id="logo-' + slot.id + '" accept="' + SDBR.ACCEPTED.join(',') +
+            '" aria-label="' + esc(slot.label) + '" />' +
+          '<div class="flex flex-wrap items-center gap-2 mt-2.5">' +
+            '<button type="button" class="h-8 px-3 rounded-md border border-stroke bg-white text-ink text-[12.5px] font-semibold hover:bg-hover transition-colors" data-logo-pick="' +
+              slot.id + '">' + (img ? 'Replace' : 'Upload') + '</button>' +
+            (img
+              ? '<button type="button" class="h-8 px-2.5 rounded-md text-[12.5px] font-medium text-sub hover:text-ink hover:bg-hover transition-colors" data-logo-clear="' +
+                slot.id + '">Remove</button>'
+              : '') +
+          '</div>' +
+          '<p class="text-[12px] text-danger mt-1.5" data-logo-err="' + slot.id + '" hidden></p>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function paintLogos() {
+      document.querySelector('[data-logos]').innerHTML =
+        SDBR.LOGO_SLOTS.map(logoSlot).join('');
+    }
+
+    function takeFile(slotId, file, errEl) {
+      SDBR.readFile(file, function (problem, dataUrl) {
+        if (problem) {
+          errEl.hidden = false;
+          errEl.textContent = problem;
+          return;
+        }
+        draft.logos[slotId] = dataUrl;
+        paintLogos();
+        onChange();
+        SD.toast(SDBR.LOGO_SLOTS.filter(function (s) { return s.id === slotId; })[0].label +
+                 ' uploaded. Not saved yet.');
+      });
+    }
+
+    document.querySelector('[data-logos]').addEventListener('click', function (e) {
+      var pick = e.target.closest('[data-logo-pick]');
+      if (pick) {
+        document.getElementById('logo-' + pick.dataset.logoPick).click();
+        return;
+      }
+      var clear = e.target.closest('[data-logo-clear]');
+      if (clear) {
+        draft.logos[clear.dataset.logoClear] = null;
+        paintLogos();
+        onChange();
+      }
+    });
+
+    document.querySelector('[data-logos]').addEventListener('change', function (e) {
+      var input = e.target.closest('[data-logo-input]');
+      if (!input || !input.files || !input.files[0]) return;
+      var id = input.dataset.logoInput;
+      var err = document.querySelector('[data-logo-err="' + id + '"]');
+      err.hidden = true;
+      takeFile(id, input.files[0], err);
+      input.value = '';
+    });
+
+    /* Drag and drop onto a slot. Worth the twenty lines: dragging a logo
+       out of a design tool is how anyone actually has one to hand. */
+    ['dragenter', 'dragover'].forEach(function (type) {
+      document.querySelector('[data-logos]').addEventListener(type, function (e) {
+        var slot = e.target.closest('[data-slot]');
+        if (!slot) return;
+        e.preventDefault();
+        slot.classList.add('is-over');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(function (type) {
+      document.querySelector('[data-logos]').addEventListener(type, function (e) {
+        var slot = e.target.closest('[data-slot]');
+        if (!slot) return;
+        e.preventDefault();
+        slot.classList.remove('is-over');
+        if (type !== 'drop') return;
+        var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!file) return;
+        var err = document.querySelector('[data-logo-err="' + slot.dataset.slot + '"]');
+        err.hidden = true;
+        takeFile(slot.dataset.slot, file, err);
+      });
+    });
+
+    /* ---------- Favicon -------------------------------------------------- */
+
+    function paintFavicon() {
+      var img = document.querySelector('[data-fav-img]');
+      var fallback = document.querySelector('[data-fav-fallback]');
+      var has = !!draft.favicon;
+
+      img.hidden = !has;
+      fallback.hidden = has;
+      if (has) img.src = draft.favicon;
+      fallback.textContent = SDBR.initials(draft);
+
+      document.querySelector('[data-fav-name]').textContent = SDBR.displayName(draft);
+      document.querySelector('[data-fav-verb]').textContent = has ? 'Replace' : 'Upload favicon';
+      document.querySelector('[data-fav-clear]').hidden = !has;
+    }
+
+    document.querySelector('[data-fav-pick]').addEventListener('click', function () {
+      document.querySelector('[data-fav-input]').click();
+    });
+
+    document.querySelector('[data-fav-input]').addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      var err = document.querySelector('[data-fav-err]');
+      err.hidden = true;
+      if (!file) return;
+      SDBR.readFile(file, function (problem, dataUrl) {
+        if (problem) { err.hidden = false; err.textContent = problem; return; }
+        draft.favicon = dataUrl;
+        paintFavicon();
+        onChange();
+      });
+      e.target.value = '';
+    });
+
+    document.querySelector('[data-fav-clear]').addEventListener('click', function () {
+      draft.favicon = null;
+      paintFavicon();
+      onChange();
+    });
+
+    /* ---------- Colours --------------------------------------------------- */
+
+    function paintSwatches() {
+      document.querySelector('[data-swatches]').innerHTML =
+        SDBR.SWATCHES.map(function (s) {
+          var on = s.hex.toLowerCase() === String(draft.colors.brand).toLowerCase();
+          return '<button type="button" class="sd-swatch' + (on ? ' is-on' : '') +
+            '" style="background-color:' + s.hex + '" data-swatch="' + s.hex +
+            '" role="radio" aria-checked="' + on + '" aria-label="' + esc(s.label) +
+            '" title="' + esc(s.label) + '"></button>';
+        }).join('');
+    }
+
+    document.querySelector('[data-swatches]').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-swatch]');
+      if (!b) return;
+      var hex = b.dataset.swatch;
+      /* A button colour that was tracking the brand keeps tracking it.
+         Someone who has deliberately set a different button colour has
+         made a decision, and picking a new brand should not silently
+         undo it. */
+      var tracking = draft.colors.button.toLowerCase() === draft.colors.brand.toLowerCase();
+      draft.colors.brand = hex;
+      if (tracking) draft.colors.button = hex;
+      paintColors();
+      onChange();
+    });
+
+    function colorRow(f) {
+      var value = draft.colors[f.id];
+      var rows = SDBR.report(draft).filter(function (r) { return r.id === f.id || (f.id === 'brand' && r.id === 'bar'); });
+      var check = rows[0];
+
+      return '<div class="sd-colorrow" data-color="' + f.id + '">' +
+        '<div class="min-w-0">' +
+          '<label class="block text-[13px] font-medium text-ink" for="hex-' + f.id + '">' +
+            esc(f.label) + '</label>' +
+          '<p class="text-[12px] text-sub mt-0.5 leading-relaxed">' + esc(f.note) + '</p>' +
+          (check
+            ? '<span class="sd-ratio sd-ratio--' + check.grade.id + ' mt-1.5">' +
+              esc(check.label) + ' &middot; ' + check.text + ' &middot; ' + esc(check.grade.label) +
+              '</span>'
+            : '') +
+        '</div>' +
+        '<div class="sd-colorrow__ctrl">' +
+          '<input type="color" class="sd-colorchip" value="' + esc(value) +
+            '" data-pickcolor="' + f.id + '" aria-label="' + esc(f.label) + ' picker" />' +
+          '<input type="text" id="hex-' + f.id + '" class="sd-input sd-hexfield !h-9" value="' +
+            esc(value) + '" data-hex="' + f.id + '" spellcheck="false" autocomplete="off" />' +
+        '</div>' +
+      '</div>';
+    }
+
+    function paintColors() {
+      document.querySelector('[data-colors]').innerHTML =
+        SDBR.FIELDS.map(colorRow).join('');
+      paintSwatches();
+      paintVerdict();
+    }
+
+    function paintVerdict() {
+      var v = SDBR.verdict(draft);
+      var el = document.querySelector('[data-verdict]');
+      el.className = 'sd-ratio ml-auto shrink-0 mt-1 sd-ratio--' + (v.ok ? 'aa' : 'low');
+      el.textContent = v.text;
+
+      var bad = SDBR.report(draft).filter(function (r) { return !r.ok; });
+      var warn = document.querySelector('[data-contrast-warn]');
+      warn.hidden = !bad.length;
+      if (!bad.length) return;
+
+      document.querySelector('[data-contrast-head]').textContent =
+        bad.length === 1 ? 'One combination is hard to read'
+                         : bad.length + ' combinations are hard to read';
+      document.querySelector('[data-contrast-list]').innerHTML = bad.map(function (r) {
+        return '<li>' + esc(r.label) + ' is ' + r.text +
+               '. AA needs 4.5:1.</li>';
+      }).join('');
+    }
+
+    document.querySelector('[data-colors]').addEventListener('input', function (e) {
+      var picker = e.target.closest('[data-pickcolor]');
+      if (picker) {
+        applyColor(picker.dataset.pickcolor, picker.value, false);
+        return;
+      }
+      var hex = e.target.closest('[data-hex]');
+      if (hex) {
+        /* Repaint only once the value is a real colour, so typing the
+           second character of "#3d348b" does not blank the preview. */
+        if (SDBR.isHex(hex.value)) applyColor(hex.dataset.hex, hex.value, true);
+      }
+    });
+
+    /* Leaving the field is when a half-typed value gets resolved: either
+       tidied to #rrggbb, or put back to what it was. */
+    document.querySelector('[data-colors]').addEventListener('blur', function (e) {
+      var hex = e.target.closest('[data-hex]');
+      if (!hex) return;
+      if (SDBR.isHex(hex.value)) applyColor(hex.dataset.hex, hex.value, false);
+      else hex.value = draft.colors[hex.dataset.hex];
+    }, true);
+
+    function applyColor(id, value, keepFocus) {
+      var next = SDBR.normalise(value);
+      if (!next) return;
+      var tracking = id === 'brand' &&
+        draft.colors.button.toLowerCase() === draft.colors.brand.toLowerCase();
+
+      draft.colors[id] = next;
+      if (tracking) draft.colors.button = next;
+
+      if (keepFocus) {
+        /* Repainting the whole block would pull focus out of the field
+           being typed in, so only the derived read-outs are updated. */
+        var chip = document.querySelector('[data-pickcolor="' + id + '"]');
+        if (chip) chip.value = next;
+        paintSwatches();
+        paintVerdict();
+        paintPreview();
+        markDirty();
+      } else {
+        paintColors();
+        onChange();
+      }
+    }
+
+    /* ---------- Surfaces --------------------------------------------------- */
+
+    function paintSurfaces() {
+      document.querySelector('[data-surfaces]').innerHTML =
+        SDBR.SURFACES.map(function (s) {
+          var on = draft.surfaces[s.id] !== false;
+          return '<label class="flex items-start gap-3 py-2 cursor-pointer">' +
+            '<input type="checkbox" class="sd-check mt-0.5" data-surface="' + s.id + '"' +
+              (on ? ' checked' : '') + ' />' +
+            '<span class="min-w-0 flex-1">' +
+              '<span class="block text-[13px] text-ink">' + esc(s.label) + '</span>' +
+              (s.live ? '' : '<span class="block text-[11px] text-faint mt-0.5">Not built yet</span>') +
+            '</span>' +
+          '</label>';
+        }).join('');
+    }
+
+    document.querySelector('[data-surfaces]').addEventListener('change', function (e) {
+      var box = e.target.closest('[data-surface]');
+      if (!box) return;
+      draft.surfaces[box.dataset.surface] = box.checked;
+      onChange();
+    });
+
+    /* ---------- Email header choice ----------------------------------------- */
+
+    var HEADER_STYLES = [
+      { id: 'brand', label: 'Brand colour', note: 'Your primary, with the dark-surface logo.' },
+      { id: 'light', label: 'White',        note: 'Plainest, and safest across email clients.' },
+      { id: 'dark',  label: 'Dark',         note: 'Charcoal. Good for a pale logo.' }
+    ];
+
+    function paintEmailHeader() {
+      document.querySelector('[data-email-header]').innerHTML =
+        HEADER_STYLES.map(function (h) {
+          var on = draft.email.headerStyle === h.id;
+          return '<label class="sd-pick' + (on ? ' is-on' : '') + '">' +
+            '<input type="radio" name="emailHeader" class="sd-radio mt-0.5" value="' + h.id + '"' +
+              (on ? ' checked' : '') + ' />' +
+            '<span class="min-w-0">' +
+              '<span class="block text-[13px] font-medium">' + esc(h.label) + '</span>' +
+              '<span class="block text-[11.5px] text-sub mt-0.5 leading-relaxed">' + esc(h.note) + '</span>' +
+            '</span>' +
+          '</label>';
+        }).join('');
+    }
+
+    document.querySelector('[data-email-header]').addEventListener('change', function (e) {
+      if (e.target.name !== 'emailHeader') return;
+      draft.email.headerStyle = e.target.value;
+      paintEmailHeader();
+      pane = 'email';
+      syncTabs();
+      onChange();
+    });
+
+    /* §"Powered by StyleDesk depending on subscription plan" — on the
+       free plan the switch is locked on and says why. Hiding it would
+       leave people wondering whether the setting exists. */
+    function paintPowered() {
+      var allowed = SDBR.canHidePoweredBy(draft);
+      var box = document.querySelector('[data-f="email.poweredBy"]');
+      box.disabled = !allowed;
+      if (!allowed) { box.checked = true; draft.email.poweredBy = true; }
+      document.querySelector('[data-powered-note]').textContent = allowed
+        ? 'Off removes the StyleDesk line from the footer of every email.'
+        : 'Included on the free plan. Upgrade to remove it.';
+      document.querySelector('[data-powered-row]').classList.toggle('opacity-60', !allowed);
+    }
+
+    /* ---------- The live preview --------------------------------------------- */
+
+    function logoImg(surface, cls) {
+      /* Which logo belongs on which surface, including the fallback the
+         store describes: no dark-surface logo means the primary gets a
+         white tile rather than disappearing into a dark bar. */
+      var onDark = surface === 'dark';
+      var src = onDark ? SDBR.logo('dark', draft) : SDBR.logo('light', draft);
+      var tile = '';
+      if (onDark && !src) { src = SDBR.logo('primary', draft); tile = ' on-tile'; }
+      if (!src) return '';
+      return '<img src="' + esc(src) + '" alt="" class="' + cls + tile + '" />';
+    }
+
+    function nameOrLogo(surface, cls, nameCls) {
+      var img = logoImg(surface, cls);
+      return img || '<span class="' + nameCls + '">' + esc(SDBR.displayName(draft)) + '</span>';
+    }
+
+    function paneApp() {
+      return '<div class="sd-pv">' +
+        '<div class="sd-pv__strip">Your trial ends in 14 days</div>' +
+        '<div class="sd-pv__bar">' +
+          nameOrLogo('dark', 'sd-pv__logo', 'sd-pv__name') +
+          '<span class="ml-auto h-5 w-5 rounded-full bg-white/25"></span>' +
+          '<span class="h-5 w-5 rounded-full bg-white"></span>' +
+        '</div>' +
+        '<div class="sd-pv__body">' +
+          '<p class="text-[12px] font-semibold text-head">Today&rsquo;s appointments</p>' +
+          '<div class="flex flex-wrap gap-1.5 mt-2">' +
+            '<span class="sd-pv__slot is-on">9:00</span>' +
+            '<span class="sd-pv__slot">10:30</span>' +
+            '<span class="sd-pv__slot">2:00</span>' +
+          '</div>' +
+          '<div class="flex flex-wrap items-center gap-2 mt-3">' +
+            '<span class="sd-pv__btn">Add Booking</span>' +
+            '<span class="sd-pv__btn sd-pv__btn--ghost">Cancel</span>' +
+            '<span class="sd-pv__chip">Closed Dec 25</span>' +
+          '</div>' +
+          '<p class="mt-2.5"><span class="sd-pv__link">View the full calendar</span></p>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function paneBooking() {
+      return '<div class="sd-pv">' +
+        '<div class="sd-pv__bar" style="justify-content:center">' +
+          nameOrLogo('dark', 'sd-pv__logo', 'sd-pv__name') +
+        '</div>' +
+        '<div class="sd-pv__body">' +
+          '<p class="text-[12px] font-semibold text-head">Choose a time</p>' +
+          '<p class="text-[11px] text-sub mt-0.5">Women&rsquo;s Haircut &middot; 45 min &middot; $65</p>' +
+          '<div class="flex flex-wrap gap-1.5 mt-2.5">' +
+            '<span class="sd-pv__slot">9:00 AM</span>' +
+            '<span class="sd-pv__slot is-on">11:00 AM</span>' +
+            '<span class="sd-pv__slot">4:30 PM</span>' +
+          '</div>' +
+          '<div class="mt-3"><span class="sd-pv__btn">Confirm booking</span></div>' +
+          '<p class="text-[10.5px] text-faint mt-2.5">By booking you agree to the ' +
+            '<span class="sd-pv__link">cancellation policy</span>.</p>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function paneEmail() {
+      var style = draft.email.headerStyle;
+      var surface = style === 'light' ? 'light' : 'dark';
+      var header = draft.email.useLogo
+        ? nameOrLogo(surface, 'sd-pv__logo',
+            style === 'light' ? 'text-[13px] font-bold text-head' : 'sd-pv__name')
+        : '<span class="' + (style === 'light' ? 'text-[13px] font-bold text-head' : 'sd-pv__name') +
+          '">' + esc(SDBR.displayName(draft)) + '</span>';
+
+      return '<div class="sd-pv__email">' +
+        '<div class="sd-pv__sheet">' +
+          '<div class="sd-pv__mhead is-' + style + '">' + header + '</div>' +
+          '<div class="sd-pv__body">' +
+            '<p class="text-[12px] font-semibold text-head">Your appointment is confirmed</p>' +
+            '<p class="text-[11px] text-sub mt-1 leading-relaxed">Thursday 27 August at 11:00 AM with Amara Osei.</p>' +
+            '<div class="mt-3"><span class="sd-pv__btn">Manage booking</span></div>' +
+            '<p class="mt-2.5"><span class="sd-pv__link">Add to calendar</span></p>' +
+          '</div>' +
+          '<div class="sd-pv__mfoot">' +
+            '<span class="font-semibold text-ink">' + esc(draft.email.footerName || SDBR.displayName(draft)) + '</span><br />' +
+            (draft.email.contact ? esc(draft.email.contact) + '<br />' : '') +
+            (draft.email.website ? esc(draft.email.website) : '') +
+            (draft.email.social ? ' &middot; ' + esc(draft.email.social) : '') +
+            (draft.email.poweredBy
+              ? '<br /><span class="text-faint">Powered by StyleDesk</span>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function paneReceipt() {
+      var head = draft.receipt.useLogo
+        ? nameOrLogo('light', 'sd-pv__logo !max-h-8', 'text-[13px] font-bold text-head')
+        : '<span class="text-[13px] font-bold text-head">' +
+          esc(draft.receipt.businessName || SDBR.displayName(draft)) + '</span>';
+
+      return '<div class="sd-pv__email">' +
+        '<div class="sd-pv__sheet">' +
+          '<div class="p-3.5 text-center border-b border-line">' +
+            head +
+            '<p class="text-[10px] text-sub mt-1.5 leading-relaxed">' +
+              (draft.receipt.address ? esc(draft.receipt.address) + '<br />' : '') +
+              [draft.receipt.phone, draft.receipt.email].filter(Boolean).map(esc).join(' &middot; ') +
+            '</p>' +
+          '</div>' +
+          '<div class="p-3.5">' +
+            '<div class="sd-pv__rrow"><span>Women&rsquo;s Haircut</span><span>$65.00</span></div>' +
+            '<div class="sd-pv__rrow"><span>Deep Conditioning</span><span>$25.00</span></div>' +
+            '<div class="sd-pv__rrow text-sub"><span>Tax</span><span>$5.40</span></div>' +
+            '<div class="sd-pv__rtot"><span>Total</span><span>$95.40</span></div>' +
+          '</div>' +
+          '<div class="sd-pv__mfoot">' +
+            (draft.receipt.footer ? esc(draft.receipt.footer) + '<br />' : '') +
+            (draft.receipt.website ? esc(draft.receipt.website) + '<br />' : '') +
+            (draft.receipt.taxLine ? '<span class="text-faint">' + esc(draft.receipt.taxLine) + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    var PANES = { app: paneApp, booking: paneBooking, email: paneEmail, receipt: paneReceipt };
+
+    var NOTES = {
+      app: 'The app bar, primary buttons and selected states.',
+      booking: 'What a client sees on your public booking page.',
+      email: 'Confirmations, reminders and cancellations share this frame.',
+      receipt: 'Also used for invoices and anything printed.'
+    };
+
+    function paintPreview() {
+      var stage = document.querySelector('[data-pv-stage]');
+      stage.innerHTML = PANES[pane]();
+      /* The preview paints the same properties the app does, onto its
+         own container — so it is showing the draft, not the stored
+         record, and cannot drift from what saving would produce. */
+      SDBR.paint(stage, draft);
+      document.querySelector('[data-pv-note]').textContent = NOTES[pane];
+      document.querySelector('[data-pv-state]').textContent = dirty() ? 'Unsaved draft' : 'Saved';
+    }
+
+    function syncTabs() {
+      document.querySelectorAll('[data-pv]').forEach(function (b) {
+        var on = b.dataset.pv === pane;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-selected', String(on));
+      });
+      paintPreview();
+    }
+
+    document.querySelectorAll('[data-pv]').forEach(function (b) {
+      b.addEventListener('click', function () { pane = b.dataset.pv; syncTabs(); });
+    });
+
+    /* ---------- Change plumbing ---------------------------------------------- */
+
+    function onChange() {
+      paintFavicon();
+      paintPowered();
+      paintPreview();
+      markDirty();
+      countFooter();
+    }
+
+    function markDirty() {
+      var d = dirty();
+      document.querySelector('[data-save]').disabled = !d;
+      document.querySelector('[data-cancel]').disabled = !d;
+      document.querySelector('[data-dirty]').hidden = !d;
+      document.querySelector('[data-pv-state]').textContent = d ? 'Unsaved draft' : 'Saved';
+    }
+
+    function countFooter() {
+      var v = String(draft.receipt.footer || '');
+      document.querySelector('[data-foot-count]').textContent = v.length + ' / 160';
+    }
+
+    /* ---------- Save, cancel, reset -------------------------------------------- */
+
+    document.querySelector('[data-save]').addEventListener('click', function () {
+      document.querySelectorAll('[data-err]').forEach(function (el) { el.hidden = true; });
+      var errors = SDBR.validate(draft);
+
+      if (Object.keys(errors).length) {
+        Object.keys(errors).forEach(function (k) {
+          var el = document.querySelector('[data-err="' + k + '"]');
+          if (el) { el.hidden = false; el.textContent = errors[k]; }
+        });
+        var first = document.querySelector('[data-err]:not([hidden])');
+        if (first) first.scrollIntoView({ block: 'center' });
+        SD.toast('Fix the highlighted field before saving.');
+        return;
+      }
+
+      var res = SDBR.save(draft);
+      var errBox = document.querySelector('[data-save-err]');
+      if (!res.ok) { errBox.hidden = false; errBox.textContent = res.error; return; }
+      errBox.hidden = true;
+
+      saved = JSON.stringify(draft);
+      markDirty();
+      paintPreview();
+
+      /* The app bar above this page is now painted in the new colours,
+         so the confirmation can point at itself rather than claiming
+         something invisible happened. */
+      var v = SDBR.verdict(draft);
+      SD.toast(v.ok
+        ? 'Branding saved. The whole app is using it now.'
+        : 'Branding saved — but ' + v.text.charAt(0).toLowerCase() + v.text.slice(1));
+    });
+
+    document.querySelector('[data-cancel]').addEventListener('click', function () {
+      draft = JSON.parse(saved);
+      renderAll();
+      SDBR.apply();
+    });
+
+    document.querySelector('[data-reset]').addEventListener('click', function () {
+      confirmDialog({
+        title: 'Reset branding to default?',
+        body: 'Your logos, favicon, colours and email and receipt details will be replaced by the StyleDesk defaults. This cannot be undone.',
+        okLabel: 'Reset to Default',
+        onOk: function () {
+          SDBR.reset();
+          draft = JSON.parse(JSON.stringify(SDBR.read()));
+          saved = JSON.stringify(draft);
+          renderAll();
+          SD.toast('Branding reset to the StyleDesk default.');
+        }
+      });
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+      if (!dirty()) return;
+      e.preventDefault();
+      e.returnValue = 'You have unsaved branding changes.';
+    });
+
+    /* ---------- Start ------------------------------------------------------------ */
+
+    function renderAll() {
+      document.querySelectorAll('[data-f]').forEach(function (el) {
+        var v = getPath(draft, el.dataset.f);
+        if (el.type === 'checkbox') el.checked = !!v;
+        else el.value = v == null ? '' : v;
+      });
+      paintLogos();
+      paintFavicon();
+      paintColors();
+      paintSurfaces();
+      paintEmailHeader();
+      paintPowered();
+      countFooter();
+      syncTabs();
+      markDirty();
+    }
+
+    bindFields();
+    renderAll();
+
+  }());
+  </script>
+</body>
+</html>

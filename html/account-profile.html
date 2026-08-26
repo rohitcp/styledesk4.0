@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Profile — Account Settings — StyleDesk</title>
+
+  <!--
+    StyleDesk — Account Settings / My Profile
+    One of four sections sharing a shell: persistent header (Back /
+    Account Settings / Close), sticky left navigation on desktop, a
+    section selector on a phone.
+
+    These settings belong to the logged-in user and never touch tenant
+    configuration — that lives in Business Settings.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
+             aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ===== Account Settings header (§5) ===== -->
+  <div class="sticky top-14 z-20 bg-white border-b border-line">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-14 flex items-center gap-3">
+      <button type="button" data-back
+              class="inline-flex items-center gap-1.5 h-9 pl-1.5 pr-3 -ml-1.5 rounded-md text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="shrink-0" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="hidden sm:inline">Back</span>
+      </button>
+      <span class="h-5 w-px bg-line shrink-0" aria-hidden="true"></span>
+      <h1 class="text-[15px] font-semibold text-head truncate">Account Settings</h1>
+      <button type="button" data-close
+              class="ml-auto inline-flex items-center gap-1.5 h-9 pl-3 pr-2.5 rounded-md text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+        <span class="hidden sm:inline">Close</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="shrink-0" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== Page ===== -->
+  <main class="flex-1 w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
+    <div class="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-5 items-start">
+
+      <!-- Left navigation (§7). Replaced by a selector below lg (§36). -->
+      <nav class="hidden lg:block sticky top-[136px] bg-white border border-line rounded-card p-2" aria-label="Account settings">
+            <a href="account-profile.html" data-nav="profile" class="sd-set__nav" aria-current="page"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 19.5a6.5 6.5 0 0113 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>My Profile</a>
+            <a href="account-preferences.html" data-nav="preferences" class="sd-set__nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="2" fill="#fff" stroke="currentColor" stroke-width="1.7"/><circle cx="15" cy="12" r="2" fill="#fff" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="17" r="2" fill="#fff" stroke="currentColor" stroke-width="1.7"/></svg>Preferences</a>
+            <a href="account-password.html" data-nav="password" class="sd-set__nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 10.5V7.5a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Change Password</a>
+            <a href="account-notifications.html" data-nav="notifications" class="sd-set__nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 10a5.5 5.5 0 0111 0v4l1.5 2.5H5L6.5 14v-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 19.5a2.2 2.2 0 004 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Notifications</a>
+      </nav>
+
+      <div class="lg:hidden">
+        <label for="sectionPicker" class="sr-only">Account settings section</label>
+        <select id="sectionPicker" class="sd-input has-value" data-section-picker>
+            <option value="account-profile.html" selected>My Profile</option>
+            <option value="account-preferences.html">Preferences</option>
+            <option value="account-password.html">Change Password</option>
+            <option value="account-notifications.html">Notifications</option>
+        </select>
+      </div>
+
+      <div class="min-w-0">
+<form id="accountForm" novalidate><div class="space-y-5 max-w-[820px]"><div class="sd-alert sd-alert--info" data-pending-email hidden role="status"><div class="flex flex-wrap items-start gap-2.5"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="shrink-0 mt-px" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 7l8.5 6 8.5-6" stroke="currentColor" stroke-width="1.7"/></svg><div class="min-w-0 flex-1"><p class="font-semibold">Verify your new email address</p><p class="mt-1">We sent a link to <b data-pending-address></b>. Your current address stays active until you confirm the new one.</p><div class="flex flex-wrap items-center gap-2 mt-3"><button type="button" data-resend-email class="h-8 px-3 rounded-md bg-white border border-link/40 text-[12px] font-semibold text-[#1e3a8a] hover:bg-white/70 transition-colors">Resend link</button><button type="button" data-cancel-email class="h-8 px-3 rounded-md text-[12px] font-semibold text-[#1e3a8a] hover:bg-white/70 transition-colors">Cancel change</button></div></div></div></div><section class="bg-white border border-line rounded-card p-5 sm:p-6"><h2 class="text-[16px] font-semibold text-head">Profile photo</h2><p class="text-[13px] text-sub mt-1 max-w-[620px]">JPG, PNG or WebP, up to 5&nbsp;MB. Your initials are used until you add one.</p><div class="mt-5"><div class="flex flex-wrap items-center gap-5"><span class="sd-avatar sd-avatar--lg" data-photo-preview aria-hidden="true">RP</span><div class="min-w-0"><input id="pPhoto" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" aria-label="Choose a profile photo" /><div class="flex flex-wrap items-center gap-2"><button type="button" data-photo-pick data-photo-label class="h-9 px-3.5 rounded-md border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Upload photo</button><button type="button" data-photo-clear hidden class="h-9 px-3 rounded-md text-[13px] font-medium text-sub hover:text-ink hover:bg-hover transition-colors">Remove</button></div><div class="sd-progress mt-2.5 max-w-[240px]" data-photo-bar hidden><span style="width:0%"></span></div><p id="pPhoto-error" data-error-for="pPhoto" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p></div></div></div></section><section class="bg-white border border-line rounded-card p-5 sm:p-6"><h2 class="text-[16px] font-semibold text-head">Personal information</h2><div class="mt-5"><div class="grid sm:grid-cols-2 gap-x-5 gap-y-5"><div class=""><label for="pFirst" class="block text-[13px] font-medium text-ink mb-1.5">First name <span class="text-danger" aria-hidden="true">*</span></label><input id="pFirst" name="firstName" type="text" class="sd-input" autocomplete="given-name" aria-describedby="pFirst-error" /><p id="pFirst-error" data-error-for="pFirst" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p></div><div class=""><label for="pLast" class="block text-[13px] font-medium text-ink mb-1.5">Last name <span class="text-danger" aria-hidden="true">*</span></label><input id="pLast" name="lastName" type="text" class="sd-input" autocomplete="family-name" aria-describedby="pLast-error" /><p id="pLast-error" data-error-for="pLast" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p></div><div class=""><label for="pDisplay" class="block text-[13px] font-medium text-ink mb-1.5">Display name</label><input id="pDisplay" name="displayName" type="text" class="sd-input" placeholder="How your name appears to clients" aria-describedby="pDisplay-error" /><p id="pDisplay-error" data-error-for="pDisplay" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p><p class="mt-1.5 text-[12px] text-sub">Leave blank to use your first and last name.</p></div><div class=""><label for="pJob" class="block text-[13px] font-medium text-ink mb-1.5">Job title</label><input id="pJob" name="jobTitle" type="text" class="sd-input" placeholder="Senior stylist" aria-describedby="pJob-error" /><p id="pJob-error" data-error-for="pJob" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p></div><div class=""><label for="pEmail" class="block text-[13px] font-medium text-ink mb-1.5">Email address <span class="text-danger" aria-hidden="true">*</span></label><input id="pEmail" name="email" type="email" class="sd-input" autocomplete="email" aria-describedby="pEmail-error" /><p id="pEmail-error" data-error-for="pEmail" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p><p class="mt-1.5 text-[12px] text-sub">Changing this sends a verification link to the new address.</p></div><div><label for="pMobile" class="block text-[13px] font-medium text-ink mb-1.5">Mobile number</label><div class="relative" data-phone data-phone-country="US"><div class="sd-phone"><button type="button" class="sd-phone__country" data-phone-toggle aria-haspopup="listbox" aria-expanded="false" aria-label="Country calling code"><span class="sd-phone__flag" data-phone-flag>&#127482;&#127480;</span><span class="font-medium" data-phone-code>+1</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><input id="pMobile" type="tel" class="sd-phone__field" data-phone-input autocomplete="tel-national" aria-describedby="pMobile-error" /></div><div class="sd-pop" data-phone-pop hidden></div></div><p id="pMobile-error" data-error-for="pMobile" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p><p class="mt-1.5 text-[12px] text-sub">Used for sign-in codes and SMS alerts, so a change is confirmed by one-time code.</p></div><div class=""><label for="pPronouns" class="block text-[13px] font-medium text-ink mb-1.5">Pronouns</label><select id="pPronouns" class="sd-input"><option value="">Not specified</option></select><p id="pPronouns-error" data-error-for="pPronouns" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p></div><div class=""><label for="pLocation" class="block text-[13px] font-medium text-ink mb-1.5">Preferred location</label><select id="pLocation" class="sd-input has-value"></select><p id="pLocation-error" data-error-for="pLocation" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p><p class="mt-1.5 text-[12px] text-sub">Where you usually work. Shown because this business has more than one location.</p></div><div class="sm:col-span-2"><label for="pBio" class="block text-[13px] font-medium text-ink mb-1.5">Bio</label><textarea id="pBio" name="bio" rows="3" class="sd-textarea" placeholder="A short introduction shown on your booking profile."></textarea><p id="pBio-error" data-error-for="pBio" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p></div></div></div></section><section class="bg-white border border-line rounded-card p-5 sm:p-6"><h2 class="text-[16px] font-semibold text-head">Staff information</h2><p class="text-[13px] text-sub mt-1 max-w-[620px]">Set in Staff Management and shown here for reference. Ask an administrator if something looks wrong.</p><div class="mt-5"><dl class="sd-dl"><dt class="sd-dl__t">Role</dt><dd class="sd-dl__d" data-staff-role></dd><dt class="sd-dl__t">Locations</dt><dd class="sd-dl__d" data-staff-locations></dd><dt class="sd-dl__t">Services</dt><dd class="sd-dl__d" data-staff-services></dd></dl></div></section><div class="flex flex-wrap items-center gap-3 pt-1"><button type="submit" data-save disabled class="inline-flex items-center h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors disabled:opacity-45 disabled:pointer-events-none">Save Changes</button><p class="text-[12px] text-sub" data-dirty-hint>No changes to save yet.</p><button type="button" data-revert hidden class="sm:ml-auto h-11 px-4 rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">Discard changes</button></div></div></form>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Unsaved changes (§6) -->
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head">Unsaved changes</h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed">You have changes that haven’t been saved.</p>
+      <div class="mt-5 flex flex-col sm:flex-row sm:items-center gap-2.5">
+        <button type="button" data-confirm-save
+                class="h-10 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">Save &amp; continue</button>
+        <button type="button" data-confirm-leave
+                class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Leave without saving</button>
+        <button type="button" data-confirm-stay
+                class="h-10 px-4 rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors sm:ml-auto">Stay here</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    SD.accountMenuAll();
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    /* ================================================================
+       Shell: Back, Close, section switching, unsaved-changes guard
+       ================================================================ */
+
+    var esc = SDA.esc;
+    var backTo = SDA.returnTo();
+    SDA.rememberReturn(backTo);
+
+    // Every section link carries the opener forward, so Back still works
+    // after moving between sections (§5).
+    document.querySelectorAll('[data-nav]').forEach(function (a) {
+      a.href = a.getAttribute('href') + '?from=' + encodeURIComponent(backTo);
+    });
+
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmOverlay = null;
+    var pendingGo = null;
+
+    var guard = SDA.dirtyGuard({
+      snapshot: function () { return typeof snapshot === 'function' ? snapshot() : ''; },
+      onBlocked: function (go) {
+        pendingGo = go;
+        confirmEl.hidden = false;
+        confirmOverlay = SD.overlayLike ? null : null;
+        openConfirm();
+      }
+    });
+    window.sdGuard = guard;
+
+    function openConfirm() {
+      confirmEl.hidden = false;
+      document.body.classList.add('sd-locked');
+      var first = confirmEl.querySelector('[data-confirm-stay]');
+      if (first) first.focus();
+      document.addEventListener('keydown', confirmKeys, true);
+    }
+    function closeConfirm() {
+      confirmEl.hidden = true;
+      document.body.classList.remove('sd-locked');
+      document.removeEventListener('keydown', confirmKeys, true);
+      pendingGo = null;
+    }
+    function confirmKeys(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeConfirm(); return; }
+      if (e.key !== 'Tab') return;
+      var f = Array.prototype.filter.call(
+        confirmEl.querySelectorAll('button'),
+        function (el) { return !!(el.offsetWidth || el.offsetHeight); });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+
+    document.querySelector('[data-confirm-stay]').addEventListener('click', closeConfirm);
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', closeConfirm);
+    document.querySelector('[data-confirm-leave]').addEventListener('click', function () {
+      var go = pendingGo;
+      closeConfirm();
+      guard.release();
+      if (go) go();
+    });
+    document.querySelector('[data-confirm-save]').addEventListener('click', function () {
+      var go = pendingGo;
+      closeConfirm();
+      // save() is defined by each section; if it reports failure we stay put.
+      var ok = typeof save === 'function' ? save({ quiet: true }) : true;
+      if (ok === false) return;
+      guard.markClean();
+      guard.release();
+      if (go) go();
+    });
+
+    function leaveTo(url) {
+      guard.attempt(function () { window.location.href = url; });
+    }
+
+    document.querySelector('[data-back]').addEventListener('click', function () { leaveTo(backTo); });
+    document.querySelector('[data-close]').addEventListener('click', function () { leaveTo(backTo); });
+
+    document.querySelectorAll('[data-nav]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        leaveTo(a.href);
+      });
+    });
+
+    var picker = document.querySelector('[data-section-picker]');
+    picker.addEventListener('change', function () {
+      var url = picker.value + '?from=' + encodeURIComponent(backTo);
+      var before = picker.value;
+      guard.attempt(function () { window.location.href = url; });
+      // Blocked: put the selector back so it reflects the page you are on.
+      if (guard.isDirty()) picker.value = 'account-profile.html';
+    });
+
+
+    /* ================================================================
+       My Profile
+       ================================================================ */
+    var state = SDA.read();
+    var form = document.getElementById('accountForm');
+    var photoData = state.user.photo;
+
+    (function fillSelects() {
+      var pron = document.getElementById('pPronouns');
+      SDA.PRONOUNS.forEach(function (v) { pron.add(new Option(v, v)); });
+      var loc = document.getElementById('pLocation');
+      SDA.LOCATIONS.forEach(function (l) { loc.add(new Option(l.name, l.id)); });
+    }());
+
+    SD.combo(document.getElementById('pPronouns'), { searchPlaceholder: 'Search…' });
+    SD.combo(document.getElementById('pLocation'), { searchPlaceholder: 'Search locations…' });
+    var mobileCtl = SD.phoneField(document.querySelector('[data-phone]'));
+
+    function paintInitials() {
+      var el = document.querySelector('[data-photo-preview]');
+      if (photoData) { el.innerHTML = '<img src="' + photoData + '" alt="" />'; return; }
+      var a = (document.getElementById('pFirst').value || '').trim().charAt(0);
+      var b = (document.getElementById('pLast').value || '').trim().charAt(0);
+      el.textContent = ((a + b).toUpperCase()) || '?';
+    }
+
+    function setDl(sel, value) {
+      var el = document.querySelector(sel);
+      el.textContent = value || '';
+      if (value) el.removeAttribute('data-empty'); else el.setAttribute('data-empty', '');
+    }
+
+    function fill() {
+      var u = state.user;
+      document.getElementById('pFirst').value = u.firstName || '';
+      document.getElementById('pLast').value = u.lastName || '';
+      document.getElementById('pDisplay').value = u.displayName || '';
+      document.getElementById('pJob').value = u.jobTitle || '';
+      document.getElementById('pEmail').value = u.email || '';
+      document.getElementById('pBio').value = u.bio || '';
+      document.getElementById('pPronouns').value = u.pronouns || '';
+      document.getElementById('pLocation').value = u.preferredLocation || '';
+      ['pPronouns', 'pLocation'].forEach(function (id) { SD.comboRefresh(document.getElementById(id)); });
+      if (u.mobile) mobileCtl.set(String(u.mobile.dial || '') + String(u.mobile.national || ''), u.mobile.iso);
+
+      photoData = u.photo || null;
+      document.querySelector('[data-photo-clear]').hidden = !photoData;
+      document.querySelector('[data-photo-label]').textContent = photoData ? 'Replace photo' : 'Upload photo';
+      paintInitials();
+
+      var s = u.staff || {};
+      setDl('[data-staff-role]', s.role);
+      setDl('[data-staff-locations]', (s.locations || []).join(', '));
+      setDl('[data-staff-services]', (s.services || []).join(', '));
+
+      paintPending();
+    }
+
+    /* §10: the new address is held pending until it is verified; the old
+       one keeps working in the meantime. */
+    function paintPending() {
+      var pending = state.user.pendingEmail;
+      document.querySelector('[data-pending-email]').hidden = !pending;
+      if (pending) document.querySelector('[data-pending-address]').textContent = pending;
+    }
+
+    document.querySelector('[data-resend-email]').addEventListener('click', function () {
+      SDA.toast('Verification link sent again to <b>' + esc(state.user.pendingEmail) + '</b>.');
+    });
+    document.querySelector('[data-cancel-email]').addEventListener('click', function () {
+      state = SDA.patch('user', { pendingEmail: '' });
+      document.getElementById('pEmail').value = state.user.email;
+      paintPending();
+      guard.markClean();
+      paintDirty();
+      SDA.toast('Email change cancelled.');
+    });
+
+    /* ---------- Photo ---------- */
+    (function photo() {
+      var input = document.getElementById('pPhoto');
+      var bar = document.querySelector('[data-photo-bar]');
+      document.querySelector('[data-photo-pick]').addEventListener('click', function () { input.click(); });
+
+      input.addEventListener('change', function () {
+        var file = input.files && input.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+          SD.setError(input, 'That image is larger than 5 MB. Try a smaller file.');
+          input.value = '';
+          return;
+        }
+        SD.setError(input, '');
+        bar.hidden = false;
+        var fillEl = bar.querySelector('span');
+        var pct = 0;
+        var timer = window.setInterval(function () {
+          pct = Math.min(100, pct + 14 + Math.round(Math.random() * 10));
+          fillEl.style.width = pct + '%';
+          if (pct < 100) return;
+          window.clearInterval(timer);
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            photoData = e.target.result;
+            paintInitials();
+            document.querySelector('[data-photo-clear]').hidden = false;
+            document.querySelector('[data-photo-label]').textContent = 'Replace photo';
+            paintDirty();
+            window.setTimeout(function () { bar.hidden = true; fillEl.style.width = '0%'; }, 400);
+          };
+          reader.readAsDataURL(file);
+        }, 110);
+      });
+
+      document.querySelector('[data-photo-clear]').addEventListener('click', function () {
+        photoData = null;
+        input.value = '';
+        document.querySelector('[data-photo-clear]').hidden = true;
+        document.querySelector('[data-photo-label]').textContent = 'Upload photo';
+        paintInitials();
+        paintDirty();
+      });
+    }());
+
+    /* ---------- Dirty tracking (§12) ---------- */
+    function snapshot() {
+      var m = mobileCtl ? mobileCtl.value() : { national: '', iso: '' };
+      return JSON.stringify([
+        document.getElementById('pFirst').value, document.getElementById('pLast').value,
+        document.getElementById('pDisplay').value, document.getElementById('pJob').value,
+        document.getElementById('pEmail').value, document.getElementById('pBio').value,
+        document.getElementById('pPronouns').value, document.getElementById('pLocation').value,
+        m.national, m.iso, photoData ? photoData.length : 0
+      ]);
+    }
+
+    function validate() {
+      SD.clearErrors(form);
+      var ok = true;
+      var first = document.getElementById('pFirst');
+      var last = document.getElementById('pLast');
+      var email = document.getElementById('pEmail');
+
+      if (!first.value.trim()) { SD.setError(first, 'Enter your first name.'); ok = false; }
+      if (!last.value.trim()) { SD.setError(last, 'Enter your last name.'); ok = false; }
+      if (!email.value.trim()) { SD.setError(email, 'Enter your email address.'); ok = false; }
+      else if (!SD.isEmail(email.value)) { SD.setError(email, 'Enter a valid email address, like name@example.com.'); ok = false; }
+
+      var m = mobileCtl.value();
+      if (m.national && !m.complete) {
+        SD.setError(document.getElementById('pMobile'), 'That number looks incomplete for ' + m.dial + '.');
+        ok = false;
+      }
+
+      if (!ok) SD.focusFirstError(form);
+      return ok;
+    }
+
+    function save(opts) {
+      if (!validate()) return false;
+      var m = mobileCtl.value();
+      var typedEmail = SD.normalizeEmail(document.getElementById('pEmail').value);
+      var emailChanged = typedEmail !== SD.normalizeEmail(state.user.email);
+      var mobileChanged = (m.national || '') !== ((state.user.mobile && state.user.mobile.national) || '');
+
+      state = SDA.patch('user', {
+        firstName: document.getElementById('pFirst').value.trim(),
+        lastName: document.getElementById('pLast').value.trim(),
+        displayName: document.getElementById('pDisplay').value.trim(),
+        jobTitle: document.getElementById('pJob').value.trim(),
+        bio: document.getElementById('pBio').value.trim(),
+        pronouns: document.getElementById('pPronouns').value,
+        preferredLocation: document.getElementById('pLocation').value,
+        mobile: m.national ? { iso: m.iso, dial: m.dial, national: m.national } : null,
+        photo: photoData,
+        // The primary address is NOT switched here — only once the user
+        // follows the link in the verification email (§10).
+        pendingEmail: emailChanged ? typedEmail : state.user.pendingEmail
+      });
+
+      guard.markClean();
+      paintDirty();
+      paintPending();
+      SD.accountMenuAll();   // the header shows this name and photo
+
+      if (!opts || !opts.quiet) {
+        if (emailChanged) {
+          SDA.toast('Profile updated. Check <b>' + esc(typedEmail) + '</b> to confirm your new email address.');
+        } else if (mobileChanged) {
+          SDA.toast('Profile updated. We sent a code to your new mobile number to confirm it.');
+        } else {
+          SDA.toast('Profile updated successfully.');
+        }
+      }
+      return true;
+    }
+
+    function paintDirty() {
+      var dirty = guard.isDirty();
+      document.querySelector('[data-save]').disabled = !dirty;
+      document.querySelector('[data-revert]').hidden = !dirty;
+      document.querySelector('[data-dirty-hint]').textContent =
+        dirty ? 'You have unsaved changes.' : 'No changes to save yet.';
+    }
+
+    form.addEventListener('input', function () { paintInitials(); paintDirty(); });
+    form.addEventListener('change', paintDirty);
+    form.addEventListener('submit', function (e) { e.preventDefault(); save(); });
+    document.querySelector('[data-revert]').addEventListener('click', function () {
+      state = SDA.read(); fill(); guard.markClean(); paintDirty();
+    });
+
+    fill();
+
+
+    // The snapshot has to run after the section has populated its fields.
+    guard.markClean();
+  }());
+  </script>
+</body>
+</html>

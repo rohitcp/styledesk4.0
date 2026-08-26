@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Service Categories — StyleDesk</title>
+
+  <!--
+    StyleDesk — Service Categories
+    How services are grouped on the booking page and in reports.
+    A category in use cannot be deleted out from under its services.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
+             aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip is-active" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-current="page" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem" aria-current="page">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ===== Page ===== -->
+  <main class="flex-1 w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
+      <nav class="sd-subnav mb-5" aria-label="Service sections" data-subnav>
+        <a href="services.html" class="sd-subnav__item">All Services</a>
+        <a href="service-categories.html" class="sd-subnav__item" aria-current="page">Categories</a>
+        <a href="service-addons.html" class="sd-subnav__item">Add-ons</a>
+      </nav>
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-3 mb-5">
+      <div class="min-w-0">
+        <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight">Categories</h1>
+        <p class="text-[13px] text-sub mt-1" data-count-line>Loading…</p>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+      <section class="bg-white border border-line rounded-card overflow-hidden">
+        <div class="sd-tablewrap" data-table-wrap>
+          <table class="sd-table min-w-[600px]">
+            <caption class="sr-only">Service categories</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="w-10 !pr-0"><span class="sr-only">Order</span></th>
+                <th scope="col">Category</th>
+                <th scope="col" class="sd-table__num">Services</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="w-[120px] !pl-0"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody data-rows></tbody>
+          </table>
+        </div>
+
+        <div class="px-6 py-16 text-center" data-empty hidden>
+          <h2 class="text-[17px] font-semibold text-head">No categories yet</h2>
+          <p class="text-[13px] text-sub mt-1.5 max-w-[400px] mx-auto leading-relaxed">
+            Categories group services on the booking page and in reports. Every service belongs to exactly one.
+          </p>
+        </div>
+      </section>
+
+      <section class="bg-white border border-line rounded-card p-5" data-panel>
+        <h2 class="text-[15px] font-semibold text-head" data-form-title>Add a category</h2>
+        <p class="text-[12.5px] text-sub mt-1 leading-relaxed">The colour is what staff see on the calendar.</p>
+
+        <form class="mt-4 space-y-4" data-form novalidate>
+          <div>
+            <label for="kName" class="block text-[13px] font-medium text-ink mb-1.5">Name<span class="text-danger"> *</span></label>
+            <input id="kName" type="text" class="sd-input" placeholder="Hair" autocomplete="off" />
+            <p class="text-[12px] text-danger mt-1.5" data-error-for="kName" hidden></p>
+          </div>
+          <div>
+            <label for="kDesc" class="block text-[13px] font-medium text-ink mb-1.5">Description</label>
+            <textarea id="kDesc" rows="2" class="sd-input !h-auto py-2.5" placeholder="Cutting, colour and finishing."></textarea>
+          </div>
+          <div>
+            <span class="block text-[13px] font-medium text-ink mb-2">Colour</span>
+            <div class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Category colour" data-colors></div>
+          </div>
+          <div>
+            <label for="kOrder" class="block text-[13px] font-medium text-ink mb-1.5">Display order</label>
+            <input id="kOrder" type="number" min="1" max="99" step="1" class="sd-input" />
+            <p class="text-[12px] text-faint mt-1.5">Lower numbers come first on the booking page.</p>
+          </div>
+          <label class="flex items-start gap-3 cursor-pointer">
+            <input id="kActive" type="checkbox" class="sd-check mt-0.5" checked />
+            <span class="min-w-0">
+              <span class="block text-[13px] font-medium text-ink">Active</span>
+              <span class="block text-[12px] text-sub mt-0.5 leading-relaxed">An inactive category is hidden from the booking page. Its services keep it.</span>
+            </span>
+          </label>
+
+          <div class="flex items-center gap-2 pt-1">
+            <button type="submit" class="inline-flex items-center h-10 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors" data-save>Add Category</button>
+            <button type="button" class="inline-flex items-center h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-cancel hidden>Cancel</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title></h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body></p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Delete</button>
+        <button type="button" data-confirm-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/resources.js"></script>
+  <script src="assets/js/services.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script src="assets/js/bookings.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    /* When the row is too narrow to hold every section, the one you are
+       on can start off-screen to the right. Nudge it into view — without
+       scrolling the page itself, which scrollIntoView would do. */
+    (function () {
+      var nav = document.querySelector('[data-subnav]');
+      if (!nav) return;
+      var here = nav.querySelector('[aria-current="page"]');
+      if (!here) return;
+      var over = here.offsetLeft + here.offsetWidth - (nav.scrollLeft + nav.clientWidth);
+      if (over > 0) nav.scrollLeft += over + 4;
+      else if (here.offsetLeft < nav.scrollLeft) nav.scrollLeft = Math.max(0, here.offsetLeft - 4);
+    }());
+
+    var esc = SDR.esc;
+
+    var editingId = null;
+    var color = 'violet';
+
+    var colorBox = document.querySelector('[data-colors]');
+    function paintColors() {
+      colorBox.innerHTML = SDS.COLORS.map(function (c) {
+        var on = c.id === color;
+        return '<button type="button" role="radio" aria-checked="' + on + '" data-color="' + c.id + '"' +
+          ' class="sd-swatchbtn' + (on ? ' is-on' : '') + '" style="--sw:' + c.hex + '"' +
+          ' aria-label="' + c.label + '"><span class="sd-swatchbtn__dot"></span></button>';
+      }).join('');
+    }
+    colorBox.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-color]');
+      if (!b) return;
+      color = b.dataset.color;
+      paintColors();
+    });
+
+    function render() {
+      var list = SDS.categories();
+      var body = document.querySelector('[data-rows]');
+
+      body.innerHTML = list.map(function (c, i) {
+        var used = SDS.categoryUsage(c.id);
+        return '<tr' + (c.id === editingId ? ' class="bg-sel"' : '') + '>' +
+          '<td class="!pr-0 text-[12px] text-faint tabular-nums">' + (c.order || i + 1) + '</td>' +
+          '<td><span class="flex items-center gap-2.5">' +
+              '<span class="sd-dot" style="background:' + SDS.colorHex(c.color) + '"></span>' +
+              '<span class="min-w-0"><span class="block font-semibold text-head">' + esc(c.name) + '</span>' +
+              (c.description ? '<span class="block text-[12px] text-sub">' + esc(c.description) + '</span>' : '') +
+              '</span></span></td>' +
+          '<td class="sd-table__num tabular-nums">' + used + '</td>' +
+          '<td><span class="sd-badge ' + (c.active ? 'sd-badge--active' : 'sd-badge--inactive') + '">' +
+              (c.active ? 'Active' : 'Inactive') + '</span></td>' +
+          '<td class="!pl-0"><div class="flex items-center gap-1 justify-end">' +
+            '<button type="button" class="sd-iconbtn" data-edit="' + c.id + '" aria-label="Edit ' + esc(c.name) + '">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>' +
+            '<button type="button" class="sd-iconbtn" data-del="' + c.id + '" aria-label="Delete ' + esc(c.name) + '">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+          '</div></td>' +
+        '</tr>';
+      }).join('');
+
+      document.querySelector('[data-count-line]').textContent =
+        list.length + ' categor' + (list.length === 1 ? 'y' : 'ies') + ' · ' +
+        SDS.live().length + ' services between them';
+      document.querySelector('[data-empty]').hidden = list.length !== 0;
+      document.querySelector('[data-table-wrap]').hidden = list.length === 0;
+    }
+
+    function resetForm() {
+      editingId = null;
+      color = 'violet';
+      document.querySelector('[data-form-title]').textContent = 'Add a category';
+      document.querySelector('[data-save]').textContent = 'Add Category';
+      document.querySelector('[data-cancel]').hidden = true;
+      document.querySelector('[data-form]').reset();
+      document.getElementById('kActive').checked = true;
+      document.getElementById('kOrder').value = SDS.categories().length + 1;
+      SD.clearErrors(document.querySelector('[data-form]'));
+      paintColors();
+      render();
+    }
+
+    function edit(id) {
+      var c = SDS.categoryById(id);
+      if (!c) return;
+      editingId = id;
+      color = c.color || 'violet';
+      document.querySelector('[data-form-title]').textContent = 'Edit ' + c.name;
+      document.querySelector('[data-save]').textContent = 'Save Changes';
+      document.querySelector('[data-cancel]').hidden = false;
+      document.getElementById('kName').value = c.name;
+      document.getElementById('kDesc').value = c.description || '';
+      document.getElementById('kOrder').value = c.order || 1;
+      document.getElementById('kActive').checked = c.active !== false;
+      SD.clearErrors(document.querySelector('[data-form]'));
+      paintColors();
+      render();
+      document.getElementById('kName').focus();
+    }
+
+    document.querySelector('[data-form]').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var form = e.currentTarget;
+      SD.clearErrors(form);
+
+      var name = document.getElementById('kName');
+      if (!name.value.trim()) { SD.setError(name, 'Give the category a name.'); name.focus(); return; }
+
+      var clash = SDS.categories().filter(function (c) {
+        return c.id !== editingId && c.name.trim().toLowerCase() === name.value.trim().toLowerCase();
+      });
+      if (clash.length) { SD.setError(name, 'A category with this name already exists.'); name.focus(); return; }
+
+      SDS.saveCategory({
+        id: editingId || undefined,
+        name: name.value.trim(),
+        description: document.getElementById('kDesc').value.trim(),
+        color: color,
+        order: parseInt(document.getElementById('kOrder').value, 10) || 99,
+        active: document.getElementById('kActive').checked
+      });
+
+      SD.toast(editingId ? 'Category updated.' : '<b>' + esc(name.value.trim()) + '</b> added.');
+      resetForm();
+    });
+
+    document.querySelector('[data-cancel]').addEventListener('click', resetForm);
+
+    document.querySelector('[data-rows]').addEventListener('click', function (e) {
+      var ed = e.target.closest('[data-edit]');
+      if (ed) { edit(ed.dataset.edit); return; }
+      var del = e.target.closest('[data-del]');
+      if (!del) return;
+      var c = SDS.categoryById(del.dataset.del);
+      if (!c) return;
+      var used = SDS.categoryUsage(c.id);
+
+      /* Deleting a category out from under its services would leave them
+         uncategorised with no way to say so, which is worse than refusing. */
+      if (used > 0) {
+        confirmDialog({
+          title: 'Still in use',
+          body: c.name + ' has ' + used + ' service' + (used === 1 ? '' : 's') +
+                ' in it. Move them to another category first, then delete this one.',
+          okLabel: 'See the services',
+          onOk: function () { window.location.href = 'services.html?category=' + c.id; }
+        });
+        return;
+      }
+
+      confirmDialog({
+        title: 'Delete ' + c.name + '?',
+        body: 'Nothing uses it, so nothing else changes.',
+        onOk: function () {
+          SDS.deleteCategory(c.id);
+          if (editingId === c.id) resetForm(); else render();
+          SD.toast('<b>' + esc(c.name) + '</b> deleted.');
+        }
+      });
+    });
+
+    /* ---------- Confirmation dialog ---------- */
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmFn = null;
+
+    function confirmDialog(o) {
+      document.querySelector('[data-confirm-title]').textContent = o.title;
+      document.querySelector('[data-confirm-body]').textContent = o.body;
+      document.querySelector('[data-confirm-ok]').textContent = o.okLabel || 'Delete';
+      confirmFn = o.onOk;
+      confirmCancelFn = o.onCancel || null;
+      confirmEl.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-confirm-cancel]').focus();
+      document.addEventListener('keydown', confirmKeys, true);
+    }
+    var confirmCancelFn = null;
+    function closeConfirm(viaCancel) {
+      confirmEl.hidden = true;
+      document.body.classList.remove('sd-locked');
+      document.removeEventListener('keydown', confirmKeys, true);
+      var back = confirmCancelFn;
+      confirmFn = null;
+      confirmCancelFn = null;
+      /* A dialog that changes a control has to be able to put it back
+         when the answer is no — otherwise the radio stays where the user
+         clicked it and the screen disagrees with the decision. */
+      if (viaCancel && back) back();
+    }
+    function confirmKeys(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeConfirm(true); return; }
+      if (e.key !== 'Tab') return;
+      var f = Array.prototype.filter.call(confirmEl.querySelectorAll('button'),
+        function (el) { return !!(el.offsetWidth || el.offsetHeight); });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmFn; closeConfirm(); if (fn) fn();
+    });
+
+    resetForm();
+
+  }());
+  </script>
+</body>
+</html>

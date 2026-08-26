@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Staff — StyleDesk</title>
+
+  <!--
+    StyleDesk — Add Staff
+    One form for add and edit. ?id= switches it to edit and reveals
+    the history and the deactivate action.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
+             aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ===== Page ===== -->
+  <main class="flex-1 w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
+    <nav class="flex items-center gap-1.5 text-[12px] text-sub mb-2" aria-label="Breadcrumb">
+      <a href="app-settings.html" class="hover:text-ink transition-colors">App Settings</a>
+      <span class="text-faint">/</span>
+      <a href="staff.html" class="hover:text-ink transition-colors">Staff</a>
+      <span class="text-faint">/</span>
+      <span class="text-ink font-medium" data-crumb>Add</span>
+    </nav>
+
+    <div class="flex flex-wrap items-start gap-x-4 gap-y-3 mb-5">
+      <div class="min-w-0">
+        <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight" data-title>Add Staff</h1>
+        <p class="text-[13px] text-sub mt-1" data-sub>Someone the business schedules. A StyleDesk login is optional.</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2 shrink-0" data-status-wrap hidden></div>
+    </div>
+
+    <div class="grid lg:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
+      <nav class="sd-formnav hidden lg:flex lg:flex-col" aria-label="Sections">
+          <a href="#sec-profile" class="sd-set__link" data-rail="profile">Profile</a>
+          <a href="#sec-employment" class="sd-set__link" data-rail="employment">Employment</a>
+          <a href="#sec-locations" class="sd-set__link" data-rail="locations">Locations</a>
+          <a href="#sec-services" class="sd-set__link" data-rail="services">Services</a>
+          <a href="#sec-hours" class="sd-set__link" data-rail="hours">Working hours</a>
+          <a href="#sec-timeoff" class="sd-set__link" data-rail="timeoff">Time off</a>
+          <a href="#sec-booking" class="sd-set__link" data-rail="booking">Booking settings</a>
+          <a href="#sec-access" class="sd-set__link" data-rail="access">App access</a>
+          <a href="#sec-notify" class="sd-set__link" data-rail="notify">Notifications</a>
+          <a href="#sec-history" class="sd-set__link" data-rail="history">History</a>
+      </nav>
+
+      <form data-form novalidate class="space-y-5 min-w-0">
+        <div class="sd-alert sd-alert--danger" data-problems hidden></div>
+
+    <section class="sd-card" id="sec-profile" data-section="profile"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Profile</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Who they are, and what clients see.</p></div><div class="flex flex-wrap items-center gap-5 mb-5"><span class="sd-avatar sd-avatar--lg" data-photo aria-hidden="true">··</span><div class="min-w-0"><input id="sPhoto" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" aria-label="Choose a profile photo" /><div class="flex flex-wrap items-center gap-2"><button type="button" data-photo-pick class="h-9 px-3.5 rounded-md border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Upload photo</button><button type="button" data-photo-clear hidden class="h-9 px-3 rounded-md text-[13px] font-medium text-sub hover:text-ink hover:bg-hover transition-colors">Remove</button></div><p class="text-[12px] text-faint mt-2">Optional. Their initials are used until they add one.</p></div><div class="sm:ml-auto"><span class="block text-[13px] font-medium text-ink mb-2">Calendar colour</span><div class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Calendar colour" data-colors></div></div></div><div class="grid sm:grid-cols-2 gap-4"><div class=""><label for="sFirst" class="block text-[13px] font-medium text-ink mb-1.5">First name<span class="text-danger"> *</span></label><input id="sFirst" type="text" class="sd-input" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="sFirst" hidden></p></div><div class=""><label for="sLast" class="block text-[13px] font-medium text-ink mb-1.5">Last name<span class="text-danger"> *</span></label><input id="sLast" type="text" class="sd-input" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="sLast" hidden></p></div><div class=""><label for="sDisplay" class="block text-[13px] font-medium text-ink mb-1.5">Display name</label><input id="sDisplay" type="text" class="sd-input" autocomplete="off" /><p class="text-[12px] text-faint mt-1.5">What clients see when booking. Blank uses their first name.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sDisplay" hidden></p></div><div class=""><label for="sJob" class="block text-[13px] font-medium text-ink mb-1.5">Job title</label><input id="sJob" type="text" class="sd-input" list="jobTitles" autocomplete="off" /><datalist id="jobTitles"></datalist><p class="text-[12px] text-faint mt-1.5">Pick one or type your own.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sJob" hidden></p></div><div class=""><label for="sEmail" class="block text-[13px] font-medium text-ink mb-1.5">Email</label><input id="sEmail" type="email" class="sd-input" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="sEmail" hidden></p></div><div class=""><label for="sPhone" class="block text-[13px] font-medium text-ink mb-1.5">Phone</label><input id="sPhone" type="tel" class="sd-input" placeholder="+1 (202) 555-0198" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="sPhone" hidden></p></div><div class=""><label for="sEmpId" class="block text-[13px] font-medium text-ink mb-1.5">Employee ID</label><input id="sEmpId" type="text" class="sd-input" placeholder="STF-00124" autocomplete="off" /><p class="text-[12px] text-faint mt-1.5">Optional internal reference.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sEmpId" hidden></p></div></div><div class="mt-4 space-y-4"><div class=""><label for="sBio" class="block text-[13px] font-medium text-ink mb-1.5">Bio</label><textarea id="sBio" rows="3" maxlength="500" class="sd-input !h-auto py-2.5" placeholder="Amara specialises in layered cuts, balayage and dimensional colour."></textarea><p class="text-[11.5px] text-faint mt-1" data-bio-count></p><p class="text-[12px] text-faint mt-1.5">Shown on the booking page. Up to 500 characters.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sBio" hidden></p></div><div><span class="block text-[13px] font-medium text-ink mb-1.5">Specialties</span><div class="sd-tokens" data-tokens><input id="sSpec" type="text" class="sd-tokens__input" data-tokens-input placeholder="Balayage" autocomplete="off" aria-label="Add a specialty" /></div><p class="text-[12px] text-faint mt-1.5">Free text, or pick from what the service categories suggest.</p></div></div></section>
+    <section class="sd-card" id="sec-employment" data-section="employment"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Employment</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">How they are engaged, and whether they are currently working.</p></div><div class="grid sm:grid-cols-3 gap-4"><div class=""><label for="sType" class="block text-[13px] font-medium text-ink mb-1.5">Employment type</label><select id="sType" class="sd-input"></select><p class="text-[12px] text-danger mt-1.5" data-error-for="sType" hidden></p></div><div class=""><label for="sHire" class="block text-[13px] font-medium text-ink mb-1.5">Hire date</label><div class="relative" data-datepicker="hire"><input id="sHire" type="text" readonly placeholder="MM/DD/YYYY" class="sd-input is-picker has-suffix" data-dp-input /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><div class="sd-cal" data-dp-cal hidden></div></div><p class="text-[12px] text-danger mt-1.5" data-error-for="sHire" hidden></p></div><div class=""><label for="sEnd" class="block text-[13px] font-medium text-ink mb-1.5">End date</label><div class="relative" data-datepicker="end"><input id="sEnd" type="text" readonly placeholder="MM/DD/YYYY" class="sd-input is-picker has-suffix" data-dp-input /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><div class="sd-cal" data-dp-cal hidden></div></div><p class="text-[12px] text-faint mt-1.5">Only when they have left, or are leaving.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sEnd" hidden></p></div></div><fieldset class="mt-4"><legend class="block text-[13px] font-medium text-ink mb-2">Status</legend><div class="grid sm:grid-cols-3 gap-2" data-status></div></fieldset><p class="text-[12px] text-danger mt-1.5" data-error-for="status" hidden></p></section>
+    <section class="sd-card" id="sec-locations" data-section="locations"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Locations</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Where they work. A bookable staff member needs at least one.</p></div><div data-locations></div><p class="text-[12px] text-danger mt-1.5" data-error-for="locations" hidden></p></section>
+    <section class="sd-card" id="sec-services" data-section="services"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Services</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">What they are qualified to perform, and anything they do differently — a senior stylist may be quicker and dearer at the same service.</p></div><div class="flex flex-wrap items-center gap-2 mb-3"><button type="button" class="sd-chip !h-8" data-svc-all>Select all</button><button type="button" class="sd-chip !h-8" data-svc-none>Clear all</button><span class="text-[12.5px] text-sub ml-auto" data-svc-count></span></div><div data-services></div><p class="text-[12px] text-danger mt-1.5" data-error-for="services" hidden></p></section>
+    <section class="sd-card" id="sec-hours" data-section="hours"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Working hours</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Their regular week. Split shifts and breaks both carve time out of it, and the booking engine will not offer a slot that falls outside what is left.</p></div><div class="flex flex-wrap items-center gap-2 mb-3"><button type="button" class="sd-chip !h-8" data-copy-mon>Copy Monday to all weekdays</button><span class="text-[12.5px] text-sub ml-auto" data-week-total></span></div><div class="sd-hours" data-hours></div><div class="mt-5 pt-5 border-t border-line"><div class="flex flex-wrap items-center gap-2 mb-3"><h3 class="text-[13px] font-semibold text-head">Breaks</h3><button type="button" class="sd-chip !h-8 ml-auto" data-add-break>+ Add break</button></div><div data-breaks></div></div></section>
+    <section class="sd-card" id="sec-timeoff" data-section="timeoff"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Time off</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Holidays, sickness and training. The engine treats these as hard blocks — no slot is offered inside one.</p></div><div class="flex flex-wrap items-center gap-2 mb-3"><button type="button" class="sd-chip !h-8 ml-auto" data-add-timeoff>+ Add time off</button></div><div data-timeoff></div></section>
+    <section class="sd-card" id="sec-booking" data-section="booking"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Booking settings</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Whether they can be booked at all, and on what terms. A receptionist or an owner may run StyleDesk without ever appearing in the diary.</p></div><div class="divide-y divide-line -mt-1"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="sBookable" type="checkbox" class="sd-check mt-0.5" checked /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Can be booked</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off for anyone the business does not schedule — front desk, management, back office.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="sOnline" type="checkbox" class="sd-check mt-0.5" checked /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Show in online booking</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off keeps them bookable by staff but invisible to clients — useful for someone new.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="sAny" type="checkbox" class="sd-check mt-0.5" checked /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Include in “any available”</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off means they are only ever booked by name.</span></span></label></div><div class="mt-4 space-y-4" data-booking-fields><div class=""><label for="sOnlineName" class="block text-[13px] font-medium text-ink mb-1.5">Name shown online</label><input id="sOnlineName" type="text" class="sd-input" autocomplete="off" /><p class="text-[12px] text-faint mt-1.5">Blank uses their display name.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sOnlineName" hidden></p></div><fieldset><legend class="block text-[13px] font-medium text-ink mb-2">How clients reach them</legend><div class="grid sm:grid-cols-3 gap-2" data-selection></div></fieldset><fieldset><legend class="block text-[13px] font-medium text-ink mb-2">Allocation priority</legend><div class="grid sm:grid-cols-3 gap-2" data-priority></div></fieldset><div class="grid sm:grid-cols-4 gap-4"><div class=""><label for="sNotice" class="block text-[13px] font-medium text-ink mb-1.5">Minimum notice</label><input id="sNotice" type="number" class="sd-input" min="0" max="720" step="1" placeholder="Default" /><p class="text-[12px] text-faint mt-1.5">Hours. Blank uses the location default.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sNotice" hidden></p></div><div class=""><label for="sWindow" class="block text-[13px] font-medium text-ink mb-1.5">Booking window</label><input id="sWindow" type="number" class="sd-input" min="1" max="365" step="1" placeholder="Default" /><p class="text-[12px] text-faint mt-1.5">Days ahead.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sWindow" hidden></p></div><div class=""><label for="sBufBefore" class="block text-[13px] font-medium text-ink mb-1.5">Buffer before</label><input id="sBufBefore" type="number" class="sd-input" min="0" max="120" step="5" placeholder="Service" /><p class="text-[12px] text-faint mt-1.5">Minutes. Blank uses the service.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sBufBefore" hidden></p></div><div class=""><label for="sBufAfter" class="block text-[13px] font-medium text-ink mb-1.5">Buffer after</label><input id="sBufAfter" type="number" class="sd-input" min="0" max="120" step="5" placeholder="Service" /><p class="text-[12px] text-faint mt-1.5">Minutes.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sBufAfter" hidden></p></div></div><div class="grid sm:grid-cols-2 gap-4"><div class=""><label for="sCapacity" class="block text-[13px] font-medium text-ink mb-1.5">Simultaneous appointments</label><input id="sCapacity" type="number" class="sd-input" min="1" max="10" step="1" /><p class="text-[12px] text-faint mt-1.5">Almost always 1. Higher for someone running a class.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sCapacity" hidden></p></div></div><div><span class="block text-[13px] font-medium text-ink mb-2">Preferred resources</span><div data-resources></div><p class="text-[12px] text-faint mt-2">A preference, not a reservation — the engine still checks the resource is free.</p></div></div></section>
+    <section class="sd-card" id="sec-access" data-section="access"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">App access</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">A staff record and a StyleDesk login are separate things. Someone can be booked without ever signing in, and can sign in without ever being booked.</p></div><div class="divide-y divide-line -mt-1"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="sAccess" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Give this person access to StyleDesk</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">They get an invitation by email and choose their own password.</span></span></label></div><div class="mt-4 space-y-4" data-access-fields hidden><div class="grid sm:grid-cols-2 gap-4"><div class=""><label for="sRole" class="block text-[13px] font-medium text-ink mb-1.5">Role<span class="text-danger"> *</span></label><select id="sRole" class="sd-input"></select><p class="text-[12px] text-danger mt-1.5" data-error-for="sRole" hidden></p></div><div class=""><label for="sLogin" class="block text-[13px] font-medium text-ink mb-1.5">Login email</label><input id="sLogin" type="email" class="sd-input" autocomplete="off" /><p class="text-[12px] text-faint mt-1.5">Must be unique. Defaults to their contact email.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="sLogin" hidden></p></div></div><div data-role-note></div><div><span class="block text-[13px] font-medium text-ink mb-2">Location access</span><div class="divide-y divide-line"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="sAllLoc" type="checkbox" class="sd-check mt-0.5" checked /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Every location</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off restricts what they can see to the sites you choose — the role decides what they may do, this decides who they may do it to.</span></span></label></div><div class="mt-3" data-access-locs></div></div><div data-invite></div></div></section>
+    <section class="sd-card" id="sec-notify" data-section="notify"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Notifications</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">How this person hears about their own appointments.</p></div><div class="divide-y divide-line -mt-1"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="sNotifyEmail" type="checkbox" class="sd-check mt-0.5" checked /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Email</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">New bookings, changes, cancellations and time-off decisions.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="sNotifySms" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">SMS</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Same events, by text. Costs per message.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="sNotifyApp" type="checkbox" class="sd-check mt-0.5" checked /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">In-app</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Shown in StyleDesk. Needs a login.</span></span></label></div></section>
+    <section class="sd-card" id="sec-history" data-section="history" data-history-card hidden><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">History</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Who changed what, and what it was before.</p></div><div data-history></div></section>
+
+        <div class="sd-card !p-4">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button type="submit" class="inline-flex items-center h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors" data-save>Save Staff</button>
+            <a href="staff.html" class="inline-flex items-center h-11 px-5 rounded-lg border border-stroke bg-white text-ink text-[14px] font-semibold hover:bg-hover transition-colors">Cancel</a>
+            <button type="button" class="sm:ml-auto inline-flex items-center h-11 px-4 rounded-lg border border-stroke bg-white text-danger text-[13px] font-semibold hover:bg-red-50 transition-colors" data-deactivate hidden>Deactivate</button>
+            <button type="button" class="sm:ml-auto inline-flex items-center h-11 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-reactivate hidden>Reactivate</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title></h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body></p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Delete</button>
+        <button type="button" data-confirm-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="sd-modal" data-tomodal hidden role="dialog" aria-modal="true" aria-labelledby="toTitle">
+    <div class="sd-scrim is-open" data-to-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="toTitle" class="text-[17px] font-semibold text-head">Add time off</h2>
+      <form class="mt-4 space-y-3.5" data-to-form novalidate>
+        <div>
+          <label for="toType" class="block text-[13px] font-medium text-ink mb-1.5">Type</label>
+          <select id="toType" class="sd-input"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="toStart" class="block text-[13px] font-medium text-ink mb-1.5">Starts<span class="text-danger"> *</span></label>
+            <input id="toStart" type="date" class="sd-input" />
+            <p class="text-[12px] text-danger mt-1.5" data-error-for="toStart" hidden></p>
+          </div>
+          <div>
+            <label for="toEnd" class="block text-[13px] font-medium text-ink mb-1.5">Ends<span class="text-danger"> *</span></label>
+            <input id="toEnd" type="date" class="sd-input" />
+            <p class="text-[12px] text-danger mt-1.5" data-error-for="toEnd" hidden></p>
+          </div>
+        </div>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input id="toAllDay" type="checkbox" class="sd-check mt-0.5" checked />
+          <span class="min-w-0"><span class="block text-[13px] font-medium text-ink">All day</span>
+          <span class="block text-[12px] text-sub mt-0.5">Off to give a part-day window.</span></span>
+        </label>
+        <div class="grid grid-cols-2 gap-3" data-to-times hidden>
+          <div>
+            <label for="toFrom" class="block text-[13px] font-medium text-ink mb-1.5">From</label>
+            <input id="toFrom" type="time" class="sd-input" value="09:00" />
+          </div>
+          <div>
+            <label for="toTo" class="block text-[13px] font-medium text-ink mb-1.5">To</label>
+            <input id="toTo" type="time" class="sd-input" value="17:00" />
+          </div>
+        </div>
+        <div>
+          <label for="toNote" class="block text-[13px] font-medium text-ink mb-1.5">Note</label>
+          <input id="toNote" type="text" class="sd-input" placeholder="Family vacation" autocomplete="off" />
+          <p class="text-[12px] text-faint mt-1.5">Internal only. Never shown to a client.</p>
+        </div>
+        <div class="sd-alert sd-alert--warn" data-to-clash hidden></div>
+        <div class="flex items-center gap-2.5 pt-1">
+          <button type="submit" class="h-10 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">Add time off</button>
+          <button type="button" class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-to-cancel>Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/resources.js"></script>
+  <script src="assets/js/services.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script src="assets/js/bookings.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    /* When the row is too narrow to hold every section, the one you are
+       on can start off-screen to the right. Nudge it into view — without
+       scrolling the page itself, which scrollIntoView would do. */
+    (function () {
+      var nav = document.querySelector('[data-subnav]');
+      if (!nav) return;
+      var here = nav.querySelector('[aria-current="page"]');
+      if (!here) return;
+      var over = here.offsetLeft + here.offsetWidth - (nav.scrollLeft + nav.clientWidth);
+      if (over > 0) nav.scrollLeft += over + 4;
+      else if (here.offsetLeft < nav.scrollLeft) nav.scrollLeft = Math.max(0, here.offsetLeft - 4);
+    }());
+
+    var esc = SDR.esc;
+
+    function esc(v) { return SDT.esc(v); }
+    function val(k) { return document.getElementById(k).value; }
+    function setVal(k, v) { document.getElementById(k).value = v == null ? '' : v; }
+    function checked(k) { return document.getElementById(k).checked; }
+    function setChecked(k, v) { document.getElementById(k).checked = !!v; }
+    function num(v) { var n = Number(v); return isNaN(n) ? 0 : n; }
+
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('id');
+    var existing = id ? SDT.byId(id) : null;
+    var form = document.querySelector('[data-form]');
+
+    if (id && !existing) {
+      form.innerHTML =
+        '<div class="sd-card text-center py-16">' +
+          '<h2 class="text-[17px] font-semibold text-head">That staff member no longer exists</h2>' +
+          '<p class="text-[13px] text-sub mt-1.5">The list below is current.</p>' +
+          '<div class="mt-5"><a href="staff.html" class="inline-flex items-center h-10 px-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold">Back to staff</a></div>' +
+        '</div>';
+      document.querySelector('.sd-formnav').hidden = true;
+      return;
+    }
+
+    var model = existing ? JSON.parse(JSON.stringify(existing)) : SDT.blank();
+
+    if (existing) {
+      document.title = SDT.fullName(existing) + ' — StyleDesk';
+      document.querySelector('[data-title]').textContent = SDT.fullName(existing);
+      document.querySelector('[data-crumb]').textContent = SDT.fullName(existing);
+      document.querySelector('[data-sub]').textContent =
+        [existing.jobTitle, SDT.locationText(existing)].filter(Boolean).join(' · ');
+      document.querySelector('[data-save]').textContent = 'Save Changes';
+      document.querySelector('[data-history-card]').hidden = false;
+      document.querySelector('[data-deactivate]').hidden = existing.status !== 'active';
+      document.querySelector('[data-reactivate]').hidden = existing.status === 'active';
+
+      var st = SDT.statusMeta(existing.status);
+      var ac = SDT.accessMeta(existing);
+      var wrap = document.querySelector('[data-status-wrap]');
+      wrap.hidden = false;
+      wrap.innerHTML = '<span class="sd-badge ' + st.badge + '">' + st.label + '</span>' +
+        (existing.access.enabled ? '<span class="sd-badge ' + ac.badge + '">' + ac.label + '</span>' : '');
+    }
+
+    /* ================= Profile ================= */
+
+    document.getElementById('jobTitles').innerHTML =
+      SDT.JOB_TITLES.map(function (t) { return '<option value="' + esc(t) + '"></option>'; }).join('');
+
+    var colorBox = document.querySelector('[data-colors]');
+    function paintColors() {
+      colorBox.innerHTML = SDT.COLORS.map(function (c) {
+        var on = c.id === model.color;
+        return '<button type="button" role="radio" aria-checked="' + on + '" data-color="' + c.id + '"' +
+          ' class="sd-swatchbtn' + (on ? ' is-on' : '') + '" style="--sw:' + c.hex + '"' +
+          ' aria-label="' + c.id + '"><span class="sd-swatchbtn__dot"></span></button>';
+      }).join('');
+    }
+    colorBox.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-color]');
+      if (!b) return;
+      model.color = b.dataset.color;
+      paintColors(); paintAvatar();
+    });
+
+    function paintAvatar() {
+      var el = document.querySelector('[data-photo]');
+      var initials = ((val('sFirst') || '')[0] || '') + ((val('sLast') || '')[0] || '');
+      el.textContent = initials.toUpperCase() || '··';
+      el.style.background = SDT.colorHex(model.color) + '1a';
+      el.style.color = SDT.colorHex(model.color);
+    }
+
+    document.querySelector('[data-photo-pick]').addEventListener('click', function () {
+      document.getElementById('sPhoto').click();
+    });
+    document.getElementById('sPhoto').addEventListener('change', function () {
+      if (!this.files || !this.files[0]) return;
+      SD.toast('Photo uploads need a server, so this prototype keeps the initials.');
+      this.value = '';
+    });
+
+    ['sFirst', 'sLast'].forEach(function (k) {
+      document.getElementById(k).addEventListener('input', paintAvatar);
+    });
+
+    var bio = document.getElementById('sBio');
+    bio.addEventListener('input', function () {
+      document.querySelector('[data-bio-count]').textContent = this.value.length + ' / 500';
+    });
+
+    var tokensCtl = null;
+
+    /* ================= Employment ================= */
+
+    document.getElementById('sType').innerHTML = SDT.EMPLOYMENT_TYPES.map(function (t) {
+      return '<option value="' + esc(t) + '">' + esc(t) + '</option>';
+    }).join('');
+
+    function paintStatus() {
+      document.querySelector('[data-status]').innerHTML = SDT.STATUSES.map(function (s) {
+        var on = s.id === model.status;
+        return '<label class="sd-pick' + (on ? ' is-on' : '') + '">' +
+          '<input type="radio" name="status" class="sd-radio" value="' + s.id + '"' + (on ? ' checked' : '') + ' />' +
+          '<span class="min-w-0"><span class="block text-[13px] font-semibold text-ink">' + esc(s.label) + '</span>' +
+          '<span class="block text-[12px] text-sub mt-0.5 leading-snug">' + esc(s.note) + '</span></span></label>';
+      }).join('');
+    }
+    document.querySelector('[data-status]').addEventListener('change', function (e) {
+      if (!e.target.matches('[name="status"]')) return;
+      model.status = e.target.value;
+      paintStatus();
+    });
+
+    /* ================= Locations ================= */
+
+    function paintLocations() {
+      var box = document.querySelector('[data-locations]');
+      var open = SDL.live();
+
+      box.innerHTML = '<div class="space-y-2.5">' + open.map(function (l) {
+        var on = model.locationIds.indexOf(l.id) !== -1;
+        var isPrimary = model.primaryLocationId === l.id;
+        return '<div class="sd-locrow' + (on ? ' is-on' : '') + '">' +
+          '<label class="flex items-start gap-3 cursor-pointer min-w-0 flex-1">' +
+            '<input type="checkbox" class="sd-check mt-0.5" data-loc="' + l.id + '"' + (on ? ' checked' : '') +
+              ' aria-label="Works at ' + esc(l.name) + '" />' +
+            '<span class="min-w-0"><span class="block text-[13px] font-semibold text-ink">' + esc(l.name) + '</span>' +
+            '<span class="block text-[12px] text-sub mt-0.5">' + esc(SDL.hoursSummary(l)) + '</span></span>' +
+          '</label>' +
+          (on
+            ? '<label class="inline-flex items-center gap-2 cursor-pointer shrink-0 text-[12.5px] text-ink">' +
+              '<input type="radio" name="primaryloc" class="sd-radio" data-primary="' + l.id + '"' +
+              (isPrimary ? ' checked' : '') + ' />Primary</label>'
+            : '') +
+        '</div>';
+      }).join('') + '</div>' +
+      '<p class="text-[12px] text-faint mt-3">The primary location is where their schedule opens by default.</p>';
+    }
+
+    document.querySelector('[data-locations]').addEventListener('change', function (e) {
+      var box = e.target.closest('[data-loc]');
+      if (box) {
+        var lid = box.dataset.loc;
+        var at = model.locationIds.indexOf(lid);
+        if (box.checked && at === -1) model.locationIds.push(lid);
+        if (!box.checked && at !== -1) model.locationIds.splice(at, 1);
+        /* Un-ticking the primary site has to move the flag, not leave it
+           pointing somewhere they no longer work. */
+        if (model.primaryLocationId && model.locationIds.indexOf(model.primaryLocationId) === -1) {
+          model.primaryLocationId = model.locationIds[0] || '';
+        }
+        if (!model.primaryLocationId) model.primaryLocationId = model.locationIds[0] || '';
+        paintLocations(); paintAccessLocs();
+        return;
+      }
+      var pr = e.target.closest('[data-primary]');
+      if (pr) { model.primaryLocationId = pr.dataset.primary; paintLocations(); }
+    });
+
+    /* ================= Services ================= */
+
+    function overrideFor(sid) {
+      var hit = (model.serviceOverrides || []).filter(function (o) { return o.serviceId === sid; })[0];
+      if (hit) return hit;
+      hit = { serviceId: sid, durationMin: '', price: '' };
+      model.serviceOverrides.push(hit);
+      return hit;
+    }
+
+    function paintServices() {
+      var box = document.querySelector('[data-services]');
+      var list = SDS.all().filter(function (s) { return s.status !== 'archived'; });
+
+      if (!list.length) {
+        box.innerHTML = '<p class="text-[13px] text-sub">No services yet.</p>';
+        return;
+      }
+
+      var byCat = {};
+      list.forEach(function (s) { (byCat[s.categoryId] = byCat[s.categoryId] || []).push(s); });
+
+      box.innerHTML = SDS.categories().filter(function (c) { return byCat[c.id]; }).map(function (cat) {
+        return '<div class="mb-4 last:mb-0">' +
+          '<p class="sd-eyebrow mb-1.5">' + esc(cat.name) + '</p>' +
+          '<div class="space-y-1.5">' + byCat[cat.id].map(function (s) {
+            var on = model.serviceIds.indexOf(s.id) !== -1;
+            var ov = on ? overrideFor(s.id) : null;
+            return '<div class="sd-locrow' + (on ? ' is-on' : '') + '">' +
+              '<label class="flex items-start gap-3 cursor-pointer min-w-0 flex-1">' +
+                '<input type="checkbox" class="sd-check mt-0.5" data-svc="' + s.id + '"' + (on ? ' checked' : '') +
+                  ' aria-label="Can perform ' + esc(s.name) + '" />' +
+                '<span class="min-w-0"><span class="block text-[13px] font-semibold text-ink">' + esc(s.name) + '</span>' +
+                '<span class="block text-[12px] text-sub mt-0.5">Default ' +
+                  SDS.durationText(SDS.serviceMinutes(s)) + ' · ' + SDS.money(s.price) + '</span></span>' +
+              '</label>' +
+              (on
+                ? '<div class="flex items-center gap-2 shrink-0">' +
+                  '<input type="number" min="0" step="5" class="sd-input !h-8 !text-[12.5px] w-[86px] text-right"' +
+                    ' data-ov="durationMin" data-ov-svc="' + s.id + '" value="' + esc(ov.durationMin) + '"' +
+                    ' placeholder="mins" aria-label="Their duration for ' + esc(s.name) + '" />' +
+                  '<input type="number" min="0" step="0.01" class="sd-input !h-8 !text-[12.5px] w-[92px] text-right"' +
+                    ' data-ov="price" data-ov-svc="' + s.id + '" value="' + esc(ov.price) + '"' +
+                    ' placeholder="price" aria-label="Their price for ' + esc(s.name) + '" />' +
+                  '</div>'
+                : '') +
+            '</div>';
+          }).join('') + '</div></div>';
+      }).join('') +
+      '<p class="text-[12px] text-faint mt-3">Blank duration or price means the service default applies.</p>';
+
+      document.querySelector('[data-svc-count]').textContent =
+        model.serviceIds.length + ' of ' + list.length + ' selected';
+    }
+
+    document.querySelector('[data-services]').addEventListener('change', function (e) {
+      var box = e.target.closest('[data-svc]');
+      if (box) {
+        var sid = box.dataset.svc;
+        var at = model.serviceIds.indexOf(sid);
+        if (box.checked && at === -1) model.serviceIds.push(sid);
+        if (!box.checked && at !== -1) model.serviceIds.splice(at, 1);
+        paintServices();
+        return;
+      }
+      var ov = e.target.closest('[data-ov]');
+      if (ov) overrideFor(ov.dataset.ovSvc)[ov.dataset.ov] = ov.value;
+    });
+
+    document.querySelector('[data-svc-all]').addEventListener('click', function () {
+      model.serviceIds = SDS.all().filter(function (s) { return s.status !== 'archived'; })
+        .map(function (s) { return s.id; });
+      paintServices();
+    });
+    document.querySelector('[data-svc-none]').addEventListener('click', function () {
+      model.serviceIds = [];
+      paintServices();
+    });
+
+    /* ================= Working hours ================= */
+
+    var hoursBox = document.querySelector('[data-hours]');
+
+    function timeOptions(value) {
+      var out = [];
+      for (var m = 0; m <= 24 * 60; m += 15) {
+        if (m === 24 * 60) {
+          out.push('<option value="24:00"' + (value === '24:00' ? ' selected' : '') + '>Midnight</option>');
+          break;
+        }
+        var v = SDT.fromMin(m);
+        out.push('<option value="' + v + '"' + (v === value ? ' selected' : '') + '>' + SDT.timeLabel(v) + '</option>');
+      }
+      return out.join('');
+    }
+
+    function paintHours() {
+      hoursBox.innerHTML = SDT.DAYS.map(function (d) {
+        var spans = model.hours[d.id] || [];
+        var on = spans.length > 0;
+        var rows = spans.map(function (sp, i) {
+          return '<div class="flex flex-wrap items-center gap-2" data-span="' + d.id + ':' + i + '">' +
+            '<select class="sd-input !h-9 !w-auto min-w-[116px]" data-span-from aria-label="' + d.label +
+              ' start' + (spans.length > 1 ? ' ' + (i + 1) : '') + '">' + timeOptions(sp[0]) + '</select>' +
+            '<span class="text-[12px] text-faint">to</span>' +
+            '<select class="sd-input !h-9 !w-auto min-w-[116px]" data-span-to aria-label="' + d.label +
+              ' end' + (spans.length > 1 ? ' ' + (i + 1) : '') + '">' + timeOptions(sp[1]) + '</select>' +
+            (spans.length > 1
+              ? '<button type="button" class="sd-iconbtn" data-span-remove aria-label="Remove this ' + d.label + ' shift">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>'
+              : '') +
+          '</div>';
+        }).join('');
+
+        return '<div class="sd-hours__day' + (on ? '' : ' is-off') + '" data-day="' + d.id + '">' +
+          '<label class="sd-hours__toggle">' +
+            '<input type="checkbox" class="sd-check" data-day-on' + (on ? ' checked' : '') +
+            ' aria-label="Works on ' + d.label + '" />' +
+            '<span class="text-[13px] font-medium text-ink">' + d.label + '</span>' +
+          '</label>' +
+          '<div class="sd-hours__spans">' +
+            (on ? rows + '<button type="button" class="text-[12.5px] font-semibold text-brand hover:underline w-fit" data-span-add>+ Add shift</button>'
+                : '<span class="text-[13px] text-faint">Not working</span>') +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      var mins = SDT.weeklyMinutes(model);
+      document.querySelector('[data-week-total]').textContent =
+        Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm a week, breaks deducted';
+    }
+
+    hoursBox.addEventListener('change', function (e) {
+      var dayEl = e.target.closest('[data-day]');
+      if (!dayEl) return;
+      var day = dayEl.dataset.day;
+      if (e.target.matches('[data-day-on]')) {
+        model.hours[day] = e.target.checked ? [['09:00', '17:00']] : [];
+        paintHours();
+        return;
+      }
+      var spanEl = e.target.closest('[data-span]');
+      if (!spanEl) return;
+      var i = parseInt(spanEl.dataset.span.split(':')[1], 10);
+      model.hours[day][i] = [spanEl.querySelector('[data-span-from]').value,
+                             spanEl.querySelector('[data-span-to]').value];
+      validateHours();
+      paintHours();
+    });
+
+    hoursBox.addEventListener('click', function (e) {
+      var dayEl = e.target.closest('[data-day]');
+      if (!dayEl) return;
+      var day = dayEl.dataset.day;
+      if (e.target.closest('[data-span-add]')) {
+        var last = model.hours[day][model.hours[day].length - 1];
+        var start = Math.min(SDT.toMin(last[1]) + 60, 23 * 60);
+        model.hours[day].push([SDT.fromMin(start), SDT.fromMin(Math.min(start + 240, 24 * 60))]);
+        paintHours();
+      } else if (e.target.closest('[data-span-remove]')) {
+        var i = parseInt(e.target.closest('[data-span]').dataset.span.split(':')[1], 10);
+        model.hours[day].splice(i, 1);
+        paintHours();
+      }
+      validateHours();
+    });
+
+    document.querySelector('[data-copy-mon]').addEventListener('click', function () {
+      var mon = JSON.parse(JSON.stringify(model.hours.mon || []));
+      ['tue', 'wed', 'thu', 'fri'].forEach(function (d) {
+        model.hours[d] = JSON.parse(JSON.stringify(mon));
+      });
+      paintHours();
+      SD.toast('Monday copied to Tuesday through Friday.');
+    });
+
+    var hoursError = document.createElement('p');
+    hoursError.className = 'text-[12px] text-danger mt-3';
+    hoursError.hidden = true;
+    hoursBox.parentNode.appendChild(hoursError);
+
+    /* §78 — shifts that end before they start, or that overlap each
+       other, are the two mistakes that silently produce a diary with no
+       slots in it. */
+    function validateHours() {
+      var bad = [];
+      SDT.DAYS.forEach(function (d) {
+        var spans = model.hours[d.id] || [];
+        spans.forEach(function (sp, i) {
+          if (SDT.toMin(sp[1]) <= SDT.toMin(sp[0])) bad.push(d.label + ' ends before it starts');
+          for (var j = 0; j < i; j++) {
+            var a = spans[j];
+            if (SDT.toMin(sp[0]) < SDT.toMin(a[1]) && SDT.toMin(a[0]) < SDT.toMin(sp[1])) {
+              bad.push(d.label + ' has two shifts that overlap');
+            }
+          }
+        });
+      });
+      hoursError.textContent = bad.length ? bad[0] + '.' : '';
+      hoursError.hidden = !bad.length;
+      return !bad.length;
+    }
+
+    /* ---------- Breaks ---------- */
+
+    function paintBreaks() {
+      var box = document.querySelector('[data-breaks]');
+      if (!model.breaks.length) {
+        box.innerHTML = '<p class="text-[13px] text-sub">No recurring breaks. Bookings can be made across the whole shift.</p>';
+        return;
+      }
+      box.innerHTML = '<div class="space-y-2.5">' + model.breaks.map(function (br, i) {
+        return '<div class="sd-req">' +
+          '<div class="flex flex-wrap items-start gap-3">' +
+            '<div class="min-w-0 flex-1 space-y-3">' +
+              '<div class="grid sm:grid-cols-3 gap-3">' +
+                '<div><label class="sd-minilabel" for="brName' + i + '">Name</label>' +
+                  '<input id="brName' + i + '" type="text" class="sd-input !h-9" data-br="label" data-br-i="' + i + '"' +
+                  ' value="' + esc(br.label) + '" placeholder="Lunch" /></div>' +
+                '<div><label class="sd-minilabel" for="brFrom' + i + '">From</label>' +
+                  '<select id="brFrom' + i + '" class="sd-input !h-9" data-br="from" data-br-i="' + i + '">' +
+                  timeOptions(br.from) + '</select></div>' +
+                '<div><label class="sd-minilabel" for="brTo' + i + '">To</label>' +
+                  '<select id="brTo' + i + '" class="sd-input !h-9" data-br="to" data-br-i="' + i + '">' +
+                  timeOptions(br.to) + '</select></div>' +
+              '</div>' +
+              '<div class="flex flex-wrap gap-1.5">' + SDT.DAYS.map(function (d) {
+                var on = (br.days || []).indexOf(d.id) !== -1;
+                return '<label class="sd-radiochip' + (on ? ' is-on' : '') + '">' +
+                  '<input type="checkbox" class="sr-only" data-br-day="' + d.id + '" data-br-i="' + i + '"' +
+                  (on ? ' checked' : '') + ' />' + d.short + '</label>';
+              }).join('') + '</div>' +
+            '</div>' +
+            '<button type="button" class="sd-iconbtn shrink-0" data-br-remove="' + i + '" aria-label="Remove this break">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>' +
+          '</div></div>';
+      }).join('') + '</div>';
+    }
+
+    document.querySelector('[data-add-break]').addEventListener('click', function () {
+      model.breaks.push({ id: 'b' + (model.breaks.length + 1), label: 'Lunch',
+                          days: ['mon', 'tue', 'wed', 'thu', 'fri'], from: '13:00', to: '13:45' });
+      paintBreaks(); paintHours();
+    });
+
+    document.querySelector('[data-breaks]').addEventListener('change', function (e) {
+      var f = e.target.closest('[data-br]');
+      if (f) { model.breaks[Number(f.dataset.brI)][f.dataset.br] = f.value; paintHours(); return; }
+      var d = e.target.closest('[data-br-day]');
+      if (!d) return;
+      var br = model.breaks[Number(d.dataset.brI)];
+      var day = d.dataset.brDay;
+      var at = (br.days || []).indexOf(day);
+      if (d.checked && at === -1) br.days.push(day);
+      if (!d.checked && at !== -1) br.days.splice(at, 1);
+      paintBreaks(); paintHours();
+    });
+
+    document.querySelector('[data-breaks]').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-br-remove]');
+      if (!b) return;
+      model.breaks.splice(Number(b.dataset.brRemove), 1);
+      paintBreaks(); paintHours();
+    });
+
+    /* ================= Time off ================= */
+
+    function paintTimeOff() {
+      var box = document.querySelector('[data-timeoff]');
+      var rows = (model.timeOff || []).slice().sort(function (a, b) {
+        return String(a.start).localeCompare(String(b.start));
+      });
+
+      if (!rows.length) {
+        box.innerHTML = '<p class="text-[13px] text-sub">Nothing booked off.</p>';
+        return;
+      }
+
+      var today = new Date().toISOString().slice(0, 10);
+      box.innerHTML = '<div class="space-y-2">' + rows.map(function (t, i) {
+        var past = (t.end || t.start) < today;
+        var days = t.start === t.end ? SDR.dateShort(t.start)
+          : SDR.dateShort(t.start) + ' – ' + SDR.dateShort(t.end);
+        return '<div class="sd-locrow' + (past ? ' opacity-60' : ' is-on') + '">' +
+          '<span class="min-w-0 flex-1">' +
+            '<span class="block text-[13px] font-semibold text-ink">' + esc(t.type) +
+              (past ? ' <span class="text-[11px] font-normal text-faint">past</span>' : '') + '</span>' +
+            '<span class="block text-[12px] text-sub mt-0.5">' + esc(days) +
+              (t.allDay ? ' · all day' : ' · ' + SDT.timeLabel(t.from) + ' – ' + SDT.timeLabel(t.to)) +
+              (t.note ? ' · ' + esc(t.note) : '') + '</span>' +
+          '</span>' +
+          '<button type="button" class="sd-iconbtn shrink-0" data-to-remove="' + t.id + '" aria-label="Remove this time off">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>' +
+        '</div>';
+      }).join('') + '</div>';
+    }
+
+    document.querySelector('[data-timeoff]').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-to-remove]');
+      if (!b) return;
+      model.timeOff = model.timeOff.filter(function (t) { return t.id !== b.dataset.toRemove; });
+      paintTimeOff();
+    });
+
+    var toModal = document.querySelector('[data-tomodal]');
+    document.getElementById('toType').innerHTML = SDT.TIME_OFF_TYPES.map(function (t) {
+      return '<option value="' + esc(t) + '">' + esc(t) + '</option>';
+    }).join('');
+
+    document.querySelector('[data-add-timeoff]').addEventListener('click', function () {
+      var today = new Date().toISOString().slice(0, 10);
+      document.querySelector('[data-to-form]').reset();
+      document.getElementById('toStart').value = today;
+      document.getElementById('toEnd').value = today;
+      document.getElementById('toAllDay').checked = true;
+      document.querySelector('[data-to-times]').hidden = true;
+      document.querySelector('[data-to-clash]').hidden = true;
+      SD.clearErrors(document.querySelector('[data-to-form]'));
+      SD.comboRefresh(document.getElementById('toType'));
+      toModal.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.getElementById('toStart').focus();
+    });
+
+    function closeTimeOff() {
+      toModal.hidden = true;
+      document.body.classList.remove('sd-locked');
+    }
+    document.querySelector('[data-to-cancel]').addEventListener('click', closeTimeOff);
+    document.querySelector('[data-to-scrim]').addEventListener('click', closeTimeOff);
+
+    document.getElementById('toAllDay').addEventListener('change', function () {
+      document.querySelector('[data-to-times]').hidden = this.checked;
+    });
+
+    /* Booking over someone's holiday is not something to discover on the
+       day, so the clash is named while the dates are still on screen. */
+    function timeOffClash(from, to) {
+      if (typeof SDB === 'undefined' || !existing) return [];
+      return SDB.all().filter(function (a) {
+        return (a.staffIds || []).indexOf(existing.id) !== -1 &&
+               a.date >= from && a.date <= to &&
+               (a.status === 'confirmed' || a.status === 'checkedin');
+      });
+    }
+
+    ['toStart', 'toEnd'].forEach(function (k) {
+      document.getElementById(k).addEventListener('change', function () {
+        var from = val('toStart'), to = val('toEnd') || from;
+        var box = document.querySelector('[data-to-clash]');
+        if (!from) { box.hidden = true; return; }
+        var hits = timeOffClash(from, to);
+        if (!hits.length) { box.hidden = true; return; }
+        box.innerHTML = '<b>' + hits.length + ' appointment' + (hits.length === 1 ? '' : 's') +
+          '</b> already booked in this window will need moving.';
+        box.hidden = false;
+      });
+    });
+
+    document.querySelector('[data-to-form]').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var f = e.currentTarget;
+      SD.clearErrors(f);
+
+      var start = document.getElementById('toStart');
+      var end = document.getElementById('toEnd');
+      var ok = true;
+
+      if (!start.value) { SD.setError(start, 'When does it start?'); ok = false; }
+      if (!end.value) { SD.setError(end, 'When does it end?'); ok = false; }
+      if (start.value && end.value && end.value < start.value) {
+        SD.setError(end, 'It cannot end before it starts.'); ok = false;
+      }
+      if (!ok) { SD.focusFirstError(f); return; }
+
+      model.timeOff.push({
+        id: 'to' + (model.timeOff.length + 1 + Date.now() % 1000),
+        type: val('toType'),
+        start: start.value, end: end.value,
+        allDay: checked('toAllDay'),
+        from: checked('toAllDay') ? '' : val('toFrom'),
+        to: checked('toAllDay') ? '' : val('toTo'),
+        repeat: 'none',
+        note: val('toNote').trim()
+      });
+      closeTimeOff();
+      paintTimeOff();
+    });
+
+    /* ================= Booking settings ================= */
+
+    function paintPicks(box, list, current, name) {
+      document.querySelector(box).innerHTML = list.map(function (o) {
+        var on = o.id === current;
+        return '<label class="sd-pick' + (on ? ' is-on' : '') + '">' +
+          '<input type="radio" name="' + name + '" class="sd-radio" value="' + o.id + '"' + (on ? ' checked' : '') + ' />' +
+          '<span class="min-w-0"><span class="block text-[13px] font-semibold text-ink">' + esc(o.label) + '</span>' +
+          (o.note ? '<span class="block text-[12px] text-sub mt-0.5 leading-snug">' + esc(o.note) + '</span>' : '') +
+          '</span></label>';
+      }).join('');
+    }
+
+    function syncBooking() {
+      var on = checked('sBookable');
+      var box = document.querySelector('[data-booking-fields]');
+      box.classList.toggle('opacity-45', !on);
+      box.querySelectorAll('input, select, button').forEach(function (el) { el.disabled = !on; });
+      /* Online booking is meaningless for someone who cannot be booked
+         at all, so it follows rather than contradicting. */
+      var online = document.getElementById('sOnline');
+      var any = document.getElementById('sAny');
+      online.disabled = !on;
+      any.disabled = !on;
+      if (!on) { online.checked = false; any.checked = false; }
+    }
+    document.getElementById('sBookable').addEventListener('change', syncBooking);
+
+    function paintResources() {
+      var box = document.querySelector('[data-resources]');
+      var pool = SDR.resources().filter(function (r) {
+        return !model.locationIds.length || model.locationIds.indexOf(r.locationId) !== -1;
+      });
+      if (!pool.length) {
+        box.innerHTML = '<p class="text-[12.5px] text-sub">Choose a location first — resources belong to one.</p>';
+        return;
+      }
+      box.innerHTML = '<div class="flex flex-wrap gap-1.5">' + pool.map(function (r) {
+        var on = model.resourceIds.indexOf(r.id) !== -1;
+        return '<button type="button" class="sd-svcchip' + (on ? ' is-on' : '') + '" data-res="' + r.id + '"' +
+          ' aria-pressed="' + on + '">' + esc(r.name) +
+          '<span class="text-sub font-normal">' + esc(SDL.nameOf(r.locationId)) + '</span></button>';
+      }).join('') + '</div>';
+    }
+
+    document.querySelector('[data-resources]').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-res]');
+      if (!b) return;
+      var at = model.resourceIds.indexOf(b.dataset.res);
+      if (at === -1) model.resourceIds.push(b.dataset.res); else model.resourceIds.splice(at, 1);
+      paintResources();
+    });
+
+    document.querySelector('[data-selection]').addEventListener('change', function (e) {
+      if (!e.target.matches('[name="selection"]')) return;
+      model.selection = e.target.value;
+      paintPicks('[data-selection]', SDT.SELECTION_MODES, model.selection, 'selection');
+    });
+    document.querySelector('[data-priority]').addEventListener('change', function (e) {
+      if (!e.target.matches('[name="priority"]')) return;
+      model.priority = e.target.value;
+      paintPicks('[data-priority]', SDT.PRIORITIES, model.priority, 'priority');
+    });
+
+    /* ================= App access ================= */
+
+    function paintRoles() {
+      document.getElementById('sRole').innerHTML = '<option value="">Choose a role…</option>' +
+        SDT.roles().map(function (r) {
+          return '<option value="' + r.id + '">' + esc(r.name) + '</option>';
+        }).join('');
+      document.getElementById('sRole').value = model.access.roleId || '';
+    }
+
+    function paintRoleNote() {
+      var box = document.querySelector('[data-role-note]');
+      var r = SDT.roleById(model.access.roleId);
+      if (!r) { box.innerHTML = ''; return; }
+      box.innerHTML = '<div class="sd-total">' +
+        '<p class="text-[12.5px] text-ink leading-relaxed">' + esc(r.description) + '</p>' +
+        '<p class="text-[12px] text-sub mt-1.5">' + SDT.grantedCount(r) + ' of ' +
+          SDT.allPermissionIds().length + ' permissions · calendar: ' +
+          esc((SDT.CALENDAR_SCOPES.filter(function (s) { return s.id === r.calendarScope; })[0] || {}).label || '') +
+          ' · <a href="roles.html" class="font-semibold text-brand hover:underline">Review this role</a></p>' +
+        '</div>';
+    }
+
+    function paintAccessLocs() {
+      var box = document.querySelector('[data-access-locs]');
+      if (model.access.allLocations) {
+        box.innerHTML = '<p class="text-[12.5px] text-sub">They see data from every location.</p>';
+        return;
+      }
+      box.innerHTML = '<div class="flex flex-wrap gap-1.5">' + SDL.live().map(function (l) {
+        var on = (model.access.locationIds || []).indexOf(l.id) !== -1;
+        return '<button type="button" class="sd-svcchip' + (on ? ' is-on' : '') + '" data-acloc="' + l.id + '"' +
+          ' aria-pressed="' + on + '">' + esc(l.name) + '</button>';
+      }).join('') + '</div>' +
+      '<p class="text-[12px] text-faint mt-2">Their role says what they may do; this says whose data they may do it to.</p>';
+    }
+
+    document.querySelector('[data-access-locs]').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-acloc]');
+      if (!b) return;
+      var ids = model.access.locationIds || [];
+      var at = ids.indexOf(b.dataset.acloc);
+      if (at === -1) ids.push(b.dataset.acloc); else ids.splice(at, 1);
+      model.access.locationIds = ids;
+      paintAccessLocs();
+    });
+
+    document.getElementById('sAllLoc').addEventListener('change', function () {
+      model.access.allLocations = this.checked;
+      paintAccessLocs();
+    });
+
+    function syncAccess() {
+      var on = checked('sAccess');
+      document.querySelector('[data-access-fields]').hidden = !on;
+      model.access.enabled = on;
+      if (on && !val('sLogin')) setVal('sLogin', val('sEmail'));
+      paintInvite();
+    }
+    document.getElementById('sAccess').addEventListener('change', syncAccess);
+
+    document.getElementById('sRole').addEventListener('change', function () {
+      model.access.roleId = this.value;
+      paintRoleNote();
+    });
+
+    /* §37 — the invitation, and its whole history: sent when, resent
+       when, accepted or not. "Invitation sent" with no date is not an
+       answer to "did they ever get it?". */
+    function paintInvite() {
+      var box = document.querySelector('[data-invite]');
+      if (!existing || !model.access.enabled) {
+        box.innerHTML = '<p class="text-[12.5px] text-sub">The invitation is sent when you save.</p>';
+        return;
+      }
+      var a = model.access;
+      var meta = SDT.accessMeta(model);
+      var lines = [];
+      if (a.invitedAt) lines.push('Invited ' + SDR.dateShort(a.invitedAt.slice(0, 10)));
+      if (a.lastSentAt && a.lastSentAt.slice(0, 10) !== (a.invitedAt || '').slice(0, 10)) {
+        lines.push('last sent ' + SDR.dateShort(a.lastSentAt.slice(0, 10)));
+      }
+      if (a.acceptedAt) lines.push('accepted ' + SDR.dateShort(a.acceptedAt.slice(0, 10)));
+
+      box.innerHTML = '<div class="sd-total">' +
+        '<div class="flex flex-wrap items-center gap-2.5">' +
+          '<span class="sd-badge ' + meta.badge + '">' + meta.label + '</span>' +
+          '<span class="text-[12.5px] text-sub">' + esc(lines.join(' · ') || 'Never invited') + '</span>' +
+          '<button type="button" class="sd-chip !h-8 ml-auto" data-resend>' +
+            (a.invitedAt ? 'Resend invitation' : 'Send invitation') + '</button>' +
+          (a.status !== 'disabled'
+            ? '<button type="button" class="sd-chip !h-8" data-access-off>Disable login</button>'
+            : '<button type="button" class="sd-chip !h-8" data-access-on>Re-enable login</button>') +
+        '</div></div>';
+    }
+
+    document.querySelector('[data-invite]').addEventListener('click', function (e) {
+      if (!existing) return;
+      if (e.target.closest('[data-resend]')) {
+        SDT.invite(existing.id);
+        model.access = JSON.parse(JSON.stringify(SDT.byId(existing.id).access));
+        paintInvite();
+        SD.toast('Invitation sent to <b>' + esc(model.access.loginEmail || model.email) + '</b>.');
+        return;
+      }
+      if (e.target.closest('[data-access-off]')) {
+        SDT.setAccess(existing.id, { status: 'disabled' });
+        model.access.status = 'disabled';
+        paintInvite();
+        SD.toast('Login disabled. They stay on the team and stay bookable.');
+        return;
+      }
+      if (e.target.closest('[data-access-on]')) {
+        SDT.setAccess(existing.id, { status: model.access.acceptedAt ? 'active' : 'invited' });
+        model.access.status = model.access.acceptedAt ? 'active' : 'invited';
+        paintInvite();
+        SD.toast('Login re-enabled.');
+      }
+    });
+
+    /* ================= History ================= */
+
+    function paintHistory() {
+      if (!existing) return;
+      var rows = SDT.auditFor(existing.id);
+      var box = document.querySelector('[data-history]');
+      if (!rows.length) {
+        box.innerHTML = '<p class="text-[13px] text-sub">Nothing has changed since they were added.</p>';
+        return;
+      }
+      box.innerHTML = '<ol class="sd-log">' + rows.map(function (a) {
+        var when = new Date(a.at);
+        return '<li class="sd-log__row">' +
+          '<div class="min-w-0"><span class="block text-[13px] font-semibold text-head">' + esc(a.event) + '</span>' +
+          (a.from || a.to
+            ? '<span class="block text-[12.5px] text-sub mt-0.5">' +
+              (a.from ? '<s class="text-faint">' + esc(a.from) + '</s> → ' : '') + esc(a.to) + '</span>'
+            : '') + '</div>' +
+          '<div class="text-[12px] text-faint whitespace-nowrap">' + esc(a.actor) + ' · ' +
+            when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' +
+            when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + '</div>' +
+        '</li>';
+      }).join('') + '</ol>';
+    }
+
+    /* ================= Fill ================= */
+
+    var hireDp = null, endDp = null;
+
+    function fill() {
+      setVal('sFirst', model.firstName);
+      setVal('sLast', model.lastName);
+      setVal('sDisplay', model.displayName);
+      setVal('sJob', model.jobTitle);
+      setVal('sEmail', model.email);
+      setVal('sPhone', model.phone);
+      setVal('sEmpId', model.employeeId);
+      setVal('sBio', model.bio);
+      document.querySelector('[data-bio-count]').textContent = (model.bio || '').length + ' / 500';
+
+      document.getElementById('sType').value = model.employmentType;
+
+      setChecked('sBookable', model.bookable);
+      setChecked('sOnline', model.onlineBooking);
+      setChecked('sAny', model.anyAvailable);
+      setVal('sOnlineName', model.onlineName);
+      setVal('sNotice', model.noticeHours);
+      setVal('sWindow', model.windowDays);
+      setVal('sBufBefore', model.bufferBefore);
+      setVal('sBufAfter', model.bufferAfter);
+      setVal('sCapacity', model.capacity);
+
+      setChecked('sAccess', model.access.enabled);
+      setVal('sLogin', model.access.loginEmail);
+      setChecked('sAllLoc', model.access.allLocations);
+
+      setChecked('sNotifyEmail', model.notifications.email);
+      setChecked('sNotifySms', model.notifications.sms);
+      setChecked('sNotifyApp', model.notifications.inapp);
+
+      SD.comboAll(document);
+
+      paintColors(); paintAvatar(); paintStatus();
+      paintLocations(); paintServices(); paintHours(); paintBreaks(); paintTimeOff();
+      paintPicks('[data-selection]', SDT.SELECTION_MODES, model.selection, 'selection');
+      paintPicks('[data-priority]', SDT.PRIORITIES, model.priority, 'priority');
+      paintResources(); paintRoles(); paintRoleNote(); paintAccessLocs();
+      syncBooking(); syncAccess(); paintHistory();
+
+      tokensCtl = SD.tokens(document.querySelector('[data-tokens]'), {
+        value: model.specialties,
+        placeholder: 'Balayage',
+        onChange: function (v) { model.specialties = v; }
+      });
+
+      hireDp = SD.datePicker(document.querySelector('[data-datepicker="hire"]'), {
+        value: model.hireDate, minYear: 2000, dialogLabel: 'Choose a hire date'
+      });
+      endDp = SD.datePicker(document.querySelector('[data-datepicker="end"]'), {
+        value: model.endDate, minYear: 2000, dialogLabel: 'Choose an end date'
+      });
+    }
+
+    /* ================= Save ================= */
+
+    function collect() {
+      model.firstName = val('sFirst').trim();
+      model.lastName = val('sLast').trim();
+      model.displayName = val('sDisplay').trim();
+      model.jobTitle = val('sJob').trim();
+      model.email = val('sEmail').trim();
+      model.phone = val('sPhone').trim();
+      model.employeeId = val('sEmpId').trim();
+      model.bio = val('sBio').trim();
+
+      model.employmentType = val('sType');
+      model.hireDate = hireDp ? hireDp.value() : model.hireDate;
+      model.endDate = endDp ? endDp.value() : model.endDate;
+
+      model.bookable = checked('sBookable');
+      model.onlineBooking = checked('sOnline');
+      model.anyAvailable = checked('sAny');
+      model.onlineName = val('sOnlineName').trim();
+      model.noticeHours = val('sNotice');
+      model.windowDays = val('sWindow');
+      model.bufferBefore = val('sBufBefore');
+      model.bufferAfter = val('sBufAfter');
+      model.capacity = Math.max(1, num(val('sCapacity')) || 1);
+
+      model.access.enabled = checked('sAccess');
+      model.access.roleId = val('sRole');
+      model.access.loginEmail = val('sLogin').trim();
+      model.access.allLocations = checked('sAllLoc');
+
+      model.notifications = {
+        email: checked('sNotifyEmail'), sms: checked('sNotifySms'), inapp: checked('sNotifyApp')
+      };
+
+      if (tokensCtl) model.specialties = tokensCtl.value();
+      /* Overrides for services they no longer perform are dead weight. */
+      model.serviceOverrides = (model.serviceOverrides || []).filter(function (o) {
+        return model.serviceIds.indexOf(o.serviceId) !== -1 &&
+               (String(o.durationMin).trim() !== '' || String(o.price).trim() !== '');
+      });
+      return model;
+    }
+
+    var FIELD_MAP = { firstName: 'sFirst', lastName: 'sLast', email: 'sEmail',
+                      login: 'sLogin', role: 'sRole', locations: 'locations',
+                      services: 'services', status: 'status' };
+
+    function showProblems(list) {
+      SD.clearErrors(form);
+      document.querySelectorAll('[data-error-for]').forEach(function (el) {
+        el.hidden = true; el.textContent = '';
+      });
+
+      var box = document.querySelector('[data-problems]');
+      if (!list.length) { box.hidden = true; return null; }
+
+      var first = null;
+      list.forEach(function (pr) {
+        var target = FIELD_MAP[pr.field] || pr.field;
+        var slot = document.querySelector('[data-error-for="' + target + '"]');
+        if (slot) {
+          slot.textContent = slot.textContent ? slot.textContent + ' ' + pr.message : pr.message;
+          slot.hidden = false;
+        }
+        if (!first) first = document.getElementById(target);
+      });
+
+      box.innerHTML = '<b>' + list.length + ' thing' + (list.length === 1 ? '' : 's') + ' to fix</b>' +
+        '<ul class="mt-1.5 space-y-0.5 list-disc pl-4">' +
+        list.map(function (pr) { return '<li>' + esc(pr.message) + '</li>'; }).join('') + '</ul>';
+      box.hidden = false;
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return first;
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var data = collect();
+      var problems = [];
+
+      if (!data.firstName) problems.push({ field: 'firstName', message: 'A first name is required.' });
+      if (!data.lastName) problems.push({ field: 'lastName', message: 'A last name is required.' });
+      if (data.email && !SD.isEmail(data.email)) {
+        problems.push({ field: 'email', message: 'That does not look like an email address.' });
+      }
+
+      /* §78 — a bookable person with no location can never be offered a
+         slot, and a service they are not qualified for is not a slot
+         either. Both look fine on the form and produce an empty diary. */
+      if (data.bookable && !data.locationIds.length) {
+        problems.push({ field: 'locations', message: 'A bookable staff member needs at least one location.' });
+      }
+      if (data.bookable && data.onlineBooking && !data.serviceIds.length) {
+        problems.push({ field: 'services', message: 'Online booking needs at least one service — otherwise a client has nothing to book.' });
+      }
+      if (!validateHours()) {
+        problems.push({ field: 'status', message: 'Fix the working hours above.' });
+      }
+      if (data.bookable && !SDT.DAYS.some(function (d) { return (data.hours[d.id] || []).length; })) {
+        problems.push({ field: 'status', message: 'They work no days, so nothing could ever be booked with them.' });
+      }
+
+      if (data.access.enabled) {
+        if (!data.access.roleId) {
+          problems.push({ field: 'role', message: 'Choose a role for their login.' });
+        }
+        if (!data.access.loginEmail) {
+          problems.push({ field: 'login', message: 'A login email is required.' });
+        } else if (!SD.isEmail(data.access.loginEmail)) {
+          problems.push({ field: 'login', message: 'That does not look like an email address.' });
+        } else {
+          var taken = SDT.loginTaken(data.access.loginEmail, model.id);
+          if (taken) {
+            problems.push({ field: 'login', message: SDT.fullName(taken) + ' already signs in with that address.' });
+          }
+        }
+        if (!data.access.allLocations && !(data.access.locationIds || []).length) {
+          problems.push({ field: 'role', message: 'Choose at least one location they may see, or give them every location.' });
+        }
+      }
+
+      if (problems.length) {
+        var el = showProblems(problems);
+        if (el) el.focus({ preventScroll: true });
+        return;
+      }
+      showProblems([]);
+
+      var wasNew = !model.id;
+      var brandNew = wasNew && data.access.enabled;
+      var saved = SDT.save(Object.assign({}, data, { id: model.id || undefined }));
+
+      if (brandNew) SDT.invite(saved.id);
+
+      SD.flash('<b>' + esc(SDT.fullName(saved)) + '</b> ' + (wasNew ? 'added' : 'updated') + '.' +
+        (brandNew ? ' Invitation sent to ' + esc(saved.access.loginEmail) + '.' : ''));
+      window.location.href = 'staff.html';
+    });
+
+    document.querySelector('[data-deactivate]').addEventListener('click', function () {
+      confirmDialog({
+        title: 'Deactivate ' + SDT.fullName(existing) + '?',
+        body: 'They come off new bookings, online booking and the schedule. Their appointment history, client notes and revenue stay attached to them.' +
+              (existing.access.enabled ? ' Their login is left alone — disable it separately if they have left.' : ''),
+        okLabel: 'Deactivate',
+        onOk: function () {
+          SDT.setStatus(existing.id, 'inactive');
+          SD.flash('<b>' + esc(SDT.fullName(existing)) + '</b> deactivated.');
+          window.location.href = 'staff.html';
+        }
+      });
+    });
+
+    document.querySelector('[data-reactivate]').addEventListener('click', function () {
+      SDT.setStatus(existing.id, 'active');
+      SD.flash('<b>' + esc(SDT.fullName(existing)) + '</b> is back on the team.');
+      window.location.href = 'staff.html';
+    });
+
+    /* ================= Section rail ================= */
+
+    var links = Array.prototype.slice.call(document.querySelectorAll('[data-rail]'));
+    var sections = links.map(function (a) { return document.getElementById('sec-' + a.dataset.rail); }).filter(Boolean);
+
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          links.forEach(function (a) {
+            a.classList.toggle('is-current', a.dataset.rail === en.target.dataset.section);
+          });
+        });
+      }, { rootMargin: '-20% 0px -70% 0px' });
+      sections.forEach(function (s) { io.observe(s); });
+    }
+
+    /* ---------- Confirmation dialog ---------- */
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmFn = null;
+
+    function confirmDialog(o) {
+      document.querySelector('[data-confirm-title]').textContent = o.title;
+      document.querySelector('[data-confirm-body]').textContent = o.body;
+      document.querySelector('[data-confirm-ok]').textContent = o.okLabel || 'Delete';
+      confirmFn = o.onOk;
+      confirmCancelFn = o.onCancel || null;
+      confirmEl.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-confirm-cancel]').focus();
+      document.addEventListener('keydown', confirmKeys, true);
+    }
+    var confirmCancelFn = null;
+    function closeConfirm(viaCancel) {
+      confirmEl.hidden = true;
+      document.body.classList.remove('sd-locked');
+      document.removeEventListener('keydown', confirmKeys, true);
+      var back = confirmCancelFn;
+      confirmFn = null;
+      confirmCancelFn = null;
+      /* A dialog that changes a control has to be able to put it back
+         when the answer is no — otherwise the radio stays where the user
+         clicked it and the screen disagrees with the decision. */
+      if (viaCancel && back) back();
+    }
+    function confirmKeys(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeConfirm(true); return; }
+      if (e.key !== 'Tab') return;
+      var f = Array.prototype.filter.call(confirmEl.querySelectorAll('button'),
+        function (el) { return !!(el.offsetWidth || el.offsetHeight); });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmFn; closeConfirm(); if (fn) fn();
+    });
+
+    fill();
+
+  }());
+  </script>
+</body>
+</html>

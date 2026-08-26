@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Location — StyleDesk</title>
+
+  <!--
+    StyleDesk — Add Location
+    One form for add and edit. ?id= switches it to edit and reveals
+    what the site holds, plus the close action.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
+             aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ===== Page ===== -->
+  <main class="flex-1 w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
+    <nav class="flex items-center gap-1.5 text-[12px] text-sub mb-2" aria-label="Breadcrumb">
+      <a href="app-settings.html" class="hover:text-ink transition-colors">App Settings</a>
+      <span class="text-faint">/</span>
+      <a href="locations.html" class="hover:text-ink transition-colors">Locations</a><span class="text-faint">/</span><span class="text-ink font-medium" data-crumb>Add</span>
+    </nav>
+    <div class="flex flex-wrap items-start gap-x-4 gap-y-3 mb-5">
+      <div class="min-w-0">
+        <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight" data-title>Add Location</h1>
+        <p class="text-[13px] text-sub mt-1" data-sub>A site the business operates from. Resources sit at one; bookings happen at one.</p>
+      </div>
+      <div class="ml-auto shrink-0" data-status-wrap hidden><span data-status-badge></span></div>
+    </div>
+
+    <form data-form novalidate class="space-y-5 max-w-[900px]">
+      <div class="sd-alert sd-alert--danger" data-problems hidden></div>
+
+    <section class="sd-card" id="sec-identity" data-section="identity"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Identity</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">The name staff and clients see. The code is yours — it prefixes resource codes and appears on reports.</p></div><div class="grid sm:grid-cols-3 gap-4"><div class="sm:col-span-2"><label for="lName" class="block text-[13px] font-medium text-ink mb-1.5">Location name<span class="text-danger"> *</span></label><input id="lName" type="text" class="sd-input" placeholder="Downtown Salon" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="lName" hidden></p></div><div class=""><label for="lCode" class="block text-[13px] font-medium text-ink mb-1.5">Code</label><input id="lCode" type="text" class="sd-input" placeholder="DT" autocomplete="off" maxlength="6" /><p class="text-[12px] text-faint mt-1.5">Short. Two or three letters.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="lCode" hidden></p></div></div><div class="mt-4"><div class=""><label for="lDesc" class="block text-[13px] font-medium text-ink mb-1.5">Description</label><textarea id="lDesc" rows="2" class="sd-input !h-auto py-2.5" placeholder="What this site is for, and how it differs from the others."></textarea><p class="text-[12px] text-danger mt-1.5" data-error-for="lDesc" hidden></p></div></div><div class="divide-y divide-line mt-2 -mb-1"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="lPrimary" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Primary location</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Where a new resource, a new service and a walk-in default to. Exactly one location is primary.</span></span></label></div></section>
+    <section class="sd-card" id="sec-contact" data-section="contact"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Contact</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">How clients reach this site. Shown on confirmations and on the booking page.</p></div><div class="grid sm:grid-cols-2 gap-4"><div class=""><label for="lPhone" class="block text-[13px] font-medium text-ink mb-1.5">Phone</label><input id="lPhone" type="tel" class="sd-input" placeholder="+1 (202) 555-0110" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="lPhone" hidden></p></div><div class=""><label for="lEmail" class="block text-[13px] font-medium text-ink mb-1.5">Email</label><input id="lEmail" type="email" class="sd-input" placeholder="downtown@example.com" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="lEmail" hidden></p></div></div></section>
+    <section class="sd-card" id="sec-address" data-section="address"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Address</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Used on receipts, in confirmations and for directions.</p></div><div class="grid sm:grid-cols-2 gap-4"><div class="sm:col-span-2"><label for="lStreet" class="block text-[13px] font-medium text-ink mb-1.5">Street</label><input id="lStreet" type="text" class="sd-input" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="lStreet" hidden></p></div><div class="sm:col-span-2"><label for="lStreet2" class="block text-[13px] font-medium text-ink mb-1.5">Second line</label><input id="lStreet2" type="text" class="sd-input" placeholder="Floor, unit or entrance" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="lStreet2" hidden></p></div><div class=""><label for="lCity" class="block text-[13px] font-medium text-ink mb-1.5">City</label><input id="lCity" type="text" class="sd-input" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="lCity" hidden></p></div><div class=""><label for="lRegion" class="block text-[13px] font-medium text-ink mb-1.5">State or region</label><input id="lRegion" type="text" class="sd-input" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="lRegion" hidden></p></div><div class=""><label for="lPost" class="block text-[13px] font-medium text-ink mb-1.5">Postcode</label><input id="lPost" type="text" class="sd-input" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="lPost" hidden></p></div><div class=""><label for="lCountry" class="block text-[13px] font-medium text-ink mb-1.5">Country</label><select id="lCountry" class="sd-input"></select><p class="text-[12px] text-danger mt-1.5" data-error-for="lCountry" hidden></p></div></div></section>
+    <section class="sd-card" id="sec-hours" data-section="hours"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Opening hours</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">When this site is open. A resource can never be booked outside them, whatever its own hours say — so these are the outer limit on everything that happens here.</p></div><div class="sd-hours" data-hours></div><div class="sd-total mt-4"><p class="text-[12.5px] text-ink" data-hours-summary></p></div></section>
+    <section class="sd-card" id="sec-zone" data-section="zone"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Time zone</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Every time shown for this site — the diary, reminders, reports — is read in this zone.</p></div><div class="grid sm:grid-cols-2 gap-4"><div class=""><label for="lTz" class="block text-[13px] font-medium text-ink mb-1.5">Time zone</label><select id="lTz" class="sd-input"></select><p class="text-[12px] text-danger mt-1.5" data-error-for="lTz" hidden></p></div></div></section>
+    <section class="sd-card" id="sec-booking" data-section="booking"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Booking rules here</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">These override the business defaults for this site only. An airport counter and a spa do not run on the same rules.</p></div><div class="divide-y divide-line -mt-1"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="lOnline" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Bookable online</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off keeps this site staff-booked only.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="lWalkIn" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Accepts walk-ins</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off where every treatment needs a room that is already booked out.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="lGuest" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Allows guest bookings</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Booking without creating a client record.</span></span></label></div><div class="grid sm:grid-cols-3 gap-4 mt-4"><div class=""><label for="lInterval" class="block text-[13px] font-medium text-ink mb-1.5">Slot interval</label><select id="lInterval" class="sd-input"></select><p class="text-[12px] text-faint mt-1.5">How the diary is divided.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="lInterval" hidden></p></div><div class=""><label for="lNotice" class="block text-[13px] font-medium text-ink mb-1.5">Minimum notice</label><input id="lNotice" type="number" class="sd-input" min="0" max="720" step="1" /><p class="text-[12px] text-faint mt-1.5">Hours ahead a client must book.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="lNotice" hidden></p></div><div class=""><label for="lWindow" class="block text-[13px] font-medium text-ink mb-1.5">Booking window</label><input id="lWindow" type="number" class="sd-input" min="1" max="365" step="1" /><p class="text-[12px] text-faint mt-1.5">Days ahead the diary is open.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="lWindow" hidden></p></div></div></section>
+    <section class="sd-card" id="sec-holds" data-section="holds"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">What is here</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Read-only. Set on the resource, the service and the staff member themselves — shown here so the picture is in one place.</p></div><div data-holds></div></section>
+    <section class="sd-card" id="sec-notes" data-section="notes"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Internal notes</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Staff-only. Never shown to a client.</p></div><textarea id="lNotes" rows="3" class="sd-input !h-auto py-2.5" placeholder="Parking is on Cedar Street. The back entrance is locked after 6."></textarea></section>
+
+      <div class="flex flex-wrap items-center gap-3 pt-1">
+        <button type="submit" class="inline-flex items-center h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors" data-save>Save Location</button>
+        <a href="locations.html" class="inline-flex items-center h-11 px-5 rounded-lg border border-stroke bg-white text-ink text-[14px] font-semibold hover:bg-hover transition-colors">Cancel</a>
+        <button type="button" class="sm:ml-auto inline-flex items-center h-11 px-4 rounded-lg border border-stroke bg-white text-danger text-[13px] font-semibold hover:bg-red-50 transition-colors" data-close hidden>Close this location</button>
+        <button type="button" class="sm:ml-auto inline-flex items-center h-11 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-reopen hidden>Reopen</button>
+      </div>
+    </form>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title></h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body></p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Delete</button>
+        <button type="button" data-confirm-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/resources.js"></script>
+  <script src="assets/js/services.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script src="assets/js/bookings.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    /* When the row is too narrow to hold every section, the one you are
+       on can start off-screen to the right. Nudge it into view — without
+       scrolling the page itself, which scrollIntoView would do. */
+    (function () {
+      var nav = document.querySelector('[data-subnav]');
+      if (!nav) return;
+      var here = nav.querySelector('[aria-current="page"]');
+      if (!here) return;
+      var over = here.offsetLeft + here.offsetWidth - (nav.scrollLeft + nav.clientWidth);
+      if (over > 0) nav.scrollLeft += over + 4;
+      else if (here.offsetLeft < nav.scrollLeft) nav.scrollLeft = Math.max(0, here.offsetLeft - 4);
+    }());
+
+    var esc = SDR.esc;
+
+    function esc(v) { return SDL.esc(v); }
+
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('id');
+    var existing = id ? SDL.byId(id) : null;
+    var form = document.querySelector('[data-form]');
+
+    if (id && !existing) {
+      form.innerHTML =
+        '<div class="sd-card text-center py-16">' +
+          '<h2 class="text-[17px] font-semibold text-head">That location no longer exists</h2>' +
+          '<p class="text-[13px] text-sub mt-1.5">The list below is current.</p>' +
+          '<div class="mt-5"><a href="locations.html" class="inline-flex items-center h-10 px-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold">Back to locations</a></div>' +
+        '</div>';
+      return;
+    }
+
+    var model = existing ? JSON.parse(JSON.stringify(existing)) : SDL.blank();
+
+    if (existing) {
+      document.title = existing.name + ' — StyleDesk';
+      document.querySelector('[data-title]').textContent = existing.name;
+      document.querySelector('[data-crumb]').textContent = existing.name;
+      document.querySelector('[data-sub]').textContent =
+        SDL.addressOneLine(existing) || 'No address set.';
+      document.querySelector('[data-save]').textContent = 'Save Changes';
+      document.querySelector('[data-status-wrap]').hidden = false;
+      var st = SDL.statusMeta(existing.status);
+      document.querySelector('[data-status-badge]').innerHTML =
+        '<span class="sd-badge ' + st.badge + '">' + st.label + '</span>';
+      document.querySelector('[data-close]').hidden = existing.status !== 'active';
+      document.querySelector('[data-reopen]').hidden = existing.status === 'active';
+    }
+
+    function val(k) { return document.getElementById(k).value; }
+    function setVal(k, v) { document.getElementById(k).value = v == null ? '' : v; }
+    function checked(k) { return document.getElementById(k).checked; }
+    function setChecked(k, v) { document.getElementById(k).checked = !!v; }
+    function num(v) { var n = Number(v); return isNaN(n) ? 0 : n; }
+
+    /* ---------- Selects ---------------------------------------------- */
+
+    document.getElementById('lCountry').innerHTML = SDL.COUNTRIES.map(function (c) {
+      return '<option value="' + c.id + '">' + esc(c.label) + '</option>';
+    }).join('');
+
+    document.getElementById('lTz').innerHTML = SDL.TIMEZONES.map(function (t) {
+      return '<option value="' + t.id + '">' + esc(t.label) + '</option>';
+    }).join('');
+
+    document.getElementById('lInterval').innerHTML = [10, 15, 20, 30, 60].map(function (m) {
+      return '<option value="' + m + '">' + m + ' minutes</option>';
+    }).join('');
+
+    /* ---------- Hours -------------------------------------------------
+       The same weekly grid the resource form uses, because they are the
+       same question asked of different things — and a site whose hours
+       looked different from a chair's would invite the reader to think
+       they behaved differently. */
+
+    var hoursBox = document.querySelector('[data-hours]');
+
+    function timeOptions(value) {
+      var out = [];
+      for (var m = 0; m <= 24 * 60; m += 15) {
+        if (m === 24 * 60) {
+          out.push('<option value="24:00"' + (value === '24:00' ? ' selected' : '') + '>Midnight</option>');
+          break;
+        }
+        var v = SDR.fromMin(m);
+        out.push('<option value="' + v + '"' + (v === value ? ' selected' : '') + '>' +
+                 SDR.timeLabel(v) + '</option>');
+      }
+      return out.join('');
+    }
+
+    function paintHours() {
+      hoursBox.innerHTML = SDL.DAYS.map(function (d) {
+        var spans = model.hours[d.id] || [];
+        var on = spans.length > 0;
+
+        var rows = spans.map(function (sp, i) {
+          return '<div class="flex flex-wrap items-center gap-2" data-span="' + d.id + ':' + i + '">' +
+            '<select class="sd-input !h-9 !w-auto min-w-[116px]" data-span-from aria-label="' + d.label +
+              ' opening time' + (spans.length > 1 ? ' ' + (i + 1) : '') + '">' + timeOptions(sp[0]) + '</select>' +
+            '<span class="text-[12px] text-faint">to</span>' +
+            '<select class="sd-input !h-9 !w-auto min-w-[116px]" data-span-to aria-label="' + d.label +
+              ' closing time' + (spans.length > 1 ? ' ' + (i + 1) : '') + '">' + timeOptions(sp[1]) + '</select>' +
+            (spans.length > 1
+              ? '<button type="button" class="sd-iconbtn" data-span-remove aria-label="Remove this ' + d.label +
+                ' period"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+                '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>'
+              : '') +
+          '</div>';
+        }).join('');
+
+        return '<div class="sd-hours__day' + (on ? '' : ' is-off') + '" data-day="' + d.id + '">' +
+          '<label class="sd-hours__toggle">' +
+            '<input type="checkbox" class="sd-check" data-day-on' + (on ? ' checked' : '') +
+            ' aria-label="Open on ' + d.label + '" />' +
+            '<span class="text-[13px] font-medium text-ink">' + d.label + '</span>' +
+          '</label>' +
+          '<div class="sd-hours__spans">' +
+            (on ? rows + '<button type="button" class="text-[12.5px] font-semibold text-brand hover:underline w-fit" data-span-add>+ Add a period</button>'
+                : '<span class="text-[13px] text-faint">Closed</span>') +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      document.querySelector('[data-hours-summary]').textContent = SDL.hoursSummary(model);
+    }
+
+    hoursBox.addEventListener('change', function (e) {
+      var dayEl = e.target.closest('[data-day]');
+      if (!dayEl) return;
+      var day = dayEl.dataset.day;
+
+      if (e.target.matches('[data-day-on]')) {
+        model.hours[day] = e.target.checked ? [['09:00', '18:00']] : [];
+        paintHours();
+        return;
+      }
+      var spanEl = e.target.closest('[data-span]');
+      if (!spanEl) return;
+      var i = parseInt(spanEl.dataset.span.split(':')[1], 10);
+      model.hours[day][i] = [spanEl.querySelector('[data-span-from]').value,
+                             spanEl.querySelector('[data-span-to]').value];
+      validateHours();
+      document.querySelector('[data-hours-summary]').textContent = SDL.hoursSummary(model);
+    });
+
+    hoursBox.addEventListener('click', function (e) {
+      var dayEl = e.target.closest('[data-day]');
+      if (!dayEl) return;
+      var day = dayEl.dataset.day;
+
+      if (e.target.closest('[data-span-add]')) {
+        var last = model.hours[day][model.hours[day].length - 1];
+        var startMin = Math.min(SDR.toMin(last[1]) + 60, 23 * 60);
+        model.hours[day].push([SDR.fromMin(startMin), SDR.fromMin(Math.min(startMin + 120, 24 * 60))]);
+        paintHours();
+        var added = hoursBox.querySelector('[data-day="' + day + '"] [data-span]:last-of-type [data-span-from]');
+        if (added) added.focus();
+      } else if (e.target.closest('[data-span-remove]')) {
+        var i = parseInt(e.target.closest('[data-span]').dataset.span.split(':')[1], 10);
+        model.hours[day].splice(i, 1);
+        paintHours();
+      }
+      validateHours();
+    });
+
+    /* A closing time at or before its opening time is the one hours
+       mistake that silently makes a whole site unbookable. */
+    var hoursError = document.createElement('p');
+    hoursError.className = 'text-[12px] text-danger mt-3';
+    hoursError.hidden = true;
+    hoursBox.parentNode.appendChild(hoursError);
+
+    function validateHours() {
+      var bad = [];
+      SDL.DAYS.forEach(function (d) {
+        var spans = model.hours[d.id] || [];
+        spans.forEach(function (sp, i) {
+          if (SDR.toMin(sp[1]) <= SDR.toMin(sp[0])) bad.push(d.label + ' closes before it opens');
+          for (var j = 0; j < i; j++) {
+            if (SDR.overlaps(SDR.toMin(spans[j][0]), SDR.toMin(spans[j][1]),
+                             SDR.toMin(sp[0]), SDR.toMin(sp[1]))) {
+              bad.push(d.label + ' has two periods that overlap');
+            }
+          }
+        });
+      });
+      hoursError.textContent = bad.length ? bad[0] + '.' : '';
+      hoursError.hidden = !bad.length;
+      return !bad.length;
+    }
+
+    /* ---------- What is here ------------------------------------------ */
+
+    function renderHolds() {
+      var box = document.querySelector('[data-holds]');
+
+      if (!existing) {
+        box.innerHTML = '<p class="text-[13px] text-sub">Save the location, then assign resources, services and staff to it.</p>';
+        return;
+      }
+
+      var u = SDL.usage(existing.id);
+      var resources = SDR.resources().filter(function (r) { return r.locationId === existing.id; });
+      var staff = SD.STAFF.filter(function (p) { return (p.locations || []).indexOf(existing.id) !== -1; });
+      var services = SDS.all().filter(function (s) {
+        return SDS.configuredLocationIds(s).indexOf(existing.id) !== -1;
+      });
+
+      function block(title, count, href, linkText, body) {
+        return '<div class="mb-4 last:mb-0">' +
+          '<div class="flex flex-wrap items-baseline gap-2 mb-1.5">' +
+            '<p class="sd-eyebrow">' + title + '</p>' +
+            '<span class="text-[12px] text-sub">' + count + '</span>' +
+            '<a href="' + href + '" class="ml-auto text-[12.5px] font-semibold text-brand hover:underline">' + linkText + '</a>' +
+          '</div>' + body + '</div>';
+      }
+
+      box.innerHTML =
+        block('Services', u.services + ' offered here', 'services.html', 'Manage services',
+          services.length
+            ? '<div class="flex flex-wrap gap-1.5">' + services.map(function (s) {
+                var only = SDS.configuredLocationIds(s).length === 1;
+                return '<span class="sd-tag sd-tag--plain">' + esc(s.name) +
+                  (only ? ' <span class="text-warning">· only here</span>' : '') + '</span>';
+              }).join('') + '</div>'
+            : '<p class="text-[12.5px] text-sub">Nothing yet. A service has to list this location before it can be booked here.</p>') +
+
+        block('Staff', u.staff + ' based here', 'app-settings.html', 'Manage staff',
+          staff.length
+            ? '<div class="flex flex-wrap gap-1.5">' + staff.map(function (p) {
+                return '<span class="sd-tag sd-tag--plain">' + esc(p.name) + ' · ' + esc(p.role) + '</span>';
+              }).join('') + '</div>'
+            : '<p class="text-[12.5px] text-danger">Nobody works here, so nothing can be booked here.</p>') +
+
+        block('Resources', u.resources + ' here', 'resources.html', 'Manage resources',
+          resources.length
+            ? '<div class="flex flex-wrap gap-1.5">' + resources.map(function (r) {
+                return '<span class="sd-tag sd-tag--plain">' + esc(r.name) +
+                  (r.active ? '' : ' <span class="text-faint">· inactive</span>') + '</span>';
+              }).join('') + '</div>'
+            : '<p class="text-[12.5px] text-sub">No chairs, rooms or machines here yet.</p>') +
+
+        (u.upcoming
+          ? '<div class="sd-alert sd-alert--info mt-1">' + u.upcoming + ' upcoming appointment' +
+            (u.upcoming === 1 ? '' : 's') + ' at this location.</div>'
+          : '');
+    }
+
+    /* ---------- Fill --------------------------------------------------- */
+
+    function fill() {
+      setVal('lName', model.name);
+      setVal('lCode', model.code);
+      setVal('lDesc', model.description);
+      setChecked('lPrimary', model.isPrimary);
+
+      setVal('lPhone', model.phone);
+      setVal('lEmail', model.email);
+
+      setVal('lStreet', model.street);
+      setVal('lStreet2', model.street2);
+      setVal('lCity', model.city);
+      setVal('lRegion', model.region);
+      setVal('lPost', model.postcode);
+      document.getElementById('lCountry').value = model.country;
+      document.getElementById('lTz').value = model.timezone;
+
+      setChecked('lOnline', model.booking.online);
+      setChecked('lWalkIn', model.booking.allowWalkIn);
+      setChecked('lGuest', model.booking.allowGuest);
+      document.getElementById('lInterval').value = model.booking.intervalMin;
+      setVal('lNotice', model.booking.minNoticeHours);
+      setVal('lWindow', model.booking.windowDays);
+
+      setVal('lNotes', model.notes);
+
+      /* The primary flag cannot be unticked — something has to be
+         primary, so it is turned off by making another site primary
+         instead. Disabling the box says that better than an error would. */
+      var pr = document.getElementById('lPrimary');
+      if (model.isPrimary) {
+        pr.disabled = true;
+        pr.closest('label').classList.add('opacity-60');
+        pr.closest('label').querySelector('.text-\\[12px\\]').textContent =
+          'Already the primary location. Make another site primary to move it.';
+      }
+
+      SD.comboAll(document);
+      paintHours();
+      renderHolds();
+    }
+
+    /* ---------- Save --------------------------------------------------- */
+
+    function collect() {
+      model.name = val('lName').trim();
+      model.code = val('lCode').trim().toUpperCase();
+      model.description = val('lDesc').trim();
+      model.isPrimary = checked('lPrimary');
+
+      model.phone = val('lPhone').trim();
+      model.email = val('lEmail').trim();
+
+      model.street = val('lStreet').trim();
+      model.street2 = val('lStreet2').trim();
+      model.city = val('lCity').trim();
+      model.region = val('lRegion').trim();
+      model.postcode = val('lPost').trim();
+      model.country = val('lCountry');
+      model.timezone = val('lTz');
+
+      model.booking = {
+        online: checked('lOnline'),
+        allowWalkIn: checked('lWalkIn'),
+        allowGuest: checked('lGuest'),
+        intervalMin: num(val('lInterval')),
+        minNoticeHours: num(val('lNotice')),
+        windowDays: num(val('lWindow'))
+      };
+
+      model.notes = val('lNotes').trim();
+      return model;
+    }
+
+    function showProblems(list) {
+      SD.clearErrors(form);
+      document.querySelectorAll('[data-error-for]').forEach(function (el) {
+        el.hidden = true; el.textContent = '';
+      });
+
+      var box = document.querySelector('[data-problems]');
+      if (!list.length) { box.hidden = true; return null; }
+
+      var first = null;
+      list.forEach(function (pr) {
+        var slot = document.querySelector('[data-error-for="' + pr.field + '"]');
+        if (slot) { slot.textContent = pr.message; slot.hidden = false; }
+        if (!first) first = document.getElementById(pr.field);
+      });
+
+      box.innerHTML = '<b>' + list.length + ' thing' + (list.length === 1 ? '' : 's') + ' to fix</b>' +
+        '<ul class="mt-1.5 space-y-0.5 list-disc pl-4">' +
+        list.map(function (pr) { return '<li>' + esc(pr.message) + '</li>'; }).join('') + '</ul>';
+      box.hidden = false;
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return first;
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var data = collect();
+      var problems = [];
+
+      if (!data.name) problems.push({ field: 'lName', message: 'Give the location a name.' });
+
+      var clash = SDL.all().filter(function (l) {
+        return l.id !== model.id && l.name.trim().toLowerCase() === data.name.toLowerCase();
+      });
+      if (data.name && clash.length) {
+        problems.push({ field: 'lName', message: 'Another location already has this name.' });
+      }
+
+      var codeClash = SDL.all().filter(function (l) {
+        return l.id !== model.id && l.code && l.code.toUpperCase() === data.code && data.code;
+      });
+      if (codeClash.length) {
+        problems.push({ field: 'lCode', message: 'That code is already used by ' + codeClash[0].name + '.' });
+      }
+
+      if (data.email && !SD.isEmail(data.email)) {
+        problems.push({ field: 'lEmail', message: 'That does not look like an email address.' });
+      }
+
+      /* A site open no days is not a site. Every resource here would
+         report "outside its hours" for every slot, and nothing would
+         explain why. */
+      if (!SDL.openDays(data)) {
+        problems.push({ field: 'lName', message: 'The location is closed every day, so nothing could ever be booked here. Open at least one day.' });
+      }
+      if (!validateHours()) {
+        problems.push({ field: 'lName', message: 'Fix the opening hours above.' });
+      }
+
+      if (problems.length) {
+        var el = showProblems(problems);
+        if (el) el.focus({ preventScroll: true });
+        return;
+      }
+      showProblems([]);
+
+      var saved = SDL.save(Object.assign({}, data, { id: model.id || undefined }));
+      SD.flash('<b>' + esc(saved.name) + '</b> ' + (model.id ? 'updated' : 'added') + '.');
+      window.location.href = 'locations.html';
+    });
+
+    document.querySelector('[data-close]').addEventListener('click', function () {
+      var u = SDL.usage(existing.id);
+      var lines = [];
+      if (u.upcoming) lines.push(u.upcoming + ' upcoming appointment' + (u.upcoming === 1 ? '' : 's') + ' will need moving');
+      if (u.resources) lines.push(u.resources + ' resource' + (u.resources === 1 ? '' : 's') + ' here stop being assignable');
+      if (u.servicesOnlyHere.length) {
+        lines.push(u.servicesOnlyHere.join(', ') + ' ' +
+          (u.servicesOnlyHere.length === 1 ? 'is' : 'are') + ' offered only here and will not be bookable anywhere');
+      }
+
+      confirmDialog({
+        title: 'Close ' + existing.name + '?',
+        body: 'It stops taking bookings and drops out of every list. Nothing is deleted — its history, resources and settings are kept, and you can reopen it at any time.' +
+              (lines.length ? ' ' + lines.join('. ') + '.' : ''),
+        okLabel: 'Close it',
+        onOk: function () {
+          SDL.setStatus(existing.id, 'disabled');
+          SD.flash('<b>' + esc(existing.name) + '</b> closed.');
+          window.location.href = 'locations.html';
+        }
+      });
+    });
+
+    document.querySelector('[data-reopen]').addEventListener('click', function () {
+      SDL.setStatus(existing.id, 'active');
+      SD.flash('<b>' + esc(existing.name) + '</b> is open again.');
+      window.location.href = 'locations.html';
+    });
+
+    /* ---------- Confirmation dialog ---------- */
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmFn = null;
+
+    function confirmDialog(o) {
+      document.querySelector('[data-confirm-title]').textContent = o.title;
+      document.querySelector('[data-confirm-body]').textContent = o.body;
+      document.querySelector('[data-confirm-ok]').textContent = o.okLabel || 'Delete';
+      confirmFn = o.onOk;
+      confirmCancelFn = o.onCancel || null;
+      confirmEl.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-confirm-cancel]').focus();
+      document.addEventListener('keydown', confirmKeys, true);
+    }
+    var confirmCancelFn = null;
+    function closeConfirm(viaCancel) {
+      confirmEl.hidden = true;
+      document.body.classList.remove('sd-locked');
+      document.removeEventListener('keydown', confirmKeys, true);
+      var back = confirmCancelFn;
+      confirmFn = null;
+      confirmCancelFn = null;
+      /* A dialog that changes a control has to be able to put it back
+         when the answer is no — otherwise the radio stays where the user
+         clicked it and the screen disagrees with the decision. */
+      if (viaCancel && back) back();
+    }
+    function confirmKeys(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeConfirm(true); return; }
+      if (e.key !== 'Tab') return;
+      var f = Array.prototype.filter.call(confirmEl.querySelectorAll('button'),
+        function (el) { return !!(el.offsetWidth || el.offsetHeight); });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmFn; closeConfirm(); if (fn) fn();
+    });
+
+    fill();
+
+  }());
+  </script>
+</body>
+</html>

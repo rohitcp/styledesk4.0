@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You're all set — StyleDesk setup</title>
+
+  <!--
+    StyleDesk — Onboarding step 6: Complete (§16)
+    Every item is listed, done or not. Skipped items read "Setup later" with
+    a link straight back to the step, so nothing quietly disappears.
+    Reaching this screen flips the tenant from `onboarding` to `trial` (§24).
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <header class="bg-brand">
+    <div class="w-full px-4 sm:px-6 h-14 flex items-center gap-3">
+      <span class="text-white/70 text-[13px] truncate" data-bizname>Set up your business</span>
+      <div class="ml-auto flex items-center gap-3">
+        <span class="hidden md:inline-flex sd-pill-dark" data-trial>14 days left in your free trial</span>
+        <a href="signup.html" data-logout class="text-white/70 hover:text-white text-[13px] font-medium transition-colors">Log out</a>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- Two columns from lg up, matching the other wizard steps. -->
+  <div class="flex-1 lg:grid lg:grid-cols-12">
+
+  <main class="lg:col-span-8 min-w-0 w-full px-4 sm:px-6 pt-7 sm:pt-10 pb-[200px]">
+    <div class="max-w-[780px]">
+
+      <div class="pb-5 mb-8 border-b border-line">
+        <div class="flex items-center gap-4">
+          <span class="text-[13px] font-semibold text-head">Setup complete</span>
+          <span class="ml-auto text-[12px] font-medium text-sub" data-step-label>Step 7 of 7</span>
+        </div>
+        <div class="sd-progress mt-3"><span data-progress style="width:0%"></span></div>
+      </div>
+
+      <div>
+        <span class="h-14 w-14 rounded-2xl bg-brand text-white grid place-items-center mb-5" aria-hidden="true">
+          <svg width="27" height="27" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <h1 class="text-[26px] sm:text-[30px] font-bold text-head tracking-tight">Your StyleDesk is ready</h1>
+        <p class="text-[14px] text-sub mt-2.5 leading-relaxed max-w-[560px]">
+          <span id="biz">Your business</span> has been created successfully. You're ready to start
+          managing clients, services, appointments, and your team.
+        </p>
+      </div>
+
+      <section class="bg-white border border-line rounded-card overflow-hidden mt-7">
+        <div class="px-5 py-3.5 border-b border-line bg-hover/40">
+          <h2 class="text-[13px] font-semibold text-ink">Setup summary</h2>
+        </div>
+        <ul id="checklist" class="divide-y divide-line"></ul>
+      </section>
+
+      <div class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <a href="dashboard.html" id="go"
+           class="h-11 px-7 grid place-items-center rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+          Go to StyleDesk
+        </a>
+        <p class="text-[12px] text-faint" data-trial-line>Your free trial has started.</p>
+      </div>
+
+    </div>
+  </main>
+
+    <!-- ===================== Context rail ===================== -->
+    <aside class="lg:col-span-4 min-w-0 hidden lg:block border-l border-line bg-gradient-to-b from-white via-[#faf9fd] to-[#f2effa]">
+      <div class="sticky top-0 px-8 py-10 max-w-[420px]">
+
+        <h2 class="text-[15px] font-semibold text-head">Your workspace</h2>
+        <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Everything below is editable in Settings.</p>
+
+        <div class="mt-5 rounded-card border border-line bg-white shadow-sm overflow-hidden" aria-hidden="true">
+          <div class="flex items-center gap-3 px-4 py-3.5 border-b border-line">
+            <span id="pv-logo" class="h-10 w-10 rounded-lg bg-brand text-white grid place-items-center shrink-0 overflow-hidden">
+              <svg width="20" height="20" viewBox="0 0 32 32" fill="currentColor"><path d="M6.5 21.5 L14 6 L18.5 6 L11 21.5 Z"/><path d="M14.5 21.5 L22 6 L26.5 6 L19 21.5 Z"/><rect x="4" y="24.6" width="24" height="3.6" rx="1.8"/></svg>
+            </span>
+            <div class="min-w-0">
+              <p id="pv-name" class="text-[14px] font-semibold text-head truncate">Your business</p>
+              <p id="pv-url" class="text-[12px] text-faint truncate">….styledesk.com</p>
+            </div>
+          </div>
+          <ul id="pv-facts" class="divide-y divide-line"></ul>
+        </div>
+
+        <ul class="mt-8 space-y-4">
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed" data-trial-note>Your trial runs for 14 days — no card needed until you choose a plan.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Anything you skipped is waiting for you — the summary on the left links straight to it.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Your dashboard opens with a getting-started checklist for the rest.</span>
+          </li>
+        </ul>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script>
+    (function () {
+      SD.renderProgress('complete');
+
+      var state = SD.read();
+      document.querySelector('[data-trial]').textContent = SD.trialRemaining() + ' days left in your free trial';
+      document.querySelector('[data-logout]').addEventListener('click', function () { SD.reset(); });
+
+      var bizName = (state.tenant && state.tenant.name) || 'Your business';
+      document.getElementById('biz').textContent = bizName;
+      document.querySelector('[data-bizname]').textContent = bizName;
+      document.querySelector('[data-trial-line]').textContent =
+        'Your free trial has started — ' + SD.trialRemaining() + ' days remaining.';
+
+      /* ---- context rail ---- */
+      (function () {
+        document.getElementById('pv-name').textContent = bizName;
+        document.getElementById('pv-url').textContent =
+          (state.tenant && state.tenant.url) || '….styledesk.com';
+
+        if (state.tenant && state.tenant.logo) {
+          var logo = document.getElementById('pv-logo');
+          logo.innerHTML = '<img src="' + state.tenant.logo + '" alt="" class="h-full w-full object-cover" />';
+          logo.className = 'h-10 w-10 rounded-lg border border-line grid place-items-center shrink-0 overflow-hidden';
+        }
+
+        var loc = state.location;
+        var openDays = state.hours
+          ? Object.keys(state.hours).filter(function (d) { return state.hours[d] && state.hours[d].open; }).length
+          : 0;
+        var services = (state.services || []).length;
+        var team = (state.team || []).length;
+
+        var facts = [
+          ['Location', loc ? [loc.city, loc.state].filter(Boolean).join(', ') || loc.locName : 'Not set'],
+          ['Timezone', loc && loc.timezone ? loc.timezone : 'Not set'],
+          ['Open',     openDays ? openDays + (openDays === 1 ? ' day a week' : ' days a week') : 'Not set'],
+          ['Services', services ? services + (services === 1 ? ' service' : ' services') : 'None yet'],
+          ['Team',     team > 1 ? team + ' people' : 'Just you'],
+          ['Booking',  state.booking ? (state.booking.enabled ? 'Live' : 'Off for now') : 'Not set up']
+        ];
+
+        document.getElementById('pv-facts').innerHTML = facts.map(function (f) {
+          return '<li class="flex items-start gap-3 px-4 py-2.5">' +
+                   '<span class="text-[12px] text-faint shrink-0 w-[62px]">' + f[0] + '</span>' +
+                   '<span class="text-[12px] text-ink font-medium flex-1 min-w-0 truncate">' + SD.escapeHtml(f[1]) + '</span>' +
+                 '</li>';
+        }).join('');
+
+        document.querySelector('[data-trial-note]').textContent =
+          'Your trial runs for ' + SD.trialRemaining() +
+          ' more days — no card needed until you choose a plan.';
+      }());
+
+      /* §16 — every item listed, skipped ones visibly different and still
+         reachable. "Done" is not implied by silence. */
+      var ITEMS = [
+        { label: 'Account created',        done: !!state.user },
+        { label: 'Email verified',         done: !!(state.user && state.user.emailVerifiedAt) },
+        { label: 'Business created',       done: !!state.tenant },
+        { label: 'Location created',       done: !!state.location },
+        { label: 'Business hours configured', done: !!state.hours },
+        { label: 'Services configured',    done: !!(state.services && state.services.length),
+          url: 'onboarding-services.html',
+          detail: (state.services && state.services.length) ? state.services.length + ' added' : null },
+        { label: 'Team configured',        done: !!(state.team && state.team.length > 1),
+          url: 'onboarding-team.html',
+          detail: (state.team && state.team.length > 1) ? (state.team.length - 1) + ' invited after setup' : null },
+        { label: 'Online booking configured', done: !!state.booking,
+          url: 'onboarding-booking.html',
+          detail: state.booking ? (state.booking.enabled ? 'Enabled' : 'Turned off for now') : null }
+      ];
+
+      var DONE = '<span class="h-5 w-5 rounded-full bg-success grid place-items-center shrink-0" aria-hidden="true">' +
+                 '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-11" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+      var TODO = '<span class="h-5 w-5 rounded-full border-[1.5px] border-stroke grid place-items-center shrink-0" aria-hidden="true">' +
+                 '<span class="h-1.5 w-1.5 rounded-full bg-faint"></span></span>';
+
+      document.getElementById('checklist').innerHTML = ITEMS.map(function (item) {
+        var right = item.done
+          ? '<span class="ml-auto text-[12px] text-faint shrink-0">' + (item.detail || 'Done') + '</span>'
+          : '<a href="' + (item.url || '#') + '" class="ml-auto text-[12px] text-link font-medium hover:underline shrink-0">Set up later</a>';
+
+        return '<li class="flex items-center gap-3 px-5 py-3">' +
+                 (item.done ? DONE : TODO) +
+                 '<span class="text-[14px] ' + (item.done ? 'text-ink' : 'text-sub') + ' truncate">' +
+                   SD.escapeHtml(item.label) +
+                 '</span>' +
+                 right +
+               '</li>';
+      }).join('');
+
+      /* Entering the product moves the tenant out of onboarding (§24). The
+         real flag lives on the tenant record — this is the prototype echo. */
+      document.getElementById('go').addEventListener('click', function () {
+        var s = SD.read();
+        if (s.tenant) s.tenant.status = 'trial';
+        s.onboarding_completed = true;
+        s.completed_at = new Date().toISOString();
+        s.current_step = 'complete';
+        SD.write(s);
+      });
+    }());
+  </script>
+</body>
+</html>

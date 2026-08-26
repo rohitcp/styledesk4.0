@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Business Hours — StyleDesk</title>
+
+  <!--
+    StyleDesk — Business Hours
+    When each site is open — the regular week, and everything that departs from it.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
+             aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ===== Page ===== -->
+  <main class="flex-1 w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
+    <nav class="flex items-center gap-1.5 text-[12px] text-sub mb-2" aria-label="Breadcrumb">
+      <a href="app-settings.html" class="hover:text-ink transition-colors">App Settings</a>
+      <span class="text-faint">/</span>
+      <span class="text-ink font-medium">Business Hours</span>
+    </nav>
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-3 mb-5">
+      <div class="min-w-0">
+        <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight">Business Hours</h1>
+        <p class="text-[13px] text-sub mt-1">Set your regular opening hours, holidays, closures and special operating hours.</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2 shrink-0">
+        <button type="button" data-copy-loc class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M5 15V6a2 2 0 012-2h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Copy Hours
+        </button>
+        <button type="button" data-add-ex class="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Add Special Hours
+        </button>
+      </div>
+    </div>
+
+    <div class="grid xl:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
+
+      <div class="min-w-0 space-y-4">
+
+        <!-- Card 1 — Location (§48) -->
+        <section class="sd-card" aria-label="Location">
+          <div class="flex flex-wrap items-end gap-x-5 gap-y-3">
+            <div class="min-w-0 flex-1 sm:max-w-[300px]">
+              <label for="locPick" class="block text-[13px] font-medium text-ink mb-1.5">Location</label>
+              <select id="locPick" class="sd-input" data-loc-pick></select>
+            </div>
+            <div class="min-w-0">
+              <span class="block text-[13px] font-medium text-ink mb-1.5">Time zone</span>
+              <p class="text-[13px] text-ink font-medium mt-1.5" data-tz>&mdash;</p>
+            </div>
+            <div class="min-w-0">
+              <span class="block text-[13px] font-medium text-ink mb-1.5">Open days</span>
+              <p class="text-[13px] text-ink font-medium mt-1.5" data-opendays>&mdash;</p>
+            </div>
+            <p class="text-[12px] text-sub w-full sm:w-auto sm:ml-auto max-w-[280px] leading-relaxed">
+              Hours are stored in the location&rsquo;s own time zone, not the one on this device.
+              <a href="add-location.html" class="text-brand font-medium hover:underline">Change it in Locations</a>.
+            </p>
+          </div>
+          <p class="sd-alert sd-alert--info mt-3.5" data-closed-note hidden>
+            This location is closed for business, so nothing here affects bookings until it reopens.
+          </p>
+        </section>
+
+        <!-- Card 2 — Regular hours (§4, §6, §30) -->
+        <section class="sd-card !p-0 overflow-hidden" aria-label="Regular opening hours">
+          <div class="px-4 sm:px-5 pt-4 pb-3 border-b border-line flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div class="min-w-0">
+              <h2 class="text-[15px] font-semibold text-head">Regular Hours</h2>
+              <p class="text-[12px] text-sub mt-0.5" data-summary>&mdash;</p>
+            </div>
+            <button type="button" data-bulk class="ml-auto shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-stroke bg-white text-ink text-[12.5px] font-semibold hover:bg-hover transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Apply to Several Days
+            </button>
+          </div>
+
+          <!-- §45 bulk edit, folded away until asked for -->
+          <div class="px-4 sm:px-5 py-4 border-b border-line bg-[#fbfbfd]" data-bulk-panel hidden>
+            <fieldset>
+              <legend class="block text-[13px] font-medium text-ink mb-1.5">Apply the same hours to</legend>
+              <div class="flex flex-wrap gap-1.5 mt-2" data-bulk-days></div>
+            </fieldset>
+            <div class="flex flex-wrap items-end gap-3 mt-3.5">
+              <div>
+                <label for="bulkFrom" class="block text-[13px] font-medium text-ink mb-1.5">Opens</label>
+                <select id="bulkFrom" class="sd-input !h-9 !w-auto min-w-[116px]" data-bulk-from></select>
+              </div>
+              <span class="text-[12px] text-faint pb-2.5">to</span>
+              <div>
+                <label for="bulkTo" class="block text-[13px] font-medium text-ink mb-1.5">Closes</label>
+                <select id="bulkTo" class="sd-input !h-9 !w-auto min-w-[116px]" data-bulk-to></select>
+              </div>
+              <button type="button" data-bulk-apply class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">Apply</button>
+              <button type="button" data-bulk-close class="h-9 px-3.5 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+            </div>
+            <p class="text-[12px] text-danger mt-2" data-bulk-err hidden></p>
+          </div>
+
+          <div class="px-4 sm:px-5 py-1" data-days></div>
+
+          <div class="px-4 sm:px-5 py-3.5 border-t border-line">
+            <p class="text-[12px] text-danger mb-2.5" data-hours-err hidden></p>
+            <div class="flex items-center gap-2.5">
+              <button type="button" data-save class="h-10 px-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-45" disabled>Save Changes</button>
+              <button type="button" data-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors disabled:opacity-45" disabled>Cancel</button>
+              <span class="text-[12px] text-sub" data-dirty hidden>Unsaved changes</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Card 3 — Special hours and closures (§10, §37, §38) -->
+        <section class="sd-card !p-0 overflow-hidden" aria-label="Special hours and closures">
+          <div class="px-4 sm:px-5 pt-4 pb-3 border-b border-line flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div class="min-w-0">
+              <h2 class="text-[15px] font-semibold text-head">Special Hours &amp; Closures</h2>
+              <p class="text-[12px] text-sub mt-0.5">Holidays, closures, reduced hours and blocked periods.</p>
+            </div>
+            <div class="ml-auto shrink-0 sd-seg" role="group" aria-label="Which closures to show">
+              <button type="button" class="sd-seg__btn is-on" data-range="upcoming">Upcoming</button>
+              <button type="button" class="sd-seg__btn" data-range="past">Past</button>
+              <button type="button" class="sd-seg__btn" data-range="all">All</button>
+            </div>
+          </div>
+          <div data-ex-rows></div>
+          <div class="px-4 sm:px-5 py-10 text-center" data-ex-empty hidden>
+            <p class="text-[13px] text-sub" data-ex-empty-text>Nothing scheduled.</p>
+            <button type="button" data-add-ex-2 class="mt-3 h-9 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Add Special Hours</button>
+          </div>
+        </section>
+
+        <!-- Card 4 — Booking rules (§48, §23) -->
+        <section class="sd-card" aria-label="Booking rules">
+          <h2 class="text-[15px] font-semibold text-head">Booking Rules</h2>
+          <p class="text-[12px] text-sub mt-0.5">What the booking engine does at the edges of these hours.</p>
+
+          <div class="divide-y divide-line mt-2.5">
+            <label class="flex items-start gap-3 py-3 cursor-pointer">
+              <input type="checkbox" class="sd-check mt-0.5" data-rule-enforce checked />
+              <span class="min-w-0">
+                <span class="block text-[13px] font-medium text-ink">Prevent bookings outside business hours</span>
+                <span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Online booking never offers a time the site is closed. Turning this off makes business hours advisory.</span>
+              </span>
+            </label>
+            <label class="flex items-start gap-3 py-3 cursor-pointer">
+              <input type="checkbox" class="sd-check mt-0.5" data-rule-override checked />
+              <span class="min-w-0">
+                <span class="block text-[13px] font-medium text-ink">Allow authorised staff to override</span>
+                <span class="block text-[12px] text-sub mt-0.5 leading-relaxed">The front desk can still book outside hours, with a warning first. Needs the <span class="font-medium text-ink">Override business hours</span> permission.</span>
+              </span>
+            </label>
+          </div>
+
+          <p class="sd-alert sd-alert--info mt-3">
+            Clients are never offered a closed time either way. The override is for the phone call that starts &ldquo;I know you shut at six, but&hellip;&rdquo;.
+          </p>
+        </section>
+      </div>
+
+      <!-- Rail -->
+      <div class="min-w-0 space-y-4">
+
+        <!-- §27 the week at a glance -->
+        <section class="sd-card" aria-label="Weekly hours">
+          <h2 class="sd-eyebrow">Weekly Hours</h2>
+          <div class="mt-3" data-bars></div>
+          <div class="flex items-center justify-between mt-2 text-[10.5px] text-faint" data-bars-axis></div>
+        </section>
+
+        <!-- §47 what a client sees -->
+        <section class="sd-card" aria-label="Client booking hours">
+          <h2 class="sd-eyebrow">Client Booking Hours</h2>
+          <p class="text-[12px] text-sub mt-1 mb-3 leading-relaxed">The next seven days as they will read on your booking page.</p>
+          <div class="sd-preview" data-preview></div>
+          <p class="text-[11.5px] text-faint mt-2.5 leading-relaxed">Internal notes on a closure are never shown here.</p>
+        </section>
+
+        <!-- §41 audit -->
+        <section class="sd-card" aria-label="Recent changes">
+          <h2 class="sd-eyebrow">Recent Changes</h2>
+          <div class="mt-2.5" data-log></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div data-ex-scrim class="sd-scrim" hidden></div>
+  <aside class="sd-drawer" data-ex-drawer hidden role="dialog" aria-modal="true" aria-labelledby="exTitle">
+    <div class="sd-drawer__head">
+      <div class="min-w-0 flex-1">
+        <h2 id="exTitle" class="text-[16px] font-semibold text-head">Add Special Hours</h2>
+        <p class="text-[12px] text-sub mt-0.5">A holiday, a closure or a day with different hours.</p>
+      </div>
+      <button type="button" data-ex-close class="sd-iconbtn" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <div class="sd-drawer__body">
+      <div class="space-y-4">
+
+        <fieldset>
+          <legend class="block text-[13px] font-medium text-ink mb-1.5">What is happening</legend>
+          <div class="grid sm:grid-cols-3 gap-2 mt-2" data-ex-kinds></div>
+          <p class="text-[12px] text-sub mt-2" data-ex-kindnote></p>
+        </fieldset>
+
+        <div class="grid sm:grid-cols-2 gap-3.5">
+          <div>
+            <label for="exDate" class="block text-[13px] font-medium text-ink mb-1.5">Date <span class="text-danger">*</span></label>
+            <input id="exDate" type="date" class="sd-input" data-ex-date />
+            <p class="text-[12px] text-danger mt-1.5" data-err="date" hidden></p>
+          </div>
+          <div>
+            <label for="exEnd" class="block text-[13px] font-medium text-ink mb-1.5">Ends <span class="text-faint font-normal">— optional</span></label>
+            <input id="exEnd" type="date" class="sd-input" data-ex-end />
+            <p class="text-[11.5px] text-faint mt-1">Leave empty for a single day.</p>
+            <p class="text-[12px] text-danger mt-1.5" data-err="endDate" hidden></p>
+          </div>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-3.5">
+          <div>
+            <label for="exName" class="block text-[13px] font-medium text-ink mb-1.5">Name <span class="text-faint font-normal">— optional</span></label>
+            <input id="exName" type="text" class="sd-input" data-ex-name placeholder="Christmas Eve" />
+          </div>
+          <div>
+            <label for="exCat" class="block text-[13px] font-medium text-ink mb-1.5">Reason</label>
+            <select id="exCat" class="sd-input" data-ex-cat></select>
+          </div>
+        </div>
+
+        <fieldset data-ex-scope>
+          <legend class="block text-[13px] font-medium text-ink mb-1.5">Applies to</legend>
+          <div class="space-y-1.5 mt-2" data-ex-locs></div>
+          <p class="text-[12px] text-danger mt-1.5" data-err="locationIds" hidden></p>
+        </fieldset>
+
+        <div data-ex-shifts-wrap hidden>
+          <span class="block text-[13px] font-medium text-ink mb-1.5">Open</span>
+          <div class="space-y-2 mt-2" data-ex-shifts></div>
+          <button type="button" data-ex-addshift class="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-brand hover:underline">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Add Shift
+          </button>
+          <p class="text-[12px] text-danger mt-1.5" data-err="shifts" hidden></p>
+        </div>
+
+        <div data-ex-blocks-wrap hidden>
+          <span class="block text-[13px] font-medium text-ink mb-1.5">Closed between</span>
+          <div class="space-y-2 mt-2" data-ex-blocks></div>
+          <button type="button" data-ex-addblock class="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-brand hover:underline">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Add Period
+          </button>
+          <p class="text-[11.5px] text-faint mt-1.5">The site keeps its usual hours outside these periods.</p>
+          <p class="text-[12px] text-danger mt-1.5" data-err="blocks" hidden></p>
+        </div>
+
+        <div>
+          <label for="exNote" class="block text-[13px] font-medium text-ink mb-1.5">Internal note <span class="text-faint font-normal">— staff only</span></label>
+          <textarea id="exNote" rows="2" class="sd-input !h-auto py-2.5" data-ex-note placeholder="Plumbing maintenance. Front desk works remotely."></textarea>
+        </div>
+
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" class="sd-check mt-0.5" data-ex-show checked />
+          <span class="min-w-0">
+            <span class="block text-[13px] font-medium text-ink">Show this to clients</span>
+            <span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off for anything internal, like a staff meeting.</span>
+          </span>
+        </label>
+
+        <div data-ex-msg-wrap>
+          <label for="exMsg" class="block text-[13px] font-medium text-ink mb-1.5">Client message <span class="text-faint font-normal">— optional</span></label>
+          <textarea id="exMsg" rows="2" class="sd-input !h-auto py-2.5" data-ex-msg placeholder="We will be closed for building maintenance."></textarea>
+          <p class="text-[11.5px] text-faint mt-1" data-ex-msg-preview></p>
+        </div>
+
+        <!-- §24 / §25 — never silently cancel -->
+        <div class="sd-alert sd-alert--warn" data-ex-clash hidden>
+          <p class="text-[13px] font-semibold text-head" data-ex-clash-head></p>
+          <ul class="mt-1.5 space-y-0.5 text-[12px] text-sub" data-ex-clash-list></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="sd-drawer__foot">
+      <button type="button" data-ex-save class="h-10 px-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">Save</button>
+      <button type="button" data-ex-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      <button type="button" data-ex-delete class="ml-auto h-10 px-3.5 rounded-lg text-danger text-[13px] font-semibold hover:bg-[#fef4f2] transition-colors" hidden>Delete</button>
+    </div>
+  </aside>
+
+  <!-- Copy hours between locations (§46) -->
+  <div class="sd-modal" data-copy-modal hidden role="dialog" aria-modal="true" aria-labelledby="copyTitle">
+    <div class="sd-scrim is-open" data-copy-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="copyTitle" class="text-[17px] font-semibold text-head">Copy Business Hours</h2>
+      <p class="text-[13px] text-sub mt-1.5 leading-relaxed">This replaces the target location&rsquo;s hours. Its own closures are kept.</p>
+
+      <div class="grid sm:grid-cols-2 gap-3.5 mt-4">
+        <div>
+          <label for="copyFrom" class="block text-[13px] font-medium text-ink mb-1.5">Copy from</label>
+          <select id="copyFrom" class="sd-input" data-copy-from></select>
+        </div>
+        <div>
+          <label for="copyTo" class="block text-[13px] font-medium text-ink mb-1.5">Copy to</label>
+          <select id="copyTo" class="sd-input" data-copy-to></select>
+        </div>
+      </div>
+
+      <fieldset class="mt-3.5">
+        <legend class="block text-[13px] font-medium text-ink mb-1.5">What to copy</legend>
+        <label class="flex items-center gap-2.5 mt-2 text-[13px] text-ink">
+          <input type="checkbox" class="sd-check" data-copy-regular checked /> Regular weekly hours
+        </label>
+        <label class="flex items-center gap-2.5 mt-1.5 text-[13px] text-ink">
+          <input type="checkbox" class="sd-check" data-copy-ex /> Upcoming closures and special hours
+        </label>
+      </fieldset>
+
+      <p class="text-[12px] text-danger mt-3" data-copy-err hidden></p>
+
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-copy-go class="h-10 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">Copy Hours</button>
+        <button type="button" data-copy-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Copy one day onto others (§8) -->
+  <div class="sd-modal" data-day-modal hidden role="dialog" aria-modal="true" aria-labelledby="dayTitle">
+    <div class="sd-scrim is-open" data-day-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="dayTitle" class="text-[17px] font-semibold text-head" data-day-title>Copy Monday to</h2>
+      <p class="text-[13px] text-sub mt-1.5" data-day-sub></p>
+      <div class="flex flex-wrap gap-1.5 mt-3.5" data-day-days></div>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-day-go class="h-10 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">Apply</button>
+        <button type="button" data-day-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title></h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body></p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Delete</button>
+        <button type="button" data-confirm-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/resources.js"></script>
+  <script src="assets/js/services.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script src="assets/js/bookings.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    /* When the row is too narrow to hold every section, the one you are
+       on can start off-screen to the right. Nudge it into view — without
+       scrolling the page itself, which scrollIntoView would do. */
+    (function () {
+      var nav = document.querySelector('[data-subnav]');
+      if (!nav) return;
+      var here = nav.querySelector('[aria-current="page"]');
+      if (!here) return;
+      var over = here.offsetLeft + here.offsetWidth - (nav.scrollLeft + nav.clientWidth);
+      if (over > 0) nav.scrollLeft += over + 4;
+      else if (here.offsetLeft < nav.scrollLeft) nav.scrollLeft = Math.max(0, here.offsetLeft - 4);
+    }());
+
+    var esc = SDR.esc;
+
+    /* ---------- Confirmation dialog ---------- */
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmFn = null;
+
+    function confirmDialog(o) {
+      document.querySelector('[data-confirm-title]').textContent = o.title;
+      document.querySelector('[data-confirm-body]').textContent = o.body;
+      document.querySelector('[data-confirm-ok]').textContent = o.okLabel || 'Delete';
+      confirmFn = o.onOk;
+      confirmCancelFn = o.onCancel || null;
+      confirmEl.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-confirm-cancel]').focus();
+      document.addEventListener('keydown', confirmKeys, true);
+    }
+    var confirmCancelFn = null;
+    function closeConfirm(viaCancel) {
+      confirmEl.hidden = true;
+      document.body.classList.remove('sd-locked');
+      document.removeEventListener('keydown', confirmKeys, true);
+      var back = confirmCancelFn;
+      confirmFn = null;
+      confirmCancelFn = null;
+      /* A dialog that changes a control has to be able to put it back
+         when the answer is no — otherwise the radio stays where the user
+         clicked it and the screen disagrees with the decision. */
+      if (viaCancel && back) back();
+    }
+    function confirmKeys(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeConfirm(true); return; }
+      if (e.key !== 'Tab') return;
+      var f = Array.prototype.filter.call(confirmEl.querySelectorAll('button'),
+        function (el) { return !!(el.offsetWidth || el.offsetHeight); });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmFn; closeConfirm(); if (fn) fn();
+    });
+
+    /* ================================================================
+       Business Hours
+       ----------------------------------------------------------------
+       Two pieces of state, kept apart on purpose:
+
+         `model`   the regular week being edited — a working copy, so
+                   Cancel is a real button and not a re-read
+         the store the exceptions, which save one at a time from the
+                   drawer and never wait for the Save Changes button
+
+       Mixing them would mean a half-finished week edit blocked someone
+       from adding tomorrow's closure, which is the more urgent job.
+       ================================================================ */
+
+    var esc = SDH.esc;
+    var DAYS = SDL.DAYS;
+
+    var current = '';        /* the location being looked at */
+    var model = null;        /* working copy of that location's week */
+    var saved = '';          /* JSON of the week as stored, for dirty checks */
+    var range = 'upcoming';
+    var draft = null;        /* the exception open in the drawer */
+
+    /* ---------- Time options ------------------------------------------
+       Quarter-hour granularity, plus the midnight that closes a
+       24-hour day. */
+
+    function timeOptions(selected) {
+      var out = [];
+      for (var m = 0; m <= 24 * 60; m += 15) {
+        var v = SDH.fromMin(m);
+        if (m === 1440) v = '24:00';
+        out.push('<option value="' + v + '"' + (v === selected ? ' selected' : '') + '>' +
+                 esc(SDH.timeLabel(v)) + '</option>');
+      }
+      return out.join('');
+    }
+
+    /* ---------- Location ------------------------------------------------ */
+
+    function locations() {
+      return SDL.all().filter(function (l) { return l.status === 'active'; });
+    }
+
+    function paintLocPick() {
+      var sel = document.querySelector('[data-loc-pick]');
+      var list = SDL.all();
+      sel.innerHTML = list.map(function (l) {
+        return '<option value="' + l.id + '"' + (l.id === current ? ' selected' : '') + '>' +
+               esc(l.name) + (l.status === 'active' ? '' : ' — closed') + '</option>';
+      }).join('');
+
+      /* §3 — the picker only earns its place when there is a choice. */
+      sel.closest('div').hidden = list.length < 2;
+      document.querySelector('[data-copy-loc]').hidden = list.length < 2;
+    }
+
+    function load(id) {
+      current = id;
+      var loc = SDL.byId(id);
+      if (!loc) return;
+
+      model = {};
+      DAYS.forEach(function (d) {
+        model[d.id] = (loc.hours[d.id] || []).map(function (s) { return s.slice(); });
+      });
+      saved = JSON.stringify(model);
+
+      document.querySelector('[data-tz]').textContent = SDL.timezoneLabel(loc.timezone);
+      document.querySelector('[data-closed-note]').hidden = loc.status === 'active';
+
+      paintDays();
+      paintExceptions();
+      paintRail();
+      markDirty();
+    }
+
+    /* ---------- The week editor ---------------------------------------- */
+
+    var daysBox = document.querySelector('[data-days]');
+
+    function is24(spans) { return SDH.isAllDay(spans); }
+
+    function dayRow(d) {
+      var spans = model[d.id] || [];
+      var on = spans.length > 0;
+      var full = is24(spans);
+
+      var rows = full
+        ? '<p class="text-[13px] text-ink font-medium py-2">Open 24 hours</p>'
+        : spans.map(function (sp, i) {
+            return '<div class="flex flex-wrap items-center gap-2" data-span="' + d.id + ':' + i + '">' +
+              '<select class="sd-input !h-9 !w-auto min-w-[116px]" data-span-from aria-label="' +
+                esc(d.label) + ' opening time' + (spans.length > 1 ? ' ' + (i + 1) : '') + '">' +
+                timeOptions(sp[0]) + '</select>' +
+              '<span class="text-[12px] text-faint">to</span>' +
+              '<select class="sd-input !h-9 !w-auto min-w-[116px]" data-span-to aria-label="' +
+                esc(d.label) + ' closing time' + (spans.length > 1 ? ' ' + (i + 1) : '') + '">' +
+                timeOptions(sp[1]) + '</select>' +
+              (spans.length > 1
+                ? '<button type="button" class="sd-iconbtn" data-span-remove aria-label="Remove this ' +
+                  esc(d.label) + ' period"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+                  '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>'
+                : '') +
+            '</div>';
+          }).join('');
+
+      /* §6 caps split shifts at three for the MVP. The button goes away
+         at the ceiling rather than appearing and then refusing. */
+      var canAdd = on && !full && spans.length < SDH.MAX_SHIFTS;
+
+      return '<div class="sd-hours__day' + (on ? '' : ' is-off') + '" data-day="' + d.id + '">' +
+        '<label class="sd-hours__toggle">' +
+          '<input type="checkbox" class="sd-check" data-day-on' + (on ? ' checked' : '') +
+          ' aria-label="Open on ' + esc(d.label) + '" />' +
+          '<span class="text-[13px] font-medium text-ink">' + esc(d.label) + '</span>' +
+        '</label>' +
+        '<div class="sd-hours__spans">' +
+          (on ? rows +
+                (canAdd
+                  ? '<button type="button" class="text-[12.5px] font-semibold text-brand hover:underline w-fit" data-span-add>+ Add Shift</button>'
+                  : (on && !full && spans.length >= SDH.MAX_SHIFTS
+                      ? '<span class="text-[11.5px] text-faint">Three shifts is the maximum.</span>'
+                      : ''))
+              : '<span class="text-[13px] text-faint py-2">Closed</span>') +
+        '</div>' +
+        '<div class="sd-hours__acts">' +
+          (on
+            ? '<button type="button" class="sd-iconbtn" data-day-24 aria-label="' +
+              (full ? 'Set specific hours for ' : 'Open 24 hours on ') + esc(d.label) + '" title="' +
+              (full ? 'Set specific hours' : 'Open 24 hours') + '"' +
+              (full ? ' aria-pressed="true"' : ' aria-pressed="false"') + '>' +
+              '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+              '<circle cx="12" cy="12" r="8.4" stroke="currentColor" stroke-width="1.7"/>' +
+              '<path d="M12 7.6V12l2.8 1.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>'
+            : '') +
+          '<button type="button" class="sd-iconbtn" data-day-copy aria-label="Copy ' +
+            esc(d.label) + ' to other days" title="Copy to other days">' +
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+            '<rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.7"/>' +
+            '<path d="M5 15V6a2 2 0 012-2h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function paintDays() {
+      daysBox.innerHTML = '<div class="sd-hours sd-hours--wide">' +
+        DAYS.map(dayRow).join('') + '</div>';
+      document.querySelector('[data-summary]').textContent =
+        SDL.hoursSummary({ hours: model });
+      document.querySelector('[data-opendays]').textContent =
+        DAYS.filter(function (d) { return (model[d.id] || []).length; }).length + ' of 7';
+      validate();
+    }
+
+    daysBox.addEventListener('change', function (e) {
+      var dayEl = e.target.closest('[data-day]');
+      if (!dayEl) return;
+      var day = dayEl.dataset.day;
+
+      if (e.target.matches('[data-day-on]')) {
+        /* §43 — a closed day cannot hold shifts, so turning a day off
+           empties it rather than hiding what is still there. */
+        model[day] = e.target.checked ? [['09:00', '18:00']] : [];
+        paintDays(); markDirty(); paintRail();
+        return;
+      }
+
+      var spanEl = e.target.closest('[data-span]');
+      if (!spanEl) return;
+      var i = parseInt(spanEl.dataset.span.split(':')[1], 10);
+      model[day][i] = [spanEl.querySelector('[data-span-from]').value,
+                       spanEl.querySelector('[data-span-to]').value];
+      document.querySelector('[data-summary]').textContent = SDL.hoursSummary({ hours: model });
+      validate(); markDirty(); paintRail();
+    });
+
+    daysBox.addEventListener('click', function (e) {
+      var dayEl = e.target.closest('[data-day]');
+      if (!dayEl) return;
+      var day = dayEl.dataset.day;
+
+      if (e.target.closest('[data-span-add]')) {
+        var last = model[day][model[day].length - 1];
+        var start = Math.min(SDH.toMin(last[1]) + 60, 23 * 60);
+        model[day].push([SDH.fromMin(start), SDH.fromMin(Math.min(start + 120, 24 * 60))]);
+        paintDays(); markDirty(); paintRail();
+        var added = daysBox.querySelector('[data-day="' + day + '"] [data-span]:last-of-type [data-span-from]');
+        if (added) added.focus();
+
+      } else if (e.target.closest('[data-span-remove]')) {
+        var i = parseInt(e.target.closest('[data-span]').dataset.span.split(':')[1], 10);
+        model[day].splice(i, 1);
+        paintDays(); markDirty(); paintRail();
+
+      } else if (e.target.closest('[data-day-24]')) {
+        /* §43 — 24-hour mode and manual hours are mutually exclusive,
+           so this replaces the day rather than adding to it. */
+        model[day] = is24(model[day]) ? [['09:00', '18:00']] : [['00:00', '24:00']];
+        paintDays(); markDirty(); paintRail();
+
+      } else if (e.target.closest('[data-day-copy]')) {
+        openDayCopy(day);
+      }
+    });
+
+    /* ---------- Validation and dirty state ------------------------------ */
+
+    function validate() {
+      var msgs = [];
+      DAYS.forEach(function (d) {
+        SDH.validateDay(model[d.id] || []).forEach(function (m) {
+          msgs.push(d.label + ': ' + m);
+        });
+      });
+      var box = document.querySelector('[data-hours-err]');
+      box.hidden = !msgs.length;
+      box.textContent = msgs[0] || '';
+      return !msgs.length;
+    }
+
+    function dirty() { return JSON.stringify(model) !== saved; }
+
+    function markDirty() {
+      var d = dirty();
+      document.querySelector('[data-save]').disabled = !d;
+      document.querySelector('[data-cancel]').disabled = !d;
+      document.querySelector('[data-dirty]').hidden = !d;
+    }
+
+    document.querySelector('[data-save]').addEventListener('click', function () {
+      if (!validate()) return;
+      var res = SDH.saveHours(current, model, typeof SDA !== 'undefined' ? SDA.fullName() : undefined);
+      if (!res.ok) {
+        var box = document.querySelector('[data-hours-err]');
+        box.hidden = false; box.textContent = res.errors[0];
+        return;
+      }
+      saved = JSON.stringify(model);
+      markDirty();
+      paintRail();
+      SD.toast(res.changes.length
+        ? 'Business hours saved — ' + res.changes.length +
+          (res.changes.length === 1 ? ' day changed.' : ' days changed.')
+        : 'Business hours saved.');
+    });
+
+    document.querySelector('[data-cancel]').addEventListener('click', function () {
+      model = JSON.parse(saved);
+      paintDays(); markDirty(); paintRail();
+    });
+
+    /* §44 — leaving with unsaved hours. The browser's own prompt is the
+       only one that can actually stop navigation, so this uses it
+       rather than a prettier dialog that cannot. */
+    window.addEventListener('beforeunload', function (e) {
+      if (!dirty()) return;
+      e.preventDefault();
+      e.returnValue = 'You have unsaved changes to your business hours.';
+    });
+
+    document.querySelector('[data-loc-pick]').addEventListener('change', function (e) {
+      var next = e.target.value;
+      if (!dirty()) { load(next); return; }
+      confirmDialog({
+        title: 'Unsaved changes',
+        body: 'You have unsaved changes to your business hours. Switching location will discard them.',
+        okLabel: 'Leave Without Saving',
+        onOk: function () { load(next); },
+        onCancel: function () { e.target.value = current; }
+      });
+    });
+
+    /* ---------- Bulk edit (§45) ----------------------------------------- */
+
+    var bulkPanel = document.querySelector('[data-bulk-panel]');
+    var bulkDays = [];
+
+    function paintBulkDays() {
+      document.querySelector('[data-bulk-days]').innerHTML = DAYS.map(function (d) {
+        var on = bulkDays.indexOf(d.id) !== -1;
+        return '<button type="button" class="sd-chip !h-8' + (on ? ' is-on' : '') +
+               '" data-bulk-day="' + d.id + '" aria-pressed="' + on + '">' + esc(d.short) + '</button>';
+      }).join('');
+    }
+
+    document.querySelector('[data-bulk]').addEventListener('click', function () {
+      bulkPanel.hidden = !bulkPanel.hidden;
+      if (bulkPanel.hidden) return;
+      bulkDays = ['mon', 'tue', 'wed', 'thu', 'fri'];
+      paintBulkDays();
+      document.querySelector('[data-bulk-from]').innerHTML = timeOptions('09:00');
+      document.querySelector('[data-bulk-to]').innerHTML = timeOptions('18:00');
+      document.querySelector('[data-bulk-err]').hidden = true;
+    });
+
+    document.querySelector('[data-bulk-close]').addEventListener('click', function () {
+      bulkPanel.hidden = true;
+    });
+
+    document.querySelector('[data-bulk-days]').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-bulk-day]');
+      if (!b) return;
+      var id = b.dataset.bulkDay;
+      var i = bulkDays.indexOf(id);
+      if (i === -1) bulkDays.push(id); else bulkDays.splice(i, 1);
+      paintBulkDays();
+    });
+
+    document.querySelector('[data-bulk-apply]').addEventListener('click', function () {
+      var err = document.querySelector('[data-bulk-err]');
+      var from = document.querySelector('[data-bulk-from]').value;
+      var to = document.querySelector('[data-bulk-to]').value;
+
+      if (!bulkDays.length) {
+        err.hidden = false; err.textContent = 'Choose at least one day.'; return;
+      }
+      if (SDH.toMin(to) <= SDH.toMin(from)) {
+        err.hidden = false; err.textContent = 'Closing time has to be after opening time.'; return;
+      }
+      err.hidden = true;
+
+      model = SDH.applyToDays(model, bulkDays, [from, to]);
+      bulkPanel.hidden = true;
+      paintDays(); markDirty(); paintRail();
+      SD.toast(bulkDays.length + (bulkDays.length === 1 ? ' day set to ' : ' days set to ') +
+               SDH.timeLabel(from) + ' – ' + SDH.timeLabel(to) + '. Not saved yet.');
+    });
+
+    /* ---------- Copy one day to others (§8) ----------------------------- */
+
+    var dayModal = document.querySelector('[data-day-modal]');
+    var copyFrom = '';
+    var copyTargets = [];
+
+    function openDayCopy(dayId) {
+      copyFrom = dayId;
+      copyTargets = [];
+      var d = DAYS.filter(function (x) { return x.id === dayId; })[0];
+      document.querySelector('[data-day-title]').textContent = 'Copy ' + d.label + ' to';
+      document.querySelector('[data-day-sub]').textContent =
+        SDH.spansText(model[dayId] || []) + ' will replace whatever those days have now.';
+      paintDayTargets();
+      dayModal.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-day-cancel]').focus();
+    }
+
+    function paintDayTargets() {
+      document.querySelector('[data-day-days]').innerHTML =
+        DAYS.filter(function (d) { return d.id !== copyFrom; }).map(function (d) {
+          var on = copyTargets.indexOf(d.id) !== -1;
+          return '<button type="button" class="sd-chip !h-8' + (on ? ' is-on' : '') +
+                 '" data-day-target="' + d.id + '" aria-pressed="' + on + '">' + esc(d.label) + '</button>';
+        }).join('') +
+        '<button type="button" class="sd-chip !h-8" data-day-all>All days</button>';
+    }
+
+    document.querySelector('[data-day-days]').addEventListener('click', function (e) {
+      if (e.target.closest('[data-day-all]')) {
+        copyTargets = DAYS.map(function (d) { return d.id; })
+          .filter(function (id) { return id !== copyFrom; });
+        paintDayTargets();
+        return;
+      }
+      var b = e.target.closest('[data-day-target]');
+      if (!b) return;
+      var id = b.dataset.dayTarget;
+      var i = copyTargets.indexOf(id);
+      if (i === -1) copyTargets.push(id); else copyTargets.splice(i, 1);
+      paintDayTargets();
+    });
+
+    function closeDayModal() {
+      dayModal.hidden = true;
+      document.body.classList.remove('sd-locked');
+    }
+
+    document.querySelector('[data-day-cancel]').addEventListener('click', closeDayModal);
+    document.querySelector('[data-day-scrim]').addEventListener('click', closeDayModal);
+
+    document.querySelector('[data-day-go]').addEventListener('click', function () {
+      if (!copyTargets.length) { closeDayModal(); return; }
+      model = SDH.copyDay(model, copyFrom, copyTargets);
+      closeDayModal();
+      paintDays(); markDirty(); paintRail();
+      var d = DAYS.filter(function (x) { return x.id === copyFrom; })[0];
+      SD.toast(d.label + ' copied to ' + copyTargets.length +
+               (copyTargets.length === 1 ? ' day' : ' days') + '. Not saved yet.');
+    });
+
+    /* ---------- Copy between locations (§46) ---------------------------- */
+
+    var copyModal = document.querySelector('[data-copy-modal]');
+
+    document.querySelector('[data-copy-loc]').addEventListener('click', function () {
+      var opts = SDL.all().map(function (l) {
+        return '<option value="' + l.id + '">' + esc(l.name) + '</option>';
+      }).join('');
+      var fromSel = document.querySelector('[data-copy-from]');
+      var toSel = document.querySelector('[data-copy-to]');
+      fromSel.innerHTML = opts;
+      toSel.innerHTML = opts;
+      fromSel.value = current;
+      var other = SDL.all().filter(function (l) { return l.id !== current; })[0];
+      if (other) toSel.value = other.id;
+      document.querySelector('[data-copy-err]').hidden = true;
+      copyModal.hidden = false;
+      document.body.classList.add('sd-locked');
+      fromSel.focus();
+    });
+
+    function closeCopy() {
+      copyModal.hidden = true;
+      document.body.classList.remove('sd-locked');
+    }
+
+    document.querySelector('[data-copy-cancel]').addEventListener('click', closeCopy);
+    document.querySelector('[data-copy-scrim]').addEventListener('click', closeCopy);
+
+    document.querySelector('[data-copy-go]').addEventListener('click', function () {
+      var err = document.querySelector('[data-copy-err]');
+      var res = SDH.copyToLocation(
+        document.querySelector('[data-copy-from]').value,
+        document.querySelector('[data-copy-to]').value,
+        {
+          regular: document.querySelector('[data-copy-regular]').checked,
+          exceptions: document.querySelector('[data-copy-ex]').checked
+        },
+        typeof SDA !== 'undefined' ? SDA.fullName() : undefined);
+
+      if (!res.ok) { err.hidden = false; err.textContent = res.error; return; }
+      closeCopy();
+      /* The screen may be showing the site that just changed underneath
+         it, so re-read rather than trusting the working copy. */
+      load(current);
+      SD.toast(res.summary);
+    });
+
+    /* ---------- Exceptions list (§37, §38) ------------------------------ */
+
+    function exRow(ex) {
+      var st = SDH.statusOf(ex);
+      var cat = SDH.categoryMeta(ex.category);
+      var kind = SDH.kindMeta(ex.kind);
+      var p = ex.date.split('-');
+      var months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+      var hours = ex.kind === 'closed' ? 'Closed'
+                : ex.kind === 'special' ? SDH.spansText(ex.shifts)
+                : 'Closed ' + (ex.blocks || []).map(function (b) {
+                    return SDH.timeLabel(b[0]) + ' – ' + SDH.timeLabel(b[1]);
+                  }).join(', ');
+
+      var span = ex.endDate && ex.endDate > ex.date
+        ? ' – ' + SDH.dateShort(ex.endDate) : '';
+
+      return '<button type="button" class="sd-exrow' + (st.id === 'done' ? ' is-past' : '') +
+        '" data-ex="' + ex.id + '">' +
+        '<span class="sd-exrow__date">' +
+          '<span class="sd-exrow__mon">' + months[Number(p[1]) - 1] + '</span>' +
+          '<span class="sd-exrow__day">' + Number(p[2]) + '</span>' +
+        '</span>' +
+        '<span class="min-w-0 flex-1">' +
+          '<span class="flex flex-wrap items-center gap-1.5">' +
+            '<span class="text-[13px] font-semibold text-head">' +
+              esc(ex.name || kind.label) + '</span>' +
+            '<span class="sd-tag sd-tag--plain">' + esc(cat.label) + '</span>' +
+            (st.id !== 'upcoming'
+              ? '<span class="sd-badge ' + st.badge + '">' + esc(st.label) + '</span>' : '') +
+          '</span>' +
+          '<span class="block text-[11.5px] text-sub mt-0.5">' +
+            esc(hours) + span + ' · ' + esc(SDH.scopeText(ex)) +
+            (ex.showClients ? '' : ' · internal') +
+          '</span>' +
+        '</span>' +
+        '<svg class="shrink-0 mt-1 text-faint" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+          '<path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '</button>';
+    }
+
+    function paintExceptions() {
+      var rows = SDH.forLocation(current, range);
+      if (range === 'past') rows = rows.reverse();
+
+      document.querySelector('[data-ex-rows]').innerHTML = rows.map(exRow).join('');
+      document.querySelector('[data-ex-empty]').hidden = rows.length > 0;
+      document.querySelector('[data-ex-empty-text]').textContent =
+        range === 'past' ? 'No past closures for this location.'
+                         : 'No closures or special hours scheduled.';
+      document.querySelector('[data-add-ex-2]').hidden = range === 'past';
+    }
+
+    document.querySelectorAll('[data-range]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        range = b.dataset.range;
+        document.querySelectorAll('[data-range]').forEach(function (x) {
+          x.classList.toggle('is-on', x === b);
+        });
+        paintExceptions();
+      });
+    });
+
+    document.querySelector('[data-ex-rows]').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-ex]');
+      if (b) openDrawer(SDH.byId(b.dataset.ex));
+    });
+
+    /* ---------- The exception drawer ------------------------------------ */
+
+    var drawer = document.querySelector('[data-ex-drawer]');
+    var exScrim = document.querySelector('[data-ex-scrim]');
+
+    function openDrawer(existing) {
+      draft = existing
+        ? JSON.parse(JSON.stringify(existing))
+        : Object.assign(SDH.blank(), { locationIds: [current] });
+
+      document.getElementById('exTitle').textContent =
+        existing ? 'Edit ' + (existing.name || 'closure') : 'Add Special Hours';
+      document.querySelector('[data-ex-delete]').hidden = !existing;
+
+      paintDrawer();
+      exScrim.hidden = false;
+      drawer.hidden = false;
+      document.body.classList.add('sd-locked');
+      window.requestAnimationFrame(function () {
+        exScrim.classList.add('is-open');
+        drawer.classList.add('is-open');
+        document.querySelector('[data-ex-date]').focus();
+      });
+      document.addEventListener('keydown', drawerKeys, true);
+    }
+
+    function closeDrawer() {
+      exScrim.classList.remove('is-open');
+      drawer.classList.remove('is-open');
+      document.removeEventListener('keydown', drawerKeys, true);
+      window.setTimeout(function () {
+        drawer.hidden = true;
+        exScrim.hidden = true;
+        document.body.classList.remove('sd-locked');
+      }, 200);
+      draft = null;
+    }
+
+    function drawerKeys(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeDrawer(); }
+    }
+
+    function spanRow(pair, i, kind) {
+      return '<div class="flex flex-wrap items-center gap-2" data-' + kind + '-row="' + i + '">' +
+        '<select class="sd-input !h-9 !w-auto min-w-[116px]" data-pair-from aria-label="' +
+          (kind === 'shift' ? 'Opens' : 'Closed from') + ' ' + (i + 1) + '">' +
+          timeOptions(pair[0]) + '</select>' +
+        '<span class="text-[12px] text-faint">to</span>' +
+        '<select class="sd-input !h-9 !w-auto min-w-[116px]" data-pair-to aria-label="' +
+          (kind === 'shift' ? 'Closes' : 'Closed until') + ' ' + (i + 1) + '">' +
+          timeOptions(pair[1]) + '</select>' +
+        '<button type="button" class="sd-iconbtn" data-pair-remove aria-label="Remove period ' +
+          (i + 1) + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+          '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>' +
+      '</div>';
+    }
+
+    function paintDrawer() {
+      /* Kind */
+      document.querySelector('[data-ex-kinds]').innerHTML = SDH.KINDS.map(function (k) {
+        var on = draft.kind === k.id;
+        return '<label class="sd-pick' + (on ? ' is-on' : '') + '">' +
+          '<input type="radio" name="exKind" class="sd-radio mt-0.5" value="' + k.id + '"' +
+            (on ? ' checked' : '') + ' />' +
+          '<span class="text-[13px] font-medium">' + esc(k.label) + '</span>' +
+        '</label>';
+      }).join('');
+      document.querySelector('[data-ex-kindnote]').textContent = SDH.kindMeta(draft.kind).note;
+
+      document.querySelector('[data-ex-date]').value = draft.date;
+      document.querySelector('[data-ex-end]').value = draft.endDate || '';
+      document.querySelector('[data-ex-name]').value = draft.name || '';
+      document.querySelector('[data-ex-note]').value = draft.note || '';
+      document.querySelector('[data-ex-msg]').value = draft.message || '';
+      document.querySelector('[data-ex-show]').checked = !!draft.showClients;
+
+      document.querySelector('[data-ex-cat]').innerHTML = SDH.CATEGORIES.map(function (c) {
+        return '<option value="' + c.id + '"' + (c.id === draft.category ? ' selected' : '') +
+               '>' + esc(c.label) + '</option>';
+      }).join('');
+
+      /* §15 Applies To — current location, some, or all. */
+      var everywhere = draft.locationIds === 'all';
+      document.querySelector('[data-ex-locs]').innerHTML =
+        '<label class="flex items-center gap-2.5 text-[13px] text-ink">' +
+          '<input type="checkbox" class="sd-check" data-ex-allloc' + (everywhere ? ' checked' : '') +
+          ' /> All locations</label>' +
+        (everywhere ? '' : SDL.all().map(function (l) {
+          var on = (draft.locationIds || []).indexOf(l.id) !== -1;
+          return '<label class="flex items-center gap-2.5 text-[13px] text-ink pl-6">' +
+            '<input type="checkbox" class="sd-check" data-ex-loc="' + l.id + '"' +
+            (on ? ' checked' : '') + ' /> ' + esc(l.name) + '</label>';
+        }).join(''));
+
+      /* Shifts and blocks: only the one this kind uses is on screen, so
+         a closed day cannot be saved carrying hours nobody set. */
+      var shiftsWrap = document.querySelector('[data-ex-shifts-wrap]');
+      var blocksWrap = document.querySelector('[data-ex-blocks-wrap]');
+      shiftsWrap.hidden = draft.kind !== 'special';
+      blocksWrap.hidden = draft.kind !== 'partial';
+
+      if (draft.kind === 'special') {
+        document.querySelector('[data-ex-shifts]').innerHTML =
+          (draft.shifts || []).map(function (p, i) { return spanRow(p, i, 'shift'); }).join('');
+        document.querySelector('[data-ex-addshift]').hidden =
+          (draft.shifts || []).length >= SDH.MAX_SHIFTS;
+      }
+      if (draft.kind === 'partial') {
+        document.querySelector('[data-ex-blocks]').innerHTML =
+          (draft.blocks || []).map(function (p, i) { return spanRow(p, i, 'block'); }).join('');
+        document.querySelector('[data-ex-addblock]').hidden =
+          (draft.blocks || []).length >= SDH.MAX_SHIFTS;
+      }
+
+      /* §35 — the client message only matters if clients see it. */
+      document.querySelector('[data-ex-msg-wrap]').hidden = !draft.showClients;
+      document.querySelector('[data-ex-msg-preview]').textContent =
+        draft.showClients
+          ? 'Clients will see: “' + (SDH.clientMessage(draft, SDL.nameOf(current)) || '—') + '”'
+          : '';
+
+      paintClashes();
+    }
+
+    /* §24 / §25 — count what this would sit on top of, before it saves. */
+    function paintClashes() {
+      var box = document.querySelector('[data-ex-clash]');
+      var hits = SDH.affectedBookings(draft);
+      box.hidden = !hits.length;
+      if (!hits.length) return;
+
+      document.querySelector('[data-ex-clash-head]').textContent =
+        hits.length + (hits.length === 1
+          ? ' appointment is scheduled during this closure.'
+          : ' appointments are scheduled during this closure.');
+      document.querySelector('[data-ex-clash-list]').innerHTML =
+        hits.slice(0, 6).map(function (b) {
+          return '<li>' + esc(b.label) + ' · ' + esc(b.when) + '</li>';
+        }).join('') +
+        (hits.length > 6 ? '<li>and ' + (hits.length - 6) + ' more</li>' : '') +
+        '<li class="text-faint pt-1">Saving does not cancel them. Someone has to move or call each one.</li>';
+    }
+
+    drawer.addEventListener('change', function (e) {
+      if (!draft) return;
+
+      if (e.target.name === 'exKind') { draft.kind = e.target.value; paintDrawer(); return; }
+      if (e.target.matches('[data-ex-date]')) { draft.date = e.target.value; paintClashes(); return; }
+      if (e.target.matches('[data-ex-end]')) { draft.endDate = e.target.value; paintClashes(); return; }
+      if (e.target.matches('[data-ex-name]')) { draft.name = e.target.value; return; }
+      if (e.target.matches('[data-ex-cat]')) { draft.category = e.target.value; return; }
+      if (e.target.matches('[data-ex-note]')) { draft.note = e.target.value; return; }
+      if (e.target.matches('[data-ex-msg]')) {
+        draft.message = e.target.value;
+        document.querySelector('[data-ex-msg-preview]').textContent =
+          'Clients will see: “' + (SDH.clientMessage(draft, SDL.nameOf(current)) || '—') + '”';
+        return;
+      }
+      if (e.target.matches('[data-ex-show]')) { draft.showClients = e.target.checked; paintDrawer(); return; }
+
+      if (e.target.matches('[data-ex-allloc]')) {
+        draft.locationIds = e.target.checked ? 'all' : [current];
+        paintDrawer();
+        return;
+      }
+      if (e.target.matches('[data-ex-loc]')) {
+        var id = e.target.dataset.exLoc;
+        var list = draft.locationIds === 'all' ? [] : (draft.locationIds || []).slice();
+        var i = list.indexOf(id);
+        if (e.target.checked && i === -1) list.push(id);
+        if (!e.target.checked && i !== -1) list.splice(i, 1);
+        draft.locationIds = list;
+        paintClashes();
+        return;
+      }
+
+      var row = e.target.closest('[data-shift-row], [data-block-row]');
+      if (row) {
+        var isShift = row.hasAttribute('data-shift-row');
+        var idx = parseInt(isShift ? row.dataset.shiftRow : row.dataset.blockRow, 10);
+        var pair = [row.querySelector('[data-pair-from]').value,
+                    row.querySelector('[data-pair-to]').value];
+        (isShift ? draft.shifts : draft.blocks)[idx] = pair;
+        paintClashes();
+        document.querySelector('[data-ex-msg-preview]').textContent =
+          draft.showClients
+            ? 'Clients will see: “' + (SDH.clientMessage(draft, SDL.nameOf(current)) || '—') + '”'
+            : '';
+      }
+    });
+
+    drawer.addEventListener('input', function (e) {
+      if (!draft) return;
+      if (e.target.matches('[data-ex-name]')) draft.name = e.target.value;
+      if (e.target.matches('[data-ex-note]')) draft.note = e.target.value;
+    });
+
+    drawer.addEventListener('click', function (e) {
+      if (!draft) return;
+
+      if (e.target.closest('[data-ex-addshift]')) {
+        var last = (draft.shifts || [])[draft.shifts.length - 1] || ['09:00', '13:00'];
+        var s = Math.min(SDH.toMin(last[1]) + 60, 23 * 60);
+        draft.shifts.push([SDH.fromMin(s), SDH.fromMin(Math.min(s + 120, 24 * 60))]);
+        paintDrawer();
+        return;
+      }
+      if (e.target.closest('[data-ex-addblock]')) {
+        var lb = (draft.blocks || [])[draft.blocks.length - 1] || ['12:00', '14:00'];
+        var b = Math.min(SDH.toMin(lb[1]) + 60, 23 * 60);
+        draft.blocks.push([SDH.fromMin(b), SDH.fromMin(Math.min(b + 60, 24 * 60))]);
+        paintDrawer();
+        return;
+      }
+      var rm = e.target.closest('[data-pair-remove]');
+      if (rm) {
+        var row = rm.closest('[data-shift-row], [data-block-row]');
+        var isShift = row.hasAttribute('data-shift-row');
+        var idx = parseInt(isShift ? row.dataset.shiftRow : row.dataset.blockRow, 10);
+        (isShift ? draft.shifts : draft.blocks).splice(idx, 1);
+        paintDrawer();
+      }
+    });
+
+    document.querySelector('[data-ex-close]').addEventListener('click', closeDrawer);
+    document.querySelector('[data-ex-cancel]').addEventListener('click', closeDrawer);
+    exScrim.addEventListener('click', closeDrawer);
+
+    document.querySelector('[data-add-ex]').addEventListener('click', function () { openDrawer(null); });
+    document.querySelector('[data-add-ex-2]').addEventListener('click', function () { openDrawer(null); });
+
+    document.querySelector('[data-ex-save]').addEventListener('click', function () {
+      drawer.querySelectorAll('[data-err]').forEach(function (el) { el.hidden = true; });
+
+      var res = SDH.saveException(draft, typeof SDA !== 'undefined' ? SDA.fullName() : undefined);
+      if (!res.ok) {
+        Object.keys(res.errors).forEach(function (k) {
+          var el = drawer.querySelector('[data-err="' + k + '"]');
+          if (el) { el.hidden = false; el.textContent = res.errors[k]; }
+        });
+        var first = drawer.querySelector('[data-err]:not([hidden])');
+        if (first) first.scrollIntoView({ block: 'center' });
+        return;
+      }
+
+      var name = res.exception.name || SDH.kindMeta(res.exception.kind).label;
+      closeDrawer();
+      paintExceptions();
+      paintRail();
+      SD.toast(name + ' saved for ' + SDH.dateLong(res.exception.date) + '.');
+    });
+
+    document.querySelector('[data-ex-delete]').addEventListener('click', function () {
+      var target = draft;
+      confirmDialog({
+        title: 'Delete this closure?',
+        body: (target.name || 'This closure') + ' on ' + SDH.dateLong(target.date) +
+              ' will be removed and the site will keep its regular hours that day.',
+        okLabel: 'Delete',
+        onOk: function () {
+          SDH.deleteException(target.id, typeof SDA !== 'undefined' ? SDA.fullName() : undefined);
+          closeDrawer();
+          paintExceptions();
+          paintRail();
+          SD.toast('Closure deleted.');
+        }
+      });
+    });
+
+    /* ---------- The rail ------------------------------------------------- */
+
+    function paintRail() {
+      paintBars();
+      paintPreview();
+      paintLog();
+    }
+
+    /* §27 — the week as bars, drawn from what is on screen rather than
+       what is stored, so an unsaved change is visible immediately. */
+    function paintBars() {
+      var spread = { from: 24 * 60, to: 0 };
+      DAYS.forEach(function (d) {
+        (model[d.id] || []).forEach(function (s) {
+          spread.from = Math.min(spread.from, SDH.toMin(s[0]));
+          spread.to = Math.max(spread.to, SDH.toMin(s[1]));
+        });
+      });
+      if (spread.to <= spread.from) { spread.from = 8 * 60; spread.to = 20 * 60; }
+      spread.from = Math.floor(spread.from / 60) * 60;
+      spread.to = Math.ceil(spread.to / 60) * 60;
+      var width = spread.to - spread.from;
+
+      document.querySelector('[data-bars]').innerHTML = DAYS.map(function (d) {
+        var spans = model[d.id] || [];
+        return '<div class="sd-weekbar">' +
+          '<span class="sd-weekbar__day">' + esc(d.short) + '</span>' +
+          '<span class="sd-weekbar__track">' +
+            (spans.length
+              ? spans.map(function (s) {
+                  return '<span class="sd-weekbar__fill" style="left:' +
+                    (((SDH.toMin(s[0]) - spread.from) / width) * 100).toFixed(2) + '%;width:' +
+                    (((SDH.toMin(s[1]) - SDH.toMin(s[0])) / width) * 100).toFixed(2) + '%"></span>';
+                }).join('')
+              : '<span class="sd-weekbar__closed">Closed</span>') +
+          '</span>' +
+        '</div>';
+      }).join('');
+
+      document.querySelector('[data-bars-axis]').innerHTML =
+        '<span>' + esc(SDH.timeLabel(SDH.fromMin(spread.from))) + '</span>' +
+        '<span>' + esc(SDH.timeLabel(SDH.fromMin(spread.to))) + '</span>';
+    }
+
+    /* §47 — the next seven days as a client would read them, which
+       means exceptions applied and internal notes left out. */
+    function paintPreview() {
+      var out = [];
+      var base = new Date();
+      for (var i = 0; i < 7; i++) {
+        var d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+        var iso = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) +
+                  '-' + ('0' + d.getDate()).slice(-2);
+        var state = SDH.spansOn(current, iso);
+        var closed = !state.spans.length;
+        var names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        var msg = state.exception ? SDH.clientMessage(state.exception, SDL.nameOf(current)) : '';
+
+        out.push('<div class="sd-preview__row' + (i === 0 ? ' is-today' : '') + '">' +
+          '<span class="sd-preview__day">' + (i === 0 ? 'Today' : esc(names[d.getDay()])) + '</span>' +
+          '<span class="sd-preview__val' + (closed ? ' is-closed' : '') + '">' +
+            esc(SDH.spansText(state.spans)) +
+            (msg ? '<span class="sd-preview__why">' + esc(msg) + '</span>' : '') +
+          '</span>' +
+        '</div>');
+      }
+      document.querySelector('[data-preview]').innerHTML = out.join('');
+    }
+
+    function paintLog() {
+      var rows = SDH.auditFor(current, 6);
+      document.querySelector('[data-log]').innerHTML = rows.length
+        ? rows.map(function (r) {
+            return '<div class="sd-logrow">' +
+              '<span class="sd-logdot" aria-hidden="true"></span>' +
+              '<span class="min-w-0 flex-1">' +
+                '<span class="block text-[12.5px] font-medium text-ink">' + esc(r.action) + '</span>' +
+                (r.detail || []).map(function (x) {
+                  return '<span class="block text-[11.5px] text-sub mt-0.5">' + esc(x) + '</span>';
+                }).join('') +
+                '<span class="block text-[11px] text-faint mt-1">' +
+                  esc(r.who) + ' · ' + esc(SDH.stampText(r.at)) + '</span>' +
+              '</span>' +
+            '</div>';
+          }).join('')
+        : '<p class="text-[12px] text-faint py-2">No changes recorded yet.</p>';
+    }
+
+    /* ---------- Booking rules ------------------------------------------- */
+
+    /* Turning enforcement off would make every other setting on this
+       page advisory, so it says so rather than failing quietly. */
+    document.querySelector('[data-rule-enforce]').addEventListener('change', function (e) {
+      document.querySelector('[data-rule-override]').disabled = !e.target.checked;
+      SD.toast(e.target.checked
+        ? 'Bookings outside business hours will be blocked.'
+        : 'Business hours are now advisory. Nothing will be blocked.');
+    });
+
+    document.querySelector('[data-rule-override]').addEventListener('change', function (e) {
+      SD.toast(e.target.checked
+        ? 'Staff with the override permission can book outside hours.'
+        : 'Nobody can book outside business hours, including the front desk.');
+    });
+
+    /* ---------- Start ---------------------------------------------------- */
+
+    (function start() {
+      var first = SDL.primary() || SDL.all()[0];
+      if (!first) return;
+      current = first.id;
+      paintLocPick();
+      load(first.id);
+    }());
+
+  }());
+  </script>
+</body>
+</html>

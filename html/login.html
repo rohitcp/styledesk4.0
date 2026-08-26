@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log in — StyleDesk</title>
+
+  <!--
+    StyleDesk — Sign in
+    Same two-panel shell as signup.html: the form on the left, the value
+    panel on the right and hidden below lg so the primary action stays
+    reachable without scrolling.
+
+    Password and magic link are peers, not a primary and a fallback, so
+    they sit in a segmented control rather than one being demoted to a
+    text link.
+
+    PROVIDER MARKS — the Google, Microsoft, Facebook and Instagram icons
+    below are simplified renderings for the prototype. Production must
+    use each provider's official button assets and follow their branding
+    rules (Google's are the strictest: fixed mark, minimum sizes, exact
+    wording). Do not ship these approximations.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-white text-ink text-[13px]">
+
+  <div class="min-h-screen lg:grid lg:grid-cols-2">
+
+    <!-- ===================== Form ===================== -->
+    <div class="flex items-center justify-center px-5 sm:px-8 py-10 sm:py-14">
+      <div class="w-full max-w-[420px]">
+
+        <a href="designsystem.html" class="inline-flex items-center gap-2.5 text-head mb-10">
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M6.5 21.5 L14 6 L18.5 6 L11 21.5 Z"/><path d="M14.5 21.5 L22 6 L26.5 6 L19 21.5 Z"/><rect x="4" y="24.6" width="24" height="3.6" rx="1.8"/></svg>
+          <span class="text-[18px] font-bold tracking-tight">StyleDesk</span>
+        </a>
+
+        <h1 class="text-[28px] sm:text-[32px] font-bold text-head tracking-tight leading-[1.15]">Log in to StyleDesk</h1>
+        <p class="text-[15px] text-sub mt-3 leading-relaxed">
+          Welcome back. Pick up where you left off.
+        </p>
+
+        <!-- Failed sign-in. Deliberately does not say which of the two was
+             wrong: telling an attacker that an address exists is a gift. -->
+        <div class="sd-alert sd-alert--danger mt-6" data-signin-error hidden role="alert">
+          <div class="flex items-start gap-2.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="shrink-0 mt-px" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5v5M12 16v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <p class="min-w-0" data-signin-error-text></p>
+          </div>
+        </div>
+
+        <!-- ---- Method ---- -->
+        <div class="sd-seg mt-7" role="tablist" aria-label="How you want to sign in">
+          <button type="button" class="sd-seg__btn" role="tab" id="tab-password"
+                  aria-selected="true" aria-controls="panel-password" data-method="password">Password</button>
+          <button type="button" class="sd-seg__btn" role="tab" id="tab-magic"
+                  aria-selected="false" tabindex="-1" aria-controls="panel-magic" data-method="magic">Magic link</button>
+        </div>
+
+        <!-- ---- Password ---- -->
+        <form id="panel-password" role="tabpanel" aria-labelledby="tab-password" class="mt-6" novalidate>
+          <div class="space-y-5">
+            <div>
+              <label for="email" class="block text-[13px] font-medium text-ink mb-1.5">Email address</label>
+              <input id="email" name="email" type="email" class="sd-input" autocomplete="username"
+                     placeholder="you@example.com" aria-describedby="email-error" />
+              <p id="email-error" data-error-for="email" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+            </div>
+
+            <div>
+              <label for="password" class="block text-[13px] font-medium text-ink mb-1.5">Password</label>
+              <div class="relative">
+                <input id="password" name="password" type="password" class="sd-input has-suffix"
+                       autocomplete="current-password" aria-describedby="password-error" />
+                <button type="button" data-eye="password" aria-controls="password" aria-pressed="false"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 sd-iconbtn grid" aria-label="Show password">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" data-eye-open><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" data-eye-shut hidden><path d="M4 4l16 16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M9.9 5.8A9.5 9.5 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 01-3 3.8M6.5 8.2A17 17 0 002.5 12S6 18.5 12 18.5c.8 0 1.5-.1 2.2-.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </button>
+              </div>
+              <p id="password-error" data-error-for="password" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <label for="remember" class="flex items-center gap-2.5 cursor-pointer">
+                <input id="remember" type="checkbox" class="sd-check" />
+                <span class="text-[13px] text-ink">Remember me</span>
+              </label>
+              <a href="forgot-password.html" class="ml-auto text-[13px] font-medium text-link hover:underline">Forgot password?</a>
+            </div>
+
+            <button type="submit" data-login
+                    class="w-full inline-flex items-center justify-center h-11 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+              Log In
+            </button>
+          </div>
+        </form>
+
+        <!-- ---- Magic link ---- -->
+        <form id="panel-magic" role="tabpanel" aria-labelledby="tab-magic" class="mt-6" novalidate hidden>
+          <div data-magic-ask>
+            <div>
+              <label for="magicEmail" class="block text-[13px] font-medium text-ink mb-1.5">Email address</label>
+              <input id="magicEmail" name="magicEmail" type="email" class="sd-input" autocomplete="username"
+                     placeholder="you@example.com" aria-describedby="magicEmail-error magicEmail-hint" />
+              <p id="magicEmail-error" data-error-for="magicEmail" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+              <p id="magicEmail-hint" class="mt-1.5 text-[12px] text-sub">
+                We’ll email you a link that signs you in. No password needed.
+              </p>
+            </div>
+
+            <button type="submit" data-magic-send
+                    class="w-full inline-flex items-center justify-center gap-2 h-11 mt-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 7l8.5 6 8.5-6" stroke="currentColor" stroke-width="1.8"/></svg>
+              Send Magic Link
+            </button>
+          </div>
+
+          <!-- Sent. The link is single-use and short-lived, and saying so
+               here is what stops people hunting for an older email. -->
+          <div data-magic-sent hidden>
+            <div class="sd-alert sd-alert--success" role="status">
+              <div class="flex items-start gap-2.5">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="shrink-0 mt-px" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <div class="min-w-0 flex-1">
+                  <p class="font-semibold">Check your email</p>
+                  <p class="mt-1">We sent a sign-in link to <b data-magic-address></b>. It works once and expires in <b>15 minutes</b>.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5 mt-5">
+              <button type="button" data-magic-resend
+                      class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors disabled:opacity-45 disabled:pointer-events-none">
+                Resend link
+              </button>
+              <button type="button" data-magic-restart
+                      class="h-10 px-3 rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+                Use a different email
+              </button>
+            </div>
+            <p class="text-[12px] text-sub mt-3" data-magic-cooldown hidden></p>
+            <p class="text-[12px] text-sub mt-3">
+              Nothing yet? Check your spam folder, or
+              <button type="button" data-magic-topassword class="text-link font-medium hover:underline">sign in with your password</button>.
+            </p>
+          </div>
+        </form>
+
+        <!-- ---- Social ---- -->
+        <div class="mt-8" data-social>
+          <p class="sd-or">Or continue with</p>
+
+          <!-- Google and Microsoft lead: for a business tool these are the
+               accounts people already have at work. Facebook and Instagram
+               follow, smaller — Instagram in particular is a marketing
+               identity rather than a work one, and is here for the future
+               integration rather than for daily sign-in. -->
+          <div class="mt-5 space-y-2.5">
+            <button type="button" class="sd-social" data-provider="Google">
+              <span class="sd-social__icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 48 48">
+                  <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.2-.4-4.7H24v8.9h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.5 6.6-16.3z"/>
+                  <path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.2l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8.1 41.3 15.4 46 24 46z"/>
+                  <path fill="#FBBC05" d="M11.8 28.4c-.4-1.3-.7-2.7-.7-4.4s.3-3.1.7-4.4v-5.7H4.5A22 22 0 002 24c0 3.5.8 6.9 2.5 9.9l7.3-5.5z"/>
+                  <path fill="#EA4335" d="M24 10.6c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 4.1 29.9 2 24 2 15.4 2 8.1 6.7 4.5 13.9l7.3 5.7c1.7-5.2 6.5-9 12.2-9z"/>
+                </svg>
+              </span>
+              Continue with Google
+            </button>
+
+            <button type="button" class="sd-social" data-provider="Microsoft">
+              <span class="sd-social__icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <rect x="1" y="1" width="10" height="10" fill="#F25022"/>
+                  <rect x="13" y="1" width="10" height="10" fill="#7FBA00"/>
+                  <rect x="1" y="13" width="10" height="10" fill="#00A4EF"/>
+                  <rect x="13" y="13" width="10" height="10" fill="#FFB900"/>
+                </svg>
+              </span>
+              Continue with Microsoft
+            </button>
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <button type="button" class="sd-social sd-social--compact" data-provider="Facebook">
+                <span class="sd-social__icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#1877F2"/><path d="M15.4 12.6l.4-2.8h-2.7V8c0-.8.4-1.6 1.6-1.6h1.2V4a15 15 0 00-2.2-.2c-2.2 0-3.7 1.4-3.7 3.9v2.1H8.2v2.8H10V20h3.1v-7.4z" fill="#fff"/></svg>
+                </span>
+                Facebook
+              </button>
+
+              <button type="button" class="sd-social sd-social--compact" data-provider="Instagram">
+                <span class="sd-social__icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24">
+                    <defs>
+                      <linearGradient id="igGrad" x1="0" y1="1" x2="1" y2="0">
+                        <stop offset="0" stop-color="#FEDA75"/><stop offset=".35" stop-color="#FA7E1E"/>
+                        <stop offset=".6" stop-color="#D62976"/><stop offset="1" stop-color="#962FBF"/>
+                      </linearGradient>
+                    </defs>
+                    <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="url(#igGrad)"/>
+                    <rect x="5.6" y="5.6" width="12.8" height="12.8" rx="4" fill="none" stroke="#fff" stroke-width="1.7"/>
+                    <circle cx="12" cy="12" r="3.1" fill="none" stroke="#fff" stroke-width="1.7"/>
+                    <circle cx="16.6" cy="7.4" r="1.1" fill="#fff"/>
+                  </svg>
+                </span>
+                Instagram
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-[13px] text-sub mt-8">
+          New to StyleDesk?
+          <a href="signup.html" class="text-link font-medium hover:underline">Create an account</a>
+        </p>
+
+        <footer class="mt-10 pt-6 border-t border-line flex flex-wrap items-center gap-x-5 gap-y-2">
+          <p class="text-[12px] text-faint">&copy; 2026 StyleDesk</p>
+          <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+            <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+            <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+            <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+          </nav>
+        </footer>
+      </div>
+    </div>
+
+    <!-- ===================== Value panel ===================== -->
+    <aside class="hidden lg:flex items-center border-l border-line bg-gradient-to-b from-white via-[#faf9fd] to-[#f2effa] px-10 xl:px-16 py-14">
+      <div class="w-full max-w-[520px] mx-auto">
+
+        <h2 class="text-[26px] xl:text-[29px] font-bold text-head tracking-tight leading-[1.25]">
+          Your day, <span class="text-[#9a93c4]">already laid out.</span>
+        </h2>
+
+        <ul class="mt-8 space-y-5">
+          <li class="flex items-start gap-3.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[15px] text-ink leading-relaxed">Today’s bookings, staff and no-shows on one calendar.</span>
+          </li>
+          <li class="flex items-start gap-3.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[15px] text-ink leading-relaxed">Every client’s history, notes and preferences a search away.</span>
+          </li>
+          <li class="flex items-start gap-3.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[15px] text-ink leading-relaxed">Reminders go out on their own while you work.</span>
+          </li>
+        </ul>
+
+        <div class="mt-16 rounded-card border border-line bg-white/70 p-6">
+          <p class="text-[15px] text-ink leading-relaxed">
+            “We stopped juggling a paper diary and three group chats. Everything the team needs
+            is in one place now.”
+          </p>
+          <div class="flex items-center gap-3 mt-5">
+            <span class="sd-avatar sd-avatar--sm" aria-hidden="true">MK</span>
+            <span class="min-w-0">
+              <span class="block text-[13px] font-semibold text-head">Maya Kessler</span>
+              <span class="block text-[12px] text-sub">Owner, Glasshouse Studio</span>
+            </span>
+          </div>
+        </div>
+        <!--
+          PLACEHOLDER TESTIMONIAL — an invented person and business, not a
+          real customer. Replace with a real, permissioned quote before
+          launch, or remove the block entirely. Do not ship an invented
+          quote attributed to a named person.
+        -->
+
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var REMEMBER_KEY = 'styledesk.login.remember';
+    var MAGIC_MINUTES = 15;      // §: configurable; 15 is the recommendation
+    var RESEND_SECONDS = 30;
+
+    var pwForm = document.getElementById('panel-password');
+    var magicForm = document.getElementById('panel-magic');
+    var emailEl = document.getElementById('email');
+    var passwordEl = document.getElementById('password');
+    var magicEmailEl = document.getElementById('magicEmail');
+    var rememberEl = document.getElementById('remember');
+    var errorBox = document.querySelector('[data-signin-error]');
+
+    /* ---------- Remembered address ------------------------------------
+       Only ever the address, never the password. It saves typing on a
+       shared-with-nobody laptop and gives away nothing if the machine is
+       borrowed. */
+    (function restore() {
+      var saved = '';
+      try { saved = window.localStorage.getItem(REMEMBER_KEY) || ''; } catch (e) {}
+      if (!saved) return;
+      emailEl.value = saved;
+      magicEmailEl.value = saved;
+      rememberEl.checked = true;
+      // The address is known, so the password is what is actually wanted.
+      window.setTimeout(function () { passwordEl.focus(); }, 0);
+    }());
+
+    function rememberEmail(value) {
+      try {
+        if (rememberEl.checked && value) window.localStorage.setItem(REMEMBER_KEY, value);
+        else window.localStorage.removeItem(REMEMBER_KEY);
+      } catch (e) { /* storage blocked; nothing to remember */ }
+    }
+
+    /* ---------- Method switching --------------------------------------- */
+
+    var TABS = ['password', 'magic'];
+
+    function showMethod(id, focusTab) {
+      TABS.forEach(function (t) {
+        var tab = document.getElementById('tab-' + t);
+        var panel = document.getElementById('panel-' + t);
+        var on = t === id;
+        tab.setAttribute('aria-selected', String(on));
+        tab.tabIndex = on ? 0 : -1;
+        panel.hidden = !on;
+        if (on && focusTab) tab.focus();
+      });
+      hideError();
+      // The two panels ask for the same address; carry it across so
+      // switching method is not retyping.
+      if (id === 'magic' && emailEl.value && !magicEmailEl.value) magicEmailEl.value = emailEl.value;
+      if (id === 'password' && magicEmailEl.value && !emailEl.value) emailEl.value = magicEmailEl.value;
+    }
+
+    document.querySelectorAll('[data-method]').forEach(function (tab) {
+      tab.addEventListener('click', function () { showMethod(tab.dataset.method); });
+    });
+    document.querySelector('.sd-seg').addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      var current = document.querySelector('[data-method][aria-selected="true"]').dataset.method;
+      showMethod(current === 'password' ? 'magic' : 'password', true);
+    });
+
+    document.querySelector('[data-magic-topassword]').addEventListener('click', function () {
+      resetMagic();
+      showMethod('password', true);
+    });
+
+    /* ---------- Show / hide password ------------------------------------ */
+
+    document.querySelectorAll('[data-eye]').forEach(function (btn) {
+      var input = document.getElementById(btn.dataset.eye);
+      btn.addEventListener('click', function () {
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.setAttribute('aria-pressed', String(show));
+        btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        btn.querySelector('[data-eye-open]').hidden = show;
+        btn.querySelector('[data-eye-shut]').hidden = !show;
+      });
+    });
+
+    /* ---------- Errors --------------------------------------------------- */
+
+    function showError(message) {
+      document.querySelector('[data-signin-error-text]').textContent = message;
+      errorBox.hidden = false;
+    }
+    function hideError() { errorBox.hidden = true; }
+
+    /* ---------- Password sign-in ----------------------------------------- */
+
+    /* Stands in for the server check. Any well-formed address with a
+       password of at least 8 characters is accepted, so both the success
+       and the failure paths can be walked without shipping a working
+       credential in the markup. */
+    function authenticate(email, password) {
+      return SD.isEmail(email) && String(password).length >= 8;
+    }
+
+    /* Where a successful sign-in lands. Honours the user's own default
+       landing page from Account Settings when one has been set. */
+    function landingUrl() {
+      var fallback = 'dashboard.html';
+      if (!window.SDA) return fallback;
+      var id = SDA.read().preferences.landingPage;
+      var hit = SDA.LANDING_PAGES.filter(function (p) { return p.id === id; });
+      // Calendar and Appointments have no page yet; fall back rather than
+      // send someone to a dead link on the way in.
+      return (hit.length && hit[0].url !== '#') ? hit[0].url : fallback;
+    }
+
+    pwForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      SD.clearErrors(pwForm);
+      hideError();
+
+      var ok = true;
+      if (!emailEl.value.trim()) { SD.setError(emailEl, 'Enter your email address.'); ok = false; }
+      else if (!SD.isEmail(emailEl.value)) { SD.setError(emailEl, 'Enter a valid email address, like name@example.com.'); ok = false; }
+      if (!passwordEl.value) { SD.setError(passwordEl, 'Enter your password.'); ok = false; }
+      if (!ok) { SD.focusFirstError(pwForm); return; }
+
+      var release = SD.lockSubmit(document.querySelector('[data-login]'), 'Signing in…');
+
+      window.setTimeout(function () {
+        if (!authenticate(emailEl.value, passwordEl.value)) {
+          if (release) release();
+          // One message for both fields: naming which was wrong tells an
+          // attacker whether the address exists.
+          showError('That email and password don’t match. Check both and try again.');
+          passwordEl.value = '';
+          passwordEl.focus();
+          return;
+        }
+        rememberEmail(SD.normalizeEmail(emailEl.value));
+        window.location.href = landingUrl();
+      }, 320);
+    });
+
+    /* ---------- Magic link ------------------------------------------------ */
+
+    var cooldownTimer = null;
+
+    magicForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      SD.clearErrors(magicForm);
+      hideError();
+
+      if (!magicEmailEl.value.trim()) { SD.setError(magicEmailEl, 'Enter your email address.'); magicEmailEl.focus(); return; }
+      if (!SD.isEmail(magicEmailEl.value)) { SD.setError(magicEmailEl, 'Enter a valid email address, like name@example.com.'); magicEmailEl.focus(); return; }
+
+      var release = SD.lockSubmit(document.querySelector('[data-magic-send]'), 'Sending…');
+      window.setTimeout(function () {
+        if (release) release();
+        sendMagic();
+      }, 320);
+    });
+
+    function sendMagic() {
+      var address = SD.normalizeEmail(magicEmailEl.value);
+      rememberEmail(address);
+      document.querySelector('[data-magic-address]').textContent = address;
+      document.querySelector('[data-magic-ask]').hidden = true;
+      document.querySelector('[data-magic-sent]').hidden = false;
+      // The social block is a way in, not a way to finish this — hide it
+      // so the sent state has one obvious next step.
+      document.querySelector('[data-social]').hidden = true;
+      startCooldown();
+    }
+
+    function resetMagic() {
+      window.clearInterval(cooldownTimer);
+      document.querySelector('[data-magic-ask]').hidden = false;
+      document.querySelector('[data-magic-sent]').hidden = true;
+      document.querySelector('[data-social]').hidden = false;
+      document.querySelector('[data-magic-cooldown]').hidden = true;
+    }
+
+    document.querySelector('[data-magic-restart]').addEventListener('click', function () {
+      resetMagic();
+      magicEmailEl.focus();
+      magicEmailEl.select();
+    });
+
+    /* A cooldown rather than an unlimited button: resending is how a
+       magic-link endpoint gets used to spam an inbox. */
+    function startCooldown() {
+      var btn = document.querySelector('[data-magic-resend]');
+      var note = document.querySelector('[data-magic-cooldown]');
+      var left = RESEND_SECONDS;
+
+      btn.disabled = true;
+      note.hidden = false;
+      note.textContent = 'You can resend in ' + left + ' seconds.';
+
+      window.clearInterval(cooldownTimer);
+      cooldownTimer = window.setInterval(function () {
+        left -= 1;
+        if (left > 0) {
+          note.textContent = 'You can resend in ' + left + ' second' + (left === 1 ? '' : 's') + '.';
+          return;
+        }
+        window.clearInterval(cooldownTimer);
+        btn.disabled = false;
+        note.hidden = true;
+      }, 1000);
+    }
+
+    document.querySelector('[data-magic-resend]').addEventListener('click', function () {
+      startCooldown();
+      SDA.toast('New link sent to <b>' + SDA.esc(SD.normalizeEmail(magicEmailEl.value)) +
+                '</b>. The previous one no longer works.');
+    });
+
+    /* ---------- Social --------------------------------------------------- */
+
+    document.querySelectorAll('[data-provider]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var name = btn.dataset.provider;
+        SDA.toast('Redirecting to <b>' + SDA.esc(name) + '</b> to authorise StyleDesk…');
+        // The real flow leaves the app here: OAuth redirect, then back to
+        // a callback that creates the session.
+        window.setTimeout(function () { window.location.href = landingUrl(); }, 900);
+      });
+    });
+
+    /* Unticking "remember me" should forget the address straight away,
+       not at the next successful sign-in. */
+    rememberEl.addEventListener('change', function () {
+      if (!rememberEl.checked) { try { window.localStorage.removeItem(REMEMBER_KEY); } catch (e) {} }
+    });
+  }());
+  </script>
+</body>
+</html>

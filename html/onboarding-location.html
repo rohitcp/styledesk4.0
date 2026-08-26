@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your location — StyleDesk setup</title>
+
+  <!--
+    StyleDesk — Onboarding step 2: Primary location + business hours (§10, §11)
+    Timezone is the load-bearing field here: it drives appointments,
+    schedules, reminders, reporting and online-booking availability, so it
+    is inferred from the address but always editable.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <header class="bg-brand">
+    <div class="w-full px-4 sm:px-6 h-14 flex items-center gap-3">
+      <span class="text-white/70 text-[13px] truncate" data-bizname>Set up your business</span>
+      <div class="ml-auto flex items-center gap-3">
+        <span class="hidden md:inline-flex sd-pill-dark" data-trial>14 days left in your free trial</span>
+        <a href="signup.html" data-logout class="text-white/70 hover:text-white text-[13px] font-medium transition-colors">Log out</a>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- Two columns from lg up, matching onboarding-business.html. -->
+  <div class="flex-1 lg:grid lg:grid-cols-12">
+
+  <main class="lg:col-span-8 min-w-0 w-full px-4 sm:px-6 pt-7 sm:pt-10 pb-[200px]">
+    <div class="max-w-[780px]">
+
+      <div class="pb-5 mb-6 border-b border-line">
+        <div class="flex flex-wrap items-start gap-x-4 gap-y-1">
+          <div class="min-w-0">
+            <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">Where is your business located?</h1>
+            <p class="text-[14px] text-sub mt-1.5">Your first location. You can add more locations once you're set up.</p>
+          </div>
+          <span class="ml-auto shrink-0 pt-1 text-[12px] font-medium text-sub" data-step-label>Step — of 7</span>
+        </div>
+        <div class="sd-progress mt-4"><span data-progress style="width:0%"></span></div>
+      </div>
+
+      <form id="location" class="mt-6 space-y-5" novalidate>
+
+        <section class="bg-white border border-line rounded-card p-5 sm:p-6 space-y-5">
+
+          <div>
+            <label for="locName" class="block text-[13px] font-medium text-ink mb-1.5">Location name <span class="text-danger" aria-hidden="true">*</span></label>
+            <input id="locName" type="text" value="Main Location" class="sd-input" aria-describedby="locName-error" />
+            <p id="locName-error" data-error-for="locName" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+          </div>
+
+          <div>
+            <label for="addr1" class="block text-[13px] font-medium text-ink mb-1.5">Address line 1 <span class="text-danger" aria-hidden="true">*</span></label>
+            <input id="addr1" type="text" class="sd-input" placeholder="128 Grand Street" autocomplete="address-line1" aria-describedby="addr1-error" />
+            <p id="addr1-error" data-error-for="addr1" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+          </div>
+
+          <div>
+            <label for="addr2" class="block text-[13px] font-medium text-ink mb-1.5">Address line 2 <span class="font-normal text-faint">Optional</span></label>
+            <input id="addr2" type="text" class="sd-input" placeholder="Suite 4" autocomplete="address-line2" />
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-x-5 gap-y-5">
+            <div>
+              <label for="city" class="block text-[13px] font-medium text-ink mb-1.5">City <span class="text-danger" aria-hidden="true">*</span></label>
+              <input id="city" type="text" class="sd-input" autocomplete="address-level2" aria-describedby="city-error" />
+              <p id="city-error" data-error-for="city" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+            </div>
+            <div>
+              <label for="state" class="block text-[13px] font-medium text-ink mb-1.5">State / Province <span class="text-danger" aria-hidden="true">*</span></label>
+              <select id="state" class="sd-input" autocomplete="address-level1" aria-describedby="state-error"></select>
+              <p id="state-error" data-error-for="state" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+            </div>
+            <div>
+              <label for="zip" class="block text-[13px] font-medium text-ink mb-1.5">ZIP / Postal code <span class="text-danger" aria-hidden="true">*</span></label>
+              <input id="zip" type="text" class="sd-input" autocomplete="postal-code" aria-describedby="zip-error" />
+              <p id="zip-error" data-error-for="zip" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+            </div>
+            <div>
+              <label for="country" class="block text-[13px] font-medium text-ink mb-1.5">Country <span class="text-danger" aria-hidden="true">*</span></label>
+              <select id="country" class="sd-input has-value" autocomplete="country-name">
+                <option selected>United States</option>
+                <option>Canada</option>
+                <option>United Kingdom</option>
+                <option>Australia</option>
+                <option>Ireland</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-x-5 gap-y-5">
+            <div>
+              <label for="locPhone" class="block text-[13px] font-medium text-ink mb-1.5">Business phone <span class="text-danger" aria-hidden="true">*</span></label>
+              <div class="relative" data-phone data-phone-country="US">
+                <div class="sd-phone">
+                  <button type="button" class="sd-phone__country" data-phone-toggle aria-haspopup="listbox" aria-expanded="false">
+                    <span class="sd-phone__flag" data-phone-flag>&#127482;&#127480;</span>
+                    <span class="font-medium" data-phone-code>+1</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <input id="locPhone" type="tel" class="sd-phone__field" data-phone-input autocomplete="tel-national" aria-describedby="locPhone-error" />
+                </div>
+                <div class="sd-pop" data-phone-pop hidden></div>
+              </div>
+              <p id="locPhone-error" data-error-for="locPhone" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+            </div>
+            <div>
+              <label for="timezone" class="block text-[13px] font-medium text-ink mb-1.5">Timezone <span class="text-danger" aria-hidden="true">*</span></label>
+              <select id="timezone" class="sd-input has-value" aria-describedby="tz-hint"></select>
+              <p id="tz-hint" class="mt-1.5 text-[12px] text-faint" role="status" aria-live="polite">Controls appointments, reminders and booking availability.</p>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- §11 business hours -->
+        <section class="bg-white border border-line rounded-card overflow-hidden">
+          <div class="px-5 sm:px-6 py-4 border-b border-line flex flex-wrap items-center gap-3">
+            <div class="min-w-0">
+              <h2 class="text-[15px] font-semibold text-head">Business hours</h2>
+              <p class="text-[13px] text-sub mt-0.5">Your default booking availability. Staff schedules can override this later.</p>
+            </div>
+            <button type="button" id="copy-week"
+                    class="ml-auto h-9 px-3.5 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold shrink-0 transition-colors">
+              Copy Monday to Tue–Fri
+            </button>
+          </div>
+          <div id="hours" class="divide-y divide-line"></div>
+          <p id="hours-status" role="status" aria-live="polite" class="sr-only"></p>
+        </section>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <button id="continue" type="submit" class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">Continue</button>
+          <a href="onboarding-business.html" class="h-11 px-5 grid place-items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[14px] font-semibold transition-colors">Back</a>
+          <span class="text-[12px] text-faint">This step is required.</span>
+        </div>
+      </form>
+    </div>
+  </main>
+
+    <!-- ===================== Context rail ===================== -->
+    <aside class="lg:col-span-4 min-w-0 hidden lg:block border-l border-line bg-gradient-to-b from-white via-[#faf9fd] to-[#f2effa]">
+      <div class="sticky top-0 px-8 py-10 max-w-[420px]">
+
+        <h2 class="text-[15px] font-semibold text-head">Your location preview</h2>
+        <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Clients see this on your booking page.</p>
+
+        <!-- Mirrors the form. Hidden below lg, so nothing here is the only
+             place a value is stated. -->
+        <div class="mt-5 rounded-card border border-line bg-white shadow-sm p-4" aria-hidden="true">
+          <p id="pv-name" class="text-[14px] font-semibold text-head truncate">Main Location</p>
+          <p id="pv-addr" class="text-[12px] text-sub mt-1 leading-relaxed">Add your address to see it here.</p>
+
+          <div class="mt-4 pt-3.5 border-t border-line">
+            <p class="text-[11px] font-semibold text-faint uppercase tracking-wide">Timezone</p>
+            <p id="pv-tz" class="text-[12px] text-ink font-medium mt-1">—</p>
+          </div>
+          <div class="mt-3.5 pt-3.5 border-t border-line">
+            <p class="text-[11px] font-semibold text-faint uppercase tracking-wide">Opening hours</p>
+            <p id="pv-hours" class="text-[12px] text-ink font-medium mt-1">Open 6 days a week</p>
+          </div>
+        </div>
+
+        <ul class="mt-8 space-y-4">
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Timezone drives appointments, reminders, reporting and what clients can book — worth getting right now.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">These hours become your default booking availability. Staff schedules can override them later.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Got more than one site? Add further locations once setup is finished.</span>
+          </li>
+        </ul>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script>
+    (function () {
+      if (!SD.guard('location')) return;
+      SD.renderProgress('location');
+
+      var state = SD.read();
+      var form = document.getElementById('location');
+      var phone = SD.phoneField(document.querySelector('[data-phone]'));
+
+      var pv = {
+        name:  document.getElementById('pv-name'),
+        addr:  document.getElementById('pv-addr'),
+        tz:    document.getElementById('pv-tz'),
+        hours: document.getElementById('pv-hours')
+      };
+
+      document.querySelector('[data-trial]').textContent = SD.trialRemaining() + ' days left in your free trial';
+      document.querySelector('[data-logout]').addEventListener('click', function () { SD.reset(); });
+      if (state.tenant && state.tenant.name) document.querySelector('[data-bizname]').textContent = state.tenant.name;
+
+      /* ---- states + timezone inference (§10) ---- */
+      var STATES = {
+        'AL':'America/Chicago','AK':'America/Anchorage','AZ':'America/Phoenix','AR':'America/Chicago',
+        'CA':'America/Los_Angeles','CO':'America/Denver','CT':'America/New_York','DE':'America/New_York',
+        'FL':'America/New_York','GA':'America/New_York','HI':'Pacific/Honolulu','ID':'America/Denver',
+        'IL':'America/Chicago','IN':'America/New_York','IA':'America/Chicago','KS':'America/Chicago',
+        'KY':'America/New_York','LA':'America/Chicago','ME':'America/New_York','MD':'America/New_York',
+        'MA':'America/New_York','MI':'America/New_York','MN':'America/Chicago','MS':'America/Chicago',
+        'MO':'America/Chicago','MT':'America/Denver','NE':'America/Chicago','NV':'America/Los_Angeles',
+        'NH':'America/New_York','NJ':'America/New_York','NM':'America/Denver','NY':'America/New_York',
+        'NC':'America/New_York','ND':'America/Chicago','OH':'America/New_York','OK':'America/Chicago',
+        'OR':'America/Los_Angeles','PA':'America/New_York','RI':'America/New_York','SC':'America/New_York',
+        'SD':'America/Chicago','TN':'America/Chicago','TX':'America/Chicago','UT':'America/Denver',
+        'VT':'America/New_York','VA':'America/New_York','WA':'America/Los_Angeles','WV':'America/New_York',
+        'WI':'America/Chicago','WY':'America/Denver'
+      };
+      var ZONES = [
+        ['America/New_York','(GMT−05:00) Eastern — New York'],
+        ['America/Chicago','(GMT−06:00) Central — Chicago'],
+        ['America/Denver','(GMT−07:00) Mountain — Denver'],
+        ['America/Phoenix','(GMT−07:00) Arizona — Phoenix'],
+        ['America/Los_Angeles','(GMT−08:00) Pacific — Los Angeles'],
+        ['America/Anchorage','(GMT−09:00) Alaska — Anchorage'],
+        ['Pacific/Honolulu','(GMT−10:00) Hawaii — Honolulu'],
+        ['America/Toronto','(GMT−05:00) Toronto'],
+        ['Europe/London','(GMT+00:00) London'],
+        ['Europe/Dublin','(GMT+00:00) Dublin'],
+        ['Australia/Sydney','(GMT+11:00) Sydney']
+      ];
+
+      var stateEl = document.getElementById('state');
+      var tzEl = document.getElementById('timezone');
+      var tzHint = document.getElementById('tz-hint');
+      var tzTouched = false;
+
+      stateEl.innerHTML = '<option value="">Select…</option>' +
+        Object.keys(STATES).map(function (k) { return '<option value="' + k + '">' + k + '</option>'; }).join('');
+      tzEl.innerHTML = ZONES.map(function (z) { return '<option value="' + z[0] + '">' + z[1] + '</option>'; }).join('');
+
+      /* Every dropdown on this step is a searchable combo. The native
+         <select> stays underneath as the value holder, so the timezone
+         inference, hours delegation and draft restore below are unchanged. */
+      SD.combo(stateEl,   { searchPlaceholder: 'Search state…',    width: '220px' });
+      SD.combo(tzEl,      { searchPlaceholder: 'Search timezone…', width: '320px' });
+      SD.combo(document.getElementById('country'), { searchPlaceholder: 'Search country…', width: '260px' });
+
+      stateEl.addEventListener('change', function () {
+        SD.setError(stateEl, '');
+        var guess = STATES[stateEl.value];
+        if (guess && !tzTouched) {
+          tzEl.value = guess;
+          SD.comboRefresh(tzEl);          // set in code, so refresh the button
+          tzHint.textContent = 'Set from your address. Change it if that’s not right.';
+        }
+      });
+      tzEl.addEventListener('change', function () {
+        tzTouched = true;
+        tzHint.textContent = 'Controls appointments, reminders and booking availability.';
+      });
+
+      /* ---- business hours (§11) ---- */
+      var DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      var DEFAULTS = {
+        Monday:    { open: true,  from: '09:00', to: '18:00' },
+        Tuesday:   { open: true,  from: '09:00', to: '18:00' },
+        Wednesday: { open: true,  from: '09:00', to: '18:00' },
+        Thursday:  { open: true,  from: '09:00', to: '18:00' },
+        Friday:    { open: true,  from: '09:00', to: '18:00' },
+        Saturday:  { open: true,  from: '10:00', to: '16:00' },
+        Sunday:    { open: false, from: '09:00', to: '17:00' }
+      };
+      var hours = (state.hours && Object.keys(state.hours).length) ? state.hours : DEFAULTS;
+
+      /* 15-minute options across the day, labelled in 12-hour time. */
+      var TIMES = (function () {
+        var out = [];
+        for (var m = 0; m < 24 * 60; m += 15) {
+          var h = Math.floor(m / 60), mm = m % 60;
+          var suffix = h < 12 ? 'AM' : 'PM';
+          var h12 = h % 12 === 0 ? 12 : h % 12;
+          out.push([
+            (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm,
+            h12 + ':' + (mm < 10 ? '0' : '') + mm + ' ' + suffix
+          ]);
+        }
+        return out;
+      }());
+
+      function timeOptions(selectedValue) {
+        return TIMES.map(function (t) {
+          return '<option value="' + t[0] + '"' + (t[0] === selectedValue ? ' selected' : '') + '>' + t[1] + '</option>';
+        }).join('');
+      }
+
+      var hoursHost = document.getElementById('hours');
+
+      function paintHours() {
+        hoursHost.innerHTML = DAYS.map(function (day) {
+          var d = hours[day] || { open: false, from: '09:00', to: '17:00' };
+          var id = day.toLowerCase();
+          return '' +
+            '<div class="px-5 sm:px-6 py-3.5 flex flex-wrap items-center gap-x-4 gap-y-3" data-day="' + day + '">' +
+              '<span class="text-[14px] font-medium text-ink w-[92px] shrink-0">' + day + '</span>' +
+              '<label class="flex items-center gap-2 shrink-0 cursor-pointer">' +
+                '<input type="checkbox" class="sd-switch" data-open ' + (d.open ? 'checked' : '') + ' id="open-' + id + '" />' +
+                '<span class="text-[13px] ' + (d.open ? 'text-ink' : 'text-faint') + '" data-openlabel>' + (d.open ? 'Open' : 'Closed') + '</span>' +
+              '</label>' +
+              '<div class="flex items-center gap-2 ml-auto" data-times ' + (d.open ? '' : 'hidden') + '>' +
+                '<label class="sr-only" for="from-' + id + '">' + day + ' opening time</label>' +
+                '<select id="from-' + id + '" data-from class="sd-input has-value w-[124px]">' + timeOptions(d.from) + '</select>' +
+                '<span class="text-[13px] text-faint">to</span>' +
+                '<label class="sr-only" for="to-' + id + '">' + day + ' closing time</label>' +
+                '<select id="to-' + id + '" data-to class="sd-input has-value w-[124px]">' + timeOptions(d.to) + '</select>' +
+              '</div>' +
+              '<span class="ml-auto text-[13px] text-faint" data-closed ' + (d.open ? 'hidden' : '') + '>Closed all day</span>' +
+            '</div>';
+        }).join('');
+      }
+
+      /* Re-run after every repaint — combo() no-ops on an already-upgraded
+         select, so this is safe to call repeatedly. */
+      function upgradeHourCombos() {
+        SD.comboAll(hoursHost, { searchPlaceholder: 'Search time…', width: '190px' });
+      }
+
+      paintHours();
+      upgradeHourCombos();
+
+      hoursHost.addEventListener('change', function (e) {
+        var row = e.target.closest('[data-day]');
+        if (!row) return;
+        var day = row.getAttribute('data-day');
+        hours[day] = hours[day] || { from: '09:00', to: '17:00' };
+
+        if (e.target.hasAttribute('data-open')) {
+          var on = e.target.checked;
+          hours[day].open = on;
+          row.querySelector('[data-times]').hidden = !on;
+          row.querySelector('[data-closed]').hidden = on;
+          var label = row.querySelector('[data-openlabel]');
+          label.textContent = on ? 'Open' : 'Closed';
+          label.className = 'text-[13px] ' + (on ? 'text-ink' : 'text-faint');
+        }
+        if (e.target.hasAttribute('data-from')) hours[day].from = e.target.value;
+        if (e.target.hasAttribute('data-to'))   hours[day].to   = e.target.value;
+      });
+
+      document.getElementById('copy-week').addEventListener('click', function () {
+        var mon = hours.Monday;
+        ['Tuesday','Wednesday','Thursday','Friday'].forEach(function (day) {
+          hours[day] = { open: mon.open, from: mon.from, to: mon.to };
+        });
+        paintHours();
+        upgradeHourCombos();
+        document.getElementById('hours-status').textContent =
+          'Monday hours copied to Tuesday through Friday.';
+        paintPreview();
+      });
+
+      /* ---- restore draft ---- */
+      if (state.location) {
+        ['locName','addr1','addr2','city','zip'].forEach(function (id) {
+          if (state.location[id]) document.getElementById(id).value = state.location[id];
+        });
+        phone.set(state.location.locPhone, state.location.phoneCountry);
+        // Restore quietly: dispatching change on the state select would
+        // re-run the timezone inference and clobber the saved timezone.
+        if (state.location.state) { stateEl.value = state.location.state; SD.comboRefresh(stateEl); }
+        if (state.location.country) {
+          var countryEl = document.getElementById('country');
+          countryEl.value = state.location.country;
+          SD.comboRefresh(countryEl);
+        }
+        if (state.location.timezone) {
+          tzEl.value = state.location.timezone;
+          SD.comboRefresh(tzEl);
+          tzTouched = true;
+        }
+      } else if (state.tenant && state.tenant.phone) {
+        // Carried over from the Business step so it does not have to be retyped.
+        phone.set(state.tenant.phone, state.tenant.phoneCountry);
+      }
+
+      /* ---- context-rail preview ---- */
+      function val(id) { return (document.getElementById(id).value || '').trim(); }
+
+      function paintPreview() {
+        pv.name.textContent = val('locName') || 'Main Location';
+
+        var street = [val('addr1'), val('addr2')].filter(Boolean).join(', ');
+        var town   = [val('city'), [stateEl.value, val('zip')].filter(Boolean).join(' ')]
+                       .filter(Boolean).join(', ');
+        var lines  = [street, town, document.getElementById('country').value].filter(Boolean);
+        pv.addr.innerHTML = lines.length
+          ? lines.map(SD.escapeHtml).join('<br />')
+          : 'Add your address to see it here.';
+
+        var opt = tzEl.options[tzEl.selectedIndex];
+        pv.tz.textContent = opt ? opt.textContent : '—';
+
+        var open = DAYS.filter(function (d) { return hours[d] && hours[d].open; }).length;
+        pv.hours.textContent = open === 0 ? 'Closed every day'
+                             : open === 7 ? 'Open every day'
+                             : 'Open ' + open + ' days a week';
+      }
+
+      phone.input.addEventListener('input', function () {
+        if (phone.input.getAttribute('aria-invalid')) SD.setError(phone.input, '');
+      });
+
+      form.addEventListener('input', paintPreview);
+      form.addEventListener('change', paintPreview);
+
+      paintPreview();
+
+      /* ---- submit ---- */
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        SD.clearErrors(form);
+
+        var ok = true;
+        var required = [
+          ['locName', 'Give this location a name.'],
+          ['addr1', 'Enter the street address.'],
+          ['city', 'Enter the city.'],
+          ['zip', 'Enter the ZIP or postal code.']
+        ];
+        required.forEach(function (pair) {
+          var el = document.getElementById(pair[0]);
+          if (!el.value.trim()) ok = SD.setError(el, pair[1]) && ok;
+        });
+        if (!stateEl.value) ok = SD.setError(stateEl, 'Select a state or province.') && ok;
+
+        var tel = phone.value();
+        if (!tel.national.trim()) {
+          ok = SD.setError(phone.input, 'Enter a phone number for this location.') && ok;
+        } else if (!tel.complete) {
+          ok = SD.setError(phone.input,
+            'That looks short for a ' + phone.country().name + ' number.') && ok;
+        }
+
+        if (!ok) { SD.focusFirstError(form); return; }
+
+        var release = SD.lockSubmit(document.getElementById('continue'), 'Saving…');
+        if (!release) return;
+
+        SD.patch({
+          location: {
+            locName: document.getElementById('locName').value.trim(),
+            addr1: document.getElementById('addr1').value.trim(),
+            addr2: document.getElementById('addr2').value.trim(),
+            city: document.getElementById('city').value.trim(),
+            state: stateEl.value,
+            zip: document.getElementById('zip').value.trim(),
+            country: document.getElementById('country').value,
+            locPhone: tel.e164,
+            phoneCountry: tel.iso,
+            phoneDisplay: tel.dial + ' ' + tel.national,
+            timezone: tzEl.value
+          },
+          hours: hours
+        });
+
+        window.setTimeout(function () { window.location.href = 'onboarding-services.html'; }, 350);
+      });
+    }());
+  </script>
+</body>
+</html>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Online booking — StyleDesk setup</title>
+
+  <!--
+    StyleDesk — Onboarding step 5: Online booking (§15)
+    The booking URL comes from the slug reserved at the Business step; it is
+    shown, never edited here. Payment rules beyond "card on file" are left
+    to the payments module.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <header class="bg-brand">
+    <div class="w-full px-4 sm:px-6 h-14 flex items-center gap-3">
+      <span class="text-white/70 text-[13px] truncate" data-bizname>Set up your business</span>
+      <div class="ml-auto flex items-center gap-3">
+        <span class="hidden md:inline-flex sd-pill-dark" data-trial>14 days left in your free trial</span>
+        <a href="signup.html" data-logout class="text-white/70 hover:text-white text-[13px] font-medium transition-colors">Log out</a>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- Two columns from lg up, matching the other wizard steps. -->
+  <div class="flex-1 lg:grid lg:grid-cols-12">
+
+  <main class="lg:col-span-8 min-w-0 w-full px-4 sm:px-6 pt-7 sm:pt-10 pb-[200px]">
+    <div class="max-w-[780px]">
+
+      <div class="pb-5 mb-6 border-b border-line">
+        <div class="flex flex-wrap items-start gap-x-4 gap-y-1">
+          <div class="min-w-0">
+            <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">Set up online booking</h1>
+            <p class="text-[14px] text-sub mt-1.5">Share one link and clients book themselves in, around the hours you set.</p>
+          </div>
+          <span class="ml-auto shrink-0 pt-1 text-[12px] font-medium text-sub" data-step-label>Step — of 7</span>
+        </div>
+        <div class="sd-progress mt-4"><span data-progress style="width:0%"></span></div>
+      </div>
+
+      <form id="booking" class="mt-6 space-y-5" novalidate>
+
+        <!-- Booking URL -->
+        <section class="bg-white border border-line rounded-card p-5 sm:p-6">
+          <p class="text-[13px] font-medium text-ink">Your booking link</p>
+          <div class="flex flex-wrap items-center gap-2 mt-2.5">
+            <code id="booking-url" class="flex-1 min-w-0 truncate h-11 leading-[2.75rem] px-3.5 rounded-md bg-hover text-ink text-[14px] font-medium">styledesk.com/book/…</code>
+            <button type="button" id="copy"
+                    class="h-11 px-4 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold shrink-0 transition-colors">Copy</button>
+          </div>
+          <p id="copy-status" role="status" aria-live="polite" class="mt-2 text-[12px] text-sub min-h-[16px]"></p>
+        </section>
+
+        <!-- Who can book -->
+        <section class="bg-white border border-line rounded-card overflow-hidden">
+          <div class="px-5 sm:px-6 py-4 border-b border-line">
+            <h2 class="text-[15px] font-semibold text-head">Who can book</h2>
+          </div>
+          <div class="p-5 sm:p-6 space-y-4">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" class="sd-switch mt-0.5" id="enabled" checked />
+              <span class="min-w-0">
+                <span class="block text-[14px] text-ink">Enable online booking</span>
+                <span class="block text-[12px] text-faint mt-0.5">Turn this off to keep the link private while you finish setting up.</span>
+              </span>
+            </label>
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" class="sd-switch mt-0.5" id="newClients" checked />
+              <span class="min-w-0">
+                <span class="block text-[14px] text-ink">Allow new clients</span>
+                <span class="block text-[12px] text-faint mt-0.5">People who have never booked with you before.</span>
+              </span>
+            </label>
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" class="sd-switch mt-0.5" id="existingClients" checked />
+              <span class="min-w-0">
+                <span class="block text-[14px] text-ink">Allow existing clients</span>
+                <span class="block text-[12px] text-faint mt-0.5">Clients already in your StyleDesk records.</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Timing rules -->
+        <section class="bg-white border border-line rounded-card overflow-hidden">
+          <div class="px-5 sm:px-6 py-4 border-b border-line">
+            <h2 class="text-[15px] font-semibold text-head">Timing rules</h2>
+            <p class="text-[13px] text-sub mt-0.5">Applied in your location’s timezone, <span id="tz-name" class="text-ink font-medium">America/New_York</span>.</p>
+          </div>
+          <div class="p-5 sm:p-6 grid sm:grid-cols-2 gap-x-5 gap-y-5">
+            <div>
+              <label for="minNotice" class="block text-[13px] font-medium text-ink mb-1.5">Minimum booking notice</label>
+              <select id="minNotice" class="sd-input has-value">
+                <option value="0">No minimum</option>
+                <option value="60">1 hour</option>
+                <option value="120" selected>2 hours</option>
+                <option value="240">4 hours</option>
+                <option value="720">12 hours</option>
+                <option value="1440">24 hours</option>
+                <option value="2880">2 days</option>
+              </select>
+            </div>
+            <div>
+              <label for="maxAdvance" class="block text-[13px] font-medium text-ink mb-1.5">Maximum advance booking</label>
+              <select id="maxAdvance" class="sd-input has-value">
+                <option value="14">2 weeks</option>
+                <option value="30" selected>30 days</option>
+                <option value="60">60 days</option>
+                <option value="90">3 months</option>
+                <option value="180">6 months</option>
+                <option value="365">1 year</option>
+              </select>
+            </div>
+            <div>
+              <label for="cancelWindow" class="block text-[13px] font-medium text-ink mb-1.5">Cancellation window</label>
+              <select id="cancelWindow" class="sd-input has-value">
+                <option value="0">Any time</option>
+                <option value="60">1 hour before</option>
+                <option value="240">4 hours before</option>
+                <option value="1440" selected>24 hours before</option>
+                <option value="2880">48 hours before</option>
+              </select>
+              <p class="mt-1.5 text-[12px] text-faint">After this point clients must call you to change an appointment.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- What clients must provide -->
+        <section class="bg-white border border-line rounded-card overflow-hidden">
+          <div class="px-5 sm:px-6 py-4 border-b border-line">
+            <h2 class="text-[15px] font-semibold text-head">What clients must provide</h2>
+          </div>
+          <div class="p-5 sm:p-6 space-y-4">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" class="sd-switch" id="requirePhone" checked />
+              <span class="text-[14px] text-ink">Require a phone number</span>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" class="sd-switch" id="requireEmail" checked />
+              <span class="text-[14px] text-ink">Require an email address</span>
+            </label>
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" class="sd-switch mt-0.5" id="requireCard" />
+              <span class="min-w-0">
+                <span class="block text-[14px] text-ink">Require a card on file</span>
+                <span class="block text-[12px] text-faint mt-0.5">Needs a connected payment provider — finish that in Settings → Payments.</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <button id="continue" type="submit" class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">Continue</button>
+          <a href="onboarding-team.html" class="h-11 px-5 grid place-items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[14px] font-semibold transition-colors">Back</a>
+          <button type="button" id="later" class="h-11 px-4 rounded-lg text-sub hover:bg-hover text-[14px] font-semibold transition-colors">I'll do this later</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+    <!-- ===================== Context rail ===================== -->
+    <aside class="lg:col-span-4 min-w-0 hidden lg:block border-l border-line bg-gradient-to-b from-white via-[#faf9fd] to-[#f2effa]">
+      <div class="sticky top-0 px-8 py-10 max-w-[420px]">
+
+        <h2 class="text-[15px] font-semibold text-head">Your booking rules</h2>
+        <p class="text-[13px] text-sub mt-1.5 leading-relaxed">A summary of what the settings on the left allow.</p>
+
+        <!-- Mirrors the switches and selects. Hidden below lg, so it is never
+             the only place a setting is stated. -->
+        <div id="pv-card" class="mt-5 rounded-card border border-line bg-white shadow-sm overflow-hidden" aria-hidden="true">
+          <div class="px-4 py-3 border-b border-line">
+            <p class="text-[11px] font-semibold text-faint uppercase tracking-wide">Booking link</p>
+            <p id="pv-url" class="text-[12px] text-ink font-medium mt-1 break-all">styledesk.com/book/…</p>
+          </div>
+          <ul id="pv-rules" class="divide-y divide-line"></ul>
+          <div class="px-4 py-2.5 bg-hover/40 border-t border-line">
+            <p id="pv-status" class="text-[12px] text-sub">Online booking is on.</p>
+          </div>
+        </div>
+
+        <ul class="mt-8 space-y-4">
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Clients can only book inside the hours you set on the previous step.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Minimum notice protects your prep time; the cancellation window protects the slot.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Deposits, no-show fees and reminders are configured later in Settings.</span>
+          </li>
+        </ul>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script>
+    (function () {
+      if (!SD.guard('booking')) return;
+      SD.renderProgress('booking');
+
+      var state = SD.read();
+      document.querySelector('[data-trial]').textContent = SD.trialRemaining() + ' days left in your free trial';
+      document.querySelector('[data-logout]').addEventListener('click', function () { SD.reset(); });
+      if (state.tenant && state.tenant.name) document.querySelector('[data-bizname]').textContent = state.tenant.name;
+
+      // Every dropdown in the app is a searchable combo.
+      SD.comboAll(document.getElementById('booking'), { searchPlaceholder: 'Search…' });
+
+      var slug = (state.tenant && state.tenant.slug) || 'your-business';
+      var url = 'styledesk.com/book/' + slug;
+      document.getElementById('booking-url').textContent = url;
+
+      if (state.location && state.location.timezone) {
+        document.getElementById('tz-name').textContent = state.location.timezone;
+      }
+
+      /* ---- copy, with a keyboard-and-screen-reader friendly confirmation ---- */
+      var status = document.getElementById('copy-status');
+      document.getElementById('copy').addEventListener('click', function () {
+        var text = 'https://' + url;
+        function done() { status.textContent = 'Booking link copied to your clipboard.'; }
+        function fail() { status.textContent = 'Copy that didn’t work — select the link and copy it manually.'; }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, fail);
+        } else {
+          // Fallback for browsers without the async clipboard API.
+          try {
+            var scratch = document.createElement('textarea');
+            scratch.value = text;
+            scratch.setAttribute('readonly', '');
+            scratch.style.position = 'fixed';
+            scratch.style.opacity = '0';
+            document.body.appendChild(scratch);
+            scratch.select();
+            document.execCommand('copy');
+            document.body.removeChild(scratch);
+            done();
+          } catch (e) { fail(); }
+        }
+      });
+
+      /* ---- restore ---- */
+      var FIELDS = ['enabled','newClients','existingClients','requirePhone','requireEmail','requireCard'];
+      var SELECTS = ['minNotice','maxAdvance','cancelWindow'];
+
+      /* ---- context-rail preview ---- */
+      var pvCard = document.getElementById('pv-card');
+      var pvRules = document.getElementById('pv-rules');
+      var pvStatus = document.getElementById('pv-status');
+      document.getElementById('pv-url').textContent = url;
+
+      function on(id) { return document.getElementById(id).checked; }
+      function label(id) {
+        var el = document.getElementById(id);
+        var opt = el.options[el.selectedIndex];
+        return opt ? opt.textContent : '—';
+      }
+
+      function paintPreview() {
+        var who = on('newClients') && on('existingClients') ? 'New and existing clients'
+                : on('newClients')      ? 'New clients only'
+                : on('existingClients') ? 'Existing clients only'
+                : 'Nobody — no one can book';
+
+        var needs = [];
+        if (on('requirePhone')) needs.push('phone');
+        if (on('requireEmail')) needs.push('email');
+        if (on('requireCard'))  needs.push('card on file');
+        var needsText = needs.length
+          ? needs.join(', ').replace(/^./, function (c) { return c.toUpperCase(); })
+          : 'Name only';
+
+        var rows = [
+          ['Who can book',   who],
+          ['Earliest',       Number(document.getElementById('minNotice').value) === 0
+                               ? 'Any time' : label('minNotice') + ' ahead'],
+          ['Up to',          label('maxAdvance') + ' ahead'],
+          ['Cancellations',  label('cancelWindow')],
+          ['Clients give',   needsText]
+        ];
+
+        pvRules.innerHTML = rows.map(function (r) {
+          return '<li class="flex items-start gap-3 px-4 py-2.5">' +
+                   '<span class="text-[12px] text-faint shrink-0 w-[86px]">' + r[0] + '</span>' +
+                   '<span class="text-[12px] text-ink font-medium flex-1 min-w-0">' + SD.escapeHtml(r[1]) + '</span>' +
+                 '</li>';
+        }).join('');
+
+        var live = on('enabled');
+        pvCard.classList.toggle('opacity-60', !live);
+        pvStatus.textContent = live
+          ? 'Online booking is on.'
+          : 'Online booking is off — the link will not accept bookings yet.';
+        pvStatus.className = 'text-[12px] ' + (live ? 'text-success' : 'text-warning');
+      }
+
+      document.getElementById('booking').addEventListener('change', paintPreview);
+      if (state.booking) {
+        FIELDS.forEach(function (id) {
+          if (typeof state.booking[id] === 'boolean') document.getElementById(id).checked = state.booking[id];
+        });
+        SELECTS.forEach(function (id) {
+          if (state.booking[id] != null) document.getElementById(id).value = state.booking[id];
+        });
+      }
+
+      paintPreview();
+
+      function collect() {
+        var out = {};
+        FIELDS.forEach(function (id) { out[id] = document.getElementById(id).checked; });
+        SELECTS.forEach(function (id) { out[id] = Number(document.getElementById(id).value); });
+        out.url = url;
+        return out;
+      }
+
+      document.getElementById('booking').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var release = SD.lockSubmit(document.getElementById('continue'), 'Saving…');
+        if (!release) return;
+
+        var s = SD.read();
+        s.booking = collect();
+        delete s.skipped.booking;
+        SD.write(s);
+
+        window.setTimeout(function () { window.location.href = 'onboarding-complete.html'; }, 350);
+      });
+
+      document.getElementById('later').addEventListener('click', function () {
+        var s = SD.read();
+        s.booking = null;
+        s.skipped.booking = true;
+        SD.write(s);
+        window.location.href = 'onboarding-complete.html';
+      });
+    }());
+  </script>
+</body>
+</html>

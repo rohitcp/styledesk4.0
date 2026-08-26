@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your services — StyleDesk setup</title>
+
+  <!--
+    StyleDesk — Onboarding step 3: Services (§12)
+    Optional (§23): the owner can skip and add services later, which the
+    completion checklist then shows as "Setup later" rather than done.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <header class="bg-brand">
+    <div class="w-full px-4 sm:px-6 h-14 flex items-center gap-3">
+      <span class="text-white/70 text-[13px] truncate" data-bizname>Set up your business</span>
+      <div class="ml-auto flex items-center gap-3">
+        <span class="hidden md:inline-flex sd-pill-dark" data-trial>14 days left in your free trial</span>
+        <a href="signup.html" data-logout class="text-white/70 hover:text-white text-[13px] font-medium transition-colors">Log out</a>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- Two columns from lg up, matching the Business and Location steps. -->
+  <div class="flex-1 lg:grid lg:grid-cols-12">
+
+  <main class="lg:col-span-8 min-w-0 w-full px-4 sm:px-6 pt-7 sm:pt-10 pb-[200px]">
+    <div class="max-w-[780px]">
+
+      <div class="pb-5 mb-6 border-b border-line">
+        <div class="flex flex-wrap items-start gap-x-4 gap-y-1">
+          <div class="min-w-0">
+            <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">What services do you offer?</h1>
+            <p class="text-[14px] text-sub mt-1.5">Add the ones you book most. You can add the rest, and adjust pricing, any time.</p>
+          </div>
+          <span class="ml-auto shrink-0 pt-1 text-[12px] font-medium text-sub" data-step-label>Step — of 7</span>
+        </div>
+        <div class="sd-progress mt-4"><span data-progress style="width:0%"></span></div>
+      </div>
+
+      <form id="services" class="mt-6 space-y-4" novalidate>
+
+        <div id="list" class="space-y-4"></div>
+
+        <button type="button" id="add"
+                class="w-full h-12 rounded-card border border-dashed border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Add another service
+        </button>
+
+        <p id="services-error" hidden role="alert" class="text-[12px] text-danger"></p>
+        <p id="services-status" role="status" aria-live="polite" class="sr-only"></p>
+
+        <div class="flex flex-wrap items-center gap-3 pt-1">
+          <button id="continue" type="submit" class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">Continue</button>
+          <a href="onboarding-location.html" class="h-11 px-5 grid place-items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[14px] font-semibold transition-colors">Back</a>
+          <button type="button" id="later" class="h-11 px-4 rounded-lg text-sub hover:bg-hover text-[14px] font-semibold transition-colors">I'll do this later</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+    <!-- ===================== Context rail ===================== -->
+    <aside class="lg:col-span-4 min-w-0 hidden lg:block border-l border-line bg-gradient-to-b from-white via-[#faf9fd] to-[#f2effa]">
+      <div class="sticky top-0 px-8 py-10 max-w-[420px]">
+
+        <h2 class="text-[15px] font-semibold text-head">Your service menu</h2>
+        <p class="text-[13px] text-sub mt-1.5 leading-relaxed">This is what clients see when they book.</p>
+
+        <!-- Mirrors the rows as they are filled in. Hidden below lg, so it is
+             never the only place a value appears. -->
+        <div class="mt-5 rounded-card border border-line bg-white shadow-sm overflow-hidden" aria-hidden="true">
+          <ul id="pv-services" class="divide-y divide-line"></ul>
+          <div class="px-4 py-2.5 bg-hover/40 border-t border-line">
+            <p id="pv-summary" class="text-[12px] text-sub">Nothing added yet.</p>
+          </div>
+        </div>
+
+        <ul class="mt-8 space-y-4">
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Duration decides how much of the calendar each booking takes, so keep it realistic.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Only services marked bookable online appear on your booking page. The rest stay internal.</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[13px] text-ink leading-relaxed">Add-ons, staff-specific pricing and packages all come later — start with the basics.</span>
+          </li>
+        </ul>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script>
+    (function () {
+      if (!SD.guard('services')) return;
+      SD.renderProgress('services');
+
+      var state = SD.read();
+      document.querySelector('[data-trial]').textContent = SD.trialRemaining() + ' days left in your free trial';
+      document.querySelector('[data-logout]').addEventListener('click', function () { SD.reset(); });
+      if (state.tenant && state.tenant.name) document.querySelector('[data-bizname]').textContent = state.tenant.name;
+
+      var CATEGORIES = ['Hair','Colour','Barbering','Nails','Skin & Facials','Massage','Brows & Lashes','Makeup','Waxing','Wellness','Other'];
+      var DURATIONS = [15, 20, 30, 45, 60, 75, 90, 120, 150, 180];
+      var COLORS = ['#3d348b','#2563eb','#22c55e','#f59e0b','#ef4444','#8b5cf6','#0ea5e9','#ec4899'];
+
+      var list = document.getElementById('list');
+      var seq = 0;
+
+      /* ---- context-rail preview ---- */
+      var pvList = document.getElementById('pv-services');
+      var pvSummary = document.getElementById('pv-summary');
+
+      function minutes(m) {
+        return m < 60 ? m + ' min'
+             : m % 60 === 0 ? (m / 60) + (m === 60 ? ' hr' : ' hrs')
+             : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+      }
+
+      /* Never assume a swatch is selected — see the note in row(). */
+      function colorOf(host) {
+        var on = host.querySelector('[data-color][aria-checked="true"]');
+        return on ? on.getAttribute('data-color') : COLORS[0];
+      }
+
+      function paintPreview() {
+        var rows = [];
+        list.querySelectorAll('[data-service]').forEach(function (host) {
+          function f(n) { return host.querySelector('[data-f="' + n + '"]'); }
+          var name = f('name').value.trim();
+          if (!name) return;
+          rows.push({
+            name: name,
+            duration: Number(f('duration').value),
+            price: f('price').value.trim(),
+            online: f('online').checked,
+            color: colorOf(host)
+          });
+        });
+
+        pvList.innerHTML = rows.length
+          ? rows.map(function (r) {
+              return '<li class="flex items-center gap-2.5 px-4 py-2.5">' +
+                       '<span class="h-2.5 w-2.5 rounded-full shrink-0" style="background:' + r.color + '"></span>' +
+                       '<span class="text-[13px] text-ink truncate flex-1 min-w-0">' + SD.escapeHtml(r.name) + '</span>' +
+                       '<span class="text-[12px] text-faint shrink-0">' + minutes(r.duration) +
+                         (r.price ? ' · $' + SD.escapeHtml(r.price) : '') + '</span>' +
+                     '</li>';
+            }).join('')
+          : '<li class="px-4 py-5 text-[12px] text-faint text-center">Add a service to see your menu build up.</li>';
+
+        var online = rows.filter(function (r) { return r.online; }).length;
+        pvSummary.textContent = rows.length
+          ? rows.length + (rows.length === 1 ? ' service' : ' services') + ' · ' + online + ' bookable online'
+          : 'Nothing added yet.';
+      }
+
+      function blank() {
+        return { name: '', category: '', duration: 60, price: '', description: '',
+                 online: true, taxable: true, color: COLORS[0] };
+      }
+
+      function row(service, index) {
+        var id = 'svc' + (++seq);
+        // A draft saved under an older palette can carry a colour that no
+        // longer has a swatch. Fall back rather than leaving none selected.
+        if (COLORS.indexOf(service.color) === -1) service.color = COLORS[0];
+        return '' +
+        '<section class="bg-white border border-line rounded-card overflow-hidden" data-service data-id="' + id + '">' +
+          '<div class="flex items-center gap-3 px-5 py-3 border-b border-line bg-hover/40">' +
+            '<span class="h-3 w-3 rounded-full shrink-0" data-dot style="background:' + service.color + '"></span>' +
+            '<span class="text-[13px] font-semibold text-ink truncate" data-title>' + (service.name ? SD.escapeHtml(service.name) : 'Service ' + (index + 1)) + '</span>' +
+            '<button type="button" data-remove class="ml-auto h-8 w-8 grid place-items-center rounded-md text-faint hover:bg-hover hover:text-danger shrink-0 transition-colors" aria-label="Remove this service">' +
+              '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M8 7l.7 12h6.6L16 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '</button>' +
+          '</div>' +
+
+          '<div class="p-5 space-y-5">' +
+            '<div class="grid sm:grid-cols-2 gap-x-5 gap-y-5">' +
+              '<div>' +
+                '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-name">Service name <span class="text-danger" aria-hidden="true">*</span></label>' +
+                '<input id="' + id + '-name" data-f="name" type="text" class="sd-input" placeholder="Women’s Haircut" value="' + SD.escapeHtml(service.name) + '" aria-describedby="' + id + '-name-error" />' +
+                '<p id="' + id + '-name-error" data-error-for="' + id + '-name" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>' +
+              '</div>' +
+              '<div>' +
+                '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-cat">Category</label>' +
+                '<select id="' + id + '-cat" data-f="category" class="sd-input' + (service.category ? ' has-value' : '') + '">' +
+                  '<option value="">Select…</option>' +
+                  CATEGORIES.map(function (c) { return '<option' + (c === service.category ? ' selected' : '') + '>' + c + '</option>'; }).join('') +
+                '</select>' +
+              '</div>' +
+              '<div>' +
+                '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-dur">Duration <span class="text-danger" aria-hidden="true">*</span></label>' +
+                '<select id="' + id + '-dur" data-f="duration" class="sd-input has-value">' +
+                  DURATIONS.map(function (d) {
+                    var label = d < 60 ? d + ' minutes'
+                              : (d % 60 === 0 ? (d / 60) + (d === 60 ? ' hour' : ' hours') : Math.floor(d / 60) + 'h ' + (d % 60) + 'm');
+                    return '<option value="' + d + '"' + (d === Number(service.duration) ? ' selected' : '') + '>' + label + '</option>';
+                  }).join('') +
+                '</select>' +
+              '</div>' +
+              '<div>' +
+                '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-price">Price <span class="text-danger" aria-hidden="true">*</span></label>' +
+                '<div class="sd-group">' +
+                  '<span class="sd-group__prefix">$</span>' +
+                  '<input id="' + id + '-price" data-f="price" type="text" inputmode="decimal" class="sd-group__field" placeholder="75" value="' + SD.escapeHtml(service.price) + '" />' +
+                '</div>' +
+                '<p id="' + id + '-price-error" data-error-for="' + id + '-price" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>' +
+              '</div>' +
+            '</div>' +
+
+            '<div>' +
+              '<label class="block text-[13px] font-medium text-ink mb-1.5" for="' + id + '-desc">Description <span class="font-normal text-faint">Optional</span></label>' +
+              '<textarea id="' + id + '-desc" data-f="description" rows="2" class="sd-textarea resize-none" placeholder="Shown to clients when they book.">' + SD.escapeHtml(service.description) + '</textarea>' +
+            '</div>' +
+
+            '<div class="flex flex-wrap items-center gap-x-6 gap-y-3">' +
+              '<label class="flex items-center gap-2.5 text-[13px] text-ink cursor-pointer">' +
+                '<input type="checkbox" class="sd-switch" data-f="online" ' + (service.online ? 'checked' : '') + ' /> Available for online booking' +
+              '</label>' +
+              '<label class="flex items-center gap-2.5 text-[13px] text-ink cursor-pointer">' +
+                '<input type="checkbox" class="sd-switch" data-f="taxable" ' + (service.taxable ? 'checked' : '') + ' /> Taxable' +
+              '</label>' +
+            '</div>' +
+
+            '<div>' +
+              '<span class="block text-[13px] font-medium text-ink mb-2" id="' + id + '-colorlabel">Calendar colour</span>' +
+              '<div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="' + id + '-colorlabel">' +
+                COLORS.map(function (c) {
+                  var on = c === service.color;
+                  return '<button type="button" role="radio" aria-checked="' + on + '" data-color="' + c + '" aria-label="Colour ' + c + '" ' +
+                         'class="h-7 w-7 rounded-full grid place-items-center transition-shadow" style="background:' + c + ';box-shadow:' +
+                         (on ? '0 0 0 2px #fff, 0 0 0 4px ' + c : '0 0 0 1px rgba(0,0,0,.12)') + '"></button>';
+                }).join('') +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</section>';
+      }
+
+      /* Re-run after every insert — combo() no-ops on an upgraded select. */
+      function upgradeCombos() {
+        SD.comboAll(list, { searchPlaceholder: 'Search…' });
+      }
+
+      function add(service) {
+        var count = list.querySelectorAll('[data-service]').length;
+        list.insertAdjacentHTML('beforeend', row(service || blank(), count));
+        syncRemove();
+        upgradeCombos();
+        paintPreview();
+      }
+
+      /* Keep at least one row on screen — an empty page with only "Add" is
+         a dead end for someone who does want to enter a service. */
+      function syncRemove() {
+        var rows = list.querySelectorAll('[data-service]');
+        rows.forEach(function (r) {
+          r.querySelector('[data-remove]').hidden = rows.length <= 1;
+        });
+      }
+
+      list.addEventListener('click', function (e) {
+        var remove = e.target.closest('[data-remove]');
+        if (remove) {
+          var section = remove.closest('[data-service]');
+          var title = section.querySelector('[data-title]').textContent;
+          section.remove();
+          syncRemove();
+          paintPreview();
+          document.getElementById('services-status').textContent = title + ' removed.';
+          return;
+        }
+        var swatch = e.target.closest('[data-color]');
+        if (swatch) {
+          var host = swatch.closest('[data-service]');
+          host.querySelectorAll('[data-color]').forEach(function (b) {
+            var on = b === swatch;
+            b.setAttribute('aria-checked', String(on));
+            var c = b.getAttribute('data-color');
+            b.style.boxShadow = on ? '0 0 0 2px #fff, 0 0 0 4px ' + c : '0 0 0 1px rgba(0,0,0,.12)';
+          });
+          host.querySelector('[data-dot]').style.background = swatch.getAttribute('data-color');
+          paintPreview();
+        }
+      });
+
+      /* Card header mirrors the name as it is typed. */
+      list.addEventListener('input', function (e) {
+        if (e.target.matches('[data-f="name"]')) {
+          var host = e.target.closest('[data-service]');
+          var index = Array.prototype.indexOf.call(list.children, host);
+          host.querySelector('[data-title]').textContent = e.target.value.trim() || ('Service ' + (index + 1));
+          if (e.target.classList.contains('is-error')) SD.setError(e.target, '');
+        }
+        paintPreview();
+      });
+      list.addEventListener('change', function (e) {
+        if (e.target.matches('select[data-f]') && e.target.value) e.target.classList.add('has-value');
+        paintPreview();
+      });
+
+      document.getElementById('add').addEventListener('click', function () {
+        add();
+        var last = list.lastElementChild.querySelector('[data-f="name"]');
+        if (last) last.focus();
+      });
+
+      /* ---- restore or seed ---- */
+      if (state.services && state.services.length) state.services.forEach(function (s) { add(s); });
+      else add();
+      paintPreview();
+
+      /* ---- collect + validate ---- */
+      function collect() {
+        var out = [];
+        var ok = true;
+        list.querySelectorAll('[data-service]').forEach(function (host) {
+          function f(name) { return host.querySelector('[data-f="' + name + '"]'); }
+          var name = f('name'), price = f('price');
+          var service = {
+            name: name.value.trim(),
+            category: f('category').value,
+            duration: Number(f('duration').value),
+            price: price.value.trim(),
+            description: f('description').value.trim(),
+            online: f('online').checked,
+            taxable: f('taxable').checked,
+            color: colorOf(host)
+          };
+          // An entirely untouched row is treated as "not filled in", not an error.
+          var touched = service.name || service.price || service.description || service.category;
+          if (!touched) return;
+
+          if (!service.name) ok = SD.setError(name, 'Give this service a name.') && ok;
+          if (!service.price) ok = SD.setError(price, 'Enter a price.') && ok;
+          else if (isNaN(parseFloat(service.price))) ok = SD.setError(price, 'Use a number, like 75 or 75.00.') && ok;
+
+          out.push(service);
+        });
+        return { services: out, ok: ok };
+      }
+
+      document.getElementById('services').addEventListener('submit', function (e) {
+        e.preventDefault();
+        SD.clearErrors(document.getElementById('services'));
+
+        var result = collect();
+        var box = document.getElementById('services-error');
+
+        if (!result.ok) { SD.focusFirstError(document.getElementById('services')); return; }
+        if (!result.services.length) {
+          box.textContent = 'Add at least one service, or choose “I’ll do this later”.';
+          box.hidden = false;
+          return;
+        }
+        box.hidden = true;
+
+        var release = SD.lockSubmit(document.getElementById('continue'), 'Saving…');
+        if (!release) return;
+
+        var s = SD.read();
+        delete s.skipped.services;
+        s.services = result.services;
+        SD.write(s);
+
+        window.setTimeout(function () { window.location.href = 'onboarding-team.html'; }, 350);
+      });
+
+      document.getElementById('later').addEventListener('click', function () {
+        var s = SD.read();
+        s.services = [];
+        s.skipped.services = true;
+        SD.write(s);
+        window.location.href = 'onboarding-team.html';
+      });
+    }());
+  </script>
+</body>
+</html>

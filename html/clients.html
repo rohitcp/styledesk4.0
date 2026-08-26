@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clients — StyleDesk</title>
+
+  <!--
+    StyleDesk — All Clients
+    The client directory. Adding and editing a client happen on their own
+    page, add-client.html. Built only from the
+    shared tokens and the components in designsystem.html; the form
+    controls (combobox, phone field, error plumbing) are the same ones
+    onboarding uses, via assets/js/styledesk.js.
+
+    Records live in a localStorage store seeded with demo clients so the
+    screens can be clicked through. In the Laravel build every read and
+    write becomes a tenant-scoped API call and the seed goes away.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px]">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip is-active" data-tip="Clients" aria-label="Clients"
+             aria-current="page" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Page ===== -->
+  <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
+
+    <!-- Page header -->
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-3 mb-5">
+      <div class="min-w-0">
+        <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight">Clients</h1>
+        <p class="text-[13px] text-sub mt-1" data-count-line>Loading clients…</p>
+      </div>
+
+      <div class="ml-auto flex items-center gap-2 shrink-0">
+        <div class="relative" data-drop>
+          <button type="button" class="sd-chip" data-drop-btn>
+            More
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-sub" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="sd-drop sd-drop--right" data-drop-pop hidden role="menu">
+            <button type="button" class="sd-drop__item" role="menuitem">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4M8 8l4-4 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2.5A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5V16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              Import clients
+            </button>
+            <button type="button" class="sd-drop__item" role="menuitem" data-export>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v12M8 12l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2.5A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5V16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              Export to CSV
+            </button>
+            <div class="sd-drop__sep"></div>
+            <button type="button" class="sd-drop__item" role="menuitem" data-toggle-deleted>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9.5 7V5.5A1.5 1.5 0 0111 4h2a1.5 1.5 0 011.5 1.5V7M6.5 7l.8 12a1.5 1.5 0 001.5 1.4h6.4a1.5 1.5 0 001.5-1.4l.8-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span data-deleted-label>Show deleted clients</span>
+            </button>
+          </div>
+        </div>
+
+        <a href="add-client.html" class="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          Add Client
+        </a>
+      </div>
+    </div>
+
+    <!-- Directory card -->
+    <section class="bg-white border border-line rounded-card overflow-hidden">
+
+      <!-- Toolbar -->
+      <div class="p-3 sm:p-4 border-b border-line flex flex-wrap items-center gap-2">
+
+        <div class="relative w-full sm:w-[300px] shrink-0">
+          <label for="clientSearch" class="sr-only">Search clients</label>
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input id="clientSearch" type="search" class="sd-input has-suffix !h-9 !pl-9"
+                 placeholder="Search name, email or phone…" autocomplete="off" />
+          <button type="button" data-clear-search hidden
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 sd-iconbtn grid !h-6 !w-6" aria-label="Clear search">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="relative" data-drop data-filter="status">
+          <button type="button" class="sd-chip" data-drop-btn><span data-chip-label>Status</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-sub" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="sd-drop sd-drop--left" data-drop-pop hidden>
+            <p class="sd-drop__label">Client status</p>
+            <div class="sd-drop__scroll" data-filter-opts></div>
+          </div>
+        </div>
+
+        <div class="relative" data-drop data-filter="tags">
+          <button type="button" class="sd-chip" data-drop-btn><span data-chip-label>Tags</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-sub" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="sd-drop sd-drop--left" data-drop-pop hidden>
+            <p class="sd-drop__label">Tags &mdash; matches all selected</p>
+            <div class="sd-drop__scroll" data-filter-opts></div>
+          </div>
+        </div>
+
+        <div class="relative hidden md:block" data-drop data-filter="staff">
+          <button type="button" class="sd-chip" data-drop-btn><span data-chip-label>Preferred staff</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-sub" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="sd-drop sd-drop--left" data-drop-pop hidden>
+            <p class="sd-drop__label">Preferred staff</p>
+            <div class="sd-drop__scroll" data-filter-opts></div>
+          </div>
+        </div>
+
+        <div class="relative hidden lg:block" data-drop data-filter="source">
+          <button type="button" class="sd-chip" data-drop-btn><span data-chip-label>Source</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-sub" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="sd-drop sd-drop--left" data-drop-pop hidden>
+            <p class="sd-drop__label">Client source</p>
+            <div class="sd-drop__scroll" data-filter-opts></div>
+          </div>
+        </div>
+
+        <button type="button" data-clear-filters hidden
+                class="h-9 px-2.5 rounded-lg text-[13px] font-medium text-sub hover:text-ink hover:bg-hover transition-colors">
+          Clear filters
+        </button>
+
+        <!-- Column picker -->
+        <div class="relative ml-auto" data-drop>
+          <button type="button" class="sd-iconbtn grid !h-9 !w-9 border border-stroke" data-drop-btn aria-label="Choose columns">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 4.5v15M15 4.5v15" stroke="currentColor" stroke-width="1.7"/></svg>
+          </button>
+          <div class="sd-drop sd-drop--right" data-drop-pop hidden>
+            <p class="sd-drop__label">Columns</p>
+            <div class="sd-drop__scroll" data-columns></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bulk action bar -->
+      <div class="px-3 sm:px-4 py-2.5 bg-sel border-b border-line flex flex-wrap items-center gap-2" data-bulkbar hidden>
+        <p class="text-[13px] font-semibold text-head" data-bulk-count>0 selected</p>
+        <div class="flex items-center gap-2 ml-auto">
+          <button type="button" class="sd-chip !h-8">Add tag</button>
+          <button type="button" class="sd-chip !h-8">Send message</button>
+          <button type="button" class="sd-chip !h-8" data-bulk-export>Export</button>
+          <button type="button" class="sd-chip !h-8 !text-danger !border-danger/40 hover:!bg-danger/5" data-bulk-delete>Delete</button>
+          <button type="button" class="sd-iconbtn grid" data-bulk-clear aria-label="Clear selection">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Below sm the table header is gone, and with it select-all and
+           the sortable column headings. This row gives both back. -->
+      <div class="sm:hidden px-3 py-2.5 border-b border-line flex items-center gap-3" data-mobilebar hidden>
+        <label for="selectAllCards" class="flex items-center gap-2 cursor-pointer shrink-0">
+          <input id="selectAllCards" type="checkbox" class="sd-check" data-select-all-cards />
+          <span class="text-[13px] font-medium text-ink">Select all</span>
+        </label>
+        <div class="relative ml-auto" data-drop>
+          <button type="button" class="sd-chip !h-8" data-drop-btn>
+            <span class="text-sub font-normal">Sort:</span>
+            <span data-sort-label>Name</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-sub" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="sd-drop sd-drop--right" data-drop-pop hidden role="menu" data-sort-menu></div>
+        </div>
+      </div>
+
+      <!-- Cards — the same rows, rendered for a phone. Only one of the
+           two is in the DOM at a time; see renderCards(). -->
+      <div class="p-3 space-y-2.5" data-cards hidden></div>
+
+      <!-- Table -->
+      <div class="sd-tablewrap" data-table-wrap>
+        <table class="sd-table min-w-[880px]">
+          <caption class="sr-only">Clients, sortable by name, last visit, total visits and total spend</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="w-10 !pr-0">
+                <input type="checkbox" class="sd-check" data-select-all aria-label="Select all clients on this page" />
+              </th>
+              <th scope="col" data-col="name" data-sortable="name" aria-sort="ascending">
+                <button type="button" class="sd-th-sort" data-sort="name">Client
+                  <svg class="sd-th-sort__ind" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </th>
+              <th scope="col" data-col="mobile">Primary phone</th>
+              <th scope="col" data-col="email">Primary email</th>
+              <th scope="col" data-col="tags">Tags</th>
+              <th scope="col" data-col="status">Status</th>
+              <th scope="col" data-col="staff" hidden>Preferred staff</th>
+              <th scope="col" data-col="source" hidden>Source</th>
+              <th scope="col" data-col="lastVisit">
+                <button type="button" class="sd-th-sort" data-sort="lastVisit">Last visit
+                  <svg class="sd-th-sort__ind" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </th>
+              <th scope="col" data-col="visits" class="sd-table__num">
+                <button type="button" class="sd-th-sort" data-sort="visits">Visits
+                  <svg class="sd-th-sort__ind" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </th>
+              <th scope="col" data-col="spend" class="sd-table__num">
+                <button type="button" class="sd-th-sort" data-sort="spend">Total spend
+                  <svg class="sd-th-sort__ind" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </th>
+              <th scope="col" class="w-[120px] !pl-0"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody data-rows></tbody>
+        </table>
+      </div>
+
+      <!-- Empty / no-results -->
+      <div class="px-6 py-16 text-center" data-empty hidden>
+        <span class="mx-auto grid place-items-center h-14 w-14 rounded-full bg-sel text-brand">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </span>
+        <h2 class="text-[17px] font-semibold text-head mt-4" data-empty-title>No clients yet</h2>
+        <p class="text-[13px] text-sub mt-1.5 max-w-[420px] mx-auto leading-relaxed" data-empty-body>
+          Add your first client and you can book them in straight away.
+        </p>
+        <div class="mt-5 flex items-center justify-center gap-2.5">
+          <a href="add-client.html" class="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            Add Client
+          </a>
+          <button type="button" data-clear-filters-empty hidden
+                  class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[14px] font-semibold hover:bg-hover transition-colors">
+            Clear filters
+          </button>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="px-3 sm:px-4 py-3 border-t border-line flex flex-wrap items-center gap-3" data-pager hidden>
+        <p class="text-[12px] text-sub" data-pager-range></p>
+        <div class="ml-auto flex items-center gap-2">
+          <label for="perPage" class="text-[12px] text-sub">Rows</label>
+          <select id="perPage" class="sd-input has-value !h-8 !w-[72px] !text-[13px] !px-2">
+            <option>25</option><option>50</option><option>100</option>
+          </select>
+          <div class="flex items-center gap-1 ml-1">
+            <button type="button" class="sd-iconbtn grid border border-stroke" data-page-prev aria-label="Previous page">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <span class="px-2 text-[12px] text-sub" data-pager-page></span>
+            <button type="button" class="sd-iconbtn grid border border-stroke" data-page-next aria-label="Next page">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Discard confirmation (§18) -->
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title>Discard this client?</h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body>
+        You have unsaved details. Closing now will lose them.
+      </p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok
+                class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Discard</button>
+        <button type="button" data-confirm-cancel
+                class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Keep editing</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu (same behaviour as the dashboard) ------- */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var closeTimer = null;
+      function open() { window.clearTimeout(closeTimer); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      function scheduleClose() { window.clearTimeout(closeTimer); closeTimer = window.setTimeout(close, 160); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', scheduleClose);
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var first = pop.querySelector('.sd-menu__item'); if (first) first.focus();
+      });
+      menu.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        trigger.focus(); close();          // focus first: focusin would re-open
+      });
+    });
+
+    /* ================================================================
+       Directory state
+       ================================================================ */
+    var state = {
+      q: '',
+      filters: { status: [], tags: [], staff: [], source: [] },
+      sort: 'name',
+      dir: 'asc',
+      page: 1,
+      perPage: 25,
+      selected: {},
+      showDeleted: false,
+      loading: true
+    };
+
+    var COLUMNS = [
+      { key: 'mobile',    label: 'Primary phone',   on: true },
+      { key: 'email',     label: 'Primary email',   on: true },
+      { key: 'tags',      label: 'Tags',            on: true },
+      { key: 'status',    label: 'Status',          on: true },
+      { key: 'staff',     label: 'Preferred staff', on: false },
+      { key: 'source',    label: 'Source',          on: false },
+      { key: 'lastVisit', label: 'Last visit',      on: true },
+      { key: 'visits',    label: 'Visits',          on: true },
+      { key: 'spend',     label: 'Total spend',     on: true }
+    ];
+
+    /* One breakpoint decides which of the two renderings is built. Only
+       one exists at a time, so nothing is duplicated in the DOM or the
+       accessibility tree. */
+    var cardsMq    = window.matchMedia('(max-width: 639px)');
+    var cardsBox   = document.querySelector('[data-cards]');
+    var mobileBar  = document.querySelector('[data-mobilebar]');
+    var rowsBody   = document.querySelector('[data-rows]');
+    var emptyBox   = document.querySelector('[data-empty]');
+    var pager      = document.querySelector('[data-pager]');
+    var bulkbar    = document.querySelector('[data-bulkbar]');
+    var countLine  = document.querySelector('[data-count-line]');
+    var searchEl   = document.getElementById('clientSearch');
+    var clearSearch= document.querySelector('[data-clear-search]');
+    var selectAll  = document.querySelector('[data-select-all]');
+    var tableWrap  = document.querySelector('[data-table-wrap]');
+
+    /* ---------- Column visibility ------------------------------------ */
+
+    function applyColumns() {
+      COLUMNS.forEach(function (c) {
+        document.querySelectorAll('[data-col="' + c.key + '"]').forEach(function (el) { el.hidden = !c.on; });
+      });
+    }
+
+    (function buildColumnPicker() {
+      var host = document.querySelector('[data-columns]');
+      COLUMNS.forEach(function (c, i) {
+        var id = 'col-' + c.key;
+        var row = document.createElement('label');
+        row.className = 'sd-drop__check';
+        row.setAttribute('for', id);
+        row.innerHTML = '<input id="' + id + '" type="checkbox" class="sd-check"' + (c.on ? ' checked' : '') + ' />' +
+                        '<span>' + SDC.esc(c.label) + '</span>';
+        row.querySelector('input').addEventListener('change', function () {
+          COLUMNS[i].on = this.checked;
+          applyColumns();
+          render();
+        });
+        host.appendChild(row);
+      });
+    }());
+
+    /* ---------- Filter menus ----------------------------------------- */
+
+    var FILTER_DEFS = {
+      status: { label: 'Status',          opts: function () { return SDC.STATUSES.map(function (s) { return { v: s.id, t: s.label }; }); } },
+      tags:   { label: 'Tags',            opts: function () { return SDC.TAGS.map(function (t) { return { v: t, t: t }; }); } },
+      staff:  { label: 'Preferred staff', opts: function () { return SDC.STAFF.map(function (s) { return { v: s.id, t: s.name }; }); } },
+      source: { label: 'Source',          opts: function () { return SDC.SOURCES.map(function (s) { return { v: s, t: s }; }); } }
+    };
+
+    Object.keys(FILTER_DEFS).forEach(function (key) {
+      var root = document.querySelector('[data-filter="' + key + '"]');
+      if (!root) return;
+      var host = root.querySelector('[data-filter-opts]');
+      FILTER_DEFS[key].opts().forEach(function (o, i) {
+        var id = 'f-' + key + '-' + i;
+        var row = document.createElement('label');
+        row.className = 'sd-drop__check';
+        row.setAttribute('for', id);
+        row.innerHTML = '<input id="' + id + '" type="checkbox" class="sd-check" value="' + SDC.esc(o.v) + '" />' +
+                        '<span>' + SDC.esc(o.t) + '</span>';
+        row.querySelector('input').addEventListener('change', function () {
+          var list = state.filters[key];
+          var at = list.indexOf(o.v);
+          if (this.checked && at === -1) list.push(o.v);
+          if (!this.checked && at !== -1) list.splice(at, 1);
+          state.page = 1;
+          paintChips();
+          render();
+        });
+        host.appendChild(row);
+      });
+    });
+
+    function paintChips() {
+      var any = false;
+      Object.keys(FILTER_DEFS).forEach(function (key) {
+        var root = document.querySelector('[data-filter="' + key + '"]');
+        if (!root) return;
+        var btn = root.querySelector('[data-drop-btn]');
+        var label = root.querySelector('[data-chip-label]');
+        var n = state.filters[key].length;
+        if (n) any = true;
+        btn.classList.toggle('is-on', n > 0);
+        // The chosen value is written into the label, so the active state
+        // never rests on the colour change alone.
+        if (n === 1) {
+          var def = FILTER_DEFS[key].opts().filter(function (o) { return String(o.v) === String(state.filters[key][0]); });
+          label.textContent = FILTER_DEFS[key].label + ': ' + (def.length ? def[0].t : state.filters[key][0]);
+        } else if (n > 1) {
+          label.textContent = FILTER_DEFS[key].label + ': ' + n + ' selected';
+        } else {
+          label.textContent = FILTER_DEFS[key].label;
+        }
+      });
+      document.querySelector('[data-clear-filters]').hidden = !any && !state.q;
+    }
+
+    function clearFilters() {
+      Object.keys(state.filters).forEach(function (k) { state.filters[k] = []; });
+      state.q = '';
+      searchEl.value = '';
+      clearSearch.hidden = true;
+      document.querySelectorAll('[data-filter-opts] input').forEach(function (i) { i.checked = false; });
+      state.page = 1;
+      paintChips();
+      render();
+    }
+    document.querySelector('[data-clear-filters]').addEventListener('click', clearFilters);
+    document.querySelector('[data-clear-filters-empty]').addEventListener('click', clearFilters);
+
+    /* ---------- Search ------------------------------------------------ */
+
+    var searchTimer = null;
+    searchEl.addEventListener('input', function () {
+      clearSearch.hidden = !this.value;
+      window.clearTimeout(searchTimer);
+      var v = this.value;
+      searchTimer = window.setTimeout(function () {
+        state.q = v; state.page = 1; paintChips(); render();
+      }, 160);
+    });
+    clearSearch.addEventListener('click', function () {
+      searchEl.value = ''; state.q = ''; state.page = 1;
+      clearSearch.hidden = true; paintChips(); render(); searchEl.focus();
+    });
+    // "/" focuses search, the same shortcut the app bar advertises.
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey) return;
+      var t = e.target.tagName;
+      if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || e.target.isContentEditable) return;
+      if (!document.querySelector('[data-confirm]').hidden) return;
+      e.preventDefault(); searchEl.focus(); searchEl.select();
+    });
+
+    /* ---------- Sorting ------------------------------------------------ */
+
+    document.querySelectorAll('[data-sort]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.dataset.sort;
+        if (state.sort === key) state.dir = state.dir === 'asc' ? 'desc' : 'asc';
+        else { state.sort = key; state.dir = key === 'name' ? 'asc' : 'desc'; }
+        render();
+      });
+    });
+
+    function paintSort() {
+      paintSortLabel();
+      document.querySelectorAll('th[data-sortable], th').forEach(function (th) {
+        var btn = th.querySelector('[data-sort]');
+        if (!btn) return;
+        if (btn.dataset.sort === state.sort) {
+          th.setAttribute('aria-sort', state.dir === 'asc' ? 'ascending' : 'descending');
+        } else {
+          th.removeAttribute('aria-sort');
+        }
+      });
+    }
+
+    /* ---------- Pagination --------------------------------------------- */
+
+    document.getElementById('perPage').addEventListener('change', function () {
+      state.perPage = Number(this.value) || 25; state.page = 1; render();
+    });
+    document.querySelector('[data-page-prev]').addEventListener('click', function () {
+      if (state.page > 1) { state.page--; render(); tableWrap.scrollIntoView({ block: 'nearest' }); }
+    });
+    document.querySelector('[data-page-next]').addEventListener('click', function () {
+      state.page++; render(); tableWrap.scrollIntoView({ block: 'nearest' });
+    });
+
+    /* ---------- Selection ---------------------------------------------- */
+
+    selectAll.addEventListener('change', function () {
+      var checked = this.checked;
+      currentPageRows().forEach(function (c) {
+        if (checked) state.selected[c.id] = true; else delete state.selected[c.id];
+      });
+      render();
+    });
+    document.querySelector('[data-bulk-clear]').addEventListener('click', function () {
+      state.selected = {}; render();
+    });
+
+    function selectedIds() { return Object.keys(state.selected); }
+
+    var selectAllCards = document.querySelector('[data-select-all-cards]');
+    selectAllCards.addEventListener('change', function () {
+      var checked = this.checked;
+      currentPageRows().forEach(function (c) {
+        if (checked) state.selected[c.id] = true; else delete state.selected[c.id];
+      });
+      render();
+    });
+
+    /* The sortable column headings live in the table header, which the
+       card view does not have. This menu is the same sort state by
+       another route — not a second, parallel one. */
+    var SORT_CHOICES = [
+      { key: 'name',      dir: 'asc',  label: 'Name A–Z' },
+      { key: 'name',      dir: 'desc', label: 'Name Z–A' },
+      { key: 'lastVisit', dir: 'desc', label: 'Last visit — newest' },
+      { key: 'lastVisit', dir: 'asc',  label: 'Last visit — oldest' },
+      { key: 'visits',    dir: 'desc', label: 'Most visits' },
+      { key: 'spend',     dir: 'desc', label: 'Highest spend' },
+      { key: 'created',   dir: 'desc', label: 'Recently added' }
+    ];
+
+    (function buildSortMenu() {
+      var host = document.querySelector('[data-sort-menu]');
+      host.innerHTML = SORT_CHOICES.map(function (o, i) {
+        return '<button type="button" class="sd-drop__item" role="menuitem" data-sort-choice="' + i + '">' +
+          SDC.esc(o.label) + '</button>';
+      }).join('');
+      host.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-sort-choice]');
+        if (!b) return;
+        var choice = SORT_CHOICES[Number(b.dataset.sortChoice)];
+        state.sort = choice.key;
+        state.dir = choice.dir;
+        state.page = 1;
+        SDC.closeAllDrops();
+        render();
+      });
+    }());
+
+    function paintSortLabel() {
+      var hit = SORT_CHOICES.filter(function (o) { return o.key === state.sort && o.dir === state.dir; });
+      document.querySelector('[data-sort-label]').textContent =
+        hit.length ? hit[0].label : (state.sort + ' ' + state.dir);
+    }
+
+    document.querySelector('[data-bulk-delete]').addEventListener('click', function () {
+      var ids = selectedIds();
+      if (!ids.length) return;
+      confirmDialog({
+        title: 'Delete ' + ids.length + ' client' + (ids.length === 1 ? '' : 's') + '?',
+        body: 'They will be removed from the directory and from search. Appointment and payment history is kept, and you can restore them from “Show deleted clients”.',
+        okLabel: 'Delete',
+        onOk: function () {
+          ids.forEach(SDC.softDelete);
+          state.selected = {};
+          render();
+          SDC.toast(ids.length + ' client' + (ids.length === 1 ? '' : 's') + ' deleted.');
+        }
+      });
+    });
+
+    document.querySelector('[data-bulk-export]').addEventListener('click', function () {
+      SDC.toast('Export queued — we’ll email you the CSV when it’s ready.');
+      SDC.closeAllDrops();
+    });
+    document.querySelector('[data-export]').addEventListener('click', function () {
+      SDC.toast('Export queued — we’ll email you the CSV when it’s ready.');
+      SDC.closeAllDrops();
+    });
+
+    document.querySelector('[data-toggle-deleted]').addEventListener('click', function () {
+      state.showDeleted = !state.showDeleted;
+      state.page = 1;
+      state.selected = {};
+      document.querySelector('[data-deleted-label]').textContent =
+        state.showDeleted ? 'Hide deleted clients' : 'Show deleted clients';
+      SDC.closeAllDrops();
+      render();
+    });
+
+    /* ---------- Query pipeline ------------------------------------------ */
+
+    function filtered() {
+      var base = state.showDeleted
+        ? SDC.readAll().filter(function (c) { return !!c.deletedAt; })
+        : SDC.live();
+      return SDC.sortRows(
+        SDC.applyFilters(SDC.search(base, state.q), state.filters),
+        state.sort, state.dir
+      );
+    }
+
+    function currentPageRows() {
+      var all = filtered();
+      var start = (state.page - 1) * state.perPage;
+      return all.slice(start, start + state.perPage);
+    }
+
+    /* ---------- Row markup ---------------------------------------------- */
+
+    function on(key) {
+      var hit = COLUMNS.filter(function (c) { return c.key === key; });
+      return hit.length ? hit[0].on : true;
+    }
+
+    function tagCells(tags) {
+      if (!tags || !tags.length) return '<span class="text-faint">—</span>';
+      var shown = tags.slice(0, 2).map(function (t) {
+        return '<span class="sd-tag"><span class="sd-tag__text">' + SDC.esc(t) + '</span></span>';
+      }).join('');
+      if (tags.length > 2) {
+        shown += '<span class="sd-tag" title="' + SDC.esc(tags.slice(2).join(', ')) + '">+' + (tags.length - 2) + '</span>';
+      }
+      return '<div class="flex flex-wrap items-center gap-1 max-w-[190px]">' + shown + '</div>';
+    }
+
+    /* §20: only the primary method here, with its type underneath so
+       "Work" is never mistaken for "the number we text". A count of the
+       others tells the user the profile has more without listing it. */
+    function contactCell(record, total, kind) {
+      if (!record) return '<span class="text-faint">—</span>';
+      var value = kind === 'phone' ? SDC.phoneText(record) : record.email;
+      var extra = total - 1;
+      return '<span class="block min-w-0">' +
+        '<span class="block truncate max-w-[210px]">' + SDC.esc(value) + '</span>' +
+        '<span class="block text-[11px] text-sub">' + SDC.esc(record.type) +
+          (extra > 0 ? ' · +' + extra + ' more' : '') +
+        '</span>' +
+      '</span>';
+    }
+
+    function rowHtml(c) {
+      var st = SDC.statusMeta(c.status);
+      var name = SDC.fullName(c) || '(no name)';
+      var href = 'client-profile.html?id=' + encodeURIComponent(c.id);
+      var checked = state.selected[c.id] ? ' checked' : '';
+
+      var cells = '';
+      cells += '<td class="!pr-0"><input type="checkbox" class="sd-check" data-row-check value="' + c.id + '"' + checked +
+               ' aria-label="Select ' + SDC.esc(name) + '" /></td>';
+
+      cells += '<td><a href="' + href + '" class="flex items-center gap-2.5 min-w-0 group">' +
+                 '<span class="sd-avatar sd-avatar--sm" aria-hidden="true">' + SDC.esc(SDC.initials(c)) + '</span>' +
+                 '<span class="min-w-0">' +
+                   '<span class="block font-semibold text-head truncate group-hover:text-brand transition-colors max-w-[200px]">' + SDC.esc(name) + '</span>' +
+                   (c.preferredName ? '<span class="block text-[12px] text-sub truncate max-w-[200px]">Goes by ' + SDC.esc(c.preferredName) + '</span>' : '') +
+                 '</span></a></td>';
+
+      if (on('mobile'))    cells += '<td class="whitespace-nowrap">' + contactCell(SDC.primaryPhone(c), SDC.allPhones(c).length, 'phone') + '</td>';
+      if (on('email'))     cells += '<td>' + contactCell(SDC.primaryEmail(c), SDC.allEmails(c).length, 'email') + '</td>';
+      if (on('tags'))      cells += '<td>' + tagCells(c.tags) + '</td>';
+      if (on('status'))    cells += '<td><span class="sd-badge ' + st.badge + '"><span class="sd-badge__dot" aria-hidden="true"></span>' + st.label + '</span></td>';
+      if (on('staff'))     cells += '<td class="whitespace-nowrap">' + (SDC.staffName(c.preferredStaff) || '<span class="text-faint">—</span>') + '</td>';
+      if (on('source'))    cells += '<td class="whitespace-nowrap">' + (c.source ? SDC.esc(c.source) : '<span class="text-faint">—</span>') + '</td>';
+      if (on('lastVisit')) cells += '<td class="whitespace-nowrap">' + (c.lastVisit ? SDC.esc(SDC.dateShort(c.lastVisit)) : '<span class="text-faint">Never</span>') + '</td>';
+      if (on('visits'))    cells += '<td class="sd-table__num">' + (c.visits || 0) + '</td>';
+      if (on('spend'))     cells += '<td class="sd-table__num">' + SDC.esc(SDC.money(c.spend)) + '</td>';
+
+      cells += '<td class="!pl-0"><div class="sd-rowactions justify-end">' + actionsHtml(c) + '</div></td>';
+
+      return '<tr data-id="' + c.id + '"' + (state.selected[c.id] ? ' class="is-selected"' : '') + '>' + cells + '</tr>';
+    }
+
+    function actionsHtml(c) {
+      if (c.deletedAt) {
+        return '<button type="button" class="h-8 px-3 rounded-md border border-stroke bg-white text-ink text-[12px] font-semibold hover:bg-hover transition-colors" data-restore="' + c.id + '">Restore</button>';
+      }
+      return '' +
+        '<button type="button" class="sd-iconbtn grid" data-act="book" aria-label="Book appointment for ' + SDC.esc(SDC.fullName(c)) + '">' +
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>' +
+        '</button>' +
+        '<button type="button" class="sd-iconbtn grid" data-act="message" aria-label="Message ' + SDC.esc(SDC.fullName(c)) + '">' +
+          '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a7.5 7.5 0 01-10.9 6.7L4 20l1.3-4.1A7.5 7.5 0 1120 12z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>' +
+        '</button>' +
+        '<div class="relative" data-drop data-drop-portal>' +
+          '<button type="button" class="sd-iconbtn grid" data-drop-btn aria-label="More actions for ' + SDC.esc(SDC.fullName(c)) + '">' +
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>' +
+          '</button>' +
+          // data-row-id travels with the panel: once it is portalled to
+          // <body> it is no longer inside its <tr>, so the click handler
+          // cannot find the client by walking up the DOM.
+          '<div class="sd-drop sd-drop--right" data-drop-pop data-row-id="' + c.id + '" hidden role="menu">' +
+            '<a class="sd-drop__item" role="menuitem" href="client-profile.html?id=' + encodeURIComponent(c.id) + '">View profile</a>' +
+            '<button type="button" class="sd-drop__item" role="menuitem" data-act="edit">Edit details</button>' +
+            '<button type="button" class="sd-drop__item" role="menuitem" data-act="book">Book appointment</button>' +
+            '<button type="button" class="sd-drop__item" role="menuitem" data-act="note">Add note</button>' +
+            '<div class="sd-drop__sep"></div>' +
+            '<button type="button" class="sd-drop__item sd-drop__item--danger" role="menuitem" data-act="delete">Delete client</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    /* A directory card, not a table row folded up: ten labelled lines per
+       client would be unreadable. Name, status and contact lead; the
+       numbers sit together at the bottom; the actions stay reachable.
+       The column picker still applies, so hiding a column hides it here
+       too. */
+    function cardHtml(c) {
+      var st = SDC.statusMeta(c.status);
+      var name = SDC.fullName(c) || '(no name)';
+      var href = 'client-profile.html?id=' + encodeURIComponent(c.id);
+      var selected = !!state.selected[c.id];
+
+      var phone = SDC.primaryPhone(c);
+      var email = SDC.primaryEmail(c);
+
+      var contact = '';
+      if (on('mobile') && phone) {
+        contact += '<a href="tel:' + SDC.esc(String(phone.dial || '') + String(phone.national || '').replace(/\D/g, '')) + '"' +
+          ' class="flex items-baseline gap-2 text-[13px] text-ink hover:text-brand transition-colors">' +
+          '<span class="min-w-0 truncate">' + SDC.esc(SDC.phoneText(phone)) + '</span>' +
+          '<span class="text-[11px] text-sub shrink-0">' + SDC.esc(phone.type) + '</span></a>';
+      }
+      if (on('email') && email) {
+        contact += '<a href="mailto:' + SDC.esc(email.email) + '"' +
+          ' class="flex items-baseline gap-2 text-[13px] text-ink hover:text-brand transition-colors">' +
+          '<span class="min-w-0 truncate">' + SDC.esc(email.email) + '</span>' +
+          '<span class="text-[11px] text-sub shrink-0">' + SDC.esc(email.type) + '</span></a>';
+      }
+
+      var facts = [];
+      if (on('lastVisit')) facts.push(['Last visit', c.lastVisit ? SDC.dateShort(c.lastVisit) : 'Never']);
+      if (on('visits'))    facts.push(['Visits', String(c.visits || 0)]);
+      if (on('spend'))     facts.push(['Spend', SDC.money(c.spend)]);
+      if (on('staff'))     facts.push(['Preferred staff', SDC.staffName(c.preferredStaff) || '—']);
+      if (on('source'))    facts.push(['Source', c.source || '—']);
+
+      var factsHtml = facts.length
+        ? '<dl class="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 pt-3 border-t border-line">' +
+            facts.map(function (f) {
+              return '<div class="min-w-0"><dt class="text-[11px] text-sub">' + SDC.esc(f[0]) + '</dt>' +
+                     '<dd class="text-[13px] font-medium text-head truncate">' + SDC.esc(f[1]) + '</dd></div>';
+            }).join('') +
+          '</dl>'
+        : '';
+
+      var tags = (on('tags') && c.tags && c.tags.length)
+        ? '<div class="flex flex-wrap items-center gap-1 mt-2.5">' + c.tags.map(function (t) {
+            return '<span class="sd-tag"><span class="sd-tag__text">' + SDC.esc(t) + '</span></span>';
+          }).join('') + '</div>'
+        : '';
+
+      return '<article data-row-id="' + c.id + '"' +
+        ' class="border rounded-card p-3.5 bg-white transition-colors ' +
+        (selected ? 'border-brand bg-sel' : 'border-line') + '">' +
+
+        '<div class="flex items-start gap-3">' +
+          '<input type="checkbox" class="sd-check mt-1" data-row-check value="' + c.id + '"' +
+            (selected ? ' checked' : '') + ' aria-label="Select ' + SDC.esc(name) + '" />' +
+          '<a href="' + href + '" class="flex items-start gap-2.5 min-w-0 flex-1">' +
+            '<span class="sd-avatar sd-avatar--sm" aria-hidden="true">' + SDC.esc(SDC.initials(c)) + '</span>' +
+            '<span class="min-w-0">' +
+              '<span class="block text-[14px] font-semibold text-head truncate">' + SDC.esc(name) + '</span>' +
+              (c.preferredName ? '<span class="block text-[12px] text-sub truncate">Goes by ' + SDC.esc(c.preferredName) + '</span>' : '') +
+            '</span>' +
+          '</a>' +
+          (on('status')
+            ? '<span class="sd-badge ' + st.badge + ' shrink-0"><span class="sd-badge__dot" aria-hidden="true"></span>' + st.label + '</span>'
+            : '') +
+        '</div>' +
+
+        (contact ? '<div class="mt-2.5 space-y-1 pl-[26px]">' + contact + '</div>' : '') +
+        (tags ? '<div class="pl-[26px]">' + tags + '</div>' : '') +
+        factsHtml +
+
+        '<div class="flex items-center gap-2 mt-3 pt-3 border-t border-line">' + cardActions(c) + '</div>' +
+      '</article>';
+    }
+
+    function cardActions(c) {
+      if (c.deletedAt) {
+        return '<button type="button" class="h-8 px-3 rounded-md border border-stroke bg-white text-ink text-[12px] font-semibold hover:bg-hover transition-colors" data-restore="' + c.id + '">Restore</button>';
+      }
+      return '' +
+        '<button type="button" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-stroke bg-white text-ink text-[12px] font-semibold hover:bg-hover transition-colors" data-act="book">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>' +
+          'Book</button>' +
+        '<button type="button" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-stroke bg-white text-ink text-[12px] font-semibold hover:bg-hover transition-colors" data-act="message">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a7.5 7.5 0 01-10.9 6.7L4 20l1.3-4.1A7.5 7.5 0 1120 12z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>' +
+          'Message</button>' +
+        '<div class="relative ml-auto" data-drop>' +
+          '<button type="button" class="sd-iconbtn grid border border-stroke" data-drop-btn aria-label="More actions for ' + SDC.esc(SDC.fullName(c)) + '">' +
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>' +
+          '</button>' +
+          '<div class="sd-drop sd-drop--right sd-drop--up" data-drop-pop data-row-id="' + c.id + '" hidden role="menu">' +
+            '<a class="sd-drop__item" role="menuitem" href="client-profile.html?id=' + encodeURIComponent(c.id) + '">View profile</a>' +
+            '<button type="button" class="sd-drop__item" role="menuitem" data-act="edit">Edit details</button>' +
+            '<button type="button" class="sd-drop__item" role="menuitem" data-act="note">Add note</button>' +
+            '<div class="sd-drop__sep"></div>' +
+            '<button type="button" class="sd-drop__item sd-drop__item--danger" role="menuitem" data-act="delete">Delete client</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function cardSkeletonHtml() {
+      var one =
+        '<article class="border border-line rounded-card p-3.5 bg-white" aria-hidden="true">' +
+          '<div class="flex items-center gap-3">' +
+            '<span class="sd-skel block h-4 w-4"></span>' +
+            '<span class="sd-skel block h-8 w-8 !rounded-full"></span>' +
+            '<span class="sd-skel block h-3.5 w-32"></span>' +
+          '</div>' +
+          '<span class="sd-skel block h-3 w-40 mt-3"></span>' +
+          '<span class="sd-skel block h-3 w-28 mt-2"></span>' +
+        '</article>';
+      var out = '';
+      for (var i = 0; i < 5; i++) out += one;
+      return out;
+    }
+
+    function skeletonHtml() {
+      var cols = 3 + COLUMNS.filter(function (c) { return c.on; }).length;
+      var cells = '<td class="!pr-0"><span class="sd-skel block h-4 w-4"></span></td>' +
+                  '<td><span class="flex items-center gap-2.5"><span class="sd-skel block h-8 w-8 !rounded-full"></span><span class="sd-skel block h-3.5 w-32"></span></span></td>';
+      for (var i = 0; i < cols - 3; i++) cells += '<td><span class="sd-skel block h-3.5 w-20"></span></td>';
+      cells += '<td></td>';
+      var out = '';
+      for (var r = 0; r < 8; r++) out += '<tr aria-hidden="true">' + cells + '</tr>';
+      return out;
+    }
+
+    /* ---------- Render ---------------------------------------------------- */
+
+    function render() {
+      var cards = cardsMq.matches;
+
+      if (state.loading) {
+        if (cards) { cardsBox.innerHTML = cardSkeletonHtml(); rowsBody.innerHTML = ''; }
+        else { rowsBody.innerHTML = skeletonHtml(); cardsBox.innerHTML = ''; }
+        cardsBox.hidden = !cards;
+        tableWrap.hidden = cards;
+        mobileBar.hidden = true;
+        emptyBox.hidden = true; pager.hidden = true; bulkbar.hidden = true;
+        countLine.textContent = 'Loading clients…';
+        return;
+      }
+
+      var all = filtered();
+      var total = all.length;
+      var pages = Math.max(1, Math.ceil(total / state.perPage));
+      if (state.page > pages) state.page = pages;
+      var rows = currentPageRows();
+
+      paintSort();
+      applyColumns();
+
+      // Build one rendering, empty the other — never both.
+      if (cards) {
+        rowsBody.innerHTML = '';
+        cardsBox.innerHTML = rows.map(cardHtml).join('');
+        SDC.dropAll(cardsBox);
+      } else {
+        cardsBox.innerHTML = '';
+        rowsBody.innerHTML = rows.map(rowHtml).join('');
+        SDC.dropAll(rowsBody);
+      }
+
+      // Empty vs no-results are different problems and get different copy.
+      var filtersOn = !!state.q || Object.keys(state.filters).some(function (k) { return state.filters[k].length; });
+      var libraryEmpty = !state.showDeleted && SDC.live().length === 0;
+
+      emptyBox.hidden = total !== 0;
+      document.querySelector('[data-clear-filters-empty]').hidden = !filtersOn;
+      if (total === 0) {
+        document.querySelector('[data-empty-title]').textContent =
+          libraryEmpty ? 'No clients yet' : (state.showDeleted ? 'No deleted clients' : 'No clients match those filters');
+        document.querySelector('[data-empty-body]').textContent =
+          libraryEmpty ? 'Add your first client and you can book them in straight away.'
+          : (state.showDeleted ? 'Deleted clients appear here for 30 days before they are permanently removed.'
+                               : 'Try a different search term, or clear the filters to see everyone.');
+      }
+      tableWrap.hidden = cards || total === 0;
+      cardsBox.hidden = !cards || total === 0;
+      mobileBar.hidden = !cards || total === 0;
+
+      // Count line
+      var libTotal = SDC.live().length;
+      countLine.textContent = state.showDeleted
+        ? total + ' deleted client' + (total === 1 ? '' : 's')
+        : (filtersOn ? total + ' of ' + libTotal + ' clients' : libTotal + ' client' + (libTotal === 1 ? '' : 's'));
+
+      // Pager
+      pager.hidden = total === 0;
+      if (total) {
+        var from = (state.page - 1) * state.perPage + 1;
+        var to = Math.min(total, state.page * state.perPage);
+        document.querySelector('[data-pager-range]').textContent = 'Showing ' + from + '–' + to + ' of ' + total;
+        document.querySelector('[data-pager-page]').textContent = 'Page ' + state.page + ' of ' + pages;
+        document.querySelector('[data-page-prev]').disabled = state.page <= 1;
+        document.querySelector('[data-page-next]').disabled = state.page >= pages;
+      }
+
+      // Selection
+      var ids = selectedIds();
+      bulkbar.hidden = ids.length === 0;
+      if (ids.length) document.querySelector('[data-bulk-count]').textContent = ids.length + ' selected';
+      var pageIds = rows.map(function (c) { return c.id; });
+      var allOnPage = pageIds.length > 0 && pageIds.every(function (id) { return state.selected[id]; });
+      var someOnPage = pageIds.some(function (id) { return state.selected[id]; });
+      selectAll.checked = allOnPage;
+      selectAll.indeterminate = !allOnPage && someOnPage;
+      selectAllCards.checked = allOnPage;
+      selectAllCards.indeterminate = !allOnPage && someOnPage;
+    }
+
+    // Crossing the breakpoint rebuilds the list in the other shape.
+    cardsMq.addEventListener('change', function () { SDC.closeAllDrops(); render(); });
+
+    /* ---------- Row events (delegated) ------------------------------------- */
+
+    /* On the document, not the tbody: the same checkbox appears in a
+       table row on desktop and in a card on a phone. */
+    document.addEventListener('change', function (e) {
+      var box = e.target.closest('[data-row-check]');
+      if (!box) return;
+      if (box.checked) state.selected[box.value] = true; else delete state.selected[box.value];
+      render();
+    });
+
+    /* Delegated on the document rather than the table body: an open row
+       menu has been portalled to <body> and is no longer inside its row. */
+    document.addEventListener('click', function (e) {
+      var restore = e.target.closest('[data-restore]');
+      if (restore && restore.dataset.restore) {
+        SDC.restore(restore.dataset.restore);
+        render();
+        SDC.toast('Client restored.');
+        return;
+      }
+      var act = e.target.closest('[data-act]');
+      if (!act) return;
+      var host = act.closest('[data-row-id]') || act.closest('tr');
+      if (!host) return;
+      var client = SDC.byId(host.dataset.rowId || host.dataset.id);
+      if (!client) return;
+      SDC.closeAllDrops();
+
+      switch (act.dataset.act) {
+        case 'edit':
+          window.location.href = 'add-client.html?id=' + encodeURIComponent(client.id);
+          break;
+        case 'book':
+          SDC.toast('Booking flow opens the calendar with <b>' + SDC.esc(SDC.fullName(client)) + '</b> pre-filled.');
+          break;
+        case 'message':
+          SDC.toast('Message composer opens for <b>' + SDC.esc(SDC.fullName(client)) + '</b>.');
+          break;
+        case 'note':
+          window.location.href = 'client-profile.html?id=' + encodeURIComponent(client.id) + '&tab=notes';
+          break;
+        case 'delete':
+          confirmDialog({
+            title: 'Delete ' + SDC.fullName(client) + '?',
+            body: 'They will be removed from the directory and from search. Appointment and payment history is kept, and you can restore them from “Show deleted clients”.',
+            okLabel: 'Delete',
+            onOk: function () {
+              SDC.softDelete(client.id);
+              delete state.selected[client.id];
+              render();
+              SDC.toast('<b>' + SDC.esc(SDC.fullName(client)) + '</b> deleted.');
+            }
+          });
+          break;
+      }
+    });
+
+    /* ================================================================
+       Confirmation dialog
+       ================================================================ */
+
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmOverlay = null;
+    var confirmHandler = null;
+
+    function confirmDialog(opts) {
+      document.querySelector('[data-confirm-title]').textContent = opts.title;
+      document.querySelector('[data-confirm-body]').textContent = opts.body;
+      document.querySelector('[data-confirm-ok]').textContent = opts.okLabel || 'Confirm';
+      confirmHandler = opts.onOk || null;
+      confirmEl.hidden = false;
+      confirmOverlay = SDC.overlay(confirmEl, {
+        initialFocus: '[data-confirm-cancel]',
+        onClose: function () { confirmEl.hidden = true; }
+      });
+      confirmOverlay.open();
+    }
+
+    function closeConfirm() { if (confirmOverlay) confirmOverlay.close(); confirmOverlay = null; }
+
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', closeConfirm);
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', closeConfirm);
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmHandler;
+      closeConfirm();
+      if (fn) fn();
+    });
+
+    /* ================================================================
+       Boot
+       ================================================================ */
+
+    // Add moved to its own page; honour the old deep link rather than
+    // landing someone on the list with nothing having happened.
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+      window.location.replace('add-client.html');
+      return;
+    }
+
+    SDC.dropAll(document);
+    applyColumns();
+    paintChips();
+    render();
+
+    // Brief skeleton so the loading state is a real part of the page
+    // rather than something that only exists in a spec.
+    window.setTimeout(function () {
+      state.loading = false;
+      render();
+    }, 420);
+
+    // Adding and editing happen on add-client.html; it leaves a message
+    // behind for whichever page the user lands on.
+    var flashed = SDC.takeFlash();
+    if (flashed) SDC.toast(flashed);
+  }());
+  </script>
+</body>
+</html>

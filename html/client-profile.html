@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client — StyleDesk</title>
+
+  <!--
+    StyleDesk — Client profile
+    Identity header, then the eleven record tabs. Overview is the landing
+    tab and uses the same 8/4 two-column rail as the onboarding screens.
+
+    The history shown in the record tabs is generated deterministically
+    from the client id so the screens are consistent between reloads and
+    between tabs. In the Laravel build each tab is its own paginated
+    endpoint and this generator goes away.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px]">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip is-active" data-tip="Clients" aria-label="Clients"
+             aria-current="page" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Page ===== -->
+  <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
+
+    <!-- Not found -->
+    <div class="max-w-[520px] mx-auto py-16 text-center" data-missing hidden>
+      <h1 class="text-[20px] font-bold text-head">Client not found</h1>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed">
+        This client may have been deleted, or the link points at a record in another workspace.
+      </p>
+      <a href="clients.html" class="inline-flex items-center h-10 px-5 mt-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">Back to all clients</a>
+    </div>
+
+    <div data-profile hidden>
+
+      <!-- The first crumb is the way back to the directory, so it is a
+           real control with an arrow rather than plain link text — the
+           profile is a dead end otherwise. -->
+      <nav class="flex items-center gap-1.5 text-[12px] text-sub mb-3" aria-label="Breadcrumb">
+        <a href="clients.html"
+           class="inline-flex items-center gap-1.5 h-7 pl-1.5 pr-2.5 -ml-1.5 rounded-md font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" class="shrink-0" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          All clients
+        </a>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M9.5 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="text-ink font-medium truncate min-w-0" data-crumb></span>
+      </nav>
+
+      <!-- Soft-delete notice (§30) -->
+      <div class="sd-alert sd-alert--danger mb-4 flex flex-wrap items-center gap-3" data-deleted-notice hidden>
+        <span class="min-w-0">
+          <b class="font-semibold">This client is deleted.</b>
+          They no longer appear in the directory, in search, or in booking. History is kept.
+        </span>
+        <button type="button" data-restore
+                class="ml-auto h-8 px-3 rounded-md bg-white border border-danger/40 text-[12px] font-semibold text-[#7f1d1d] hover:bg-danger/5 transition-colors">Restore client</button>
+      </div>
+
+      <!-- Identity header -->
+      <section class="bg-white border border-line rounded-card p-5 sm:p-6">
+        <div class="flex flex-wrap items-start gap-x-5 gap-y-4">
+          <span class="sd-avatar sd-avatar--lg" data-avatar aria-hidden="true"></span>
+
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <h1 class="text-[22px] sm:text-[25px] font-bold text-head tracking-tight" data-name></h1>
+              <span class="sd-badge" data-status><span class="sd-badge__dot" aria-hidden="true"></span><span data-status-text></span></span>
+            </div>
+            <p class="text-[13px] text-sub mt-1" data-subline></p>
+            <div class="flex flex-wrap items-center gap-1.5 mt-3" data-tags></div>
+          </div>
+
+          <!-- Wraps below sm: at 320px the primary button plus three icon
+               buttons do not fit on one line, and shrink-0 would push the
+               page sideways rather than let the last icon drop. -->
+          <!-- Below sm the actions become a full-width block of labelled
+               buttons: an icon-only button on a touch screen has no
+               tooltip to fall back on, and a 36px target is mean. From sm
+               up they collapse back to the icon row. -->
+          <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:shrink-0">
+            <button type="button" data-book
+                    class="inline-flex items-center justify-center gap-2 h-10 sm:h-9 w-full sm:w-auto px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              Book appointment
+            </button>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button type="button" data-message
+                    class="sd-iconbtn grid !h-10 sm:!h-9 !w-auto sm:!w-9 flex-1 sm:flex-none border border-stroke" aria-label="Send a message">
+              <span class="inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a7.5 7.5 0 01-10.9 6.7L4 20l1.3-4.1A7.5 7.5 0 1120 12z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                <span class="sm:hidden">Message</span>
+              </span>
+            </button>
+            <a href="#" data-edit
+               class="sd-iconbtn grid !h-10 sm:!h-9 !w-auto sm:!w-9 flex-1 sm:flex-none border border-stroke" aria-label="Edit client details">
+              <span class="inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 10-3-3l-10 10L4 20z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+                <span class="sm:hidden">Edit</span>
+              </span>
+            </a>
+            <div class="relative shrink-0" data-drop>
+              <button type="button" class="sd-iconbtn grid !h-10 sm:!h-9 !w-10 sm:!w-9 border border-stroke" data-drop-btn aria-label="More actions">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+              </button>
+              <div class="sd-drop sd-drop--right" data-drop-pop hidden role="menu">
+                <button type="button" class="sd-drop__item" role="menuitem" data-go-tab="notes">Add a note</button>
+                <button type="button" class="sd-drop__item" role="menuitem" data-go-tab="forms">Send a form</button>
+                <button type="button" class="sd-drop__item" role="menuitem" data-merge>Merge with another client</button>
+                <button type="button" class="sd-drop__item" role="menuitem" data-export-client>Export client record</button>
+                <div class="sd-drop__sep"></div>
+                <button type="button" class="sd-drop__item sd-drop__item--danger" role="menuitem" data-delete>Delete client</button>
+              </div>
+            </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- At a glance -->
+        <dl class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-4 mt-6 pt-5 border-t border-line">
+          <div>
+            <dt class="text-[12px] text-sub">Client since</dt>
+            <dd class="text-[15px] font-semibold text-head mt-0.5" data-stat-since></dd>
+          </div>
+          <div>
+            <dt class="text-[12px] text-sub">Last visit</dt>
+            <dd class="text-[15px] font-semibold text-head mt-0.5" data-stat-last></dd>
+          </div>
+          <div>
+            <dt class="text-[12px] text-sub">Total visits</dt>
+            <dd class="text-[15px] font-semibold text-head mt-0.5" data-stat-visits></dd>
+          </div>
+          <div>
+            <dt class="text-[12px] text-sub">Total spend</dt>
+            <dd class="text-[15px] font-semibold text-head mt-0.5" data-stat-spend></dd>
+          </div>
+          <div>
+            <dt class="text-[12px] text-sub">No-shows</dt>
+            <dd class="text-[15px] font-semibold text-head mt-0.5" data-stat-noshow></dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- Tabs -->
+      <div class="mt-5 bg-white border border-line rounded-card">
+        <div class="px-4 sm:px-5">
+          <div class="sd-tabs" role="tablist" aria-label="Client record" data-tabs></div>
+        </div>
+        <div class="p-4 sm:p-5" data-panel role="tabpanel" tabindex="0"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Confirmation dialog -->
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title></h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body></p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Delete</button>
+        <button type="button" data-confirm-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    var esc = SDC.esc;
+    var params = new URLSearchParams(window.location.search);
+    var wantedId = params.get('id');
+    // An id that resolves to nothing is a dead link (deleted record, or a
+    // record in another workspace) and must say so. Only a missing id falls
+    // back to the first client, which is what makes the page demo-able.
+    var client = wantedId ? SDC.byId(wantedId) : (SDC.live()[0] || null);
+
+    if (!client) {
+      document.querySelector('[data-missing]').hidden = false;
+      return;
+    }
+    document.querySelector('[data-profile]').hidden = false;
+
+    /* ================================================================
+       Deterministic demo history
+       A tiny seeded PRNG keyed on the client id, so every tab tells the
+       same story about the same person on every reload.
+       ================================================================ */
+
+    function rng(seedStr) {
+      var h = 2166136261;
+      for (var i = 0; i < seedStr.length; i++) { h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return function () {
+        h += 0x6D2B79F5;
+        var t = h;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    var rand = rng(client.id);
+    function pick(list) { return list[Math.floor(rand() * list.length)]; }
+    function between(a, b) { return a + Math.floor(rand() * (b - a + 1)); }
+
+    var SERVICES = [
+      { name: 'Cut & finish',         mins: 45, price: 65 },
+      { name: 'Full head colour',     mins: 150, price: 185 },
+      { name: 'Half head highlights', mins: 120, price: 155 },
+      { name: 'Balayage',             mins: 180, price: 240 },
+      { name: 'Keratin smoothing',    mins: 120, price: 210 },
+      { name: 'Blow dry',             mins: 30, price: 38 },
+      { name: 'Root retouch',         mins: 75, price: 95 },
+      { name: 'Deep conditioning',    mins: 30, price: 42 },
+      { name: 'Gel manicure',         mins: 50, price: 55 }
+    ];
+    var RETAIL = [
+      { name: 'Repair shampoo 300ml', price: 28 },
+      { name: 'Bond builder treatment', price: 42 },
+      { name: 'Heat protect spray', price: 24 },
+      { name: 'Colour-safe conditioner', price: 30 },
+      { name: 'Scalp serum', price: 46 }
+    ];
+
+    function isoMinusDays(iso, days) {
+      var base = iso ? new Date(iso + 'T12:00:00') : new Date();
+      base.setDate(base.getDate() - days);
+      return base.toISOString().slice(0, 10);
+    }
+    function isoPlusDays(iso, days) { return isoMinusDays(iso, -days); }
+
+    /* Appointment history walks backwards from the last visit. */
+    var history = (function () {
+      var out = [];
+      if (!client.lastVisit || !client.visits) return out;
+      var cursor = client.lastVisit;
+      var n = Math.min(client.visits, 12);
+      for (var i = 0; i < n; i++) {
+        var svc = pick(SERVICES);
+        var noShow = i > 0 && rand() < 0.06;
+        out.push({
+          date: cursor,
+          time: pick(['09:30', '10:00', '11:15', '13:00', '14:30', '16:00', '17:45']),
+          service: svc.name,
+          mins: svc.mins,
+          price: svc.price,
+          staff: SDC.staffName(client.preferredStaff !== 'any' ? client.preferredStaff : pick(SDC.STAFF.slice(1)).id),
+          status: noShow ? 'No-show' : 'Completed'
+        });
+        cursor = isoMinusDays(cursor, between(21, 70));
+      }
+      return out;
+    }());
+
+    var upcoming = (function () {
+      if (client.status !== 'active' || rand() < 0.35) return null;
+      var svc = pick(SERVICES);
+      return {
+        date: isoPlusDays(SDC.today(), between(3, 34)),
+        time: pick(['10:00', '11:30', '14:00', '15:30']),
+        service: svc.name,
+        mins: svc.mins,
+        price: svc.price,
+        staff: SDC.staffName(client.preferredStaff !== 'any' ? client.preferredStaff : 'u1')
+      };
+    }());
+
+    var noShows = history.filter(function (h) { return h.status === 'No-show'; }).length;
+
+    /* ================================================================
+       Identity header
+       ================================================================ */
+
+    function paintHeader() {
+      var name = SDC.fullName(client) || '(no name)';
+      document.title = name + ' — StyleDesk';
+      document.querySelector('[data-crumb]').textContent = name;
+      document.querySelector('[data-name]').textContent = name;
+
+      var avatar = document.querySelector('[data-avatar]');
+      if (client.photo) avatar.innerHTML = '<img src="' + client.photo + '" alt="" />';
+      else avatar.textContent = SDC.initials(client);
+
+      var st = SDC.statusMeta(client.status);
+      var badge = document.querySelector('[data-status]');
+      badge.className = 'sd-badge ' + st.badge;
+      document.querySelector('[data-status-text]').textContent = st.label;
+
+      var bits = [];
+      if (client.preferredName) bits.push('Goes by ' + client.preferredName);
+      var pp = SDC.primaryPhone(client);
+      var pe = SDC.primaryEmail(client);
+      if (pp) bits.push(SDC.phoneText(pp));
+      if (pe) bits.push(pe.email);
+      document.querySelector('[data-subline]').textContent = bits.join('  ·  ') || 'No contact details on file';
+
+      document.querySelector('[data-tags]').innerHTML = (client.tags || []).map(function (t) {
+        return '<span class="sd-tag"><span class="sd-tag__text">' + esc(t) + '</span></span>';
+      }).join('') || '<span class="text-[12px] text-faint">No tags</span>';
+
+      document.querySelector('[data-stat-since]').textContent = client.createdAt ? SDC.dateShort(client.createdAt) : '—';
+      document.querySelector('[data-stat-last]').textContent = client.lastVisit ? SDC.dateShort(client.lastVisit) : 'Never';
+      document.querySelector('[data-stat-visits]').textContent = client.visits || 0;
+      document.querySelector('[data-stat-spend]').textContent = SDC.money(client.spend);
+      document.querySelector('[data-stat-noshow]').textContent = noShows;
+
+      document.querySelector('[data-edit]').href = 'add-client.html?id=' + encodeURIComponent(client.id);
+      document.querySelector('[data-deleted-notice]').hidden = !client.deletedAt;
+    }
+
+    /* ================================================================
+       Tab panels
+       ================================================================ */
+
+    function card(title, body, action) {
+      return '<section class="border border-line rounded-card">' +
+        '<div class="flex items-center gap-3 px-4 py-3 border-b border-line">' +
+          '<h3 class="text-[14px] font-semibold text-head">' + title + '</h3>' +
+          (action ? '<div class="ml-auto">' + action + '</div>' : '') +
+        '</div>' +
+        '<div class="p-4">' + body + '</div>' +
+      '</section>';
+    }
+
+    function empty(title, body, cta) {
+      return '<div class="py-12 text-center">' +
+        '<h3 class="text-[15px] font-semibold text-head">' + title + '</h3>' +
+        '<p class="text-[13px] text-sub mt-1.5 max-w-[400px] mx-auto leading-relaxed">' + body + '</p>' +
+        (cta ? '<div class="mt-4">' + cta + '</div>' : '') +
+      '</div>';
+    }
+
+    function btnPrimary(label) {
+      return '<button type="button" class="inline-flex items-center h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">' + label + '</button>';
+    }
+    function btnGhost(label, attrs) {
+      return '<button type="button" ' + (attrs || '') + ' class="inline-flex items-center h-8 px-3 rounded-md border border-stroke bg-white text-ink text-[12px] font-semibold hover:bg-hover transition-colors">' + label + '</button>';
+    }
+
+    /* A cell that carries its own column label, shown only once the
+       table has collapsed into cards. */
+    function cell(label, value, cls) {
+      return '<td' + (cls ? ' class="' + cls + '"' : '') + '>' +
+        '<span class="sd-cell__label">' + esc(label) + '</span>' +
+        '<span>' + value + '</span>' +
+      '</td>';
+    }
+
+    function dl(rows) {
+      return '<dl class="sd-dl">' + rows.map(function (r) {
+        return '<dt class="sd-dl__t">' + r[0] + '</dt>' +
+               '<dd class="sd-dl__d"' + (r[1] ? '' : ' data-empty') + '>' + (r[1] || '') + '</dd>';
+      }).join('') + '</dl>';
+    }
+
+    /* Three columns from sm up; a stacked card below it, where 322px
+       cannot hold a date, a service and a price side by side without
+       breaking every one of them onto two lines. */
+    function apptRow(a, isUpcoming) {
+      var status = esc(isUpcoming ? 'Confirmed' : a.status);
+      var statusCls = a.status === 'No-show' ? 'text-danger font-medium' : 'text-sub';
+
+      return '<div class="sd-rowcard flex flex-col gap-1 sm:py-3 sm:border-b sm:border-line sm:last:border-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1.5">' +
+
+        '<div class="sm:w-[104px] sm:shrink-0">' +
+          '<p class="text-[13px] font-semibold text-head">' + esc(SDC.dateShort(a.date)) +
+            '<span class="font-normal text-sub sm:hidden"> &middot; ' + esc(a.time) + '</span></p>' +
+          '<p class="hidden sm:block text-[12px] text-sub">' + esc(a.time) + '</p>' +
+        '</div>' +
+
+        '<div class="min-w-0 sm:flex-1">' +
+          '<p class="text-[13px] font-medium text-ink">' + esc(a.service) + '</p>' +
+          '<p class="text-[12px] text-sub">' + a.mins + ' min with ' + esc(a.staff || 'the team') + '</p>' +
+        '</div>' +
+
+        // Below sm this is the card's footer line: price left, status
+        // right. Above it, a right-aligned stacked column.
+        '<div class="flex items-baseline justify-between gap-3 sm:block sm:text-right sm:shrink-0">' +
+          '<p class="text-[13px] font-semibold text-head">' + SDC.money(a.price) + '</p>' +
+          '<p class="text-[12px] ' + statusCls + '">' + status + '</p>' +
+        '</div>' +
+      '</div>';
+    }
+
+    /* ---------- Contact information -------------------------------------
+       Every method is listed, labelled the same way everywhere (§12):
+       "Primary · Mobile" when it is primary, plain "Work" when it is
+       not. Type and Primary are drawn as two separate chips because
+       they are two separate facts (§22). */
+
+    function contactSection(kind, records) {
+      var isPhone = kind === 'phone';
+      var heading = isPhone ? 'Phone' : 'Email';
+
+      if (!records.length) {
+        return '<h4 class="text-[12px] font-semibold text-sub uppercase tracking-wide">' + heading + '</h4>' +
+               '<p class="text-[13px] text-faint mt-2">None on file.</p>';
+      }
+
+      var rows = records.map(function (r) {
+        var value = isPhone ? SDC.phoneText(r) : r.email;
+        var href  = isPhone ? 'tel:' + String(r.dial || '') + String(r.national || '').replace(/\D/g, '')
+                            : 'mailto:' + r.email;
+
+        var chips = '';
+        if (r.isPrimary) chips += '<span class="sd-badge sd-badge--primary">Primary</span>';
+        chips += '<span class="sd-tag"><span class="sd-tag__text">' + esc(r.type) + '</span></span>';
+        if (r.isVerified) {
+          chips += '<span class="sd-badge sd-badge--active"><span class="sd-badge__dot" aria-hidden="true"></span>Verified</span>';
+        }
+        if (r.active === false) {
+          chips += '<span class="sd-badge sd-badge--inactive"><span class="sd-badge__dot" aria-hidden="true"></span>Inactive</span>';
+        }
+
+        // Preferences are stated in words, per record — a global SMS
+        // switch could not express "texts to the mobile, not the work line".
+        var prefs = (isPhone ? SDC.PHONE_PREFS : SDC.EMAIL_PREFS).map(function (pref) {
+          var on = !!r[pref.id];
+          return '<span class="inline-flex items-center gap-1 text-[12px] ' + (on ? 'text-sub' : 'text-faint') + '">' +
+            (on
+              ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+              : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>') +
+            esc(pref.label) + (on ? '' : ' off') +
+          '</span>';
+        }).join('');
+
+        var menu =
+          '<div class="relative shrink-0" data-drop>' +
+            '<button type="button" class="sd-iconbtn grid" data-drop-btn aria-label="Actions for ' + esc(value) + '">' +
+              '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>' +
+            '</button>' +
+            '<div class="sd-drop sd-drop--right" data-drop-pop hidden role="menu">' +
+              (r.isPrimary || r.active === false ? '' :
+                '<button type="button" class="sd-drop__item" role="menuitem" data-contact="primary" data-kind="' + kind + '" data-cid="' + r.id + '">Make primary</button>') +
+              (isPhone
+                ? '<button type="button" class="sd-drop__item" role="menuitem" data-contact="flag" data-field="smsEnabled" data-value="' + (!r.smsEnabled) + '" data-kind="' + kind + '" data-cid="' + r.id + '">' +
+                    (r.smsEnabled ? 'Turn off SMS' : 'Turn on SMS') + '</button>'
+                : '<button type="button" class="sd-drop__item" role="menuitem" data-contact="flag" data-field="marketingConsent" data-value="' + (!r.marketingConsent) + '" data-kind="' + kind + '" data-cid="' + r.id + '">' +
+                    (r.marketingConsent ? 'Withdraw marketing consent' : 'Record marketing consent') + '</button>') +
+              '<button type="button" class="sd-drop__item" role="menuitem" data-contact="flag" data-field="active" data-value="' + (r.active === false) + '" data-kind="' + kind + '" data-cid="' + r.id + '">' +
+                (r.active === false ? 'Mark active' : 'Mark inactive') + '</button>' +
+              '<div class="sd-drop__sep"></div>' +
+              '<button type="button" class="sd-drop__item sd-drop__item--danger" role="menuitem" data-contact="remove" data-kind="' + kind + '" data-cid="' + r.id + '">Delete</button>' +
+            '</div>' +
+          '</div>';
+
+        return '<div class="sd-contact' + (r.active === false ? ' is-inactive' : '') + '">' +
+          '<div class="flex items-start gap-3">' +
+            '<div class="min-w-0 flex-1">' +
+              '<div class="flex flex-wrap items-center gap-1.5">' + chips + '</div>' +
+              '<a href="' + esc(href) + '" class="sd-contact__value block mt-1.5 hover:text-brand transition-colors">' + esc(value) + '</a>' +
+              '<div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">' + prefs + '</div>' +
+            '</div>' +
+            menu +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      return '<h4 class="text-[12px] font-semibold text-sub uppercase tracking-wide">' + heading + '</h4>' +
+             '<div class="mt-2">' + rows + '</div>';
+    }
+
+    var PANELS = {
+
+      overview: function () {
+        var a = client.address || {};
+        var addr = [a.street, a.city, a.region, a.postcode, a.country].filter(Boolean).join(', ');
+        var left =
+          card('Contact information',
+            contactSection('phone', SDC.allPhones(client)) +
+            '<div class="mt-5 pt-4 border-t border-line">' + contactSection('email', SDC.allEmails(client)) + '</div>',
+            btnGhost('Manage', 'data-edit-jump')) +
+
+          '<div class="mt-4">' + card('Personal details', dl([
+            ['Full name', esc(SDC.fullName(client))],
+            ['Preferred name', esc(client.preferredName)],
+            ['Address', esc(addr)],
+            ['Date of birth', client.birthday ? esc(SDC.dateShort(client.birthday)) : ''],
+            ['Gender', esc(client.gender)]
+          ]), btnGhost('Edit', 'data-edit-jump')) + '</div>' +
+
+          '<div class="mt-4">' + card('Internal notes',
+            client.notes
+              ? '<p class="text-[13px] text-ink leading-relaxed whitespace-pre-line">' + esc(client.notes) + '</p>'
+              : '<p class="text-[13px] text-faint">No notes yet. Notes are visible to your team only.</p>',
+            btnGhost('Add note', 'data-go-tab="notes"')) + '</div>';
+
+        var rail =
+          card('Next appointment',
+            upcoming
+              ? apptRow(upcoming, true) + '<div class="flex items-center gap-2 mt-3">' + btnGhost('Reschedule') + btnGhost('Cancel') + '</div>'
+              : '<p class="text-[13px] text-faint">Nothing booked.</p><div class="mt-3">' + btnGhost('Book appointment', 'data-book-jump') + '</div>'
+          ) +
+          '<div class="mt-4">' + card('Preferences', dl([
+            ['Preferred staff', esc(SDC.staffName(client.preferredStaff)) || ''],
+            ['Client source', esc(client.source)],
+            ['Client since', esc(SDC.dateShort(client.createdAt))],
+            ['Status', esc(SDC.statusMeta(client.status).label)]
+          ])) + '</div>' +
+          '<div class="mt-4">' + card('Recent activity',
+            timeline(activityItems().slice(0, 4)) +
+            '<button type="button" data-go-tab="activity" class="mt-3 text-[12px] font-semibold text-brand hover:text-brand-dark transition-colors">View full history</button>'
+          ) + '</div>';
+
+        return '<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">' +
+          '<div class="lg:col-span-8 min-w-0">' + left + '</div>' +
+          '<div class="lg:col-span-4 min-w-0">' + rail + '</div>' +
+        '</div>';
+      },
+
+      appointments: function () {
+        if (!history.length && !upcoming) {
+          return empty('No appointments yet',
+            'Once ' + esc(client.firstName || 'this client') + ' is booked in, every visit shows up here with the service, the stylist and what was paid.',
+            btnPrimary('Book appointment'));
+        }
+        var out = '';
+        if (upcoming) out += card('Upcoming', apptRow(upcoming, true));
+        if (history.length) {
+          out += (upcoming ? '<div class="mt-4">' : '') +
+            card('Past appointments <span class="text-sub font-normal">(' + history.length + ')</span>',
+                 history.map(function (h) { return apptRow(h, false); }).join('')) +
+            (upcoming ? '</div>' : '');
+        }
+        return out;
+      },
+
+      services: function () {
+        if (!history.length) {
+          return empty('No services booked yet',
+            'This tab totals up what ' + esc(client.firstName || 'this client') + ' actually books, so you can see their regulars at a glance.');
+        }
+        var tally = {};
+        history.forEach(function (h) {
+          tally[h.service] = tally[h.service] || { n: 0, spend: 0, last: h.date };
+          tally[h.service].n++;
+          tally[h.service].spend += h.price;
+          if (h.date > tally[h.service].last) tally[h.service].last = h.date;
+        });
+        var rows = Object.keys(tally).sort(function (a, b) { return tally[b].n - tally[a].n; }).map(function (name) {
+          var t = tally[name];
+          return '<tr>' +
+                 cell('Service', esc(name), 'font-medium') +
+                 cell('Times booked', t.n, 'sd-table__num') +
+                 cell('Last booked', esc(SDC.dateShort(t.last)), 'whitespace-nowrap') +
+                 cell('Spend', SDC.money(t.spend), 'sd-table__num') +
+                 '</tr>';
+        }).join('');
+        return card('Services booked',
+          '<div class="sd-tablewrap sm:-m-4"><table class="sd-table sd-table--cards sm:min-w-[440px]">' +
+          '<thead><tr><th scope="col">Service</th><th scope="col" class="sd-table__num">Times booked</th><th scope="col">Last booked</th><th scope="col" class="sd-table__num">Spend</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody></table></div>');
+      },
+
+      purchases: function () {
+        var n = history.length ? between(0, 4) : 0;
+        if (!n) {
+          return empty('No retail purchases',
+            'Products sold at checkout appear here alongside the appointment they were bought with.');
+        }
+        var items = [];
+        for (var i = 0; i < n; i++) {
+          var r = pick(RETAIL);
+          items.push({ name: r.name, price: r.price, date: history[Math.min(i, history.length - 1)].date, qty: between(1, 2) });
+        }
+        var total = items.reduce(function (s, i2) { return s + i2.price * i2.qty; }, 0);
+        return card('Retail purchases',
+          items.map(function (i3) {
+            return '<div class="sd-rowcard flex items-center gap-4 sm:py-3 sm:border-b sm:border-line sm:last:border-0">' +
+              '<div class="min-w-0 flex-1"><p class="text-[13px] font-medium text-ink">' + esc(i3.name) + '</p>' +
+              '<p class="text-[12px] text-sub">' + esc(SDC.dateShort(i3.date)) + ' · qty ' + i3.qty + '</p></div>' +
+              '<p class="text-[13px] font-semibold text-head shrink-0">' + SDC.money(i3.price * i3.qty) + '</p></div>';
+          }).join('') +
+          '<div class="flex items-center gap-4 pt-3 mt-3 sm:mt-1 border-t-2 border-line">' +
+          '<p class="text-[13px] font-semibold text-head flex-1">Total</p>' +
+          '<p class="text-[13px] font-bold text-head">' + SDC.money(total) + '</p></div>');
+      },
+
+      packages: function () {
+        var has = (client.tags || []).indexOf('Membership') !== -1 || (client.visits > 20 && rand() < 0.6);
+        if (!has) {
+          return empty('No packages',
+            'Sell a package of pre-paid visits and the remaining balance is tracked here and drawn down automatically at checkout.',
+            btnPrimary('Sell a package'));
+        }
+        var used = between(2, 7), total = 10;
+        return card('Active packages',
+          '<div class="border border-line rounded-md p-4">' +
+            '<div class="flex flex-wrap items-center gap-3">' +
+              '<div class="min-w-0 flex-1"><p class="text-[14px] font-semibold text-head">Blow dry &times; 10</p>' +
+              '<p class="text-[12px] text-sub mt-0.5">Purchased ' + esc(SDC.dateShort(isoMinusDays(client.lastVisit || SDC.today(), 120))) + ' · expires in 8 months</p></div>' +
+              '<span class="sd-badge sd-badge--active"><span class="sd-badge__dot" aria-hidden="true"></span>Active</span>' +
+            '</div>' +
+            '<div class="flex items-center gap-3 mt-3">' +
+              '<div class="sd-progress flex-1"><span style="width:' + Math.round(used / total * 100) + '%"></span></div>' +
+              '<p class="text-[12px] font-medium text-sub shrink-0">' + used + ' of ' + total + ' used</p>' +
+            '</div>' +
+          '</div>');
+      },
+
+      memberships: function () {
+        var has = (client.tags || []).indexOf('Membership') !== -1;
+        if (!has) {
+          return empty('No membership',
+            'Memberships bill on a schedule and can carry their own pricing. Nothing is charged until the client signs up.',
+            btnPrimary('Add membership'));
+        }
+        return card('Membership',
+          '<div class="border border-line rounded-md p-4">' +
+            '<div class="flex flex-wrap items-center gap-3">' +
+              '<div class="min-w-0 flex-1"><p class="text-[14px] font-semibold text-head">Colour Club — monthly</p>' +
+              '<p class="text-[12px] text-sub mt-0.5">$79 / month · 15% off all colour services</p></div>' +
+              '<span class="sd-badge sd-badge--active"><span class="sd-badge__dot" aria-hidden="true"></span>Active</span>' +
+            '</div>' +
+            '<dl class="sd-dl mt-3 pt-3 border-t border-line">' +
+              '<dt class="sd-dl__t">Started</dt><dd class="sd-dl__d">' + esc(SDC.dateShort(client.createdAt)) + '</dd>' +
+              '<dt class="sd-dl__t">Next charge</dt><dd class="sd-dl__d">' + esc(SDC.dateShort(isoPlusDays(SDC.today(), between(2, 27)))) + '</dd>' +
+              '<dt class="sd-dl__t">Payment method</dt><dd class="sd-dl__d">Visa ending 4242</dd>' +
+            '</dl>' +
+            '<div class="flex items-center gap-2 mt-3">' + btnGhost('Pause') + btnGhost('Cancel membership') + '</div>' +
+          '</div>');
+      },
+
+      forms: function () {
+        var forms = [
+          { name: 'Consultation & patch test', status: history.length ? 'Completed' : 'Not sent', date: history.length ? history[history.length - 1].date : '' },
+          { name: 'Colour service consent', status: (client.tags || []).indexOf('Colour') !== -1 ? 'Completed' : 'Not sent', date: (client.tags || []).indexOf('Colour') !== -1 ? (client.lastVisit || '') : '' },
+          { name: 'Photo & marketing release', status: 'Awaiting signature', date: '' }
+        ];
+        return card('Forms &amp; waivers',
+          forms.map(function (f) {
+            var badge = f.status === 'Completed' ? 'sd-badge--active'
+                      : f.status === 'Awaiting signature' ? 'sd-badge--lead' : 'sd-badge--inactive';
+            // order-* only bites below sm; from sm up everything resets to
+            // source order and the row is exactly what it was.
+            return '<div class="sd-rowcard flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-3 sm:py-3 sm:border-b sm:border-line sm:last:border-0">' +
+              '<div class="w-full order-1 min-w-0 sm:w-auto sm:flex-1 sm:order-none">' +
+                '<p class="text-[13px] font-medium text-ink">' + esc(f.name) + '</p>' +
+                (f.date ? '<p class="text-[12px] text-sub">Signed ' + esc(SDC.dateShort(f.date)) + '</p>' : '') +
+              '</div>' +
+              '<span class="sd-badge ' + badge + ' order-2 sm:order-none"><span class="sd-badge__dot" aria-hidden="true"></span>' + esc(f.status) + '</span>' +
+              '<span class="order-3 ml-auto sm:order-none sm:ml-0">' + btnGhost(f.status === 'Completed' ? 'View' : 'Send') + '</span>' +
+            '</div>';
+          }).join(''),
+          btnGhost('Send a form'));
+      },
+
+      notes: function () {
+        var notes = [];
+        if (client.notes) notes.push({ body: client.notes, who: 'Bertrand Bruant', date: client.createdAt });
+        history.slice(0, 3).forEach(function (h, i) {
+          if (rand() < 0.5) return;
+          notes.push({
+            body: pick([
+              'Used 6.1 with 10 vol — happy with the tone, keep for next time.',
+              'Runs late most mornings; book with a 15 minute buffer.',
+              'Asked about a shorter cut for summer. Worth raising next visit.',
+              'Sensitive scalp — skip the pre-wash treatment.'
+            ]),
+            who: h.staff || 'Amara Osei',
+            date: h.date
+          });
+        });
+
+        var composer =
+          '<label for="noteBody" class="sr-only">New note</label>' +
+          '<textarea id="noteBody" rows="3" class="sd-textarea" placeholder="Add a note for the team…"></textarea>' +
+          '<div class="flex items-center gap-2.5 mt-2.5">' +
+            '<button type="button" data-note-save class="inline-flex items-center h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">Save note</button>' +
+            '<p class="text-[12px] text-sub">Team only — never shown to the client.</p>' +
+          '</div>';
+
+        var list = notes.length
+          ? notes.map(function (n) {
+              return '<div class="sd-rowcard sm:py-3 sm:border-b sm:border-line sm:last:border-0">' +
+                '<p class="text-[13px] text-ink leading-relaxed whitespace-pre-line">' + esc(n.body) + '</p>' +
+                '<p class="text-[12px] text-sub mt-1.5">' + esc(n.who) + ' · ' + esc(SDC.dateShort(n.date)) + '</p></div>';
+            }).join('')
+          : '<p class="text-[13px] text-faint py-2">No notes yet.</p>';
+
+        return card('Add a note', composer) + '<div class="mt-4">' + card('Notes', list) + '</div>';
+      },
+
+      communications: function () {
+        if (!history.length) {
+          return empty('No messages yet',
+            'Reminders, confirmations and anything you send by hand are logged here with their delivery status.');
+        }
+        var msgs = history.slice(0, 5).map(function (h) {
+          return {
+            channel: pick(['SMS', 'Email']),
+            subject: pick(['Appointment reminder', 'Booking confirmation', 'Thanks for visiting', 'Rebooking invitation']),
+            date: isoMinusDays(h.date, 1),
+            status: rand() < 0.9 ? 'Delivered' : 'Failed'
+          };
+        });
+        return card('Message history',
+          msgs.map(function (m) {
+            return '<div class="sd-rowcard flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-3 sm:py-3 sm:border-b sm:border-line sm:last:border-0">' +
+              '<span class="sd-tag shrink-0 order-2 sm:order-none"><span class="sd-tag__text">' + esc(m.channel) + '</span></span>' +
+              '<div class="w-full order-1 min-w-0 sm:w-auto sm:flex-1 sm:order-none">' +
+                // Truncation is a desktop-column concern; on a card the
+                // subject has the width to say what it is.
+                '<p class="text-[13px] font-medium text-ink sm:truncate">' + esc(m.subject) + '</p>' +
+                '<p class="text-[12px] text-sub">' + esc(SDC.dateShort(m.date)) + '</p>' +
+              '</div>' +
+              '<span class="sd-badge ' + (m.status === 'Delivered' ? 'sd-badge--active' : 'sd-badge--blocked') + ' order-3 ml-auto sm:order-none sm:ml-0">' +
+                '<span class="sd-badge__dot" aria-hidden="true"></span>' + esc(m.status) + '</span>' +
+            '</div>';
+          }).join(''),
+          btnGhost('Send a message'));
+      },
+
+      payments: function () {
+        if (!history.length) {
+          return empty('No payments yet',
+            'Every payment taken at checkout, and any card kept on file, shows up here.');
+        }
+        var rows = history.slice(0, 6).map(function (h) {
+          return '<tr>' +
+                 cell('Date', esc(SDC.dateShort(h.date)), 'whitespace-nowrap') +
+                 cell('For', esc(h.service)) +
+                 cell('Method', esc(pick(['Visa •••• 4242', 'Cash', 'Apple Pay', 'Mastercard •••• 1881'])), 'whitespace-nowrap') +
+                 cell('Amount', h.status === 'No-show' ? '<span class="text-faint">—</span>' : SDC.money(h.price), 'sd-table__num') +
+                 '</tr>';
+        }).join('');
+        return card('Card on file',
+          '<div class="flex flex-wrap items-center gap-3">' +
+            '<span class="sd-tag"><span class="sd-tag__text">Visa</span></span>' +
+            '<p class="text-[13px] text-ink flex-1 min-w-0">•••• •••• •••• 4242 <span class="text-sub">· expires 04/29</span></p>' +
+            btnGhost('Remove') +
+          '</div>' +
+          '<p class="text-[12px] text-sub mt-2.5">Card details are held by the payment provider. StyleDesk only stores the token.</p>') +
+        '<div class="mt-4">' + card('Payment history',
+          '<div class="sd-tablewrap sm:-m-4"><table class="sd-table sd-table--cards sm:min-w-[520px]">' +
+          '<thead><tr><th scope="col">Date</th><th scope="col">For</th><th scope="col">Method</th><th scope="col" class="sd-table__num">Amount</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody></table></div>') + '</div>';
+      },
+
+      activity: function () {
+        return card('Activity history', timeline(activityItems()));
+      }
+    };
+
+    /* Activity feed (§32): record changes and events, newest first. */
+    function activityItems() {
+      var items = [];
+      if (client.deletedAt) items.push({ brand: false, title: 'Client deleted', who: 'Bertrand Bruant', date: client.deletedAt });
+      if (upcoming) items.push({ brand: true, title: 'Appointment booked — ' + upcoming.service, who: 'Online booking', date: SDC.today() });
+      history.forEach(function (h) {
+        items.push({
+          brand: false,
+          title: h.status === 'No-show' ? 'Marked as no-show — ' + h.service : 'Appointment completed — ' + h.service,
+          who: h.staff,
+          date: h.date
+        });
+      });
+      items.push({ brand: false, title: 'Client created', who: 'Bertrand Bruant', date: client.createdAt });
+      return items;
+    }
+
+    function timeline(items) {
+      if (!items.length) return '<p class="text-[13px] text-faint">Nothing recorded yet.</p>';
+      return '<div class="sd-time">' + items.map(function (i) {
+        return '<div class="sd-time__item' + (i.brand ? ' sd-time__item--brand' : '') + '">' +
+          '<span class="sd-time__dot" aria-hidden="true"></span>' +
+          '<p class="text-[13px] font-medium text-ink">' + esc(i.title) + '</p>' +
+          '<p class="text-[12px] text-sub mt-0.5">' + esc(i.who || 'System') + ' · ' + esc(SDC.dateShort(i.date)) + '</p>' +
+        '</div>';
+      }).join('') + '</div>';
+    }
+
+    /* ---------- Tab strip -------------------------------------------- */
+
+    var TABS = [
+      { id: 'overview',       label: 'Overview' },
+      { id: 'appointments',   label: 'Appointments', count: history.length + (upcoming ? 1 : 0) },
+      { id: 'services',       label: 'Services' },
+      { id: 'purchases',      label: 'Purchases' },
+      { id: 'packages',       label: 'Packages' },
+      { id: 'memberships',    label: 'Memberships' },
+      { id: 'forms',          label: 'Forms' },
+      { id: 'notes',          label: 'Notes' },
+      { id: 'communications', label: 'Communications' },
+      { id: 'payments',       label: 'Payments' },
+      { id: 'activity',       label: 'Activity' }
+    ];
+
+    var strip = document.querySelector('[data-tabs]');
+    var panel = document.querySelector('[data-panel]');
+    var current = null;
+
+    strip.innerHTML = TABS.map(function (t) {
+      return '<button type="button" class="sd-tab" role="tab" id="tab-' + t.id + '" data-tab="' + t.id + '"' +
+        ' aria-selected="false" aria-controls="tabpanel" tabindex="-1">' + esc(t.label) +
+        (t.count ? '<span class="sd-tab__count">' + t.count + '</span>' : '') + '</button>';
+    }).join('');
+    panel.id = 'tabpanel';
+
+    function showTab(id, focusTab) {
+      if (!PANELS[id]) id = 'overview';
+      current = id;
+      strip.querySelectorAll('[data-tab]').forEach(function (b) {
+        var on = b.dataset.tab === id;
+        b.setAttribute('aria-selected', String(on));
+        b.tabIndex = on ? 0 : -1;
+        if (on && focusTab) b.focus();
+        if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+      panel.setAttribute('aria-labelledby', 'tab-' + id);
+      panel.innerHTML = PANELS[id]();
+      SDC.dropAll(panel);
+      wirePanel();
+
+      // Keep the tab in the URL so a profile link can point at a tab and
+      // the back button walks the tabs the user actually visited.
+      var url = new URL(window.location.href);
+      url.searchParams.set('id', client.id);
+      if (id === 'overview') url.searchParams.delete('tab'); else url.searchParams.set('tab', id);
+      window.history.replaceState({}, '', url);
+    }
+
+    strip.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-tab]');
+      if (b) showTab(b.dataset.tab);
+    });
+
+    // Roving tabindex, per the WAI-ARIA tabs pattern.
+    strip.addEventListener('keydown', function (e) {
+      var keys = { ArrowRight: 1, ArrowLeft: -1, Home: 'first', End: 'last' };
+      if (!(e.key in keys)) return;
+      e.preventDefault();
+      var ids = TABS.map(function (t) { return t.id; });
+      var at = ids.indexOf(current);
+      var next = keys[e.key] === 'first' ? 0
+               : keys[e.key] === 'last' ? ids.length - 1
+               : (at + keys[e.key] + ids.length) % ids.length;
+      showTab(ids[next], true);
+    });
+
+    /* §13: manage contact methods from the profile without leaving it.
+       Adding a method still goes to the edit page — that is where the
+       full row editor lives — but everything that is a single decision
+       happens here. */
+    function wireContacts() {
+      panel.querySelectorAll('[data-contact]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var kind = btn.dataset.kind;
+          var cid = btn.dataset.cid;
+          SDC.closeAllDrops();
+
+          if (btn.dataset.contact === 'primary') {
+            client = SDC.setPrimary(client.id, kind, cid);
+            SDC.toast('Primary ' + kind + ' updated.');
+
+          } else if (btn.dataset.contact === 'flag') {
+            client = SDC.setContactFlag(client.id, kind, cid, btn.dataset.field, btn.dataset.value === 'true');
+            if (btn.dataset.field === 'active' && btn.dataset.value !== 'true') {
+              // Deactivating can free the primary slot; say what took over.
+              var now = kind === 'phone' ? SDC.primaryPhone(client) : SDC.primaryEmail(client);
+              SDC.toast(now
+                ? 'Marked inactive. ' + now.type + ' is now the primary ' + kind + '.'
+                : 'Marked inactive.');
+            } else {
+              SDC.toast('Contact preferences updated.');
+            }
+
+          } else if (btn.dataset.contact === 'remove') {
+            var res = SDC.removeContact(client.id, kind, cid);
+            client = res.client;
+            SDC.toast(res.promoted
+              ? 'Removed. ' + res.promoted.type + ' is now the primary ' + kind + '.'
+              : 'Contact method removed.');
+          }
+
+          paintHeader();
+          showTab(current);
+        });
+      });
+    }
+
+    function wirePanel() {
+      wireContacts();
+      panel.querySelectorAll('[data-go-tab]').forEach(function (b) {
+        b.addEventListener('click', function () { showTab(b.dataset.goTab); });
+      });
+      var editJump = panel.querySelector('[data-edit-jump]');
+      if (editJump) editJump.addEventListener('click', function () {
+        window.location.href = 'add-client.html?id=' + encodeURIComponent(client.id);
+      });
+      var bookJump = panel.querySelector('[data-book-jump]');
+      if (bookJump) bookJump.addEventListener('click', book);
+      var noteSave = panel.querySelector('[data-note-save]');
+      if (noteSave) noteSave.addEventListener('click', function () {
+        var box = panel.querySelector('#noteBody');
+        var text = box.value.trim();
+        if (!text) { box.focus(); return; }
+        // Appends to the client's internal notes so the change survives a
+        // reload, the same way the API would.
+        client = SDC.update(client.id, {
+          notes: client.notes ? client.notes + '\n\n' + text : text
+        });
+        SDC.toast('Note saved.');
+        showTab('notes');
+      });
+    }
+
+    /* ---------- Header actions ---------------------------------------- */
+
+    function book() {
+      SDC.toast('Booking flow opens the calendar with <b>' + esc(SDC.fullName(client)) + '</b> pre-filled.');
+    }
+    document.querySelector('[data-book]').addEventListener('click', book);
+    document.querySelector('[data-message]').addEventListener('click', function () {
+      SDC.toast('Message composer opens for <b>' + esc(SDC.fullName(client)) + '</b>.');
+    });
+    document.querySelectorAll('[data-go-tab]').forEach(function (b) {
+      if (b.closest('[data-panel]')) return;
+      b.addEventListener('click', function () { SDC.closeAllDrops(); showTab(b.dataset.goTab); });
+    });
+    document.querySelector('[data-export-client]').addEventListener('click', function () {
+      SDC.closeAllDrops();
+      SDC.toast('Export queued — we’ll email you this client’s record.');
+    });
+    document.querySelector('[data-merge]').addEventListener('click', function () {
+      SDC.closeAllDrops();
+      SDC.toast('Merge opens a picker for the record to fold into this one.');
+    });
+
+    /* ---------- Delete / restore (§30) --------------------------------- */
+
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmOverlay = null;
+    var confirmFn = null;
+
+    function confirmDialog(o) {
+      document.querySelector('[data-confirm-title]').textContent = o.title;
+      document.querySelector('[data-confirm-body]').textContent = o.body;
+      document.querySelector('[data-confirm-ok]').textContent = o.okLabel || 'Delete';
+      confirmFn = o.onOk;
+      confirmEl.hidden = false;
+      confirmOverlay = SDC.overlay(confirmEl, {
+        initialFocus: '[data-confirm-cancel]',
+        onClose: function () { confirmEl.hidden = true; }
+      });
+      confirmOverlay.open();
+    }
+    function closeConfirm() { if (confirmOverlay) confirmOverlay.close(); confirmOverlay = null; }
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', closeConfirm);
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', closeConfirm);
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmFn; closeConfirm(); if (fn) fn();
+    });
+
+    document.querySelector('[data-delete]').addEventListener('click', function () {
+      SDC.closeAllDrops();
+      confirmDialog({
+        title: 'Delete ' + SDC.fullName(client) + '?',
+        body: 'They will be removed from the directory, from search and from booking. Appointment and payment history is kept, and you can restore them for 30 days.',
+        okLabel: 'Delete',
+        onOk: function () {
+          SDC.softDelete(client.id);
+          window.location.href = 'clients.html';
+        }
+      });
+    });
+
+    document.querySelector('[data-restore]').addEventListener('click', function () {
+      client = SDC.restore(client.id);
+      paintHeader();
+      SDC.toast('Client restored.');
+    });
+
+    /* ---------- Boot ---------------------------------------------------- */
+
+    SDC.dropAll(document);
+    paintHeader();
+    showTab(params.get('tab') || 'overview');
+
+    // A save on add-client.html leaves its confirmation behind for us.
+    var flashed = SDC.takeFlash();
+    if (flashed) SDC.toast(flashed);
+  }());
+  </script>
+</body>
+</html>

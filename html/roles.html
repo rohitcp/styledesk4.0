@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roles & Permissions — StyleDesk</title>
+
+  <!--
+    StyleDesk — Roles & Permissions
+    The five system roles plus any custom ones, and the permission
+    matrix behind each. Owner-grade rights are never grantable.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
+             aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ===== Page ===== -->
+  <main class="flex-1 w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
+    <nav class="flex items-center gap-1.5 text-[12px] text-sub mb-2" aria-label="Breadcrumb">
+      <a href="app-settings.html" class="hover:text-ink transition-colors">App Settings</a>
+      <span class="text-faint">/</span>
+      <span class="text-ink font-medium">Roles &amp; Permissions</span>
+    </nav>
+
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-3 mb-4">
+      <div class="min-w-0">
+        <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight">Roles &amp; Permissions</h1>
+        <p class="text-[13px] text-sub mt-1">Control what each role can view, create, edit and manage across StyleDesk.</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2 shrink-0">
+        <button type="button" data-new-role class="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Create Custom Role
+        </button>
+      </div>
+    </div>
+
+    <nav class="sd-subnav mb-5" aria-label="Staff and access">
+      <a href="staff.html" class="sd-subnav__item">Staff</a>
+      <a href="roles.html" class="sd-subnav__item" aria-current="page">Roles &amp; Permissions</a>
+    </nav>
+
+    <div class="grid lg:grid-cols-[300px_minmax(0,1fr)] gap-5 items-start">
+
+      <!-- Roles -->
+      <section class="sd-card !p-0 overflow-hidden" aria-label="Roles">
+        <div class="px-4 pt-4 pb-3 border-b border-line">
+          <h2 class="sd-eyebrow">Roles</h2>
+        </div>
+        <div data-roles></div>
+      </section>
+
+      <!-- The chosen role -->
+      <section class="min-w-0 space-y-4" aria-label="Permissions" data-detail></section>
+    </div>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title></h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body></p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Delete</button>
+        <button type="button" data-confirm-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="sd-modal" data-newrole hidden role="dialog" aria-modal="true" aria-labelledby="nrTitle">
+    <div class="sd-scrim is-open" data-nr-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="nrTitle" class="text-[17px] font-semibold text-head">Create a custom role</h2>
+      <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Start from an existing role and adjust it — far quicker than ticking ninety-five boxes.</p>
+      <form class="mt-4 space-y-3.5" data-nr-form novalidate>
+        <div>
+          <label for="nrName" class="block text-[13px] font-medium text-ink mb-1.5">Role name<span class="text-danger"> *</span></label>
+          <input id="nrName" type="text" class="sd-input" placeholder="Senior Stylist" autocomplete="off" />
+          <p class="text-[12px] text-danger mt-1.5" data-error-for="nrName" hidden></p>
+        </div>
+        <div>
+          <label for="nrDesc" class="block text-[13px] font-medium text-ink mb-1.5">Description</label>
+          <textarea id="nrDesc" rows="2" class="sd-input !h-auto py-2.5" placeholder="Can manage their own appointments and junior schedules, but not business financials."></textarea>
+        </div>
+        <div>
+          <label for="nrFrom" class="block text-[13px] font-medium text-ink mb-1.5">Start from</label>
+          <select id="nrFrom" class="sd-input"></select>
+          <p class="text-[12px] text-faint mt-1.5" data-nr-note></p>
+        </div>
+        <div class="flex items-center gap-2.5 pt-1">
+          <button type="submit" class="h-10 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">Create role</button>
+          <button type="button" class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-nr-cancel>Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="sd-modal" data-delrole hidden role="dialog" aria-modal="true" aria-labelledby="drTitle">
+    <div class="sd-scrim is-open" data-dr-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="drTitle" class="text-[17px] font-semibold text-head" data-dr-title></h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-dr-body></p>
+      <div class="mt-4" data-dr-move hidden>
+        <label for="drMove" class="block text-[13px] font-medium text-ink mb-1.5">Move them to</label>
+        <select id="drMove" class="sd-input"></select>
+      </div>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-dr-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Delete role</button>
+        <button type="button" data-dr-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/resources.js"></script>
+  <script src="assets/js/services.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script src="assets/js/bookings.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    /* When the row is too narrow to hold every section, the one you are
+       on can start off-screen to the right. Nudge it into view — without
+       scrolling the page itself, which scrollIntoView would do. */
+    (function () {
+      var nav = document.querySelector('[data-subnav]');
+      if (!nav) return;
+      var here = nav.querySelector('[aria-current="page"]');
+      if (!here) return;
+      var over = here.offsetLeft + here.offsetWidth - (nav.scrollLeft + nav.clientWidth);
+      if (over > 0) nav.scrollLeft += over + 4;
+      else if (here.offsetLeft < nav.scrollLeft) nav.scrollLeft = Math.max(0, here.offsetLeft - 4);
+    }());
+
+    var esc = SDR.esc;
+
+    function esc(v) { return SDT.esc(v); }
+
+    var current = 'owner';
+    var draft = null;      /* a working copy while editing */
+    var dirty = false;
+    var permQuery = '';
+
+    function role() { return SDT.roleById(current); }
+
+    /* ---------- The role list ------------------------------------------ */
+
+    function paintRoles() {
+      var box = document.querySelector('[data-roles]');
+      box.innerHTML = SDT.roles().map(function (r) {
+        var used = SDT.roleUsage(r.id).length;
+        var on = r.id === current;
+        return '<button type="button" class="sd-rolerow' + (on ? ' is-on' : '') + '" data-role="' + r.id + '">' +
+          '<span class="min-w-0 flex-1 text-left">' +
+            '<span class="flex flex-wrap items-center gap-1.5">' +
+              '<span class="text-[13px] font-semibold text-head">' + esc(r.name) + '</span>' +
+              (r.system
+                ? '<span class="sd-tag sd-tag--plain">System</span>'
+                : '<span class="sd-tag sd-tag--plain">Custom</span>') +
+            '</span>' +
+            '<span class="block text-[11.5px] text-sub mt-0.5">' + esc(r.kind) + ' · ' +
+              SDT.grantedCount(r) + ' permissions</span>' +
+          '</span>' +
+          '<span class="shrink-0 text-right">' +
+            '<span class="block text-[15px] font-bold text-head tabular-nums">' + used + '</span>' +
+            '<span class="block text-[10.5px] text-sub">' + (used === 1 ? 'person' : 'people') + '</span>' +
+          '</span>' +
+        '</button>';
+      }).join('');
+    }
+
+    document.querySelector('[data-roles]').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-role]');
+      if (!b || b.dataset.role === current) return;
+      /* §68 — leaving with unsaved permission changes loses work that is
+         easy to make and hard to reconstruct. */
+      if (dirty) {
+        confirmDialog({
+          title: 'Leave without saving?',
+          body: 'You have unsaved permission changes on ' + SDT.roleName(current) + '. They will be lost.',
+          okLabel: 'Discard changes',
+          onOk: function () { dirty = false; select(b.dataset.role); }
+        });
+        return;
+      }
+      select(b.dataset.role);
+    });
+
+    function select(id) {
+      current = id;
+      draft = JSON.parse(JSON.stringify(SDT.roleById(id)));
+      dirty = false;
+      permQuery = '';
+      paintRoles();
+      paintDetail();
+    }
+
+    /* ---------- The permission matrix ----------------------------------- */
+
+    function matches(item, groupLabel) {
+      if (!permQuery) return true;
+      var q = permQuery.toLowerCase();
+      return item[1].toLowerCase().indexOf(q) !== -1 ||
+             groupLabel.toLowerCase().indexOf(q) !== -1 ||
+             item[0].toLowerCase().indexOf(q) !== -1;
+    }
+
+    /* §72 — the Owner role is the definition of full access, so it is
+       shown rather than edited. Anything else would let someone quietly
+       reduce the only account that can put it back. */
+    function readOnly() {
+      return draft.id === 'owner';
+    }
+
+    function groupHtml(g) {
+      var items = g.items.filter(function (it) { return matches(it, g.label); });
+      if (!items.length) return '';
+
+      var granted = items.filter(function (it) { return draft.permissions[it[0]]; }).length;
+      var lockedHere = items.filter(function (it) {
+        return SDT.OWNER_ONLY.indexOf(it[0]) !== -1 && draft.id !== 'owner';
+      }).length;
+
+      return '<section class="sd-permgroup"' + (permQuery ? ' data-open' : (granted ? ' data-open' : '')) + ' data-group="' + g.id + '">' +
+        '<h3><button type="button" class="sd-permgroup__head" data-group-head aria-expanded="' +
+          (permQuery || granted ? 'true' : 'false') + '">' +
+          '<span class="sd-permgroup__title">' + esc(g.label) + '</span>' +
+          '<span class="sd-permgroup__count">' + granted + ' of ' + items.length + '</span>' +
+          '<svg class="sd-acc__chev" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        '</button></h3>' +
+        '<div class="sd-permgroup__body">' +
+          (readOnly() ? '' :
+            '<div class="flex items-center gap-2 mb-2">' +
+              '<button type="button" class="sd-chip !h-7 !text-[11.5px]" data-grp-all="' + g.id + '">Select all</button>' +
+              '<button type="button" class="sd-chip !h-7 !text-[11.5px]" data-grp-none="' + g.id + '">Clear all</button>' +
+            '</div>') +
+          items.map(function (it) {
+            var pid = it[0];
+            var sensitive = !!it[2];
+            var locked = SDT.OWNER_ONLY.indexOf(pid) !== -1 && draft.id !== 'owner';
+            var on = !!draft.permissions[pid];
+            return '<label class="sd-perm' + (locked ? ' is-locked' : '') + '">' +
+              '<input type="checkbox" class="sd-check" data-perm="' + pid + '"' +
+                (on ? ' checked' : '') + (locked || readOnly() ? ' disabled' : '') + ' />' +
+              '<span class="min-w-0 flex-1">' +
+                '<span class="sd-perm__label">' + esc(it[1]) +
+                  (sensitive ? '<span class="sd-warn" title="Sensitive permission" aria-label="Sensitive permission">⚠</span>' : '') +
+                '</span>' +
+                (locked
+                  ? '<span class="block text-[11.5px] text-sub mt-0.5">Owner only. Cannot be granted through any other role.</span>'
+                  : '') +
+              '</span></label>';
+          }).join('') +
+        '</div>' +
+      '</section>';
+    }
+
+    function paintDetail() {
+      var box = document.querySelector('[data-detail]');
+      var r = draft;
+      var used = SDT.roleUsage(r.id);
+      var total = SDT.allPermissionIds().length;
+
+      var found = 0;
+      SDT.PERMISSIONS.forEach(function (g) {
+        g.items.forEach(function (it) { if (matches(it, g.label)) found++; });
+      });
+
+      box.innerHTML =
+        '<div class="sd-card">' +
+          '<div class="flex flex-wrap items-start gap-3">' +
+            '<div class="min-w-0 flex-1">' +
+              '<div class="flex flex-wrap items-center gap-2">' +
+                '<h2 class="text-[17px] font-bold text-head">' + esc(r.name) + '</h2>' +
+                '<span class="sd-tag sd-tag--plain">' + (r.system ? 'System role' : 'Custom role') + '</span>' +
+              '</div>' +
+              '<p class="text-[12.5px] text-sub mt-1.5 leading-relaxed">' + esc(r.description) + '</p>' +
+            '</div>' +
+            '<div class="flex items-center gap-2 shrink-0">' +
+              '<button type="button" class="sd-chip !h-9" data-duplicate>Duplicate</button>' +
+              (r.system ? '' : '<button type="button" class="sd-chip !h-9" data-delete>Delete</button>') +
+            '</div>' +
+          '</div>' +
+
+          '<dl class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-line">' +
+            '<div><dt class="text-[11px] text-sub">Permissions</dt>' +
+              '<dd class="text-[15px] font-bold text-head tabular-nums">' + SDT.grantedCount(r) + ' / ' + total + '</dd></div>' +
+            '<div><dt class="text-[11px] text-sub">Assigned to</dt>' +
+              '<dd class="text-[15px] font-bold text-head tabular-nums">' + used.length + '</dd></div>' +
+            '<div class="col-span-2"><dt class="text-[11px] text-sub">People</dt>' +
+              '<dd class="text-[12.5px] text-ink">' + (used.length
+                ? esc(used.map(function (s) { return SDT.fullName(s); }).join(', '))
+                : '<span class="text-faint">Nobody yet</span>') + '</dd></div>' +
+          '</dl>' +
+        '</div>' +
+
+        /* §61–§63 — scope sits beside the permissions because it is half
+           the answer. "View clients" means something different when it
+           reaches every client than when it reaches only their own. */
+        '<div class="sd-card">' +
+          '<h3 class="text-[15px] font-semibold text-head">Scope</h3>' +
+          '<p class="text-[12.5px] text-sub mt-1 leading-relaxed">A permission says what they may do. Scope says whose data they may do it to.</p>' +
+          '<div class="grid sm:grid-cols-2 gap-4 mt-4">' +
+            '<div><label for="calScope" class="block text-[13px] font-medium text-ink mb-1.5">Calendars they can see</label>' +
+              '<select id="calScope" class="sd-input"' + (readOnly() ? ' disabled' : '') + '>' +
+              SDT.CALENDAR_SCOPES.map(function (s) {
+                return '<option value="' + s.id + '"' + (s.id === r.calendarScope ? ' selected' : '') + '>' + esc(s.label) + '</option>';
+              }).join('') + '</select></div>' +
+            '<div><label for="cliScope" class="block text-[13px] font-medium text-ink mb-1.5">Clients they can see</label>' +
+              '<select id="cliScope" class="sd-input"' + (readOnly() ? ' disabled' : '') + '>' +
+              SDT.CLIENT_SCOPES.map(function (s) {
+                return '<option value="' + s.id + '"' + (s.id === r.clientScope ? ' selected' : '') + '>' + esc(s.label) + '</option>';
+              }).join('') + '</select></div>' +
+          '</div>' +
+          '<div class="divide-y divide-line mt-3">' +
+            '<label class="flex items-start gap-3 py-3 cursor-pointer">' +
+              '<input type="checkbox" class="sd-check mt-0.5" data-allloc' + (r.allLocations ? ' checked' : '') +
+                (readOnly() ? ' disabled' : '') + ' />' +
+              '<span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Every location</span>' +
+              '<span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off restricts the role to chosen sites. Individual staff can be narrowed further on their own record.</span></span>' +
+            '</label>' +
+          '</div>' +
+          (r.allLocations ? '' :
+            '<div class="flex flex-wrap gap-1.5 mt-3">' + SDL.live().map(function (l) {
+              var on = (r.locationIds || []).indexOf(l.id) !== -1;
+              return '<button type="button" class="sd-svcchip' + (on ? ' is-on' : '') + '" data-rloc="' + l.id + '"' +
+                (readOnly() ? ' disabled' : '') + ' aria-pressed="' + on + '">' + esc(l.name) + '</button>';
+            }).join('') + '</div>') +
+        '</div>' +
+
+        '<div class="sd-card">' +
+          '<div class="flex flex-wrap items-center gap-3 mb-3">' +
+            '<h3 class="text-[15px] font-semibold text-head">Permissions</h3>' +
+            '<div class="relative ml-auto w-full sm:w-[260px]">' +
+              '<span class="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.9"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>' +
+              '</span>' +
+              '<label for="permq" class="sr-only">Search permissions</label>' +
+              '<input id="permq" type="search" class="sd-input !h-9 !pl-9" placeholder="Search permissions…" value="' + esc(permQuery) + '" autocomplete="off" />' +
+            '</div>' +
+          '</div>' +
+          (readOnly()
+            ? '<div class="sd-alert sd-alert--info mb-3">The Owner role has every permission by definition, and cannot be edited. To change who holds it, transfer ownership.</div>'
+            : '') +
+          (permQuery
+            ? '<p class="text-[12.5px] text-sub mb-3">' + found + ' permission' + (found === 1 ? '' : 's') +
+              ' match “' + esc(permQuery) + '”.</p>'
+            : '') +
+          (found
+            ? '<div class="space-y-2">' + SDT.PERMISSIONS.map(groupHtml).join('') + '</div>'
+            : '<p class="text-[13px] text-sub py-4">No permission matches “' + esc(permQuery) + '”.</p>') +
+        '</div>' +
+
+        (readOnly() ? '' :
+          '<div class="sd-card !p-4">' +
+            '<div class="flex flex-wrap items-center gap-2.5">' +
+              '<button type="button" class="inline-flex items-center h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors' +
+                (dirty ? '' : ' opacity-50 pointer-events-none') + '" data-save>Save Changes</button>' +
+              '<button type="button" class="inline-flex items-center h-11 px-5 rounded-lg border border-stroke bg-white text-ink text-[14px] font-semibold hover:bg-hover transition-colors' +
+                (dirty ? '' : ' opacity-50 pointer-events-none') + '" data-cancel>Cancel</button>' +
+              '<span class="text-[12.5px] ' + (dirty ? 'text-warning font-semibold' : 'text-sub') + '">' +
+                (dirty ? 'Unsaved permission changes.' : 'No changes to save.') + '</span>' +
+            '</div>' +
+          '</div>');
+
+      SD.comboAll(box);
+    }
+
+    /* ---------- Detail interactions -------------------------------------- */
+
+    var detail = document.querySelector('[data-detail]');
+
+    detail.addEventListener('input', function (e) {
+      if (e.target.id !== 'permq') return;
+      permQuery = e.target.value.trim();
+      var pos = e.target.selectionStart;
+      paintDetail();
+      var box = document.getElementById('permq');
+      if (box) { box.focus(); box.setSelectionRange(pos, pos); }
+    });
+
+    detail.addEventListener('change', function (e) {
+      var perm = e.target.closest('[data-perm]');
+      if (perm) {
+        var pid = perm.dataset.perm;
+        /* §67 — a sensitive permission is confirmed out loud the first
+           time it is granted, rather than being one tick among ninety. */
+        if (e.target.checked && SDT.isSensitive(pid)) {
+          var meta = SDT.permissionMeta(pid);
+          confirmDialog({
+            title: 'Grant “' + meta.label + '”?',
+            body: 'This permission provides access to sensitive business settings. Anyone with the ' +
+                  draft.name + ' role will have it.',
+            okLabel: 'Grant it',
+            onOk: function () { draft.permissions[pid] = true; dirty = true; paintDetail(); },
+            onCancel: function () { paintDetail(); }
+          });
+          return;
+        }
+        if (e.target.checked) draft.permissions[pid] = true;
+        else delete draft.permissions[pid];
+        dirty = true;
+        paintDetail();
+        return;
+      }
+
+      if (e.target.id === 'calScope') { draft.calendarScope = e.target.value; dirty = true; paintDetail(); return; }
+      if (e.target.id === 'cliScope') { draft.clientScope = e.target.value; dirty = true; paintDetail(); return; }
+      if (e.target.matches('[data-allloc]')) {
+        draft.allLocations = e.target.checked;
+        dirty = true; paintDetail();
+      }
+    });
+
+    detail.addEventListener('click', function (e) {
+      var head = e.target.closest('[data-group-head]');
+      if (head) {
+        var sec = head.closest('[data-group]');
+        var open = sec.hasAttribute('data-open');
+        if (open) sec.removeAttribute('data-open'); else sec.setAttribute('data-open', '');
+        head.setAttribute('aria-expanded', open ? 'false' : 'true');
+        return;
+      }
+
+      /* §66 — Select all takes the ordinary permissions and leaves the
+         sensitive ones alone. Sweeping up "Delete the business" because
+         someone clicked a convenience button is exactly the accident
+         this avoids. */
+      var all = e.target.closest('[data-grp-all]');
+      if (all) {
+        var g1 = SDT.PERMISSIONS.filter(function (g) { return g.id === all.dataset.grpAll; })[0];
+        var skipped = 0;
+        g1.items.forEach(function (it) {
+          if (SDT.OWNER_ONLY.indexOf(it[0]) !== -1) return;
+          if (it[2]) { skipped++; return; }
+          draft.permissions[it[0]] = true;
+        });
+        dirty = true; paintDetail();
+        if (skipped) {
+          SD.toast(skipped + ' sensitive permission' + (skipped === 1 ? '' : 's') +
+            ' left off — grant those one at a time.');
+        }
+        return;
+      }
+
+      var none = e.target.closest('[data-grp-none]');
+      if (none) {
+        var g2 = SDT.PERMISSIONS.filter(function (g) { return g.id === none.dataset.grpNone; })[0];
+        g2.items.forEach(function (it) { delete draft.permissions[it[0]]; });
+        dirty = true; paintDetail();
+        return;
+      }
+
+      var rloc = e.target.closest('[data-rloc]');
+      if (rloc) {
+        var ids = draft.locationIds || [];
+        var at = ids.indexOf(rloc.dataset.rloc);
+        if (at === -1) ids.push(rloc.dataset.rloc); else ids.splice(at, 1);
+        draft.locationIds = ids;
+        dirty = true; paintDetail();
+        return;
+      }
+
+      if (e.target.closest('[data-save]')) {
+        SDT.saveRole(draft);
+        dirty = false;
+        draft = JSON.parse(JSON.stringify(SDT.roleById(current)));
+        paintRoles(); paintDetail();
+        SD.toast('<b>' + esc(draft.name) + '</b> updated.');
+        return;
+      }
+
+      if (e.target.closest('[data-cancel]')) {
+        draft = JSON.parse(JSON.stringify(SDT.roleById(current)));
+        dirty = false;
+        paintDetail();
+        return;
+      }
+
+      if (e.target.closest('[data-duplicate]')) {
+        var copy = SDT.duplicateRole(current);
+        SD.toast('Copied as <b>' + esc(copy.name) + '</b>.');
+        select(copy.id);
+        return;
+      }
+
+      if (e.target.closest('[data-delete]')) askDelete();
+    });
+
+    /* ---------- Delete a custom role (§69) -------------------------------- */
+
+    var delModal = document.querySelector('[data-delrole]');
+
+    function askDelete() {
+      var r = SDT.roleById(current);
+      if (!r || r.system) return;
+      var used = SDT.roleUsage(r.id);
+
+      document.querySelector('[data-dr-title]').textContent = 'Delete ' + r.name + '?';
+      document.querySelector('[data-dr-body]').textContent = used.length
+        ? r.name + ' is assigned to ' + used.length + ' ' + (used.length === 1 ? 'person' : 'people') +
+          ' — ' + used.map(function (s) { return SDT.fullName(s); }).join(', ') +
+          '. Choose the role they should have instead; nobody is left without one.'
+        : 'Nobody has this role, so nothing else changes.';
+
+      var move = document.querySelector('[data-dr-move]');
+      move.hidden = !used.length;
+      if (used.length) {
+        var sel = document.getElementById('drMove');
+        sel.innerHTML = SDT.roles().filter(function (x) { return x.id !== r.id; })
+          .map(function (x) {
+            return '<option value="' + x.id + '"' + (x.id === 'provider' ? ' selected' : '') + '>' + esc(x.name) + '</option>';
+          }).join('');
+        SD.comboRefresh(sel);
+      }
+
+      delModal.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-dr-cancel]').focus();
+    }
+
+    function closeDelete() {
+      delModal.hidden = true;
+      document.body.classList.remove('sd-locked');
+    }
+    document.querySelector('[data-dr-cancel]').addEventListener('click', closeDelete);
+    document.querySelector('[data-dr-scrim]').addEventListener('click', closeDelete);
+
+    document.querySelector('[data-dr-ok]').addEventListener('click', function () {
+      var r = SDT.roleById(current);
+      var used = SDT.roleUsage(r.id);
+      var moveTo = used.length ? document.getElementById('drMove').value : '';
+      SDT.deleteRole(r.id, moveTo);
+      closeDelete();
+      SD.toast('<b>' + esc(r.name) + '</b> deleted.' +
+        (used.length ? ' ' + used.length + ' moved to ' + esc(SDT.roleName(moveTo)) + '.' : ''));
+      select('owner');
+    });
+
+    /* ---------- Create a custom role (§47) --------------------------------- */
+
+    var nrModal = document.querySelector('[data-newrole]');
+
+    function paintNrOptions() {
+      var sel = document.getElementById('nrFrom');
+      sel.innerHTML = '<option value="">Blank role — nothing granted</option>' +
+        SDT.roles().filter(function (r) { return r.id !== 'owner'; }).map(function (r) {
+          return '<option value="' + r.id + '">' + esc(r.name) + ' (' + SDT.grantedCount(r) + ')</option>';
+        }).join('');
+      sel.value = 'provider';
+      SD.comboRefresh(sel);
+      paintNrNote();
+    }
+
+    function paintNrNote() {
+      var v = document.getElementById('nrFrom').value;
+      var r = v && SDT.roleById(v);
+      document.querySelector('[data-nr-note]').textContent = r
+        ? 'Copies ' + SDT.grantedCount(r) + ' permissions from ' + r.name + '. Adjust them afterwards.'
+        : 'Starts with nothing granted.';
+    }
+
+    document.querySelector('[data-new-role]').addEventListener('click', function () {
+      document.querySelector('[data-nr-form]').reset();
+      SD.clearErrors(document.querySelector('[data-nr-form]'));
+      paintNrOptions();
+      nrModal.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.getElementById('nrName').focus();
+    });
+
+    function closeNr() {
+      nrModal.hidden = true;
+      document.body.classList.remove('sd-locked');
+    }
+    document.querySelector('[data-nr-cancel]').addEventListener('click', closeNr);
+    document.querySelector('[data-nr-scrim]').addEventListener('click', closeNr);
+    document.getElementById('nrFrom').addEventListener('change', paintNrNote);
+
+    document.querySelector('[data-nr-form]').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var f = e.currentTarget;
+      SD.clearErrors(f);
+
+      var name = document.getElementById('nrName');
+      if (!name.value.trim()) { SD.setError(name, 'Give the role a name.'); name.focus(); return; }
+
+      var clash = SDT.roles().filter(function (r) {
+        return r.name.trim().toLowerCase() === name.value.trim().toLowerCase();
+      });
+      if (clash.length) { SD.setError(name, 'A role with this name already exists.'); name.focus(); return; }
+
+      var from = document.getElementById('nrFrom').value;
+      var base = from ? SDT.roleById(from) : null;
+
+      var made = SDT.saveRole({
+        name: name.value.trim(),
+        description: document.getElementById('nrDesc').value.trim() ||
+          (base ? 'Based on ' + base.name + '.' : 'A custom role.'),
+        permissions: base ? Object.assign({}, base.permissions) : {},
+        calendarScope: base ? base.calendarScope : 'own',
+        clientScope: base ? base.clientScope : 'served',
+        allLocations: base ? base.allLocations : true,
+        locationIds: base ? (base.locationIds || []).slice() : []
+      });
+
+      closeNr();
+      SD.toast('<b>' + esc(made.name) + '</b> created.');
+      select(made.id);
+    });
+
+    /* Leaving the page with unsaved permission changes. */
+    window.addEventListener('beforeunload', function (e) {
+      if (!dirty) return;
+      e.preventDefault();
+      e.returnValue = '';
+    });
+
+    /* ---------- Confirmation dialog ---------- */
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmFn = null;
+
+    function confirmDialog(o) {
+      document.querySelector('[data-confirm-title]').textContent = o.title;
+      document.querySelector('[data-confirm-body]').textContent = o.body;
+      document.querySelector('[data-confirm-ok]').textContent = o.okLabel || 'Delete';
+      confirmFn = o.onOk;
+      confirmCancelFn = o.onCancel || null;
+      confirmEl.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-confirm-cancel]').focus();
+      document.addEventListener('keydown', confirmKeys, true);
+    }
+    var confirmCancelFn = null;
+    function closeConfirm(viaCancel) {
+      confirmEl.hidden = true;
+      document.body.classList.remove('sd-locked');
+      document.removeEventListener('keydown', confirmKeys, true);
+      var back = confirmCancelFn;
+      confirmFn = null;
+      confirmCancelFn = null;
+      /* A dialog that changes a control has to be able to put it back
+         when the answer is no — otherwise the radio stays where the user
+         clicked it and the screen disagrees with the decision. */
+      if (viaCancel && back) back();
+    }
+    function confirmKeys(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeConfirm(true); return; }
+      if (e.key !== 'Tab') return;
+      var f = Array.prototype.filter.call(confirmEl.querySelectorAll('button'),
+        function (el) { return !!(el.offsetWidth || el.offsetHeight); });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmFn; closeConfirm(); if (fn) fn();
+    });
+
+    select('owner');
+
+  }());
+  </script>
+</body>
+</html>

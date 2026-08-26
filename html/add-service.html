@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Service — StyleDesk</title>
+
+  <!--
+    StyleDesk — Add Service
+    One form for add and edit. ?id= switches it to edit and reveals
+    the history, duplicate and archive actions.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px] min-h-screen flex flex-col">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
+             aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ===== Page ===== -->
+  <main class="flex-1 w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
+
+    <nav class="mb-3" aria-label="Breadcrumb">
+      <a href="services.html" class="inline-flex items-center gap-1.5 text-[13px] font-medium text-sub hover:text-ink transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        All Services
+      </a>
+    </nav>
+
+    <div class="flex flex-wrap items-start gap-x-4 gap-y-3 mb-5">
+      <div class="min-w-0">
+        <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight" data-title>Add Service</h1>
+        <p class="text-[13px] text-sub mt-1" data-sub>What a client books, and everything that has to line up for it to happen.</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2 shrink-0" data-status-wrap hidden>
+        <span data-status-badge></span>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-[210px_minmax(0,1fr)] gap-6 items-start">
+      <nav class="sd-formnav hidden lg:flex lg:flex-col" aria-label="Sections">
+          <a href="#sec-basic" class="sd-set__link" data-rail="basic">Basic information</a>
+          <a href="#sec-pricing" class="sd-set__link" data-rail="pricing">Pricing</a>
+          <a href="#sec-duration" class="sd-set__link" data-rail="duration">Duration & scheduling</a>
+          <a href="#sec-staff" class="sd-set__link" data-rail="staff">Staff</a>
+          <a href="#sec-location" class="sd-set__link" data-rail="location">Locations</a>
+          <a href="#sec-resource" class="sd-set__link" data-rail="resource">Resource requirements</a>
+          <a href="#sec-online" class="sd-set__link" data-rail="online">Online booking</a>
+          <a href="#sec-addons" class="sd-set__link" data-rail="addons">Add-ons</a>
+          <a href="#sec-client" class="sd-set__link" data-rail="client">Client requirements</a>
+          <a href="#sec-commission" class="sd-set__link" data-rail="commission">Commission</a>
+          <a href="#sec-cost" class="sd-set__link" data-rail="cost">Service cost</a>
+          <a href="#sec-notes" class="sd-set__link" data-rail="notes">Instructions</a>
+        <a href="#sec-check" class="sd-set__link" data-rail="check">Bookability check</a>
+        <a href="#sec-audit" class="sd-set__link" data-rail="audit" data-audit-link hidden>History</a>
+      </nav>
+
+      <form data-form novalidate class="space-y-5 min-w-0">
+        <div class="sd-alert sd-alert--danger" data-problems hidden></div>
+
+    <section class="sd-card" id="sec-basic" data-section="basic"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Basic information</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">What it is called and where it sits.</p></div><div class="grid sm:grid-cols-2 gap-4"><div class=""><label for="fName" class="block text-[13px] font-medium text-ink mb-1.5">Service name<span class="text-danger"> *</span></label><input id="fName" type="text" class="sd-input" placeholder="Women's Haircut" autocomplete="off" /><p class="text-[12px] text-danger mt-1.5" data-error-for="fName" hidden></p></div><div class=""><label for="fCategory" class="block text-[13px] font-medium text-ink mb-1.5">Category<span class="text-danger"> *</span></label><select id="fCategory" class="sd-input"></select><p class="text-[12px] text-danger mt-1.5" data-error-for="fCategory" hidden></p></div><div class=""><label for="fCode" class="block text-[13px] font-medium text-ink mb-1.5">Internal code</label><input id="fCode" type="text" class="sd-input" placeholder="HAIR-WC" autocomplete="off" /><p class="text-[12px] text-faint mt-1.5">Your own reference. Never shown to a client.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fCode" hidden></p></div><div><span class="block text-[13px] font-medium text-ink mb-2">Calendar colour</span><div class="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Calendar colour" data-colors></div></div></div><div class="mt-4 space-y-4"><div class=""><label for="fShort" class="block text-[13px] font-medium text-ink mb-1.5">Short description</label><input id="fShort" type="text" class="sd-input" placeholder="Consultation, cut and finish." autocomplete="off" maxlength="120" /><p class="text-[12px] text-faint mt-1.5">One line. Shown under the name on the booking page.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fShort" hidden></p></div><div class=""><label for="fDesc" class="block text-[13px] font-medium text-ink mb-1.5">Full description</label><textarea id="fDesc" rows="3" class="sd-input !h-auto py-2.5" placeholder="What the appointment actually involves."></textarea><p class="text-[12px] text-danger mt-1.5" data-error-for="fDesc" hidden></p></div></div></section>
+    <section class="sd-card" id="sec-pricing" data-section="pricing"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Pricing</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">What it costs, and who is allowed to vary that.</p></div><fieldset><legend class="block text-[13px] font-medium text-ink mb-2">Pricing type</legend><div class="grid sm:grid-cols-2 gap-2" data-pricing></div></fieldset><div class="grid sm:grid-cols-2 gap-4 mt-4"><div class=""><label for="fPrice" class="block text-[13px] font-medium text-ink mb-1.5">Base price</label><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-sub text-[13px] pointer-events-none">$</span><input id="fPrice" type="number" min="0" step="0.01" class="sd-input !pl-7" /></div><p class="text-[12px] text-danger mt-1.5" data-error-for="fPrice" hidden></p></div><div class=""><label for="fTaxCat" class="block text-[13px] font-medium text-ink mb-1.5">Tax category</label><select id="fTaxCat" class="sd-input"></select><p class="text-[12px] text-danger mt-1.5" data-error-for="fTaxCat" hidden></p></div></div><div class="divide-y divide-line mt-2 -mb-1"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fTaxable" type="checkbox" class="sd-check mt-0.5" checked /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Taxable</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Tax is added at checkout using the category above.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fStaffPrice" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Allow staff-specific prices</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">A senior stylist can charge more for the same service. Set each price on the Staff section.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fLocationPrice" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Allow location-specific prices</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">The same service can be priced differently at each site.</span></span></label></div></section>
+    <section class="sd-card" id="sec-duration" data-section="duration"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Duration & scheduling</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">How long the client is here, and how much of the calendar it takes.</p></div><div class="grid sm:grid-cols-3 gap-4"><div class=""><label for="fDuration" class="block text-[13px] font-medium text-ink mb-1.5">Service time<span class="text-danger"> *</span></label><input id="fDuration" type="number" min="0" max="480" step="5" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">Hands-on. The first stage for a multi-stage service.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fDuration" hidden></p></div><div class=""><label for="fProcessing" class="block text-[13px] font-medium text-ink mb-1.5">Processing time</label><input id="fProcessing" type="number" min="0" max="480" step="5" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">Colour developing, a mask setting. The staff member is free.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fProcessing" hidden></p></div><div class=""><label for="fFinish" class="block text-[13px] font-medium text-ink mb-1.5">Finish time</label><input id="fFinish" type="number" min="0" max="480" step="5" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">Hands-on again after processing.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fFinish" hidden></p></div><div class=""><label for="fCleanup" class="block text-[13px] font-medium text-ink mb-1.5">Cleanup</label><input id="fCleanup" type="number" min="0" max="480" step="5" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">The room or chair is held; the client has gone.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fCleanup" hidden></p></div><div class=""><label for="fBufferBefore" class="block text-[13px] font-medium text-ink mb-1.5">Buffer before</label><input id="fBufferBefore" type="number" min="0" max="480" step="5" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">Padding ahead of the appointment.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fBufferBefore" hidden></p></div><div class=""><label for="fBufferAfter" class="block text-[13px] font-medium text-ink mb-1.5">Buffer after</label><input id="fBufferAfter" type="number" min="0" max="480" step="5" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">Padding after it.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fBufferAfter" hidden></p></div></div><div class="sd-total mt-5" data-timeline></div></section>
+    <section class="sd-card" id="sec-staff" data-section="staff"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Staff</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Who can perform it, and on what terms.</p></div><div class="grid sm:grid-cols-2 gap-4 mb-4"><div class=""><label for="fStaffNeeded" class="block text-[13px] font-medium text-ink mb-1.5">Staff needed at once</label><input id="fStaffNeeded" type="number" min="1" max="6" step="1" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">Two for a couples treatment. Both have to be free for the slot to exist.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fStaffNeeded" hidden></p></div></div><div class="sd-tablewrap"><table class="sd-table min-w-[720px]"><caption class="sr-only">Staff eligible for this service</caption><thead><tr><th scope="col" class="w-10 !pr-0"><span class="sr-only">Eligible</span></th><th scope="col">Staff member</th><th scope="col" class="sd-table__num">Price</th><th scope="col" class="sd-table__num">Duration</th><th scope="col" class="sd-table__num">Commission</th><th scope="col">Skill</th><th scope="col">Online</th></tr></thead><tbody data-staff-rows></tbody></table></div><p class="text-[12px] text-danger mt-1.5" data-error-for="staff" hidden></p><p class="text-[12px] text-danger mt-1.5" data-error-for="staffNeeded" hidden></p><p class="text-[12px] text-faint mt-3">Blank price or duration means the service default applies.</p></section>
+    <section class="sd-card" id="sec-location" data-section="location"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Locations</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Where it is offered.</p></div><div class="divide-y divide-line -mt-1"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fAllLocations" type="checkbox" class="sd-check mt-0.5" checked /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Offered at every location</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Turn this off to choose sites, and to price or time the service differently at each.</span></span></label></div><div class="mt-4" data-locations></div><p class="text-[12px] text-danger mt-1.5" data-error-for="locations" hidden></p></section>
+    <section class="sd-card" id="sec-resource" data-section="resource"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Resource requirements</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">The physical things it cannot happen without. A slot only exists when every line here is free.</p></div><div class="divide-y divide-line -mt-1"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fRequiresResource" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">This service needs a resource</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">A chair, a room, a machine. Leave off for anything that only needs a person.</span></span></label></div><div class="mt-4 space-y-3" data-requirements></div><div class="mt-3" data-req-add hidden><button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-add-req><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Add another requirement</button><p class="text-[12px] text-faint mt-2">Every requirement has to be satisfiable at the same moment. A laser facial needs the room <em>and</em> the machine.</p></div><p class="text-[12px] text-danger mt-1.5" data-error-for="requirements" hidden></p><div class="sd-rule mt-5" data-rule></div></section>
+    <section class="sd-card" id="sec-check" data-section="check"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Will it actually be bookable?</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">The booking engine answers with everything above at once. This runs it for one day against real staff diaries, resource hours, maintenance and existing appointments — so a configuration that looks complete but can never offer a slot shows up here rather than on the booking page.</p></div><div class="flex flex-wrap items-end gap-3"><div class="w-[170px]"><label for="chkDate" class="block text-[13px] font-medium text-ink mb-1.5">Day</label><div class="relative" data-datepicker><input id="chkDate" type="text" readonly class="sd-input is-picker has-suffix !h-9" data-dp-input /><span class="absolute right-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><div class="sd-cal" data-dp-cal hidden></div></div></div><div class="w-[190px]"><label for="chkLoc" class="block text-[13px] font-medium text-ink mb-1.5">Location</label><select id="chkLoc" class="sd-input !h-9"></select></div><div class="w-[190px]"><label for="chkStaff" class="block text-[13px] font-medium text-ink mb-1.5">Staff</label><select id="chkStaff" class="sd-input !h-9"></select></div><button type="button" class="inline-flex items-center h-9 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-recheck>Check the day</button></div><p class="text-[12.5px] text-sub mt-4" data-check-rule></p><div class="mt-3" data-check-out></div></section>
+    <section class="sd-card" id="sec-online" data-section="online"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Online booking</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">What a client sees, and what they have to give to book it.</p></div><div class="divide-y divide-line -mt-1"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fOnline" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Available for online booking</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Clients can book it themselves. Only an active service can be offered.</span></span></label></div><p class="text-[12px] text-danger mt-1.5" data-error-for="onlineEnabled" hidden></p><div class="mt-4 space-y-4" data-online-fields><div class="grid sm:grid-cols-2 gap-4"><div class=""><label for="fOnlineName" class="block text-[13px] font-medium text-ink mb-1.5">Name shown to clients</label><input id="fOnlineName" type="text" class="sd-input" autocomplete="off" /><p class="text-[12px] text-faint mt-1.5">Leave blank to use the service name.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fOnlineName" hidden></p></div><div class=""><label for="fOnlineOrder" class="block text-[13px] font-medium text-ink mb-1.5">Display order</label><input id="fOnlineOrder" type="number" min="0" max="99" step="1" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">Lower numbers appear first within the category.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fOnlineOrder" hidden></p></div></div><div class=""><label for="fOnlineDesc" class="block text-[13px] font-medium text-ink mb-1.5">Description shown to clients</label><textarea id="fOnlineDesc" rows="2" class="sd-input !h-auto py-2.5" placeholder="Written for the client, not for staff."></textarea><p class="text-[12px] text-danger mt-1.5" data-error-for="fOnlineDesc" hidden></p></div><div class="grid sm:grid-cols-2 gap-4"><div class=""><label for="fMinAdvance" class="block text-[13px] font-medium text-ink mb-1.5">Minimum notice</label><input id="fMinAdvance" type="number" min="0" max="720" step="1" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">Hours ahead a client must book. 48 for anything needing a patch test.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fMinAdvance" hidden></p></div><div class=""><label for="fMaxWindow" class="block text-[13px] font-medium text-ink mb-1.5">Booking window</label><input id="fMaxWindow" type="number" min="1" max="365" step="1" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">How many days ahead the diary is open.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fMaxWindow" hidden></p></div></div><div class="divide-y divide-line"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fAllowNew" type="checkbox" class="sd-check mt-0.5" checked /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Bookable by new clients</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Off restricts it to people with a history here.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fAllowExisting" type="checkbox" class="sd-check mt-0.5" checked /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Bookable by existing clients</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed"></span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fRequireCard" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Card on file required</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Held against a late cancellation. Not charged at booking.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fRequireDeposit" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Deposit required</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Taken at the time of booking.</span></span></label></div><div class="grid sm:grid-cols-2 gap-4" data-deposit-fields hidden><div class=""><label for="fDepositType" class="block text-[13px] font-medium text-ink mb-1.5">Deposit type</label><select id="fDepositType" class="sd-input"></select><p class="text-[12px] text-danger mt-1.5" data-error-for="fDepositType" hidden></p></div><div class=""><label for="fDepositAmount" class="block text-[13px] font-medium text-ink mb-1.5">Deposit amount</label><input id="fDepositAmount" type="number" min="0" step="1" class="sd-input" /><p class="text-[12px] text-danger mt-1.5" data-error-for="fDepositAmount" hidden></p></div></div><div class=""><label for="fCancellation" class="block text-[13px] font-medium text-ink mb-1.5">Cancellation policy</label><textarea id="fCancellation" rows="2" class="sd-input !h-auto py-2.5" placeholder="Shown at the point of booking and repeated in the confirmation."></textarea><p class="text-[12px] text-danger mt-1.5" data-error-for="fCancellation" hidden></p></div></div></section>
+    <section class="sd-card" id="sec-addons" data-section="addons"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Add-ons</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Optional extras a client can attach when booking. They add price and time, so the calendar and the room are both held for longer.</p></div><div data-addons></div><p class="text-[12px] text-faint mt-3">Manage the library on <a href="service-addons.html" class="text-brand font-semibold hover:underline">Add-ons</a>.</p></section>
+    <section class="sd-card" id="sec-client" data-section="client"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Client requirements</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">What has to be in place before the appointment. Each is a gate, so each says whether it is required and whether it has to be done beforehand.</p></div><div class="sd-tablewrap"><table class="sd-table min-w-[520px]"><caption class="sr-only">Client requirements</caption><thead><tr><th scope="col">Requirement</th><th scope="col" class="w-[110px]">Required</th><th scope="col" class="w-[150px]">Before the visit</th></tr></thead><tbody data-client-rows></tbody></table></div><div class="grid sm:grid-cols-2 gap-4 mt-4"><div class=""><label for="fMinAge" class="block text-[13px] font-medium text-ink mb-1.5">Minimum age</label><input id="fMinAge" type="number" min="0" max="99" step="1" class="sd-input" /><p class="text-[12px] text-faint mt-1.5">Leave blank if there is no age restriction.</p><p class="text-[12px] text-danger mt-1.5" data-error-for="fMinAge" hidden></p></div></div></section>
+    <section class="sd-card" id="sec-commission" data-section="commission"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Commission</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">What the staff member earns from it.</p></div><div class="divide-y divide-line -mt-1"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fCommission" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Commission on this service</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed"></span></span></label></div><div class="mt-4 space-y-4" data-commission-fields hidden><div class="grid sm:grid-cols-2 gap-4"><div class=""><label for="fCommissionType" class="block text-[13px] font-medium text-ink mb-1.5">Commission type</label><select id="fCommissionType" class="sd-input"></select><p class="text-[12px] text-danger mt-1.5" data-error-for="fCommissionType" hidden></p></div><div class=""><label for="fCommissionValue" class="block text-[13px] font-medium text-ink mb-1.5">Value</label><input id="fCommissionValue" type="number" min="0" step="0.5" class="sd-input" /><p class="text-[12px] text-danger mt-1.5" data-error-for="fCommissionValue" hidden></p></div></div><div class="divide-y divide-line"><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fCommissionOverride" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Let a staff member have their own rate</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed">Set it against each person on the Staff section.</span></span></label><label class="flex items-start gap-3 py-3 cursor-pointer"><input id="fCommissionAddons" type="checkbox" class="sd-check mt-0.5" /><span class="min-w-0"><span class="block text-[13px] font-medium text-ink">Pay commission on add-ons too</span><span class="block text-[12px] text-sub mt-0.5 leading-relaxed"></span></span></label></div></div></section>
+    <section class="sd-card" id="sec-cost" data-section="cost"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Service cost</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">What it costs you to deliver. Nothing here is shown to a client — it is what makes the margin figure below mean anything.</p></div><div class="grid sm:grid-cols-4 gap-4"><div class=""><label for="fCostProduct" class="block text-[13px] font-medium text-ink mb-1.5">Product</label><input id="fCostProduct" type="number" min="0" step="0.01" class="sd-input" /><p class="text-[12px] text-danger mt-1.5" data-error-for="fCostProduct" hidden></p></div><div class=""><label for="fCostLabor" class="block text-[13px] font-medium text-ink mb-1.5">Labour</label><input id="fCostLabor" type="number" min="0" step="0.01" class="sd-input" /><p class="text-[12px] text-danger mt-1.5" data-error-for="fCostLabor" hidden></p></div><div class=""><label for="fCostConsumables" class="block text-[13px] font-medium text-ink mb-1.5">Consumables</label><input id="fCostConsumables" type="number" min="0" step="0.01" class="sd-input" /><p class="text-[12px] text-danger mt-1.5" data-error-for="fCostConsumables" hidden></p></div><div class=""><label for="fCostOther" class="block text-[13px] font-medium text-ink mb-1.5">Other</label><input id="fCostOther" type="number" min="0" step="0.01" class="sd-input" /><p class="text-[12px] text-danger mt-1.5" data-error-for="fCostOther" hidden></p></div></div><div class="sd-total mt-5" data-margin></div></section>
+    <section class="sd-card" id="sec-notes" data-section="notes"><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">Instructions</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">What the client is told, and when. Each block goes out on its own message.</p></div><div class="space-y-4" data-instructions></div></section>
+    <section class="sd-card" id="sec-audit" data-section="audit" data-audit-card hidden><div class="mb-4"><h2 class="text-[15px] font-semibold text-head">History</h2><p class="text-[12.5px] text-sub mt-1 leading-relaxed">Who changed what, and what it was before.</p></div><div data-audit></div></section>
+
+        <div class="sd-card !p-4">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button type="submit" class="inline-flex items-center h-10 px-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors" data-save>Save Service</button>
+            <button type="button" class="inline-flex items-center h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-save-draft>Save as Draft</button>
+            <a href="services.html" class="inline-flex items-center h-10 px-4 rounded-lg text-sub text-[13px] font-semibold hover:text-ink hover:bg-hover transition-colors">Cancel</a>
+            <div class="ml-auto flex items-center gap-2">
+              <button type="button" class="inline-flex items-center h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors" data-duplicate hidden>Duplicate</button>
+              <button type="button" class="inline-flex items-center h-10 px-4 rounded-lg border border-stroke bg-white text-danger text-[13px] font-semibold hover:bg-red-50 transition-colors" data-archive hidden>Archive</button>
+            </div>
+          </div>
+          <p class="text-[12px] text-faint mt-3" data-save-note>A draft keeps whatever you have. Saving it as a live service runs the full check first.</p>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title></h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body></p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Delete</button>
+        <button type="button" data-confirm-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/resources.js"></script>
+  <script src="assets/js/services.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script src="assets/js/bookings.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    /* When the row is too narrow to hold every section, the one you are
+       on can start off-screen to the right. Nudge it into view — without
+       scrolling the page itself, which scrollIntoView would do. */
+    (function () {
+      var nav = document.querySelector('[data-subnav]');
+      if (!nav) return;
+      var here = nav.querySelector('[aria-current="page"]');
+      if (!here) return;
+      var over = here.offsetLeft + here.offsetWidth - (nav.scrollLeft + nav.clientWidth);
+      if (over > 0) nav.scrollLeft += over + 4;
+      else if (here.offsetLeft < nav.scrollLeft) nav.scrollLeft = Math.max(0, here.offsetLeft - 4);
+    }());
+
+    var esc = SDR.esc;
+
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('id');
+    var existing = id ? SDS.byId(id) : null;
+    var form = document.querySelector('[data-form]');
+
+    if (id && !existing) {
+      form.innerHTML =
+        '<div class="sd-card text-center py-16">' +
+          '<h2 class="text-[17px] font-semibold text-head">That service no longer exists</h2>' +
+          '<p class="text-[13px] text-sub mt-1.5">It may have been deleted. The list below is current.</p>' +
+          '<div class="mt-5"><a href="services.html" class="inline-flex items-center h-10 px-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold">Back to all services</a></div>' +
+        '</div>';
+      document.querySelector('.sd-formnav').hidden = true;
+      return;
+    }
+
+    /* One working copy. Every control writes into it and every derived
+       view reads from it, so the timeline, the margin, the rule sentence
+       and the bookability check can never disagree with the form. */
+    var model = existing ? JSON.parse(JSON.stringify(existing)) : SDS.blank();
+
+    if (existing) {
+      document.title = 'Edit ' + existing.name + ' — StyleDesk';
+      document.querySelector('[data-title]').textContent = existing.name;
+      document.querySelector('[data-sub]').textContent =
+        SDS.categoryName(existing.categoryId) + ' · ' + SDS.priceText(existing) +
+        ' · ' + SDS.durationText(SDS.serviceMinutes(existing));
+      document.querySelector('[data-save]').textContent = 'Save Changes';
+      document.querySelector('[data-duplicate]').hidden = false;
+      document.querySelector('[data-archive]').hidden = existing.status === 'archived';
+      document.querySelector('[data-audit-card]').hidden = false;
+      document.querySelector('[data-audit-link]').hidden = false;
+      document.querySelector('[data-status-wrap]').hidden = false;
+    }
+
+    function num(v) { var n = Number(v); return isNaN(n) ? 0 : n; }
+    function val(id) { return document.getElementById(id).value; }
+    function setVal(id, v) { document.getElementById(id).value = v == null ? '' : v; }
+    function checked(id) { return document.getElementById(id).checked; }
+    function setChecked(id, v) { document.getElementById(id).checked = !!v; }
+
+    /* ================= 5. Basic ================= */
+
+    var catSel = document.getElementById('fCategory');
+    catSel.innerHTML = '<option value="">Choose a category…</option>' +
+      SDS.categories().filter(function (c) { return c.active || c.id === model.categoryId; })
+        .map(function (c) {
+          return '<option value="' + c.id + '">' + esc(c.name) + (c.active ? '' : ' (inactive)') + '</option>';
+        }).join('');
+
+    var colorBox = document.querySelector('[data-colors]');
+    function paintColors() {
+      colorBox.innerHTML = SDS.COLORS.map(function (c) {
+        var on = c.id === model.color;
+        return '<button type="button" role="radio" aria-checked="' + on + '" data-color="' + c.id + '"' +
+          ' class="sd-swatchbtn' + (on ? ' is-on' : '') + '" style="--sw:' + c.hex + '"' +
+          ' aria-label="' + c.label + '"><span class="sd-swatchbtn__dot"></span></button>';
+      }).join('');
+    }
+    colorBox.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-color]');
+      if (!b) return;
+      model.color = b.dataset.color;
+      paintColors();
+    });
+
+    /* ================= 6. Pricing ================= */
+
+    var pricingBox = document.querySelector('[data-pricing]');
+    function paintPricing() {
+      pricingBox.innerHTML = SDS.PRICING_TYPES.map(function (t) {
+        var on = t.id === model.pricingType;
+        return '<label class="sd-pick' + (on ? ' is-on' : '') + '">' +
+          '<input type="radio" name="pricing" value="' + t.id + '" class="sd-radio"' + (on ? ' checked' : '') + ' />' +
+          '<span class="min-w-0"><span class="block text-[13px] font-semibold text-ink">' + esc(t.label) + '</span>' +
+          '<span class="block text-[12px] text-sub mt-0.5 leading-snug">' + esc(t.note) + '</span></span></label>';
+      }).join('');
+    }
+    pricingBox.addEventListener('change', function (e) {
+      if (!e.target.matches('[name="pricing"]')) return;
+      model.pricingType = e.target.value;
+      paintPricing();
+      syncPricing();
+      paintMargin();
+    });
+
+    /* A price box on a Free service is a contradiction the form should
+       not let you write down. */
+    function syncPricing() {
+      var needs = SDS.pricingMeta(model.pricingType).needsPrice;
+      var box = document.getElementById('fPrice');
+      box.disabled = !needs;
+      box.closest('div').parentNode.classList.toggle('opacity-50', !needs);
+      if (!needs) box.value = '';
+    }
+
+    document.getElementById('fTaxCat').innerHTML =
+      SDS.TAX_CATEGORIES.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('');
+    document.getElementById('fDepositType').innerHTML =
+      SDS.DEPOSIT_TYPES.map(function (t) { return '<option value="' + t.id + '">' + esc(t.label) + '</option>'; }).join('');
+    document.getElementById('fCommissionType').innerHTML =
+      SDS.COMMISSION_TYPES.map(function (t) { return '<option value="' + t.id + '">' + esc(t.label) + '</option>'; }).join('');
+
+    /* ================= 7. Duration ================= */
+
+    var TIME_FIELDS = ['fDuration', 'fProcessing', 'fFinish', 'fCleanup', 'fBufferBefore', 'fBufferAfter'];
+
+    function readTimes() {
+      model.durationMin = num(val('fDuration'));
+      model.processingMin = num(val('fProcessing'));
+      model.finishMin = num(val('fFinish'));
+      model.cleanupMin = num(val('fCleanup'));
+      model.bufferBeforeMin = num(val('fBufferBefore'));
+      model.bufferAfterMin = num(val('fBufferAfter'));
+    }
+
+    /* Six number boxes do not add up to an intuition about the day.
+       The bar does: it shows what the client experiences against what
+       the calendar loses, which is the difference people get wrong. */
+    function paintTimeline() {
+      var seg = [
+        { k: 'bufferBeforeMin', label: 'Buffer', cls: 'sd-seg2--buffer' },
+        { k: 'durationMin',     label: 'Service', cls: 'sd-seg2--service' },
+        { k: 'processingMin',   label: 'Processing', cls: 'sd-seg2--processing' },
+        { k: 'finishMin',       label: 'Finish', cls: 'sd-seg2--service' },
+        { k: 'cleanupMin',      label: 'Cleanup', cls: 'sd-seg2--cleanup' },
+        { k: 'bufferAfterMin',  label: 'Buffer', cls: 'sd-seg2--buffer' }
+      ].filter(function (s) { return num(model[s.k]) > 0; });
+
+      var total = SDS.blockingMinutes(model);
+      var service = SDS.serviceMinutes(model);
+      var box = document.querySelector('[data-timeline]');
+
+      if (!total) {
+        box.innerHTML = '<p class="text-[13px] text-sub">Give the service a time and the shape of the appointment appears here.</p>';
+        return;
+      }
+
+      box.innerHTML =
+        '<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-2.5">' +
+          '<span class="text-[13px] font-semibold text-head">' + SDS.durationText(service) + ' with the client</span>' +
+          '<span class="text-[13px] text-sub">' + SDS.durationText(total) + ' off the calendar</span>' +
+          (num(model.processingMin) > 0
+            ? '<span class="text-[12px] text-sub">Staff free for ' + SDS.durationText(model.processingMin) + ' of it</span>'
+            : '') +
+        '</div>' +
+        '<div class="sd-seg2" role="img" aria-label="' + SDS.durationText(total) + ' total: ' +
+          seg.map(function (s) { return s.label + ' ' + SDS.durationText(model[s.k]); }).join(', ') + '">' +
+          seg.map(function (s) {
+            return '<span class="sd-seg2__part ' + s.cls + '" style="flex:' + num(model[s.k]) + '"' +
+                   ' title="' + s.label + ' — ' + SDS.durationText(model[s.k]) + '"></span>';
+          }).join('') +
+        '</div>' +
+        '<div class="flex flex-wrap gap-x-4 gap-y-1 mt-2.5">' +
+          seg.map(function (s) {
+            return '<span class="inline-flex items-center gap-1.5 text-[11.5px] text-sub">' +
+              '<span class="sd-swatch ' + s.cls.replace('sd-seg2--', 'sd-swatch--t') + '"></span>' +
+              s.label + ' ' + SDS.durationText(model[s.k]) + '</span>';
+          }).join('') +
+        '</div>';
+    }
+
+    /* ================= 8. Staff ================= */
+
+    function staffRowFor(staffId) {
+      var hit = (model.staff || []).filter(function (r) { return r.staffId === staffId; })[0];
+      if (hit) return hit;
+      hit = { staffId: staffId, eligible: false, price: '', durationMin: '', commission: '',
+              skill: (SD.staffById(staffId) || {}).skill || 'Standard', online: true };
+      model.staff.push(hit);
+      return hit;
+    }
+
+    function paintStaff() {
+      var body = document.querySelector('[data-staff-rows]');
+      var allowPrice = model.allowStaffPrice;
+      var allowComm = model.commission.enabled && model.commission.staffOverride;
+
+      body.innerHTML = SD.STAFF.map(function (person) {
+        var r = staffRowFor(person.id);
+        var off = !r.eligible;
+        var where = person.locations.map(function (l) { return SDR.locationName(l); }).join(', ');
+
+        function cell(kind, value, ph, disabled) {
+          return '<input type="' + (kind === 'skill' ? 'text' : 'number') + '" ' +
+            'class="sd-input !h-8 !text-[12.5px] w-[86px] text-right" ' +
+            'data-staff-field="' + kind + '" data-staff-id="' + person.id + '" ' +
+            'value="' + esc(value) + '" placeholder="' + ph + '"' +
+            (disabled ? ' disabled' : '') + ' min="0" step="0.5" ' +
+            'aria-label="' + kind + ' for ' + esc(person.name) + '" />';
+        }
+
+        return '<tr' + (off ? ' class="opacity-55"' : '') + '>' +
+          '<td class="!pr-0"><input type="checkbox" class="sd-check" data-staff-eligible="' + person.id + '"' +
+            (r.eligible ? ' checked' : '') + ' aria-label="' + esc(person.name) + ' can perform this service" /></td>' +
+          '<td><span class="block font-semibold text-head">' + esc(person.name) + '</span>' +
+            '<span class="block text-[11.5px] text-sub">' + esc(person.role) + ' · ' + esc(where) + '</span></td>' +
+          '<td class="sd-table__num">' + cell('price', r.price, allowPrice ? 'default' : '—', off || !allowPrice) + '</td>' +
+          '<td class="sd-table__num">' + cell('durationMin', r.durationMin, 'default', off) + '</td>' +
+          '<td class="sd-table__num">' + cell('commission', r.commission, allowComm ? 'default' : '—', off || !allowComm) + '</td>' +
+          '<td><select class="sd-input !h-8 !text-[12.5px] w-[110px]" data-staff-field="skill" data-staff-id="' + person.id + '"' +
+            (off ? ' disabled' : '') + ' aria-label="Skill level for ' + esc(person.name) + '">' +
+            SD.SKILL_LEVELS.map(function (s) {
+              return '<option value="' + s + '"' + (s === r.skill ? ' selected' : '') + '>' + s + '</option>';
+            }).join('') + '</select></td>' +
+          '<td><input type="checkbox" class="sd-check" data-staff-field="online" data-staff-id="' + person.id + '"' +
+            (r.online ? ' checked' : '') + (off ? ' disabled' : '') +
+            ' aria-label="' + esc(person.name) + ' bookable online for this service" /></td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    document.querySelector('[data-staff-rows]').addEventListener('change', function (e) {
+      var elig = e.target.closest('[data-staff-eligible]');
+      if (elig) {
+        staffRowFor(elig.dataset.staffEligible).eligible = elig.checked;
+        paintStaff(); paintRule(); runCheck();
+        return;
+      }
+      var f = e.target.closest('[data-staff-field]');
+      if (!f) return;
+      var row = staffRowFor(f.dataset.staffId);
+      var key = f.dataset.staffField;
+      row[key] = key === 'online' ? f.checked : f.value;
+      if (key === 'durationMin') runCheck();
+    });
+
+    document.getElementById('fStaffNeeded').addEventListener('input', function () {
+      model.staffNeeded = Math.max(1, num(this.value) || 1);
+      paintRule(); runCheck();
+    });
+
+    /* ================= 9. Locations ================= */
+
+    function locRowFor(locationId) {
+      var hit = (model.locations || []).filter(function (l) { return l.locationId === locationId; })[0];
+      if (hit) return hit;
+      hit = { locationId: locationId, enabled: false, price: '', durationMin: '' };
+      model.locations.push(hit);
+      return hit;
+    }
+
+    function paintLocations() {
+      var box = document.querySelector('[data-locations]');
+      if (model.allLocations) {
+        box.innerHTML = '<p class="text-[13px] text-sub">Offered at all ' + SDR.LOCATIONS.length +
+          ' locations: ' + SDR.LOCATIONS.map(function (l) { return esc(l.name); }).join(', ') + '.</p>';
+        return;
+      }
+
+      box.innerHTML = '<div class="space-y-2.5">' + SDR.LOCATIONS.map(function (l) {
+        var r = locRowFor(l.id);
+        var here = SDS.eligibleIds(model).filter(function (sid) {
+          var p = SD.staffById(sid);
+          return p && p.locations.indexOf(l.id) !== -1;
+        });
+        var need = num(model.staffNeeded) || 1;
+
+        /* The count is the useful part: "enabled here" means nothing if
+           nobody eligible works at this site, and that is exactly the
+           mistake that produces a live service with no slots. */
+        var staffNote = !r.enabled ? ''
+          : here.length === 0
+            ? '<span class="text-danger">No eligible staff work here</span>'
+            : here.length < need
+              ? '<span class="text-danger">Only ' + here.length + ' of the ' + need + ' this needs</span>'
+              : here.length + ' eligible ' + (here.length === 1 ? 'person' : 'people');
+
+        return '<div class="sd-locrow' + (r.enabled ? ' is-on' : '') + '">' +
+          '<label class="flex items-start gap-3 cursor-pointer min-w-0 flex-1">' +
+            '<input type="checkbox" class="sd-check mt-0.5" data-loc-on="' + l.id + '"' +
+              (r.enabled ? ' checked' : '') + ' aria-label="Offer at ' + esc(l.name) + '" />' +
+            '<span class="min-w-0"><span class="block text-[13px] font-semibold text-ink">' + esc(l.name) + '</span>' +
+            '<span class="block text-[12px] text-sub mt-0.5">' + staffNote + '</span></span>' +
+          '</label>' +
+          (r.enabled ? '<div class="flex items-center gap-2 shrink-0">' +
+            '<input type="number" min="0" step="0.01" class="sd-input !h-8 !text-[12.5px] w-[92px] text-right"' +
+              ' data-loc-field="price" data-loc-id="' + l.id + '" value="' + esc(r.price) + '"' +
+              ' placeholder="' + (model.allowLocationPrice ? 'price' : '—') + '"' +
+              (model.allowLocationPrice ? '' : ' disabled') +
+              ' aria-label="Price at ' + esc(l.name) + '" />' +
+            '<input type="number" min="0" step="5" class="sd-input !h-8 !text-[12.5px] w-[86px] text-right"' +
+              ' data-loc-field="durationMin" data-loc-id="' + l.id + '" value="' + esc(r.durationMin) + '"' +
+              ' placeholder="mins" aria-label="Duration at ' + esc(l.name) + '" />' +
+          '</div>' : '') +
+        '</div>';
+      }).join('') + '</div>' +
+      '<p class="text-[12px] text-faint mt-3">Blank price or duration means the service default applies here.</p>';
+    }
+
+    document.querySelector('[data-locations]').addEventListener('change', function (e) {
+      var on = e.target.closest('[data-loc-on]');
+      if (on) {
+        locRowFor(on.dataset.locOn).enabled = on.checked;
+        paintLocations(); paintRule(); fillCheckControls(); runCheck();
+        return;
+      }
+      var f = e.target.closest('[data-loc-field]');
+      if (!f) return;
+      locRowFor(f.dataset.locId)[f.dataset.locField] = f.value;
+      if (f.dataset.locField === 'durationMin') runCheck();
+    });
+
+    /* ================= 10. Resources ================= */
+
+    var reqSeq = 0;
+
+    function paintRequirements() {
+      var box = document.querySelector('[data-requirements]');
+      document.querySelector('[data-req-add]').hidden = !model.requiresResource;
+
+      if (!model.requiresResource) {
+        box.innerHTML = '<p class="text-[13px] text-sub">Nothing physical is needed. The slot depends on staff and the location only.</p>';
+        return;
+      }
+      if (!model.requirements.length) {
+        box.innerHTML = '<p class="text-[13px] text-danger">Resources are required but none are listed yet.</p>';
+        return;
+      }
+
+      box.innerHTML = model.requirements.map(function (r, i) {
+        var byType = r.mode === 'type';
+        return '<div class="sd-req" data-req="' + i + '">' +
+          '<div class="flex items-start gap-3">' +
+            '<div class="sd-req__n">' + (i + 1) + '</div>' +
+            '<div class="min-w-0 flex-1 space-y-3">' +
+
+              '<div class="flex flex-wrap gap-1.5">' +
+                '<label class="sd-radiochip' + (byType ? ' is-on' : '') + '">' +
+                  '<input type="radio" name="mode-' + i + '" value="type" class="sr-only"' + (byType ? ' checked' : '') +
+                  ' data-req-mode="' + i + '" />Any of a type</label>' +
+                '<label class="sd-radiochip' + (byType ? '' : ' is-on') + '">' +
+                  '<input type="radio" name="mode-' + i + '" value="specific" class="sr-only"' + (byType ? '' : ' checked') +
+                  ' data-req-mode="' + i + '" />One specific resource</label>' +
+              '</div>' +
+
+              '<div class="grid sm:grid-cols-2 gap-3">' +
+                (byType
+                  ? '<div><label class="sd-minilabel" for="reqType' + i + '">Resource type</label>' +
+                      '<select id="reqType' + i + '" class="sd-input !h-9" data-req-field="typeId" data-req-i="' + i + '">' +
+                      '<option value="">Choose a type…</option>' +
+                      SDR.types().map(function (t) {
+                        return '<option value="' + t.id + '"' + (t.id === r.typeId ? ' selected' : '') + '>' +
+                               esc(t.name) + '</option>';
+                      }).join('') + '</select></div>'
+                  : '<div><label class="sd-minilabel" for="reqRes' + i + '">Resource</label>' +
+                      '<select id="reqRes' + i + '" class="sd-input !h-9" data-req-field="resourceId" data-req-i="' + i + '">' +
+                      '<option value="">Choose a resource…</option>' +
+                      SDR.resources().map(function (res) {
+                        return '<option value="' + res.id + '"' + (res.id === r.resourceId ? ' selected' : '') + '>' +
+                               esc(res.name) + ' — ' + esc(SDR.locationName(res.locationId)) + '</option>';
+                      }).join('') + '</select></div>') +
+                '<div class="grid grid-cols-2 gap-3">' +
+                  '<div><label class="sd-minilabel" for="reqQty' + i + '">How many</label>' +
+                    '<input id="reqQty' + i + '" type="number" min="1" max="10" step="1" class="sd-input !h-9"' +
+                    ' data-req-field="quantity" data-req-i="' + i + '" value="' + esc(r.quantity) + '" /></div>' +
+                  (byType
+                    ? '<div><label class="sd-minilabel" for="reqCap' + i + '">Min. capacity</label>' +
+                        '<input id="reqCap' + i + '" type="number" min="1" max="10" step="1" class="sd-input !h-9"' +
+                        ' data-req-field="minCapacity" data-req-i="' + i + '" value="' + esc(r.minCapacity) + '" /></div>'
+                    : '<div></div>') +
+                '</div>' +
+              '</div>' +
+
+              '<div class="flex flex-wrap items-center gap-x-5 gap-y-2">' +
+                '<label class="inline-flex items-center gap-2 cursor-pointer text-[12.5px] text-ink">' +
+                  '<input type="checkbox" class="sd-check" data-req-field="autoAssign" data-req-i="' + i + '"' +
+                  (r.autoAssign ? ' checked' : '') + ' />Assign one automatically</label>' +
+                '<label class="inline-flex items-center gap-2 cursor-pointer text-[12.5px] text-ink">' +
+                  '<input type="checkbox" class="sd-check" data-req-field="allowOverride" data-req-i="' + i + '"' +
+                  (r.allowOverride ? ' checked' : '') + ' />Staff can change it</label>' +
+              '</div>' +
+              '<p class="text-[12px] text-danger" data-error-for="requirement-' + i + '" hidden></p>' +
+            '</div>' +
+            '<button type="button" class="sd-iconbtn shrink-0" data-req-remove="' + i + '" aria-label="Remove requirement ' + (i + 1) + '">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    document.querySelector('[data-requirements]').addEventListener('change', function (e) {
+      var mode = e.target.closest('[data-req-mode]');
+      if (mode) {
+        var r = model.requirements[Number(mode.dataset.reqMode)];
+        r.mode = mode.value;
+        /* Switching mode clears the other side rather than leaving a
+           stale id that the engine would silently ignore. */
+        if (r.mode === 'type') r.resourceId = ''; else r.typeId = '';
+        paintRequirements(); paintRule(); runCheck();
+        return;
+      }
+      var f = e.target.closest('[data-req-field]');
+      if (!f) return;
+      var row = model.requirements[Number(f.dataset.reqI)];
+      var key = f.dataset.reqField;
+      row[key] = (key === 'autoAssign' || key === 'allowOverride') ? f.checked : f.value;
+      paintRule(); runCheck();
+      if (key === 'typeId' || key === 'resourceId') paintRequirements();
+    });
+
+    document.querySelector('[data-requirements]').addEventListener('click', function (e) {
+      var rm = e.target.closest('[data-req-remove]');
+      if (!rm) return;
+      model.requirements.splice(Number(rm.dataset.reqRemove), 1);
+      paintRequirements(); paintRule(); runCheck();
+    });
+
+    document.querySelector('[data-add-req]').addEventListener('click', function () {
+      reqSeq++;
+      model.requirements.push({
+        id: 'q' + (model.requirements.length + 1 + reqSeq), mode: 'type', typeId: '', resourceId: '',
+        quantity: 1, minCapacity: 1, autoAssign: true, allowOverride: true,
+        bufferBeforeMin: 0, bufferAfterMin: 0
+      });
+      paintRequirements(); paintRule();
+      var last = document.querySelector('[data-requirements] [data-req]:last-of-type select');
+      if (last) last.focus();
+    });
+
+    /* §24 read back in words. Someone who has just filled in six sections
+       should be able to check the sentence rather than re-read the form. */
+    function paintRule() {
+      var loc = SDS.locationIds(model)[0];
+      document.querySelector('[data-rule]').innerHTML =
+        '<span class="text-[12px] font-semibold uppercase tracking-wide text-faint">Bookable when</span>' +
+        '<p class="text-[14px] font-semibold text-head mt-1.5">' + esc(SDS.ruleText(model, loc)) + '</p>' +
+        '<p class="text-[12px] text-sub mt-1.5">All of it at the same moment. If any part is busy, the slot is not offered.</p>';
+    }
+
+    /* ================= §24 bookability check ================= */
+
+    var chkDp = null;
+    var chkState = { date: SDR.today(1) };
+
+    function fillCheckControls() {
+      var locs = SDS.locationIds(model);
+      var locSel = document.getElementById('chkLoc');
+      var prev = locSel.value;
+      locSel.innerHTML = locs.length
+        ? locs.map(function (l) { return '<option value="' + l + '">' + esc(SDR.locationName(l)) + '</option>'; }).join('')
+        : '<option value="">No location chosen</option>';
+      if (locs.indexOf(prev) !== -1) locSel.value = prev;
+
+      var staffSel = document.getElementById('chkStaff');
+      var prevS = staffSel.value;
+      var ids = SDS.staffAt(model, locSel.value);
+      staffSel.innerHTML = '<option value="">Anyone eligible</option>' +
+        ids.map(function (s) { return '<option value="' + s + '">' + esc(SD.staffName(s)) + '</option>'; }).join('');
+      if (ids.indexOf(prevS) !== -1) staffSel.value = prevS;
+
+      /* These two selects are rebuilt whenever the locations or the
+         eligible staff change. The combo that replaced them holds its own
+         label, so without this it keeps showing the placeholder it was
+         built with while the select underneath holds the real value. */
+      SD.comboRefresh(locSel);
+      SD.comboRefresh(staffSel);
+    }
+
+    function runCheck() {
+      readTimes();
+      paintTimeline();
+      var out = document.querySelector('[data-check-out]');
+      var locId = document.getElementById('chkLoc').value;
+      var staffId = document.getElementById('chkStaff').value;
+
+      document.querySelector('[data-check-rule]').textContent =
+        SDS.ruleText(model, locId) + ' — on ' + SDR.dateShort(chkState.date) + '.';
+
+      if (!locId) {
+        out.innerHTML = '<p class="text-[13px] text-sub">Choose a location above and this fills in.</p>';
+        return;
+      }
+      if (!SDS.eligibleIds(model).length) {
+        out.innerHTML = '<div class="sd-alert sd-alert--warn">No one is eligible yet, so every slot fails on staff. Tick someone on the Staff section.</div>';
+        return;
+      }
+      if (!(SDS.serviceMinutes(model) > 0)) {
+        out.innerHTML = '<div class="sd-alert sd-alert--warn">Give the service a time and the day fills in.</div>';
+        return;
+      }
+
+      var rows = SDS.daySlots(model, {
+        date: chkState.date, locationId: locId, staffId: staffId || undefined,
+        from: '09:00', to: '19:00', stepMin: 30
+      });
+
+      var free = rows.filter(function (r) { return r.result.ok; });
+
+      /* The reasons matter more than the count. Grouped, because
+         "all six chairs are booked" said six times is noise. */
+      var reasons = {};
+      rows.forEach(function (r) {
+        if (r.result.ok) return;
+        r.result.failures.forEach(function (f) {
+          reasons[f.detail] = (reasons[f.detail] || 0) + 1;
+        });
+      });
+
+      out.innerHTML =
+        '<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">' +
+          '<span class="text-[15px] font-bold ' + (free.length ? 'text-head' : 'text-danger') + '">' +
+            free.length + ' of ' + rows.length + '</span>' +
+          '<span class="text-[13px] text-sub">half-hour starts are bookable</span>' +
+        '</div>' +
+        '<div class="sd-slots">' + rows.map(function (r) {
+          var why = r.result.ok
+            ? 'Free — ' + (r.result.assigned.map(function (a) { return a.name; }).join(' + ') || 'no resource needed') +
+              ' · ' + r.result.staff.map(function (s) { return SD.staffName(s); }).join(', ')
+            : r.result.failures.map(function (f) { return f.detail; }).join('; ');
+          return '<span class="sd-slot' + (r.result.ok ? ' is-ok' : '') + '" title="' + esc(r.label + ' — ' + why) + '">' +
+                 r.label + '</span>';
+        }).join('') + '</div>' +
+        (Object.keys(reasons).length
+          ? '<div class="mt-3.5"><p class="text-[12px] font-semibold uppercase tracking-wide text-faint mb-1.5">Why the rest are not offered</p>' +
+            '<ul class="space-y-1">' + Object.keys(reasons).sort(function (a, b) { return reasons[b] - reasons[a]; })
+              .map(function (k) {
+                return '<li class="text-[12.5px] text-sub"><span class="tabular-nums font-semibold text-ink">' +
+                       reasons[k] + '×</span> ' + esc(k) + '</li>';
+              }).join('') + '</ul></div>'
+          : '') +
+        (free.length ? '' :
+          '<div class="sd-alert sd-alert--warn mt-3.5">Nothing is bookable on this day. That is what a client would see.</div>');
+    }
+
+    ['chkLoc', 'chkStaff'].forEach(function (k) {
+      document.getElementById(k).addEventListener('change', function () {
+        if (k === 'chkLoc') fillCheckControls();
+        runCheck();
+      });
+    });
+    document.querySelector('[data-recheck]').addEventListener('click', runCheck);
+
+    /* ================= 14. Online ================= */
+
+    function syncOnline() {
+      var on = checked('fOnline');
+      document.querySelector('[data-online-fields]').classList.toggle('opacity-45', !on);
+      document.querySelector('[data-online-fields]').querySelectorAll('input, textarea, select').forEach(function (el) {
+        el.disabled = !on;
+      });
+      if (on) document.querySelector('[data-deposit-fields]').hidden = !checked('fRequireDeposit');
+    }
+    document.getElementById('fOnline').addEventListener('change', syncOnline);
+    document.getElementById('fRequireDeposit').addEventListener('change', function () {
+      document.querySelector('[data-deposit-fields]').hidden = !this.checked;
+    });
+
+    /* ================= 15. Add-ons ================= */
+
+    function paintAddons() {
+      var box = document.querySelector('[data-addons]');
+      var list = SDS.addons().filter(function (a) { return a.active; });
+      if (!list.length) {
+        box.innerHTML = '<p class="text-[13px] text-sub">No add-ons in the library yet.</p>';
+        return;
+      }
+      box.innerHTML = '<div class="grid sm:grid-cols-2 gap-2">' + list.map(function (a) {
+        var on = (model.addonIds || []).indexOf(a.id) !== -1;
+        var bits = [SDS.money(a.price)];
+        if (num(a.durationMin)) bits.push('+' + SDS.durationText(a.durationMin));
+        if (a.requiresResource) bits.push('needs ' + SDR.typeName(a.typeId));
+        return '<label class="sd-pick' + (on ? ' is-on' : '') + '">' +
+          '<input type="checkbox" class="sd-check" data-addon="' + a.id + '"' + (on ? ' checked' : '') + ' />' +
+          '<span class="min-w-0"><span class="block text-[13px] font-semibold text-ink">' + esc(a.name) + '</span>' +
+          '<span class="block text-[12px] text-sub mt-0.5">' + esc(bits.join(' · ')) + '</span></span></label>';
+      }).join('') + '</div>';
+    }
+
+    document.querySelector('[data-addons]').addEventListener('change', function (e) {
+      var b = e.target.closest('[data-addon]');
+      if (!b) return;
+      var at = model.addonIds.indexOf(b.dataset.addon);
+      if (b.checked && at === -1) model.addonIds.push(b.dataset.addon);
+      if (!b.checked && at !== -1) model.addonIds.splice(at, 1);
+      paintAddons();
+    });
+
+    /* ================= 16. Client requirements ================= */
+
+    function paintClientReqs() {
+      document.querySelector('[data-client-rows]').innerHTML =
+        SDS.CLIENT_REQUIREMENTS.map(function (r) {
+          var v = model.clientRequirements[r.id] || { required: false, before: false };
+          return '<tr' + (v.required ? '' : ' class="opacity-60"') + '>' +
+            '<td><span class="block font-semibold text-head">' + esc(r.label) + '</span>' +
+              '<span class="block text-[11.5px] text-sub">' + esc(r.note) + '</span></td>' +
+            '<td><label class="inline-flex items-center gap-2 cursor-pointer">' +
+              '<input type="checkbox" class="sd-check" data-req-client="' + r.id + '" data-key="required"' +
+              (v.required ? ' checked' : '') + ' aria-label="' + esc(r.label) + ' required" />' +
+              '<span class="text-[12.5px] text-ink">Required</span></label></td>' +
+            '<td><label class="inline-flex items-center gap-2 cursor-pointer">' +
+              '<input type="checkbox" class="sd-check" data-req-client="' + r.id + '" data-key="before"' +
+              (v.before ? ' checked' : '') + (v.required ? '' : ' disabled') +
+              ' aria-label="' + esc(r.label) + ' before the appointment" />' +
+              '<span class="text-[12.5px] text-ink">Beforehand</span></label></td>' +
+          '</tr>';
+        }).join('');
+    }
+
+    document.querySelector('[data-client-rows]').addEventListener('change', function (e) {
+      var b = e.target.closest('[data-req-client]');
+      if (!b) return;
+      var key = b.dataset.reqClient;
+      var v = model.clientRequirements[key] || { required: false, before: false };
+      v[b.dataset.key] = b.checked;
+      /* "Beforehand" on something that is not required is meaningless. */
+      if (!v.required) v.before = false;
+      model.clientRequirements[key] = v;
+      paintClientReqs();
+    });
+
+    /* ================= 17. Commission ================= */
+
+    function syncCommission() {
+      var on = checked('fCommission');
+      document.querySelector('[data-commission-fields]').hidden = !on;
+      model.commission.enabled = on;
+      model.commission.staffOverride = checked('fCommissionOverride');
+      paintStaff();
+      paintMargin();
+    }
+    ['fCommission', 'fCommissionOverride'].forEach(function (k) {
+      document.getElementById(k).addEventListener('change', syncCommission);
+    });
+    ['fCommissionType', 'fCommissionValue'].forEach(function (k) {
+      document.getElementById(k).addEventListener('input', function () {
+        model.commission.type = val('fCommissionType');
+        model.commission.value = num(val('fCommissionValue'));
+        paintMargin();
+      });
+    });
+
+    /* ================= 18. Cost ================= */
+
+    /* Four cost boxes and a price are only interesting as the number
+       between them. Commission comes out too, because a 35% cut on a
+       $65 haircut is the difference between a good margin and none. */
+    function paintMargin() {
+      model.cost = {
+        product: num(val('fCostProduct')), labor: num(val('fCostLabor')),
+        consumables: num(val('fCostConsumables')), other: num(val('fCostOther'))
+      };
+      var cost = model.cost.product + model.cost.labor + model.cost.consumables + model.cost.other;
+      var price = SDS.pricingMeta(model.pricingType).needsPrice ? num(val('fPrice')) : 0;
+
+      var comm = 0;
+      if (model.commission.enabled) {
+        comm = model.commission.type === 'percent'
+          ? price * num(model.commission.value) / 100
+          : num(model.commission.value);
+      }
+
+      var margin = price - cost - comm;
+      var box = document.querySelector('[data-margin]');
+
+      if (!price && !cost) {
+        box.innerHTML = '<p class="text-[13px] text-sub">Enter a price and some costs to see the margin.</p>';
+        return;
+      }
+      if (!price) {
+        box.innerHTML = '<p class="text-[13px] text-sub">' + SDS.money(cost) +
+          ' to deliver. This service has no set price, so there is no margin to show.</p>';
+        return;
+      }
+
+      var pct = Math.round((margin / price) * 100);
+      box.innerHTML =
+        '<div class="flex flex-wrap items-baseline gap-x-5 gap-y-1">' +
+          '<span class="text-[13px] text-sub">' + SDS.money(price) + ' in</span>' +
+          '<span class="text-[13px] text-sub">' + SDS.money(cost) + ' cost' +
+            (comm ? ' + ' + SDS.money(comm) + ' commission' : '') + '</span>' +
+          '<span class="text-[15px] font-bold ' + (margin > 0 ? 'text-head' : 'text-danger') + '">' +
+            SDS.money(margin) + ' margin' + (isFinite(pct) ? ' · ' + pct + '%' : '') + '</span>' +
+        '</div>' +
+        (margin <= 0 ? '<p class="text-[12.5px] text-danger mt-1.5">This service loses money at the current price.</p>' : '');
+    }
+
+    ['fCostProduct', 'fCostLabor', 'fCostConsumables', 'fCostOther', 'fPrice'].forEach(function (k) {
+      document.getElementById(k).addEventListener('input', paintMargin);
+    });
+
+    /* ================= 19. Instructions ================= */
+
+    function paintInstructions() {
+      document.querySelector('[data-instructions]').innerHTML =
+        SDS.INSTRUCTION_FIELDS.map(function (f) {
+          return '<div>' +
+            '<label for="ins-' + f.id + '" class="flex flex-wrap items-baseline gap-x-2 mb-1.5">' +
+              '<span class="text-[13px] font-medium text-ink">' + esc(f.label) + '</span>' +
+              '<span class="text-[12px] text-faint">' + esc(f.channel) + '</span>' +
+            '</label>' +
+            '<textarea id="ins-' + f.id + '" rows="2" class="sd-input !h-auto py-2.5" data-instruction="' + f.id + '">' +
+            esc(model.instructions[f.id] || '') + '</textarea>' +
+          '</div>';
+        }).join('');
+    }
+
+    document.querySelector('[data-instructions]').addEventListener('input', function (e) {
+      var t = e.target.closest('[data-instruction]');
+      if (!t) return;
+      model.instructions[t.dataset.instruction] = t.value;
+    });
+
+    /* ================= History (§28) ================= */
+
+    function paintAudit() {
+      if (!existing) return;
+      var rows = SDS.auditFor(existing.id);
+      var box = document.querySelector('[data-audit]');
+      if (!rows.length) {
+        box.innerHTML = '<p class="text-[13px] text-sub">Nothing has changed since it was created.</p>';
+        return;
+      }
+      box.innerHTML = '<ol class="sd-log">' + rows.map(function (a) {
+        var when = new Date(a.at);
+        return '<li class="sd-log__row">' +
+          '<div class="min-w-0"><span class="block text-[13px] font-semibold text-head">' + esc(a.event) + '</span>' +
+          (a.from || a.to
+            ? '<span class="block text-[12.5px] text-sub mt-0.5">' +
+              (a.from ? '<s class="text-faint">' + esc(a.from) + '</s> → ' : '') + esc(a.to) + '</span>'
+            : '') + '</div>' +
+          '<div class="text-[12px] text-faint whitespace-nowrap">' + esc(a.actor) + ' · ' +
+            when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' +
+            when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + '</div>' +
+        '</li>';
+      }).join('') + '</ol>';
+    }
+
+    /* ================= Load the model into the form ================= */
+
+    function fill() {
+      setVal('fName', model.name);
+      catSel.value = model.categoryId;
+      setVal('fCode', model.code);
+      setVal('fShort', model.shortDescription);
+      setVal('fDesc', model.description);
+
+      setVal('fPrice', model.price || '');
+      document.getElementById('fTaxCat').value = model.taxCategory;
+      setChecked('fTaxable', model.taxable);
+      setChecked('fStaffPrice', model.allowStaffPrice);
+      setChecked('fLocationPrice', model.allowLocationPrice);
+
+      setVal('fDuration', model.durationMin);
+      setVal('fProcessing', model.processingMin);
+      setVal('fFinish', model.finishMin);
+      setVal('fCleanup', model.cleanupMin);
+      setVal('fBufferBefore', model.bufferBeforeMin);
+      setVal('fBufferAfter', model.bufferAfterMin);
+      setVal('fStaffNeeded', model.staffNeeded);
+
+      setChecked('fAllLocations', model.allLocations);
+      setChecked('fRequiresResource', model.requiresResource);
+
+      setChecked('fOnline', model.online.enabled);
+      setVal('fOnlineName', model.online.name);
+      setVal('fOnlineDesc', model.online.description);
+      setVal('fOnlineOrder', model.online.displayOrder);
+      setVal('fMinAdvance', model.online.minAdvanceHours);
+      setVal('fMaxWindow', model.online.maxWindowDays);
+      setChecked('fAllowNew', model.online.allowNew);
+      setChecked('fAllowExisting', model.online.allowExisting);
+      setChecked('fRequireCard', model.online.requireCard);
+      setChecked('fRequireDeposit', model.online.requireDeposit);
+      document.getElementById('fDepositType').value = model.online.depositType;
+      setVal('fDepositAmount', model.online.depositAmount);
+      setVal('fCancellation', model.online.cancellationPolicy);
+
+      setVal('fMinAge', model.minAge);
+
+      setChecked('fCommission', model.commission.enabled);
+      document.getElementById('fCommissionType').value = model.commission.type;
+      setVal('fCommissionValue', model.commission.value);
+      setChecked('fCommissionOverride', model.commission.staffOverride);
+      setChecked('fCommissionAddons', model.commission.addons);
+
+      setVal('fCostProduct', model.cost.product);
+      setVal('fCostLabor', model.cost.labor);
+      setVal('fCostConsumables', model.cost.consumables);
+      setVal('fCostOther', model.cost.other);
+
+      if (existing) {
+        var m = SDS.statusMeta(existing.status);
+        document.querySelector('[data-status-badge]').innerHTML =
+          '<span class="sd-badge ' + m.badge + '">' + m.label + '</span>';
+      }
+
+      SD.comboAll(document);
+
+      paintColors(); paintPricing(); syncPricing();
+      paintTimeline(); paintStaff(); paintLocations(); paintRequirements();
+      paintRule(); syncOnline(); paintAddons(); paintClientReqs();
+      syncCommission(); paintMargin(); paintInstructions(); paintAudit();
+      fillCheckControls();
+    }
+
+    /* Anything that only feeds the model on save still has to feed the
+       derived views as you type, or the timeline lags the form. */
+    TIME_FIELDS.forEach(function (k) {
+      document.getElementById(k).addEventListener('input', function () {
+        readTimes(); paintTimeline(); runCheck();
+      });
+    });
+    ['fStaffPrice', 'fLocationPrice'].forEach(function (k) {
+      document.getElementById(k).addEventListener('change', function () {
+        model.allowStaffPrice = checked('fStaffPrice');
+        model.allowLocationPrice = checked('fLocationPrice');
+        paintStaff(); paintLocations();
+      });
+    });
+    document.getElementById('fAllLocations').addEventListener('change', function () {
+      model.allLocations = this.checked;
+      paintLocations(); paintRule(); fillCheckControls(); runCheck();
+    });
+    document.getElementById('fRequiresResource').addEventListener('change', function () {
+      model.requiresResource = this.checked;
+      /* Turning the requirement on with nothing listed is a dead end, so
+         the first line appears with it. */
+      if (this.checked && !model.requirements.length) {
+        model.requirements.push({
+          id: 'q1', mode: 'type', typeId: '', resourceId: '', quantity: 1, minCapacity: 1,
+          autoAssign: true, allowOverride: true, bufferBeforeMin: 0, bufferAfterMin: 0
+        });
+      }
+      paintRequirements(); paintRule(); runCheck();
+    });
+    document.getElementById('fCategory').addEventListener('change', function () {
+      model.categoryId = this.value;
+    });
+
+    /* ================= Save ================= */
+
+    function collect() {
+      readTimes();
+      model.name = val('fName').trim();
+      model.categoryId = catSel.value;
+      model.code = val('fCode').trim();
+      model.shortDescription = val('fShort').trim();
+      model.description = val('fDesc').trim();
+
+      model.price = num(val('fPrice'));
+      model.taxCategory = val('fTaxCat');
+      model.taxable = checked('fTaxable');
+      model.allowStaffPrice = checked('fStaffPrice');
+      model.allowLocationPrice = checked('fLocationPrice');
+
+      model.staffNeeded = Math.max(1, num(val('fStaffNeeded')) || 1);
+      model.allLocations = checked('fAllLocations');
+      model.requiresResource = checked('fRequiresResource');
+
+      model.online = {
+        enabled: checked('fOnline'),
+        name: val('fOnlineName').trim(),
+        description: val('fOnlineDesc').trim(),
+        displayOrder: num(val('fOnlineOrder')),
+        allowNew: checked('fAllowNew'),
+        allowExisting: checked('fAllowExisting'),
+        minAdvanceHours: num(val('fMinAdvance')),
+        maxWindowDays: num(val('fMaxWindow')),
+        requireDeposit: checked('fRequireDeposit'),
+        depositType: val('fDepositType'),
+        depositAmount: num(val('fDepositAmount')),
+        requireCard: checked('fRequireCard'),
+        cancellationPolicy: val('fCancellation').trim()
+      };
+
+      model.minAge = val('fMinAge');
+      model.commission = {
+        enabled: checked('fCommission'),
+        type: val('fCommissionType'),
+        value: num(val('fCommissionValue')),
+        staffOverride: checked('fCommissionOverride'),
+        addons: checked('fCommissionAddons')
+      };
+      model.cost = {
+        product: num(val('fCostProduct')), labor: num(val('fCostLabor')),
+        consumables: num(val('fCostConsumables')), other: num(val('fCostOther'))
+      };
+      return model;
+    }
+
+    var FIELD_MAP = {
+      name: 'fName', categoryId: 'fCategory', durationMin: 'fDuration', price: 'fPrice',
+      depositAmount: 'fDepositAmount', commissionValue: 'fCommissionValue',
+      onlineEnabled: 'fOnline', staffNeeded: 'fStaffNeeded'
+    };
+
+    function showProblems(problems) {
+      SD.clearErrors(form);
+      document.querySelectorAll('[data-error-for]').forEach(function (el) {
+        el.hidden = true; el.textContent = '';
+      });
+
+      var box = document.querySelector('[data-problems]');
+      if (!problems.length) { box.hidden = true; return null; }
+
+      var firstEl = null;
+      problems.forEach(function (pr) {
+        var target = FIELD_MAP[pr.field];
+        var slot = document.querySelector('[data-error-for="' + (target || pr.field) + '"]');
+        if (slot) {
+          /* Several problems can land on one field — a location that has
+             no staff and not enough of them. Stack rather than overwrite. */
+          slot.textContent = slot.textContent ? slot.textContent + ' ' + pr.message : pr.message;
+          slot.hidden = false;
+        }
+        if (!firstEl && target) firstEl = document.getElementById(target);
+      });
+
+      box.innerHTML = '<b>' + problems.length + ' thing' + (problems.length === 1 ? '' : 's') +
+        ' to fix before this can go live</b><ul class="mt-1.5 space-y-0.5 list-disc pl-4">' +
+        problems.map(function (pr) { return '<li>' + esc(pr.message) + '</li>'; }).join('') + '</ul>';
+      box.hidden = false;
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return firstEl;
+    }
+
+    function persist(status) {
+      var data = collect();
+      var problems = SDS.validate(data, { status: status });
+
+      if (problems.length) {
+        var el = showProblems(problems);
+        if (el) el.focus({ preventScroll: true });
+        return;
+      }
+      showProblems([]);
+
+      var saved = SDS.save(Object.assign({}, data, { status: status, id: model.id || undefined }));
+      SD.flash('<b>' + esc(saved.name) + '</b> saved as ' + SDS.statusLabel(status).toLowerCase() + '.');
+      /* §25 — after saving, land on the edit screen for what was saved,
+         so the history and the check reflect the record that now exists. */
+      window.location.href = 'add-service.html?id=' + saved.id;
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      /* Save Service means "make it live" for anything not already
+         retired; an inactive or archived service keeps its own status
+         rather than being quietly reactivated by a save. */
+      var target = (model.status === 'inactive' || model.status === 'archived') ? model.status : 'active';
+      persist(target);
+    });
+
+    document.querySelector('[data-save-draft]').addEventListener('click', function () {
+      persist('draft');
+    });
+
+    document.querySelector('[data-duplicate]').addEventListener('click', function () {
+      var copy = SDS.duplicate(existing.id);
+      SD.flash('Copied as <b>' + esc(copy.name) + '</b>, saved as a draft.');
+      window.location.href = 'add-service.html?id=' + copy.id;
+    });
+
+    document.querySelector('[data-archive]').addEventListener('click', function () {
+      confirmDialog({
+        title: 'Archive ' + existing.name + '?',
+        body: 'It drops out of the normal list and stops taking bookings. Existing appointments keep their details, and you can restore it from the Archived filter.',
+        okLabel: 'Archive',
+        onOk: function () {
+          SDS.setStatus(existing.id, 'archived');
+          SD.flash('<b>' + esc(existing.name) + '</b> archived.');
+          window.location.href = 'services.html';
+        }
+      });
+    });
+
+    /* ================= Section rail ================= */
+
+    var links = Array.prototype.slice.call(document.querySelectorAll('[data-rail]'));
+    var sections = links.map(function (a) { return document.getElementById('sec-' + a.dataset.rail); }).filter(Boolean);
+
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          links.forEach(function (a) {
+            a.classList.toggle('is-current', a.dataset.rail === en.target.dataset.section);
+          });
+        });
+      }, { rootMargin: '-20% 0px -70% 0px' });
+      sections.forEach(function (s) { io.observe(s); });
+    }
+
+    /* ---------- Confirmation dialog ---------- */
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmFn = null;
+
+    function confirmDialog(o) {
+      document.querySelector('[data-confirm-title]').textContent = o.title;
+      document.querySelector('[data-confirm-body]').textContent = o.body;
+      document.querySelector('[data-confirm-ok]').textContent = o.okLabel || 'Delete';
+      confirmFn = o.onOk;
+      confirmCancelFn = o.onCancel || null;
+      confirmEl.hidden = false;
+      document.body.classList.add('sd-locked');
+      document.querySelector('[data-confirm-cancel]').focus();
+      document.addEventListener('keydown', confirmKeys, true);
+    }
+    var confirmCancelFn = null;
+    function closeConfirm(viaCancel) {
+      confirmEl.hidden = true;
+      document.body.classList.remove('sd-locked');
+      document.removeEventListener('keydown', confirmKeys, true);
+      var back = confirmCancelFn;
+      confirmFn = null;
+      confirmCancelFn = null;
+      /* A dialog that changes a control has to be able to put it back
+         when the answer is no — otherwise the radio stays where the user
+         clicked it and the screen disagrees with the decision. */
+      if (viaCancel && back) back();
+    }
+    function confirmKeys(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeConfirm(true); return; }
+      if (e.key !== 'Tab') return;
+      var f = Array.prototype.filter.call(confirmEl.querySelectorAll('button'),
+        function (el) { return !!(el.offsetWidth || el.offsetHeight); });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', function () { closeConfirm(true); });
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmFn; closeConfirm(); if (fn) fn();
+    });
+
+    fill();
+
+    chkDp = SD.datePicker(document.querySelector('#sec-check [data-datepicker]'), {
+      value: chkState.date,
+      dialogLabel: 'Choose a day to check',
+      onChange: function (iso) { if (iso) { chkState.date = iso; runCheck(); } }
+    });
+
+    runCheck();
+
+    var landed = SD.takeFlash();
+    if (landed) SD.toast(landed);
+
+  }());
+  </script>
+</body>
+</html>

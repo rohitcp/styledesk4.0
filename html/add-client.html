@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Client — StyleDesk</title>
+
+  <!--
+    StyleDesk — Add / Edit Client
+    A page of its own rather than a drawer, so the whole record is on
+    screen at once. Same 8/4 two-column shape as the onboarding steps:
+    the form on the left at a readable measure, a live preview and the
+    duplicate check in the rail on the right.
+
+    Doubles as the edit screen — add-client.html?id=c1004 loads that
+    client and switches every label over.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-[#fafbfc] text-ink text-[13px]">
+
+  <!-- ===== Announcement banner ===== -->
+  <div class="bg-banner text-white">
+    <div class="w-full px-4 sm:px-5 lg:px-6 h-9 flex items-center gap-4 text-[12px]">
+      <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 9l5 3-5 3V9z" fill="currentColor"/></svg>
+        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
+        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        <a href="#" class="sd-pill-dark">Subscribe now</a>
+      </div>
+      <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9.5" cy="7" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M19 8v5M21.5 10.5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="font-medium">Invite team members</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== App bar ===== -->
+  <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
+    <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+        <a href="dashboard.html" class="sd-navicon grid sd-tip" data-tip="Dashboard" aria-label="Dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.7"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+        <div class="sd-menu" data-menu>
+          <a href="clients.html" class="sd-navicon grid sd-tip is-active" data-tip="Clients" aria-label="Clients"
+             aria-current="page" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20a7 7 0 0114 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
+            <a href="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
+            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
+          </div>
+        </div>
+        <div class="sd-menu" data-menu>
+          <a href="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
+             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.6 3.5H20V12l-8.4 8.4a1.7 1.7 0 01-2.4 0l-6.1-6.1a1.7 1.7 0 010-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.2" cy="7.8" r="1.4" fill="currentColor"/></svg>
+          </a>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
+            <a href="services.html" class="sd-menu__item" role="menuitem">All Services</a>
+            <a href="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
+            <a href="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
+            <a href="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
+            <a href="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
+            <a href="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
+          </div>
+        </div>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19.5a5.5 5.5 0 0111 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.4a3.2 3.2 0 010 5.2M17 14.7a5.5 5.5 0 013.5 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 12h.01M17.6 12h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10v4A1.5 1.5 0 005 15.5h2L14 20V4L7 8.5H5A1.5 1.5 0 003.5 10z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.4a3.6 3.6 0 010 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </a>
+        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        </a>
+      </nav>
+
+      <div class="flex-1 min-w-0 flex justify-center">
+        <div class="w-full max-w-[420px] relative xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 xl:w-[420px]">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+          <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
+        </div>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
+          <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
+                  aria-haspopup="true" aria-expanded="false">
+            Add
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+            <a href="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
+            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <div class="sd-menu__rule" role="separator"></div>
+            <a href="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+          </div>
+        </div>
+        <a href="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.7"/><path d="M15.6 12v1.6a2.6 2.6 0 005.2 0V12a8.8 8.8 0 10-3.6 7.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </button>
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4.5 14.5a10.5 10.5 0 0115 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 17a6 6 0 018 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19.2" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <a href="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.4a2.5 2.5 0 114.4 2c-.9.8-1.7 1.2-1.7 2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 17.2v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <a href="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/><path d="M19.1 14.4a1.6 1.6 0 00.3 1.8l.1.1a1.9 1.9 0 11-2.7 2.7l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a1.9 1.9 0 11-3.8 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a1.9 1.9 0 11-2.7-2.7l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1h-.2a1.9 1.9 0 110-3.8h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1A1.9 1.9 0 117.1 4.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5v-.2a1.9 1.9 0 113.8 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a1.9 1.9 0 112.7 2.7l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1h.2a1.9 1.9 0 110 3.8h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <div data-account-menu></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Page ===== -->
+  <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6 pb-[200px]">
+
+    <!-- Same back control as the profile, so the first crumb behaves the
+         same way on both client screens. -->
+    <nav class="flex items-center gap-1.5 text-[12px] text-sub mb-3" aria-label="Breadcrumb">
+      <a href="clients.html"
+         class="inline-flex items-center gap-1.5 h-7 pl-1.5 pr-2.5 -ml-1.5 rounded-md font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" class="shrink-0" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        All clients
+      </a>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M9.5 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="text-ink font-medium truncate min-w-0" data-crumb>Add Client</span>
+    </nav>
+
+    <div class="mb-5">
+      <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight" data-page-title>Add Client</h1>
+      <p class="text-[13px] text-sub mt-1.5 max-w-[640px]" data-page-sub>
+        Only a name and one way to reach them is required. Everything else can wait until after their first visit.
+      </p>
+    </div>
+
+    <form id="clientForm" novalidate>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+        <!-- ================= Form column ================= -->
+        <div class="lg:col-span-8 min-w-0 max-w-[780px]">
+
+          <!-- Duplicate match (§19) -->
+          <div class="sd-alert sd-alert--warn mb-5" data-dupe hidden role="status">
+            <div class="flex items-start gap-2.5">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="shrink-0 mt-px" aria-hidden="true"><path d="M12 4.8l8.2 14.2H3.8L12 4.8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4M12 16.6v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <div class="min-w-0 flex-1">
+                <p class="font-semibold">Possible existing client</p>
+                <p class="mt-1" data-dupe-why></p>
+                <div class="mt-3 space-y-2" data-dupe-list></div>
+                <button type="button" data-dupe-continue
+                        class="mt-3 h-8 px-3 rounded-md border border-warning/50 bg-white/70 text-[12px] font-semibold text-[#78350f] hover:bg-white transition-colors">
+                  Continue creating new client
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---- Basics ---- -->
+          <section class="bg-white border border-line rounded-card p-5 sm:p-6">
+            <h2 class="text-[16px] font-semibold text-head">Basics</h2>
+            <p class="text-[13px] text-sub mt-1">What you need to find them again.</p>
+
+            <div class="mt-5 flex items-center gap-4">
+              <span class="sd-avatar sd-avatar--lg" data-photo-preview aria-hidden="true">?</span>
+              <div class="min-w-0">
+                <label for="cPhoto" class="block text-[13px] font-medium text-ink mb-1.5">Profile photo</label>
+                <input id="cPhoto" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" />
+                <div class="flex items-center gap-2">
+                  <button type="button" data-photo-pick class="h-9 px-3.5 rounded-md border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Upload photo</button>
+                  <button type="button" data-photo-clear hidden class="h-9 px-3 rounded-md text-[13px] font-medium text-sub hover:text-ink hover:bg-hover transition-colors">Remove</button>
+                </div>
+                <p class="mt-1.5 text-[12px] text-sub">JPG, PNG or WebP, up to 5&nbsp;MB. Optional &mdash; initials are used otherwise.</p>
+                <div class="sd-progress mt-2 max-w-[220px]" data-photo-bar hidden><span style="width:0%"></span></div>
+                <p id="cPhoto-error" data-error-for="cPhoto" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+              </div>
+            </div>
+
+            <div class="mt-5 grid sm:grid-cols-2 gap-x-5 gap-y-5">
+              <div>
+                <label for="cFirst" class="block text-[13px] font-medium text-ink mb-1.5">First name <span class="text-danger" aria-hidden="true">*</span></label>
+                <input id="cFirst" name="firstName" type="text" class="sd-input" autocomplete="given-name" aria-describedby="cFirst-error" />
+                <p id="cFirst-error" data-error-for="cFirst" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+              </div>
+              <div>
+                <label for="cLast" class="block text-[13px] font-medium text-ink mb-1.5">Last name</label>
+                <input id="cLast" name="lastName" type="text" class="sd-input" autocomplete="family-name" aria-describedby="cLast-error" />
+                <p id="cLast-error" data-error-for="cLast" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+              </div>
+              <div>
+                <label for="cPreferred" class="block text-[13px] font-medium text-ink mb-1.5">Preferred name</label>
+                <input id="cPreferred" name="preferredName" type="text" class="sd-input" placeholder="What they like to be called" />
+              </div>
+              <div>
+                <label for="cStatus" class="block text-[13px] font-medium text-ink mb-1.5">Client status</label>
+                <select id="cStatus" name="status" class="sd-input has-value"></select>
+              </div>
+            </div>
+          </section>
+
+          <!-- ---- Contact ----
+               Repeatable rows. Type says what kind of method it is;
+               Primary says which one StyleDesk uses by default. They are
+               separate controls because they are separate ideas (§22). -->
+          <section class="bg-white border border-line rounded-card p-5 sm:p-6 mt-5">
+            <h2 class="text-[16px] font-semibold text-head">Contact information</h2>
+            <p class="text-[13px] text-sub mt-1">
+              A client can have as many numbers and addresses as they like. At least one is required.
+            </p>
+            <p id="contact-error" data-error-for="contact" hidden role="alert" class="mt-3 text-[12px] text-danger"></p>
+
+            <!-- The section itself is the error target for "add at least one
+                 method": the rule is about the group, not any one field. -->
+            <div id="contact" tabindex="-1" class="outline-none">
+
+            <!-- Phones -->
+            <div class="mt-5">
+              <div class="flex items-center gap-3">
+                <h3 class="text-[14px] font-semibold text-head">Phone numbers</h3>
+                <span class="text-[12px] text-sub" data-count="phone"></span>
+              </div>
+
+              <div class="mt-3 space-y-3" data-list="phone"></div>
+
+              <p class="text-[13px] text-faint mt-3" data-empty="phone" hidden>No phone numbers yet.</p>
+
+              <button type="button" data-add="phone"
+                      class="mt-3 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                Add another phone number
+              </button>
+            </div>
+
+            <!-- Emails -->
+            <div class="mt-7 pt-6 border-t border-line">
+              <div class="flex items-center gap-3">
+                <h3 class="text-[14px] font-semibold text-head">Email addresses</h3>
+                <span class="text-[12px] text-sub" data-count="email"></span>
+              </div>
+
+              <div class="mt-3 space-y-3" data-list="email"></div>
+
+              <p class="text-[13px] text-faint mt-3" data-empty="email" hidden>No email addresses yet.</p>
+
+              <button type="button" data-add="email"
+                      class="mt-3 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                Add another email
+              </button>
+            </div>
+
+            </div>
+            <p class="sr-only" aria-live="polite" data-contact-live></p>
+          </section>
+
+          <!-- ---- Address ---- -->
+          <section class="bg-white border border-line rounded-card p-5 sm:p-6 mt-5">
+            <h2 class="text-[16px] font-semibold text-head">Address</h2>
+            <p class="text-[13px] text-sub mt-1">Optional. Used for postal marketing and local-area reporting.</p>
+
+            <div class="mt-5 grid sm:grid-cols-2 gap-x-5 gap-y-5">
+              <div class="sm:col-span-2">
+                <label for="cStreet" class="block text-[13px] font-medium text-ink mb-1.5">Street address</label>
+                <input id="cStreet" name="street" type="text" class="sd-input" autocomplete="address-line1" />
+              </div>
+              <div>
+                <label for="cCity" class="block text-[13px] font-medium text-ink mb-1.5">City</label>
+                <input id="cCity" name="city" type="text" class="sd-input" autocomplete="address-level2" />
+              </div>
+              <div>
+                <label for="cRegion" class="block text-[13px] font-medium text-ink mb-1.5">State / region</label>
+                <input id="cRegion" name="region" type="text" class="sd-input" autocomplete="address-level1" />
+              </div>
+              <div>
+                <label for="cPostcode" class="block text-[13px] font-medium text-ink mb-1.5">Postcode</label>
+                <input id="cPostcode" name="postcode" type="text" class="sd-input" autocomplete="postal-code" />
+              </div>
+              <div>
+                <label for="cCountry" class="block text-[13px] font-medium text-ink mb-1.5">Country</label>
+                <select id="cCountry" name="country" class="sd-input">
+                  <option value="">Select a country…</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <!-- ---- Client details ---- -->
+          <section class="bg-white border border-line rounded-card p-5 sm:p-6 mt-5">
+            <h2 class="text-[16px] font-semibold text-head">Client details</h2>
+            <p class="text-[13px] text-sub mt-1">How you group them, and who they like to see.</p>
+
+            <div class="mt-5 grid sm:grid-cols-2 gap-x-5 gap-y-5">
+              <div class="sm:col-span-2">
+                <label for="cTagsInput" class="block text-[13px] font-medium text-ink mb-1.5">Tags</label>
+                <div class="sd-tokens" data-tokens>
+                  <input id="cTagsInput" type="text" class="sd-tokens__input" data-tokens-input
+                         placeholder="Add a tag…" autocomplete="off" aria-describedby="cTags-hint" />
+                </div>
+                <p id="cTags-hint" class="mt-1.5 text-[12px] text-sub">Press Enter or comma to add. Tags drive filters and marketing segments.</p>
+              </div>
+
+              <div>
+                <label for="cStaff" class="block text-[13px] font-medium text-ink mb-1.5">Preferred staff</label>
+                <select id="cStaff" name="preferredStaff" class="sd-input has-value"></select>
+              </div>
+              <div>
+                <label for="cSource" class="block text-[13px] font-medium text-ink mb-1.5">Client source</label>
+                <select id="cSource" name="source" class="sd-input">
+                  <option value="">Select a source…</option>
+                </select>
+              </div>
+              <div>
+                <label for="cBirthday" class="block text-[13px] font-medium text-ink mb-1.5">Date of birth</label>
+                <!-- The shared calendar picker (SD.datePicker), not a native
+                     date input: consistent with the design system, and the
+                     year dropdown makes a birth year reachable in one go. -->
+                <div class="relative" data-datepicker>
+                  <input id="cBirthday" name="birthday" type="text" readonly placeholder="MM/DD/YYYY"
+                         class="sd-input is-picker has-suffix" data-dp-input aria-describedby="cBirthday-hint" />
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                  </span>
+                  <div class="sd-cal" data-dp-cal hidden></div>
+                </div>
+                <p id="cBirthday-hint" class="mt-1.5 text-[12px] text-sub">Used for birthday offers.</p>
+              </div>
+              <div>
+                <label for="cGender" class="block text-[13px] font-medium text-ink mb-1.5">Gender</label>
+                <select id="cGender" name="gender" class="sd-input">
+                  <option value="">Prefer not to specify</option>
+                </select>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label for="cNotes" class="block text-[13px] font-medium text-ink mb-1.5">Internal notes</label>
+                <textarea id="cNotes" name="notes" rows="4" class="sd-textarea"
+                          placeholder="Allergies, preferences, anything the team should know…"></textarea>
+                <p class="mt-1.5 text-[12px] text-sub">Visible to your team only &mdash; never shown to the client.</p>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- ================= Context rail ================= -->
+        <aside class="lg:col-span-4 min-w-0 lg:sticky lg:top-[76px]">
+
+          <section class="bg-white border border-line rounded-card p-5">
+            <h2 class="text-[14px] font-semibold text-head">Preview</h2>
+            <p class="text-[12px] text-sub mt-1">How this client will read in the directory.</p>
+
+            <div class="mt-4 border border-line rounded-card p-4">
+              <div class="flex items-center gap-3">
+                <span class="sd-avatar sd-avatar--md" data-preview-avatar aria-hidden="true">?</span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-[14px] font-semibold text-head truncate" data-preview-name>New client</p>
+                  <p class="text-[12px] text-sub truncate" data-preview-contact>No contact details yet</p>
+                  <p class="text-[12px] text-faint truncate" data-preview-more hidden></p>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5 mt-3" data-preview-tags></div>
+              <dl class="sd-dl mt-3 pt-3 border-t border-line">
+                <dt class="sd-dl__t">Status</dt><dd class="sd-dl__d" data-preview-status></dd>
+                <dt class="sd-dl__t">Preferred staff</dt><dd class="sd-dl__d" data-preview-staff data-empty></dd>
+                <dt class="sd-dl__t">Source</dt><dd class="sd-dl__d" data-preview-source data-empty></dd>
+              </dl>
+            </div>
+          </section>
+
+          <section class="bg-white border border-line rounded-card p-5 mt-5">
+            <h2 class="text-[14px] font-semibold text-head">Before you save</h2>
+            <ul class="mt-3 space-y-3">
+              <li class="flex items-start gap-2.5">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="text-brand shrink-0 mt-0.5" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="text-[13px] text-sub">A mobile number lets you send reminders and cuts no-shows.</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="text-brand shrink-0 mt-0.5" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="text-[13px] text-sub">We check email and mobile against your existing clients as you type.</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="text-brand shrink-0 mt-0.5" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="text-[13px] text-sub">Anything left blank can be filled in later from their profile.</span>
+              </li>
+            </ul>
+          </section>
+        </aside>
+      </div>
+
+      <!-- Sticky action bar — primary first, matching the wizard screens -->
+      <div class="fixed bottom-0 inset-x-0 z-20 bg-white border-t border-line">
+        <div class="w-full px-4 sm:px-5 lg:px-6 py-3 flex flex-wrap items-center gap-2.5">
+          <button type="submit" data-save
+                  class="inline-flex items-center h-10 px-5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+            Save client
+          </button>
+          <button type="button" data-save-book
+                  class="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 9.5h16M8.5 3v3.5M15.5 3v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Save &amp; book appointment
+          </button>
+          <button type="button" data-cancel
+                  class="ml-auto h-10 px-4 rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </form>
+  </main>
+
+  <footer class="border-t border-line bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Discard confirmation -->
+  <div class="sd-modal" data-confirm hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="sd-scrim is-open" data-confirm-scrim></div>
+    <div class="sd-modal__panel">
+      <h2 id="confirmTitle" class="text-[17px] font-semibold text-head" data-confirm-title>Discard this client?</h2>
+      <p class="text-[13px] text-sub mt-2 leading-relaxed" data-confirm-body>You have unsaved details. Leaving now will lose them.</p>
+      <div class="mt-5 flex items-center gap-2.5">
+        <button type="button" data-confirm-ok class="h-10 px-4 rounded-lg bg-danger hover:brightness-95 text-white text-[13px] font-semibold transition-all">Discard</button>
+        <button type="button" data-confirm-cancel class="h-10 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Keep editing</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script src="assets/js/account.js"></script>
+  <script>SD.accountMenuAll();</script>
+  <script src="assets/js/locations.js"></script>
+  <script src="assets/js/hours.js"></script>
+  <script src="assets/js/staff.js"></script>
+  <script src="assets/js/clients.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---------- Nav sub-menu ------------------------------------------ */
+    document.querySelectorAll('[data-menu]').forEach(function (menu) {
+      var trigger = menu.querySelector('[aria-haspopup]');
+      var pop = menu.querySelector('[data-menu-pop]');
+      var t = null;
+      function open() { window.clearTimeout(t); pop.hidden = false; menu.classList.add('is-open'); trigger.setAttribute('aria-expanded', 'true'); }
+      function close() { pop.hidden = true; menu.classList.remove('is-open'); trigger.setAttribute('aria-expanded', 'false'); }
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', function () { window.clearTimeout(t); t = window.setTimeout(close, 160); });
+      menu.addEventListener('focusin', open);
+      menu.addEventListener('focusout', function (e) { if (!menu.contains(e.relatedTarget)) close(); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault(); open();
+        var f = pop.querySelector('.sd-menu__item'); if (f) f.focus();
+      });
+      menu.addEventListener('keydown', function (e) { if (e.key === 'Escape') { trigger.focus(); close(); } });
+    });
+
+    var esc = SDC.esc;
+    var form = document.getElementById('clientForm');
+    var params = new URLSearchParams(window.location.search);
+    var editing = params.get('id') ? SDC.byId(params.get('id')) : null;
+    var photoData = null;
+    var dupeOk = false;
+
+    /* ---------- Populate + upgrade the selects ------------------------ */
+
+    (function fillSelects() {
+      var staff = document.getElementById('cStaff');
+      SDC.STAFF.forEach(function (s) { staff.add(new Option(s.name, s.id)); });
+
+      var source = document.getElementById('cSource');
+      SDC.SOURCES.forEach(function (s) { source.add(new Option(s, s)); });
+
+      var status = document.getElementById('cStatus');
+      SDC.STATUSES.forEach(function (s) { status.add(new Option(s.label, s.id)); });
+
+      var gender = document.getElementById('cGender');
+      SDC.GENDERS.forEach(function (g) { gender.add(new Option(g, g)); });
+
+      var country = document.getElementById('cCountry');
+      (SD.COUNTRIES || []).forEach(function (c) { country.add(new Option(c.name, c.iso)); });
+
+    }());
+
+    SD.combo(document.getElementById('cStaff'),   { searchPlaceholder: 'Search team…' });
+    SD.combo(document.getElementById('cSource'),  { searchPlaceholder: 'Search sources…' });
+    SD.combo(document.getElementById('cStatus'),  { searchPlaceholder: 'Search statuses…' });
+    SD.combo(document.getElementById('cGender'),  { searchPlaceholder: 'Search…' });
+    SD.combo(document.getElementById('cCountry'), { searchPlaceholder: 'Search countries…' });
+
+    /* Date of birth: nobody was born tomorrow, and the year list runs back
+       far enough to cover any living client. Opens on 1990 rather than this
+       month so a birth year is one dropdown away, not decades of paging. */
+    var dobCtl = SD.datePicker(document.querySelector('[data-datepicker]'), {
+      max: SDC.today(),
+      minYear: 1910,
+      maxYear: new Date().getFullYear(),
+      openTo: '1990-01-01',
+      dialogLabel: 'Choose a date of birth'
+    });
+
+    var tagsCtl   = SDC.tokens(document.querySelector('[data-tokens]'), {
+      suggestions: SDC.TAGS,
+      placeholder: 'Add a tag…',
+      onChange: paintPreview
+    });
+
+    document.getElementById('cStaff').value = 'any';
+    document.getElementById('cStatus').value = 'active';
+    SD.comboRefresh(document.getElementById('cStaff'));
+    SD.comboRefresh(document.getElementById('cStatus'));
+
+    /* ================================================================
+       Contact lists — repeatable phone and email rows
+       ----------------------------------------------------------------
+       One controller drives both, because they behave identically:
+       many rows, each with a type, at most one primary, its own
+       communication preferences, and its own delete.
+       ================================================================ */
+
+    var contactSeq = 0;
+
+    function contactList(kind) {
+      var isPhone = kind === 'phone';
+      var host    = document.querySelector('[data-list="' + kind + '"]');
+      var emptyEl = document.querySelector('[data-empty="' + kind + '"]');
+      var countEl = document.querySelector('[data-count="' + kind + '"]');
+      var live    = document.querySelector('[data-contact-live]');
+      var rows    = [];        // { key, el, phoneCtl }
+
+      var TYPES = isPhone ? SDC.PHONE_TYPES : SDC.EMAIL_TYPES;
+      var PREFS = isPhone ? SDC.PHONE_PREFS : SDC.EMAIL_PREFS;
+
+      function announce(msg) { live.textContent = msg; }
+
+      function rowValue(row) {
+        return isPhone
+          ? row.phoneCtl.value().national
+          : row.el.querySelector('[data-value]').value.trim();
+      }
+
+      function filled() { return rows.filter(function (r) { return !!rowValue(r); }); }
+
+      /* The first method entered becomes primary on its own — the user
+         only has to think about it when there is more than one. */
+      function ensurePrimary() {
+        var withValue = filled();
+        var chosen = withValue.filter(function (r) {
+          return r.el.querySelector('[data-primary]').checked;
+        });
+        if (!chosen.length && withValue.length) {
+          withValue[0].el.querySelector('[data-primary]').checked = true;
+        }
+        // A row that has been emptied cannot hold the flag.
+        rows.forEach(function (r) {
+          if (!rowValue(r)) r.el.querySelector('[data-primary]').checked = false;
+        });
+        paintChrome();
+      }
+
+      function paintChrome() {
+        rows.forEach(function (r) {
+          var primary = r.el.querySelector('[data-primary]').checked;
+          r.el.classList.toggle('outline', primary);
+          r.el.querySelector('[data-primary-hint]').hidden = !primary;
+        });
+        var n = filled().length;
+        countEl.textContent = n ? n + (n === 1 ? ' method' : ' methods') : '';
+        emptyEl.hidden = rows.length > 0;
+      }
+
+      function template(key) {
+        var vId = kind + '-value-' + key;
+        var tId = kind + '-type-' + key;
+        var typeOpts = TYPES.map(function (t) {
+          return '<option value="' + esc(t) + '">' + esc(t) + '</option>';
+        }).join('');
+
+        var field = isPhone
+          ? '<div class="relative" data-phone data-phone-country="US">' +
+              '<div class="sd-phone">' +
+                '<button type="button" class="sd-phone__country" data-phone-toggle aria-haspopup="listbox" aria-expanded="false" aria-label="Country calling code">' +
+                  '<span class="sd-phone__flag" data-phone-flag>&#127482;&#127480;</span>' +
+                  '<span class="font-medium" data-phone-code>+1</span>' +
+                  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+                '</button>' +
+                '<input id="' + vId + '" type="tel" class="sd-phone__field" data-phone-input data-value autocomplete="tel-national" aria-describedby="' + vId + '-error" />' +
+              '</div>' +
+              '<div class="sd-pop" data-phone-pop hidden></div>' +
+            '</div>'
+          : '<input id="' + vId + '" type="email" class="sd-input" data-value autocomplete="email" placeholder="name@example.com" aria-describedby="' + vId + '-error" />';
+
+        var prefs = PREFS.map(function (pref) {
+          var pid = kind + '-' + pref.id + '-' + key;
+          return '<label for="' + pid + '" class="flex items-center gap-2 cursor-pointer" title="' + esc(pref.hint) + '">' +
+            '<input id="' + pid + '" type="checkbox" class="sd-check" data-pref="' + pref.id + '"' +
+              (pref.requires ? ' data-requires="' + pref.requires + '"' : '') + ' />' +
+            '<span class="text-[12px] text-ink">' + esc(pref.label) + '</span>' +
+          '</label>';
+        }).join('');
+
+        return '<div class="border border-line rounded-md p-3.5 outline-2 outline-brand -outline-offset-2" data-row data-key="' + key + '">' +
+          '<div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">' +
+            '<div class="min-w-0">' +
+              '<label for="' + vId + '" class="sr-only">' + (isPhone ? 'Phone number' : 'Email address') + '</label>' +
+              field +
+              '<p id="' + vId + '-error" data-error-for="' + vId + '" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>' +
+            '</div>' +
+            '<div class="min-w-0">' +
+              '<label for="' + tId + '" class="sr-only">' + (isPhone ? 'Phone type' : 'Email type') + '</label>' +
+              '<select id="' + tId + '" class="sd-input has-value" data-type>' + typeOpts + '</select>' +
+            '</div>' +
+          '</div>' +
+          '<div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 pt-3 border-t border-line">' +
+            '<label for="' + kind + '-primary-' + key + '" class="flex items-center gap-2 cursor-pointer">' +
+              '<input id="' + kind + '-primary-' + key + '" type="radio" name="' + kind + 'Primary" class="sd-radio" data-primary value="' + key + '" />' +
+              '<span class="text-[12px] font-semibold text-ink">Primary</span>' +
+            '</label>' +
+            '<span class="sd-badge sd-badge--primary" data-primary-hint hidden>' +
+              'Used by default' +
+            '</span>' +
+            '<span class="hidden sm:block h-4 w-px bg-line" aria-hidden="true"></span>' +
+            prefs +
+            '<button type="button" class="sd-iconbtn grid ml-auto" data-remove aria-label="Remove this ' + (isPhone ? 'phone number' : 'email address') + '">' +
+              '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9.5 7V5.5A1.5 1.5 0 0111 4h2a1.5 1.5 0 011.5 1.5V7M6.5 7l.8 12a1.5 1.5 0 001.5 1.4h6.4a1.5 1.5 0 001.5-1.4l.8-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '</button>' +
+          '</div>' +
+        '</div>';
+      }
+
+      function syncPrefDependencies(el) {
+        var master = el.querySelector('[data-pref="smsEnabled"]');
+        if (!master) return;
+        el.querySelectorAll('[data-requires]').forEach(function (dep) {
+          dep.disabled = !master.checked;
+          if (!master.checked) dep.checked = false;
+          dep.closest('label').classList.toggle('opacity-45', !master.checked);
+        });
+      }
+
+      function add(record, opts) {
+        opts = opts || {};
+        contactSeq += 1;
+        var key = contactSeq;
+
+        var wrap = document.createElement('div');
+        wrap.innerHTML = template(key);
+        var el = wrap.firstChild;
+        host.appendChild(el);
+
+        var row = { key: key, el: el, phoneCtl: null, id: record && record.id ? record.id : null };
+
+        if (isPhone) {
+          row.phoneCtl = SD.phoneField(el.querySelector('[data-phone]'));
+        }
+        SD.combo(el.querySelector('[data-type]'), { searchPlaceholder: 'Search types…' });
+
+        if (record) {
+          if (isPhone) {
+            row.phoneCtl.set(String(record.dial || '') + String(record.national || ''), record.iso);
+          } else {
+            el.querySelector('[data-value]').value = record.email || '';
+          }
+          var typeSel = el.querySelector('[data-type]');
+          typeSel.value = record.type || TYPES[0];
+          // Assigning .value fires no change event, so the combo label has
+          // to be repainted or it keeps showing the first option.
+          SD.comboRefresh(typeSel);
+          el.querySelector('[data-primary]').checked = !!record.isPrimary;
+          PREFS.forEach(function (pref) {
+            el.querySelector('[data-pref="' + pref.id + '"]').checked = !!record[pref.id];
+          });
+        } else {
+          // A brand-new row starts with the sensible defaults: reachable,
+          // gets appointment messages, no marketing until they opt in.
+          el.querySelector('[data-pref="' + (isPhone ? 'smsEnabled' : 'appointmentEmailEnabled') + '"]').checked = true;
+          if (isPhone) el.querySelector('[data-pref="appointmentSmsEnabled"]').checked = true;
+        }
+
+        syncPrefDependencies(el);
+
+        el.addEventListener('input', function () { ensurePrimary(); onChange(); });
+        el.addEventListener('change', function (e) {
+          if (e.target.matches('[data-pref="smsEnabled"]')) syncPrefDependencies(el);
+          ensurePrimary();
+          onChange();
+        });
+        el.querySelector('[data-remove]').addEventListener('click', function () { remove(row); });
+
+        rows.push(row);
+        paintChrome();
+        if (opts.focus) {
+          var focusTarget = el.querySelector('[data-value]');
+          if (focusTarget) focusTarget.focus();
+        }
+        return row;
+      }
+
+      /* §14: losing the primary must not leave the client without one.
+         The next filled row is promoted and the change is announced —
+         reassigning silently would be worse than the modal the spec
+         suggests, and interrupting every delete with one would be worse
+         than either. The radios are right there if they want another. */
+      function remove(row) {
+        var wasPrimary = row.el.querySelector('[data-primary]').checked;
+        var label = rowValue(row) || (isPhone ? 'phone number' : 'email address');
+        rows = rows.filter(function (r) { return r !== row; });
+        row.el.remove();
+
+        var promotedNote = '';
+        if (wasPrimary) {
+          ensurePrimary();
+          var now = filled().filter(function (r) { return r.el.querySelector('[data-primary]').checked; })[0];
+          if (now) {
+            var type = now.el.querySelector('[data-type]').value;
+            promotedNote = ' ' + type + ' ' + rowValue(now) + ' is now primary.';
+          }
+        }
+        paintChrome();
+        onChange();
+        announce(label + ' removed.' + promotedNote);
+        if (promotedNote) SDC.toast('Primary ' + kind + ' moved to' + promotedNote.replace(' is now primary.', '') + '.');
+      }
+
+      function clear() {
+        rows.forEach(function (r) { r.el.remove(); });
+        rows = [];
+        paintChrome();
+      }
+
+      /* Rows with nothing typed in them are dropped rather than saved as
+         blanks — an empty row is an abandoned intention, not data. */
+      function value() {
+        return filled().map(function (r) {
+          var el = r.el;
+          var base = {
+            id: r.id || undefined,
+            type: el.querySelector('[data-type]').value,
+            isPrimary: el.querySelector('[data-primary]').checked,
+            active: true
+          };
+          PREFS.forEach(function (pref) {
+            base[pref.id] = el.querySelector('[data-pref="' + pref.id + '"]').checked;
+          });
+          if (isPhone) {
+            var v = r.phoneCtl.value();
+            return SDC.makePhone(Object.assign(base, { iso: v.iso, dial: v.dial, national: v.national }), r.id || undefined);
+          }
+          return SDC.makeEmail(Object.assign(base, { email: el.querySelector('[data-value]').value.trim() }), r.id || undefined);
+        });
+      }
+
+      /* Rows plus their controls, for validation — value() drops the
+         empty ones, and errors need to point at the real field. */
+      function entries() {
+        return rows.map(function (r) {
+          return {
+            row: r,
+            input: r.el.querySelector('[data-value]'),
+            value: rowValue(r),
+            complete: isPhone ? r.phoneCtl.value().complete : true,
+            dial: isPhone ? r.phoneCtl.value().dial : '',
+            key: isPhone ? SDC.phoneKey(r.phoneCtl.value()) : SDC.emailKey(rowValue(r))
+          };
+        });
+      }
+
+      var onChange = function () {};
+
+      document.querySelector('[data-add="' + kind + '"]').addEventListener('click', function () {
+        add(null, { focus: true });
+        ensurePrimary();
+        onChange();
+      });
+
+      return {
+        add: add, clear: clear, value: value, entries: entries,
+        count: function () { return filled().length; },
+        onChange: function (fn) { onChange = fn; }
+      };
+    }
+
+    var phoneList = contactList('phone');
+    var emailList = contactList('email');
+
+    /* ---------- Profile photo ------------------------------------------ */
+
+    (function photo() {
+      var input = document.getElementById('cPhoto');
+      var preview = document.querySelector('[data-photo-preview]');
+      var bar = document.querySelector('[data-photo-bar]');
+      var clearBtn = document.querySelector('[data-photo-clear]');
+
+      document.querySelector('[data-photo-pick]').addEventListener('click', function () { input.click(); });
+
+      input.addEventListener('change', function () {
+        var file = input.files && input.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+          SD.setError(input, 'That image is larger than 5 MB. Try a smaller file.');
+          input.value = '';
+          return;
+        }
+        SD.setError(input, '');
+        bar.hidden = false;
+        var fill = bar.querySelector('span');
+        var pct = 0;
+        var timer = window.setInterval(function () {
+          pct = Math.min(100, pct + 12 + Math.round(Math.random() * 10));
+          fill.style.width = pct + '%';
+          if (pct < 100) return;
+          window.clearInterval(timer);
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            photoData = e.target.result;
+            preview.innerHTML = '<img src="' + photoData + '" alt="" />';
+            clearBtn.hidden = false;
+            paintPreview();
+            window.setTimeout(function () { bar.hidden = true; fill.style.width = '0%'; }, 400);
+          };
+          reader.readAsDataURL(file);
+        }, 120);
+      });
+
+      clearBtn.addEventListener('click', function () {
+        photoData = null;
+        input.value = '';
+        clearBtn.hidden = true;
+        paintInitials();
+        paintPreview();
+      });
+    }());
+
+    function initialsNow() {
+      var a = (document.getElementById('cFirst').value || '').trim().charAt(0);
+      var b = (document.getElementById('cLast').value || '').trim().charAt(0);
+      return (a + b).toUpperCase() || '?';
+    }
+    function paintInitials() {
+      document.querySelector('[data-photo-preview]').textContent = initialsNow();
+    }
+
+    /* ---------- Live preview rail --------------------------------------- */
+
+    function paintPreview() {
+      var first = document.getElementById('cFirst').value.trim();
+      var last = document.getElementById('cLast').value.trim();
+      var preferred = document.getElementById('cPreferred').value.trim();
+      var name = [first, last].filter(Boolean).join(' ');
+
+      var av = document.querySelector('[data-preview-avatar]');
+      if (photoData) av.innerHTML = '<img src="' + photoData + '" alt="" />';
+      else av.textContent = initialsNow();
+
+      document.querySelector('[data-preview-name]').textContent =
+        name || (editing ? SDC.fullName(editing) : 'New client');
+
+      // The preview shows what the directory will show: the primary
+      // pair only, labelled with its type so "Primary · Work" reads the
+      // way it will on the profile.
+      var phones = phoneList.value();
+      var emails = emailList.value();
+      var pPhone = phones.filter(function (r) { return r.isPrimary; })[0] || phones[0];
+      var pEmail = emails.filter(function (r) { return r.isPrimary; })[0] || emails[0];
+
+      var bits = [];
+      if (preferred) bits.push('Goes by ' + preferred);
+      if (pPhone) bits.push(pPhone.type + ' ' + SDC.phoneText(pPhone));
+      if (pEmail) bits.push(pEmail.type + ' ' + pEmail.email);
+      document.querySelector('[data-preview-contact]').textContent = bits.join(' · ') || 'No contact details yet';
+
+      var more = Math.max(0, phones.length - 1) + Math.max(0, emails.length - 1);
+      var moreEl = document.querySelector('[data-preview-more]');
+      moreEl.textContent = more ? '+ ' + more + ' other contact method' + (more === 1 ? '' : 's') : '';
+      moreEl.hidden = !more;
+
+      var tags = tagsCtl ? tagsCtl.value() : [];
+      document.querySelector('[data-preview-tags]').innerHTML = tags.length
+        ? tags.map(function (t) { return '<span class="sd-tag"><span class="sd-tag__text">' + esc(t) + '</span></span>'; }).join('')
+        : '<span class="text-[12px] text-faint">No tags</span>';
+
+      var st = SDC.statusMeta(document.getElementById('cStatus').value);
+      document.querySelector('[data-preview-status]').innerHTML =
+        '<span class="sd-badge ' + st.badge + '"><span class="sd-badge__dot" aria-hidden="true"></span>' + st.label + '</span>';
+
+      setDl('[data-preview-staff]', SDC.staffName(document.getElementById('cStaff').value));
+      setDl('[data-preview-source]', document.getElementById('cSource').value);
+    }
+
+    /* An empty <dd> renders the em dash from CSS, so clear the attribute
+       only when there is something real to show. */
+    function setDl(sel, value) {
+      var el = document.querySelector(sel);
+      el.textContent = value || '';
+      if (value) el.removeAttribute('data-empty'); else el.setAttribute('data-empty', '');
+    }
+
+    ['cFirst', 'cLast', 'cPreferred'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', function () {
+        if (!photoData) paintInitials();
+        paintPreview();
+      });
+    });
+    ['cStatus', 'cStaff', 'cSource'].forEach(function (id) {
+      document.getElementById(id).addEventListener('change', paintPreview);
+    });
+
+    // Any contact row edit repaints the preview and retires a duplicate
+    // acknowledgement made against the old values.
+    phoneList.onChange(function () { dupeOk = false; paintPreview(); });
+    emailList.onChange(function () { dupeOk = false; paintPreview(); });
+
+    /* ---------- Edit mode ------------------------------------------------ */
+
+    if (params.get('id') && !editing) {
+      // A dead link should say so rather than silently turning into "add".
+      SDC.toast('That client no longer exists — this is a new client instead.');
+    }
+
+    if (editing) {
+      document.title = 'Edit ' + SDC.fullName(editing) + ' — StyleDesk';
+      document.querySelector('[data-crumb]').textContent = SDC.fullName(editing);
+      document.querySelector('[data-page-title]').textContent = 'Edit client';
+      document.querySelector('[data-page-sub]').textContent =
+        'Changes are saved to ' + SDC.fullName(editing) + '’s record and show up everywhere they appear.';
+      document.querySelector('[data-save]').textContent = 'Save changes';
+      document.querySelector('[data-save-book]').hidden = true;
+
+      document.getElementById('cFirst').value = editing.firstName || '';
+      document.getElementById('cLast').value = editing.lastName || '';
+      document.getElementById('cPreferred').value = editing.preferredName || '';
+      if (dobCtl) dobCtl.set(editing.birthday || '');
+      document.getElementById('cNotes').value = editing.notes || '';
+      if (tagsCtl) tagsCtl.set(editing.tags || []);
+      document.getElementById('cStaff').value = editing.preferredStaff || 'any';
+      document.getElementById('cSource').value = editing.source || '';
+      document.getElementById('cStatus').value = editing.status || 'active';
+      document.getElementById('cGender').value = editing.gender || '';
+      var addr = editing.address || {};
+      document.getElementById('cStreet').value = addr.street || '';
+      document.getElementById('cCity').value = addr.city || '';
+      document.getElementById('cRegion').value = addr.region || '';
+      document.getElementById('cPostcode').value = addr.postcode || '';
+      document.getElementById('cCountry').value = addr.country || '';
+      // Assigning .value does not fire `change`, so the combo buttons have
+      // to be repainted or they keep showing the previous selection.
+      ['cStaff', 'cSource', 'cStatus', 'cGender', 'cCountry'].forEach(function (id) {
+        SD.comboRefresh(document.getElementById(id));
+      });
+      SDC.allPhones(editing).forEach(function (rec) { phoneList.add(rec); });
+      SDC.allEmails(editing).forEach(function (rec) { emailList.add(rec); });
+      photoData = editing.photo || null;
+      if (photoData) {
+        document.querySelector('[data-photo-preview]').innerHTML = '<img src="' + photoData + '" alt="" />';
+        document.querySelector('[data-photo-clear]').hidden = false;
+      }
+    }
+
+    if (!editing) {
+      // One empty row of each so the common case — a name and a mobile —
+      // needs no clicking before you can start typing.
+      phoneList.add(null);
+      emailList.add(null);
+    }
+
+    paintInitials();
+    paintPreview();
+
+    /* ---------- Unsaved-changes guard ------------------------------------ */
+
+    function snapshot() {
+      return JSON.stringify([
+        document.getElementById('cFirst').value, document.getElementById('cLast').value,
+        document.getElementById('cPreferred').value,
+        phoneList.value(), emailList.value(),
+        tagsCtl ? tagsCtl.value() : [],
+        document.getElementById('cStaff').value, document.getElementById('cSource').value,
+        document.getElementById('cStatus').value, document.getElementById('cGender').value,
+        dobCtl ? dobCtl.value() : '', document.getElementById('cNotes').value,
+        document.getElementById('cStreet').value, document.getElementById('cCity').value,
+        document.getElementById('cRegion').value, document.getElementById('cPostcode').value,
+        document.getElementById('cCountry').value,
+        !!photoData
+      ]);
+    }
+    var pristine = snapshot();
+    var saving = false;
+    function isDirty() { return !saving && snapshot() !== pristine; }
+
+    // Covers the browser's own exits — back, closing the tab, the URL bar.
+    // The in-app Cancel gets the nicer dialog below.
+    window.addEventListener('beforeunload', function (e) {
+      if (!isDirty()) return;
+      e.preventDefault();
+      e.returnValue = '';
+    });
+
+    /* ---------- Confirmation dialog --------------------------------------- */
+
+    var confirmEl = document.querySelector('[data-confirm]');
+    var confirmOverlay = null;
+    var confirmFn = null;
+
+    function confirmDialog(o) {
+      document.querySelector('[data-confirm-title]').textContent = o.title;
+      document.querySelector('[data-confirm-body]').textContent = o.body;
+      document.querySelector('[data-confirm-ok]').textContent = o.okLabel || 'Discard';
+      confirmFn = o.onOk;
+      confirmEl.hidden = false;
+      confirmOverlay = SDC.overlay(confirmEl, {
+        initialFocus: '[data-confirm-cancel]',
+        onClose: function () { confirmEl.hidden = true; }
+      });
+      confirmOverlay.open();
+    }
+    function closeConfirm() { if (confirmOverlay) confirmOverlay.close(); confirmOverlay = null; }
+    document.querySelector('[data-confirm-cancel]').addEventListener('click', closeConfirm);
+    document.querySelector('[data-confirm-scrim]').addEventListener('click', closeConfirm);
+    document.querySelector('[data-confirm-ok]').addEventListener('click', function () {
+      var fn = confirmFn; closeConfirm(); if (fn) fn();
+    });
+
+    function leave() {
+      saving = true;                                  // stand down beforeunload
+      window.location.href = editing
+        ? 'client-profile.html?id=' + encodeURIComponent(editing.id)
+        : 'clients.html';
+    }
+
+    document.querySelector('[data-cancel]').addEventListener('click', function () {
+      if (!isDirty()) { leave(); return; }
+      confirmDialog({
+        title: editing ? 'Discard your changes?' : 'Discard this client?',
+        body: 'You have unsaved details. Leaving now will lose them.',
+        okLabel: 'Discard',
+        onOk: leave
+      });
+    });
+
+    /* ---------- Duplicate detection (§19) ---------------------------------- */
+
+    function hideDupe() {
+      document.querySelector('[data-dupe]').hidden = true;
+      document.querySelector('[data-dupe-list]').innerHTML = '';
+    }
+
+    function checkDupes() {
+      if (dupeOk) return [];
+      // Every row on the form is checked against every contact on every
+      // existing client — a match on the third email still counts (§11).
+      var hits = SDC.duplicates({
+        id: editing ? editing.id : null,
+        emails: emailList.value(),
+        phones: phoneList.value()
+      });
+      if (!hits.length) { hideDupe(); return []; }
+
+      var whys = [];
+      hits.forEach(function (h) { h.why.forEach(function (w) { if (whys.indexOf(w) === -1) whys.push(w); }); });
+      document.querySelector('[data-dupe-why]').textContent =
+        (hits.length === 1 ? 'A client' : hits.length + ' clients') +
+        ' already ' + (hits.length === 1 ? 'has' : 'have') + ' the same ' + whys.join(' and ') + '.';
+
+      document.querySelector('[data-dupe-list]').innerHTML = hits.map(function (h) {
+        var c = h.client;
+        return '<div class="flex flex-wrap items-center gap-2.5 bg-white/70 border border-warning/40 rounded-md p-2.5">' +
+          '<span class="sd-avatar sd-avatar--sm" aria-hidden="true">' + esc(SDC.initials(c)) + '</span>' +
+          '<span class="min-w-0 flex-1">' +
+            '<span class="block text-[13px] font-semibold text-head truncate">' + esc(SDC.fullName(c)) + '</span>' +
+            // Name the record that actually matched, with its label —
+            // "Work — sarah@company.com" tells the user why this came up,
+            // which the primary contact alone would not (§11).
+            h.matches.map(function (m) {
+              return '<span class="block text-[12px] text-sub truncate">' +
+                esc(SDC.contactLabel(m.record)) + ' &mdash; ' + esc(m.value) + '</span>';
+            }).join('') +
+          '</span>' +
+          '<a href="client-profile.html?id=' + encodeURIComponent(c.id) + '" class="h-8 px-2.5 grid place-items-center rounded-md text-[12px] font-semibold text-link hover:underline shrink-0">View</a>' +
+          '<a href="client-profile.html?id=' + encodeURIComponent(c.id) + '" class="h-8 px-2.5 grid place-items-center rounded-md bg-brand hover:bg-brand-dark text-white text-[12px] font-semibold shrink-0 transition-colors">Use this client</a>' +
+        '</div>';
+      }).join('');
+
+      document.querySelector('[data-dupe]').hidden = false;
+      return hits;
+    }
+
+    document.querySelector('[data-dupe-continue]').addEventListener('click', function () {
+      dupeOk = true;
+      hideDupe();
+      document.getElementById('cFirst').focus();
+    });
+
+    // Blur anywhere in either list runs the check, so it fires for a row
+    // that was added minutes after the first one.
+    ['phone', 'email'].forEach(function (kind) {
+      document.querySelector('[data-list="' + kind + '"]').addEventListener('blur', function (e) {
+        if (e.target.matches('[data-value]') && e.target.value) checkDupes();
+      }, true);
+    });
+
+    /* ---------- Validation (§27) --------------------------------------------
+       First name, plus one way to reach them. Everything else can be filled
+       in later from the profile — creating a client has to stay quick. */
+
+    function validate() {
+      SD.clearErrors(form);
+      var ok = true;
+      var first = document.getElementById('cFirst');
+
+      if (!first.value.trim()) { SD.setError(first, 'Enter the client’s first name.'); ok = false; }
+
+      // Each row is checked on its own, and against the rows above it —
+      // the same address twice on one client is a mistake, not a second
+      // way to reach them.
+      function checkList(list, kind) {
+        var seen = {};
+        list.entries().forEach(function (row) {
+          if (!row.value) return;
+
+          if (kind === 'email' && !SD.isEmail(row.value)) {
+            SD.setError(row.input, 'Enter a valid email address, like name@example.com.');
+            ok = false;
+            return;
+          }
+          if (kind === 'phone' && !row.complete) {
+            SD.setError(row.input, 'That number looks incomplete for ' + row.dial + '.');
+            ok = false;
+            return;
+          }
+          if (seen[row.key]) {
+            SD.setError(row.input, kind === 'email'
+              ? 'This client already has this email address.'
+              : 'This client already has this number.');
+            ok = false;
+            return;
+          }
+          seen[row.key] = true;
+        });
+      }
+
+      checkList(phoneList, 'phone');
+      checkList(emailList, 'email');
+
+      // One way to reach them, of either kind.
+      if (!phoneList.count() && !emailList.count()) {
+        SD.setError(document.getElementById('contact'),
+          'Add a phone number or an email address so you can reach them.');
+        ok = false;
+      }
+
+      if (!ok) SD.focusFirstError(form);
+      return ok;
+    }
+
+    function collect() {
+      var street = document.getElementById('cStreet').value.trim();
+      var city = document.getElementById('cCity').value.trim();
+      var region = document.getElementById('cRegion').value.trim();
+      var postcode = document.getElementById('cPostcode').value.trim();
+      var country = document.getElementById('cCountry').value;
+
+      return {
+        firstName: document.getElementById('cFirst').value.trim(),
+        lastName: document.getElementById('cLast').value.trim(),
+        preferredName: document.getElementById('cPreferred').value.trim(),
+        emails: emailList.value().map(function (e) {
+          return Object.assign(e, { email: SD.normalizeEmail(e.email) });
+        }),
+        phones: phoneList.value(),
+        status: document.getElementById('cStatus').value || 'active',
+        tags: tagsCtl.value(),
+        preferredStaff: document.getElementById('cStaff').value || 'any',
+        source: document.getElementById('cSource').value,
+        birthday: dobCtl ? dobCtl.value() : '',
+        gender: document.getElementById('cGender').value,
+        address: (street || city || region || postcode || country)
+          ? { street: street, city: city, region: region, postcode: postcode, country: country }
+          : null,
+        notes: document.getElementById('cNotes').value.trim(),
+        photo: photoData
+      };
+    }
+
+    function save(andBook) {
+      if (!validate()) return;
+      if (!editing && checkDupes().length) {
+        document.querySelector('[data-dupe]').scrollIntoView({ block: 'center', behavior: 'smooth' });
+        return;
+      }
+
+      var btn = andBook ? document.querySelector('[data-save-book]') : document.querySelector('[data-save]');
+      var release = SD.lockSubmit(btn, 'Saving…');
+      var data = collect();
+
+      // Stands in for the POST. The release path is kept so a failed save in
+      // the real build restores the button rather than stranding it.
+      window.setTimeout(function () {
+        var row = editing ? SDC.update(editing.id, data) : SDC.create(data);
+        if (release) release();
+        saving = true;                                // stand down beforeunload
+
+        var link = 'client-profile.html?id=' + encodeURIComponent(row.id);
+        if (editing) {
+          SDC.flash('Changes saved.');
+          window.location.href = link;
+        } else if (andBook) {
+          SDC.flash('<b>' + esc(SDC.fullName(row)) + '</b> created — opening the calendar…');
+          window.location.href = link;
+        } else {
+          SDC.flash('<b>' + esc(SDC.fullName(row)) + '</b> added. <a href="' + link + '">View profile</a>');
+          window.location.href = 'clients.html';
+        }
+      }, 260);
+    }
+
+    form.addEventListener('submit', function (e) { e.preventDefault(); save(false); });
+    document.querySelector('[data-save-book]').addEventListener('click', function () { save(true); });
+
+    var f = SDC.takeFlash();
+    if (f) SDC.toast(f);
+  }());
+  </script>
+</body>
+</html>

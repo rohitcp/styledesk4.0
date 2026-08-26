@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create your account — StyleDesk</title>
+
+  <!--
+    StyleDesk — Stage 1: create account (§2)
+    Two-panel layout: the form on the left, the value panel on the right.
+    The right panel is marketing, so it is hidden below lg — §26 asks for the
+    primary CTA to stay reachable without extra scrolling on small screens.
+    Controls are the shared .sd-* components; nothing here is forked.
+  -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/tailwind.config.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <!--
+    Brand bootstrap. This runs before the body paints, which is the whole
+    point: reading the saved palette from the branding module at the
+    bottom of the page would show every visitor a flash of StyleDesk
+    purple before their own colours arrived. Deliberately tiny and
+    dependency-free — it is a paint fix, not a copy of the store.
+  -->
+  <script>
+  (function () {
+    try {
+      var raw = window.localStorage.getItem('styledesk.branding.v1');
+      if (!raw) return;
+      var c = (JSON.parse(raw) || {}).colors || {};
+      var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
+                  banner: '--sd-banner', link: '--sd-link',
+                  accent: '--sd-accent', button: '--sd-btn',
+                  buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
+      Object.keys(map).forEach(function (k) {
+        if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
+      });
+      var t = (JSON.parse(raw) || {}).favicon;
+      if (t) {
+        var el = document.createElement('link');
+        el.rel = 'icon'; el.href = t;
+        document.head.appendChild(el);
+      }
+    } catch (e) { /* a broken palette must never stop the page rendering */ }
+  }());
+  </script>
+</head>
+<body class="bg-white text-ink text-[13px]">
+
+  <div class="min-h-screen lg:grid lg:grid-cols-2">
+
+    <!-- ===================== Form ===================== -->
+    <div class="flex items-center justify-center px-5 sm:px-8 py-10 sm:py-14">
+      <div class="w-full max-w-[420px]">
+
+        <a href="designsystem.html" class="inline-flex items-center gap-2.5 text-head mb-10">
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M6.5 21.5 L14 6 L18.5 6 L11 21.5 Z"/><path d="M14.5 21.5 L22 6 L26.5 6 L19 21.5 Z"/><rect x="4" y="24.6" width="24" height="3.6" rx="1.8"/></svg>
+          <span class="text-[18px] font-bold tracking-tight">StyleDesk</span>
+        </a>
+
+        <h1 class="text-[28px] sm:text-[32px] font-bold text-head tracking-tight leading-[1.15]">Create your StyleDesk account</h1>
+        <p class="text-[15px] text-sub mt-3 leading-relaxed">
+          Set up your business and start managing bookings, clients, staff, and services.
+        </p>
+
+        <!-- §3 duplicate email — shown instead of creating a second account -->
+        <div id="dupe" hidden class="mt-7 rounded-lg border border-danger bg-red-50/50 p-3.5" role="alert">
+          <p class="flex items-start gap-2 text-[13px] text-danger font-medium">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="mt-px shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v6M12 16.5v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            An account already exists with this email address.
+          </p>
+          <a href="login.html" class="inline-flex items-center h-8 px-3 mt-2.5 ml-[23px] rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">Log in instead</a>
+        </div>
+
+        <form id="signup" class="mt-8 space-y-5" novalidate>
+
+          <div class="grid sm:grid-cols-2 gap-x-4 gap-y-5">
+            <div>
+              <label for="firstName" class="block text-[13px] font-medium text-ink mb-1.5">First name</label>
+              <input id="firstName" name="firstName" type="text" autocomplete="given-name" class="sd-input"
+                     aria-describedby="firstName-error" />
+              <p id="firstName-error" data-error-for="firstName" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+            </div>
+            <div>
+              <label for="lastName" class="block text-[13px] font-medium text-ink mb-1.5">Last name</label>
+              <input id="lastName" name="lastName" type="text" autocomplete="family-name" class="sd-input"
+                     aria-describedby="lastName-error" />
+              <p id="lastName-error" data-error-for="lastName" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+            </div>
+          </div>
+
+          <div>
+            <label for="email" class="block text-[13px] font-medium text-ink mb-1.5">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" placeholder="name@yourbusiness.com"
+                   class="sd-input" aria-describedby="email-error" />
+            <p id="email-error" data-error-for="email" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+          </div>
+
+          <div>
+            <label for="password" class="block text-[13px] font-medium text-ink mb-1.5">Password</label>
+            <div class="relative">
+              <input id="password" name="password" type="password" autocomplete="new-password"
+                     class="sd-input has-suffix" aria-describedby="password-error password-strength password-rules" />
+              <button type="button" data-reveal="password"
+                      class="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-faint hover:text-sub hover:bg-hover transition-colors"
+                      aria-label="Show password" aria-pressed="false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
+              </button>
+            </div>
+            <p id="password-error" data-error-for="password" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+
+            <!-- Strength: bar + text. The word carries the meaning, the bar
+                 only reinforces it, so nothing depends on colour alone. -->
+            <div class="mt-2.5 flex items-center gap-3">
+              <div id="meter" class="sd-meter flex-1" data-level="0" aria-hidden="true">
+                <span class="sd-meter__seg"></span><span class="sd-meter__seg"></span>
+                <span class="sd-meter__seg"></span><span class="sd-meter__seg"></span>
+              </div>
+              <span id="password-strength" class="text-[12px] font-medium text-faint w-[46px] text-right" role="status" aria-live="polite">—</span>
+            </div>
+
+            <ul id="password-rules" class="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1"></ul>
+          </div>
+
+          <div>
+            <label for="confirm" class="block text-[13px] font-medium text-ink mb-1.5">Confirm password</label>
+            <div class="relative">
+              <input id="confirm" name="confirm" type="password" autocomplete="new-password"
+                     class="sd-input has-suffix" aria-describedby="confirm-error" />
+              <button type="button" data-reveal="confirm"
+                      class="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-faint hover:text-sub hover:bg-hover transition-colors"
+                      aria-label="Show password" aria-pressed="false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
+              </button>
+            </div>
+            <p id="confirm-error" data-error-for="confirm" hidden role="alert" class="mt-1.5 text-[12px] text-danger"></p>
+          </div>
+
+          <!-- The reference treats terms as implicit consent under the button.
+               §2 requires explicit acceptance before account creation, so this
+               stays a real checkbox. -->
+          <div>
+            <label class="flex items-start gap-2.5 text-[13px] text-ink cursor-pointer leading-relaxed">
+              <input id="terms" name="terms" type="checkbox" class="sd-check mt-0.5" aria-describedby="terms-error" />
+              <span>I agree to the StyleDesk <a href="#" class="text-link font-medium hover:underline">Terms of Service</a> and <a href="#" class="text-link font-medium hover:underline">Privacy Policy</a>.</span>
+            </label>
+            <p id="terms-error" data-error-for="terms" hidden role="alert" class="mt-1.5 ml-[26px] text-[12px] text-danger"></p>
+          </div>
+
+          <button id="submit" type="submit"
+                  class="w-full h-11 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+            Create Account
+          </button>
+        </form>
+
+        <div class="flex items-center gap-3 my-6">
+          <div class="h-px flex-1 bg-line"></div>
+          <span class="text-[13px] text-faint">or</span>
+          <div class="h-px flex-1 bg-line"></div>
+        </div>
+
+        <button type="button" class="relative w-full h-11 rounded-lg border border-stroke bg-white hover:bg-hover text-[14px] font-semibold text-ink transition-colors">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.1-3.8 6.4-9.4 6.4-16z"/><path fill="#FBBC05" d="M10.4 28.3c-.5-1.4-.8-2.9-.8-4.3s.3-3 .8-4.3l-7.8-6.1C.9 16.6 0 20.2 0 24s.9 7.4 2.6 10.4l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.5-2 15.3-5.5l-7.1-5.5c-2 1.3-4.6 2.1-8.2 2.1-6.3 0-11.7-3.7-13.6-9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg></span>
+          Sign up with Google
+        </button>
+
+        <p class="text-center mt-7 text-[13px] text-sub">
+          Already have an account?
+          <a href="login.html" class="text-link font-medium hover:underline">Sign in</a>
+        </p>
+
+        <p class="text-center mt-10 text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
+
+      </div>
+    </div>
+
+    <!-- ===================== Value panel ===================== -->
+    <aside class="hidden lg:flex items-center border-l border-line bg-gradient-to-b from-white via-[#faf9fd] to-[#f2effa] px-10 xl:px-16 py-14">
+      <div class="w-full max-w-[520px] mx-auto">
+
+        <h2 class="text-[26px] xl:text-[29px] font-bold text-head tracking-tight leading-[1.25]">
+          Run the whole salon <span class="text-[#9a93c4]">from one screen.</span>
+        </h2>
+
+        <ul class="mt-8 space-y-5">
+          <li class="flex items-start gap-3.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[15px] text-ink leading-relaxed">Let clients book themselves in, day or night, from one link.</span>
+          </li>
+          <li class="flex items-start gap-3.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[15px] text-ink leading-relaxed">See every appointment, staff schedule and client note on one calendar.</span>
+          </li>
+          <li class="flex items-start gap-3.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-[15px] text-ink leading-relaxed">Automatic reminders and cancellation rules cut no-shows.</span>
+          </li>
+        </ul>
+
+        <!--
+          PLACEHOLDER WORDMARKS — invented businesses, not real customers.
+          Swap these for your own customers' logos (and only with permission);
+          do not ship invented names under a "trusted by" heading.
+        -->
+        <div class="mt-16">
+          <p class="text-[13px] text-sub">Built for salons, spas and studios</p>
+          <div class="mt-7 grid grid-cols-3 gap-x-6 gap-y-9 text-faint">
+            <span class="text-[15px] font-bold tracking-tight text-center">Bella Beauty</span>
+            <span class="text-[15px] font-semibold tracking-[0.14em] uppercase text-center">Lumen</span>
+            <span class="text-[15px] font-bold tracking-tight text-center">Aster&nbsp;&amp;&nbsp;Ivy</span>
+            <span class="text-[15px] font-medium tracking-tight text-center">The Cutting Room</span>
+            <span class="text-[15px] font-bold tracking-tight text-center">Glasshouse</span>
+            <span class="text-[15px] font-semibold tracking-[0.14em] uppercase text-center">Verve</span>
+            <span class="text-[15px] font-medium tracking-tight text-center">Northside Barbers</span>
+            <span class="text-[15px] font-bold tracking-tight text-center">Studio Ninety</span>
+            <span class="text-[15px] font-semibold tracking-tight text-center">Rosewood Spa</span>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="assets/js/branding.js"></script>
+  <script src="assets/js/styledesk.js"></script>
+  <script>
+    (function () {
+      var form     = document.getElementById('signup');
+      var email    = document.getElementById('email');
+      var password = document.getElementById('password');
+      var confirm  = document.getElementById('confirm');
+      var terms    = document.getElementById('terms');
+      var meter    = document.getElementById('meter');
+      var strength = document.getElementById('password-strength');
+      var rulesList= document.getElementById('password-rules');
+      var dupe     = document.getElementById('dupe');
+
+      /* ---- password rules, painted once then updated in place ---- */
+      var CHECK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="currentColor"/><path d="M8 12l2.5 2.5L16 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      var DOT   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/></svg>';
+
+      rulesList.innerHTML = SD.PASSWORD_RULES.map(function (rule) {
+        return '<li data-rule="' + rule.id + '" class="flex items-center gap-1.5 text-[12px] text-faint">' +
+                 '<span class="shrink-0">' + DOT + '</span>' + rule.label +
+               '</li>';
+      }).join('');
+
+      function paintPassword() {
+        var result = SD.checkPassword(password.value);
+
+        result.rules.forEach(function (r) {
+          var li = rulesList.querySelector('[data-rule="' + r.id + '"]');
+          li.className = 'flex items-center gap-1.5 text-[12px] ' + (r.pass ? 'text-success' : 'text-faint');
+          li.firstElementChild.innerHTML = r.pass ? CHECK : DOT;
+        });
+
+        meter.setAttribute('data-level', String(result.score));
+        strength.textContent = result.label || '—';
+        strength.className = 'text-[12px] font-medium w-[46px] text-right ' +
+          (result.score >= 4 ? 'text-success' : result.score === 3 ? 'text-link'
+           : result.score === 2 ? 'text-warning' : result.score === 1 ? 'text-danger' : 'text-faint');
+
+        return result;
+      }
+
+      password.addEventListener('input', function () {
+        paintPassword();
+        if (password.classList.contains('is-error')) SD.setError(password, '');
+        if (confirm.value) matchCheck();
+      });
+
+      function matchCheck() {
+        if (confirm.value && confirm.value !== password.value) {
+          SD.setError(confirm, 'Passwords do not match.');
+          return false;
+        }
+        SD.setError(confirm, '');
+        return true;
+      }
+      confirm.addEventListener('input', matchCheck);
+
+      /* ---- reveal toggles ---- */
+      document.querySelectorAll('[data-reveal]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var field = document.getElementById(btn.getAttribute('data-reveal'));
+          var show = field.type === 'password';
+          field.type = show ? 'text' : 'password';
+          btn.setAttribute('aria-pressed', String(show));
+          btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        });
+      });
+
+      /* ---- email uniqueness (§3): checked on blur, again on submit ---- */
+      function emailCheck() {
+        var value = SD.normalizeEmail(email.value);
+        if (!value) return SD.setError(email, 'Enter your email address.');
+        if (!SD.isEmail(value)) return SD.setError(email, 'Please enter a valid email address.');
+        if (SD.emailTaken(value)) {
+          dupe.hidden = false;
+          SD.setError(email, 'An account already exists with this email address.');
+          return false;
+        }
+        dupe.hidden = true;
+        return SD.setError(email, '');
+      }
+      email.addEventListener('blur', function () { if (email.value) emailCheck(); });
+      email.addEventListener('input', function () {
+        if (email.classList.contains('is-error')) { SD.setError(email, ''); dupe.hidden = true; }
+      });
+
+      /* ---- submit ---- */
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        SD.clearErrors(form);
+        dupe.hidden = true;
+
+        var ok = true;
+        var first = document.getElementById('firstName');
+        var last  = document.getElementById('lastName');
+
+        if (!first.value.trim()) ok = SD.setError(first, 'Enter your first name.') && ok;
+        if (!last.value.trim())  ok = SD.setError(last,  'Enter your last name.')  && ok;
+        if (!emailCheck()) ok = false;
+
+        var pw = paintPassword();
+        if (!password.value) ok = SD.setError(password, 'Choose a password.') && ok;
+        else if (!pw.valid)  ok = SD.setError(password, 'Your password does not meet all the requirements below.') && ok;
+
+        if (!confirm.value) ok = SD.setError(confirm, 'Re-enter your password.') && ok;
+        else if (!matchCheck()) ok = false;
+
+        if (!terms.checked) {
+          terms.classList.add('is-error');
+          ok = SD.setError(terms, 'You must accept the Terms of Service and Privacy Policy.') && ok;
+        }
+
+        if (!ok) { SD.focusFirstError(form); return; }
+
+        // §25 — guard against a double click creating two accounts.
+        var release = SD.lockSubmit(document.getElementById('submit'), 'Creating account…');
+        if (!release) return;
+
+        SD.patch({
+          user: {
+            firstName: first.value.trim(),
+            lastName: last.value.trim(),
+            email: SD.normalizeEmail(email.value),
+            emailVerifiedAt: null
+          },
+          current_step: 'account'
+        });
+
+        // Server round-trip stands in for POST /signup + send verification mail.
+        window.setTimeout(function () { window.location.href = 'verify-email.html'; }, 450);
+      });
+
+      paintPassword();
+    }());
+  </script>
+</body>
+</html>

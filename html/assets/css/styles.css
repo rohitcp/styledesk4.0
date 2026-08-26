@@ -1,0 +1,3024 @@
+/* StyleDesk — shared styles
+   ------------------------------------------------------------------
+   Font + scrollbars, plus the form-control component classes.
+   Form controls follow the Tailwind Plus "Input groups" style:
+   an inset outline (not border + ring) that thickens to 2px in the
+   brand color on focus. Written as plain CSS so it works with the
+   Tailwind Play CDN and maps 1:1 to a future Vue <TextField> / <Textarea>.
+   Tokens: stroke #d1d5db · brand #3d348b · faint #9ca3af · ink #23272f
+   ------------------------------------------------------------------ */
+
+/* Tailwind's display utilities (.flex, .grid, .block) sit after Preflight's
+   [hidden] rule and share its specificity, so `hidden` on an element that
+   also carries a display class does nothing. Everything here toggles
+   visibility with the attribute, so make it win outright. */
+[hidden] { display: none !important; }
+
+/* ------------------------------------------------------------------
+   Brand tokens
+   ------------------------------------------------------------------
+   The defaults. App Settings › Branding overrides these on :root at
+   runtime, which is why every brand colour in this file is written as
+   var(--sd-*) rather than a literal — a rule that hardcodes #3d348b is
+   a rule that ignores the business's own palette.
+
+   The two derived values (-dark for hover, -ink for text on the fill)
+   are computed by SDBR rather than chosen, because asking someone to
+   pick a hover shade and a legible label colour is asking them to do
+   arithmetic the machine can do correctly.
+   ------------------------------------------------------------------ */
+:root {
+  --sd-brand:      #3d348b;
+  --sd-brand-dark: #2f2870;
+  --sd-banner:     #3c096c;
+  --sd-link:       #2563eb;
+  --sd-accent:     #b45309;
+  --sd-btn:        #3d348b;
+  --sd-btn-ink:    #ffffff;
+  --sd-secondary:  #0d9488;
+}
+
+html,
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #d6d6d9; border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ------------------------------------------------------------------
+   Form controls (Tailwind Plus input-groups style)
+   ------------------------------------------------------------------ */
+
+/* Base input / select */
+.sd-input {
+  display: block;
+  width: 100%;
+  height: 2.75rem;                 /* h-11 */
+  border-radius: 0.375rem;         /* rounded-md */
+  background-color: #fff;
+  padding: 0 0.875rem;             /* px-3.5 */
+  font-size: 14px;
+  line-height: 1.25rem;
+  color: #23272f;                  /* ink */
+  outline: 1px solid #d1d5db;      /* stroke */
+  outline-offset: -1px;
+  transition: outline-color 0.12s ease;
+}
+
+.sd-input::placeholder { color: #9ca3af; }  /* faint */
+
+.sd-input:focus {
+  outline: 2px solid var(--sd-brand);      /* brand */
+  outline-offset: -2px;
+}
+
+/* Select: room for the native chevron. Default text is `sub` (the value
+   reads as a placeholder until chosen); add .has-value once a real
+   selection is shown so it matches the other fields. */
+select.sd-input { padding-right: 2rem; color: #6b7280; }
+select.sd-input.has-value { color: #23272f; }
+
+/* Textarea */
+.sd-textarea {
+  display: block;
+  width: 100%;
+  border-radius: 0.375rem;
+  background-color: #fff;
+  padding: 0.625rem 0.875rem;      /* py-2.5 px-3.5 */
+  font-size: 14px;
+  line-height: 1.5rem;
+  color: #23272f;
+  outline: 1px solid #d1d5db;
+  outline-offset: -1px;
+  transition: outline-color 0.12s ease;
+}
+
+.sd-textarea::placeholder { color: #9ca3af; }
+
+.sd-textarea:focus {
+  outline: 2px solid var(--sd-brand);
+  outline-offset: -2px;
+}
+
+/* Suffix icon room (fields with a trailing icon/clear/eye button) */
+.sd-input.has-suffix { padding-right: 2.5rem; }
+
+/* Read-only.
+   Scoped to real fields: :read-only also matches <button>, which would make
+   every .sd-combo-btn render as though it were disabled. */
+input.sd-input:read-only,
+textarea.sd-input:read-only {
+  background-color: #f3f4f6;        /* hover */
+  color: #6b7280;                   /* sub */
+  cursor: default;
+  outline-color: #e5e7eb;           /* line */
+}
+input.sd-input:read-only:focus,
+textarea.sd-input:read-only:focus { outline: 1px solid #e5e7eb; outline-offset: -1px; }
+
+/* Error */
+.sd-input.is-error { outline-color: #ef4444; background-color: rgba(254, 242, 242, 0.4); }
+.sd-input.is-error:focus { outline: 2px solid #ef4444; outline-offset: -2px; }
+
+/* ------------------------------------------------------------------
+   Input group: leading add-on (e.g. app.styledesk.so/ + slug).
+   The wrapper owns the outline; the inner input is transparent.
+   ------------------------------------------------------------------ */
+.sd-group {
+  display: flex;
+  align-items: center;
+  height: 2.75rem;
+  border-radius: 0.375rem;
+  background-color: #fff;
+  outline: 1px solid #d1d5db;
+  outline-offset: -1px;
+  overflow: hidden;
+  transition: outline-color 0.12s ease;
+}
+.sd-group:focus-within { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+
+.sd-group__prefix {
+  padding-left: 0.875rem;
+  padding-right: 0.125rem;
+  font-size: 14px;
+  color: #9ca3af;                   /* faint */
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sd-group__field {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding-left: 10px;               /* when the field leads the group, or
+                                       follows a scheme select, it must not
+                                       sit flush against the outline */
+  padding-right: 0.875rem;
+  font-size: 14px;
+  color: #23272f;
+}
+
+/* Directly after a text prefix the value should read as one continuous
+   string ("app.styledesk.so/" + slug), so close the gap back up. */
+.sd-group__prefix + .sd-group__field { padding-left: 0.125rem; }
+.sd-group__field::placeholder { color: #9ca3af; }
+
+/* Trailing add-on (e.g. slug + .styledesk.com). Mirror of __prefix. */
+.sd-group__suffix {
+  padding-left: 0.125rem;
+  padding-right: 0.875rem;
+  font-size: 14px;
+  color: #9ca3af;                   /* faint */
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------
+   Checkboxes & radios
+   ------------------------------------------------------------------ */
+.sd-check,
+.sd-radio {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--sd-brand);            /* brand fill when checked */
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Read-only / disabled */
+.sd-check:disabled,
+.sd-radio:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Error (red ring that respects the control shape) */
+.sd-check.is-error { box-shadow: 0 0 0 2px #ef4444; border-radius: 4px; }
+.sd-radio.is-error { box-shadow: 0 0 0 2px #ef4444; border-radius: 9999px; }
+
+/* ------------------------------------------------------------------
+   Combobox button (built on .sd-input).
+   Declares its own display so it beats .sd-input's `display: block` —
+   styles.css loads after the Tailwind build, so a `flex` utility here
+   would lose to the component class it sits alongside.
+   ------------------------------------------------------------------ */
+.sd-combo-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+  cursor: pointer;
+}
+.sd-combo-btn__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sd-combo-btn.is-placeholder .sd-combo-btn__label { color: #9ca3af; }   /* faint */
+.sd-combo-btn__caret { flex-shrink: 0; color: #6b7280; }                /* sub */
+
+.sd-combo-btn.is-error { outline-color: #ef4444; }
+.sd-combo-btn.is-error:focus { outline: 2px solid #ef4444; outline-offset: -2px; }
+.sd-combo-btn.is-readonly { background-color: #f3f4f6; color: #6b7280; outline-color: #e5e7eb; cursor: not-allowed; }
+.sd-combo-btn.is-readonly:focus { outline: 1px solid #e5e7eb; outline-offset: -1px; }
+
+/* Date-picker field: readonly (no typing) but keeps the active look */
+input.sd-input.is-picker:read-only { background-color: #fff; color: #23272f; outline-color: #d1d5db; cursor: pointer; }
+input.sd-input.is-picker:read-only:focus { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+
+/* ------------------------------------------------------------------
+   App chrome — announcement banner + top bar
+   The surfaces themselves are token utilities (bar = bg-brand #3d348b,
+   banner = bg-brand-dark #2f2870); these classes only cover what
+   utilities can't express:
+   placeholder color on a dark field, and the on-dark hover/active
+   states for icon buttons.
+   ------------------------------------------------------------------ */
+
+/* Icon button in the top bar.
+   No `display` here on purpose — the markup supplies `grid` / `lg:grid`
+   so responsive `hidden` utilities still win. */
+.sd-navicon {
+  place-items: center;
+  height: 2.25rem;                  /* h-9 */
+  width: 2.25rem;
+  border-radius: 0.5rem;
+  color: rgba(255, 255, 255, 0.72);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.sd-navicon:hover { background-color: rgba(255, 255, 255, 0.12); color: #fff; }
+.sd-navicon:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: 2px; }
+.sd-navicon.is-active { background-color: #fff; color: #0f0f10; }
+.sd-navicon.is-active:hover { background-color: #fff; }
+
+/* Search field on the dark bar — mirrors .sd-input's inset-outline model */
+.sd-input-dark {
+  display: block;
+  width: 100%;
+  height: 2.5rem;                   /* h-10 */
+  border-radius: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.10);
+  padding: 0 0.875rem;
+  font-size: 14px;
+  color: #fff;
+  outline: 1px solid rgba(255, 255, 255, 0.14);
+  outline-offset: -1px;
+  transition: background-color 0.12s ease, outline-color 0.12s ease;
+}
+.sd-input-dark.has-prefix { padding-left: 2.25rem; }   /* leading search icon */
+/* trailing "/" hint — the chip itself is `hidden sm:grid`, so only
+   reserve the room once it is actually shown */
+@media (min-width: 640px) { .sd-input-dark.has-suffix { padding-right: 2.5rem; } }
+.sd-input-dark::placeholder { color: rgba(255, 255, 255, 0.70); }  /* 5.05:1 on the header purple */
+.sd-input-dark:hover { background-color: rgba(255, 255, 255, 0.14); }
+.sd-input-dark:focus { outline: 2px solid rgba(255, 255, 255, 0.75); outline-offset: -2px; }
+
+/* Tinted pill on the dark banner (e.g. "Subscribe now") */
+.sd-pill-dark {
+  display: inline-flex;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 0.625rem;
+  border-radius: 0.375rem;
+  background-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 0.12s ease;
+}
+.sd-pill-dark:hover { background-color: rgba(255, 255, 255, 0.28); }
+
+/* ------------------------------------------------------------------
+   Media placeholder — stands in for product thumbnails until real
+   artwork exists. Swap the element for an <img> and the layout holds.
+   ------------------------------------------------------------------ */
+.sd-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, #eef0f3 0%, #e2e5ea 55%, #d8dce2 100%);
+  overflow: hidden;
+}
+.sd-thumb::after {                  /* faint diagonal hatch so it reads as a placeholder */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    45deg, rgba(255, 255, 255, 0.5) 0 1px, transparent 1px 9px
+  );
+}
+.sd-thumb > * { position: relative; z-index: 1; }
+
+/* ------------------------------------------------------------------
+   Horizontal scroller (feature carousel, settings nav on narrow
+   screens). Scrollbar hidden; keyboard + touch scrolling intact.
+   ------------------------------------------------------------------ */
+.sd-scroll-x {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.sd-scroll-x::-webkit-scrollbar { display: none; }
+.sd-scroll-x > * { scroll-snap-align: start; }
+
+/* ------------------------------------------------------------------
+   Switch — on/off control for settings that apply immediately
+   (business-hours "Closed", online-booking rules). Checkboxes stay the
+   pattern for form fields that are saved with a Continue/Save action.
+   Built on the same tokens: brand fill when on, stroke when off.
+   ------------------------------------------------------------------ */
+.sd-switch {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 2.25rem;                   /* 36px */
+  height: 1.25rem;                  /* 20px */
+  margin: 0;
+  border-radius: 9999px;
+  background-color: #d1d5db;        /* stroke */
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.sd-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background-color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+.sd-switch:checked { background-color: var(--sd-brand); }          /* brand */
+.sd-switch:checked::after { transform: translateX(1rem); }
+.sd-switch:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 2px; }
+.sd-switch:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ------------------------------------------------------------------
+   Password strength meter — four segments that fill left to right.
+   Strength is ALSO stated in text next to the meter, so the level is
+   never communicated by colour alone (WCAG 1.4.1).
+   ------------------------------------------------------------------ */
+.sd-meter { display: flex; gap: 4px; }
+.sd-meter__seg {
+  flex: 1 1 0;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: #e5e7eb;        /* line */
+  transition: background-color 0.15s ease;
+}
+.sd-meter[data-level="1"] .sd-meter__seg:nth-child(-n+1) { background-color: #ef4444; }  /* danger */
+.sd-meter[data-level="2"] .sd-meter__seg:nth-child(-n+2) { background-color: #f59e0b; }  /* warning */
+.sd-meter[data-level="3"] .sd-meter__seg:nth-child(-n+3) { background-color: var(--sd-link); }  /* link */
+.sd-meter[data-level="4"] .sd-meter__seg:nth-child(-n+4) { background-color: #22c55e; }  /* success */
+
+/* ------------------------------------------------------------------
+   Onboarding progress — a thin bar under the page title. Replaces the
+   seven-node stepper: the step is stated in text next to it ("Step 2 of
+   7"), so the bar is reinforcement rather than the only signal.
+   ------------------------------------------------------------------ */
+.sd-progress {
+  height: 4px;
+  border-radius: 9999px;
+  background-color: #e5e7eb;        /* line */
+  overflow: hidden;
+}
+.sd-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background-color: var(--sd-brand);        /* brand */
+  transition: width 0.25s ease;
+}
+
+/* ------------------------------------------------------------------
+   Phone field — country combo + national number.
+   Same inset-outline model as .sd-input, so it lines up with every
+   other control in a form row.
+   ------------------------------------------------------------------ */
+.sd-phone {
+  display: flex;
+  align-items: center;
+  height: 2.75rem;                  /* h-11, matches .sd-input */
+  border-radius: 0.375rem;
+  background-color: #fff;
+  outline: 1px solid #d1d5db;       /* stroke */
+  outline-offset: -1px;
+  transition: outline-color 0.12s ease;
+}
+.sd-phone:focus-within { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+.sd-phone.is-error { outline-color: #ef4444; }
+.sd-phone.is-error:focus-within { outline: 2px solid #ef4444; outline-offset: -2px; }
+
+.sd-phone__country {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 100%;
+  padding: 0 0.5rem 0 0.75rem;
+  border-right: 1px solid #e5e7eb;  /* line */
+  border-top-left-radius: 0.375rem;
+  border-bottom-left-radius: 0.375rem;
+  font-size: 14px;
+  color: #23272f;                   /* ink */
+  white-space: nowrap;
+  transition: background-color 0.12s ease;
+}
+.sd-phone__country:hover { background-color: #f3f4f6; }
+.sd-phone__country:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+
+/* The emoji flag renders as the two-letter code on platforms without flag
+   glyphs (Windows), which is why the dial code always sits beside it. */
+.sd-phone__flag { font-size: 15px; line-height: 1; }
+
+.sd-phone__field {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0 0.875rem;
+  font-size: 14px;
+  color: #23272f;
+}
+.sd-phone__field::placeholder { color: #9ca3af; }
+
+/* ------------------------------------------------------------------
+   Searchable popup list — used by the phone country picker.
+   ------------------------------------------------------------------ */
+.sd-pop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 296px;
+  max-width: 100%;
+  border-radius: 0.5rem;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 12px 32px rgba(15, 15, 16, 0.13);
+  overflow: hidden;
+}
+.sd-pop__search {
+  display: block;
+  width: 100%;
+  height: 2.25rem;
+  border: 0;
+  border-bottom: 1px solid #e5e7eb;
+  outline: none;
+  padding: 0 0.75rem;
+  font-size: 13px;
+  color: #23272f;
+}
+.sd-pop__search::placeholder { color: #9ca3af; }
+.sd-pop__list { max-height: 15rem; overflow-y: auto; padding: 0.25rem; }
+.sd-pop__opt {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 13px;
+  color: #23272f;
+  text-align: left;
+}
+.sd-pop__opt:hover,
+.sd-pop__opt.is-active { background-color: var(--sd-brand); color: #fff; }
+.sd-pop__opt .sd-pop__dial { margin-left: auto; color: #6b7280; }
+.sd-pop__opt:hover .sd-pop__dial,
+.sd-pop__opt.is-active .sd-pop__dial { color: rgba(255, 255, 255, 0.75); }
+.sd-pop__empty { padding: 0.75rem 0.625rem; font-size: 13px; color: #9ca3af; }
+
+/* ------------------------------------------------------------------
+   Scheme select inside an input group (website URL).
+   ------------------------------------------------------------------ */
+.sd-group__scheme {
+  height: 100%;
+  border: 0;
+  border-right: 1px solid #e5e7eb;
+  outline: none;
+  background-color: transparent;
+  padding: 0 1.65rem 0 0.875rem;
+  font-size: 14px;
+  color: #6b7280;                   /* sub — it is a prefix, not the value */
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%236b7280' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+}
+.sd-group__scheme:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+
+/* ------------------------------------------------------------------
+   Tooltip — black bubble on hover/focus, for icon-only controls.
+   Pure CSS off [data-tip]; the accessible name still comes from
+   aria-label, so this is decoration and pseudo-elements never reach
+   the a11y tree. Replaces the native title attribute, which is slow
+   to appear and unstyleable.
+   ------------------------------------------------------------------ */
+.sd-tip { position: relative; }
+.sd-tip::after,
+.sd-tip::before {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  z-index: 50;
+}
+.sd-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 8px;
+  border-radius: 6px;
+  background-color: #0f0f10;        /* head */
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(15, 15, 16, 0.22);
+}
+.sd-tip::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: #0f0f10;
+}
+.sd-tip:hover::after,
+.sd-tip:hover::before,
+.sd-tip:focus-visible::after,
+.sd-tip:focus-visible::before { opacity: 1; }
+
+/* ------------------------------------------------------------------
+   Nav sub-menu — opens on hover or keyboard focus. The parent icon
+   stays a real link, so clicking it goes straight to the landing page
+   and touch users (who have no hover) are never trapped.
+   ------------------------------------------------------------------ */
+/* Full bar height so `top: 100%` lands on the bar's bottom edge rather
+   than the icon's, letting the panel sit flush against it. */
+.sd-menu {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.sd-menu__pop {
+  position: absolute;
+  /* +1px clears the bar's own bottom border, which sits outside the nav's
+     content box — without it the panel covers that hairline. */
+  top: calc(100% + 1px);
+  left: 0;
+  min-width: 216px;
+  padding: 0.25rem;
+  border-radius: 0 0 0.5rem 0.5rem; /* flush against the bar, rounded below */
+  background-color: #fff;
+  border: 1px solid #e5e7eb;        /* line */
+  border-top: 0;                    /* no double line where it meets the bar */
+  box-shadow: 0 12px 32px rgba(15, 15, 16, 0.16);
+  z-index: 45;
+}
+.sd-menu__item {
+  display: block;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 13px;
+  color: #23272f;                   /* ink */
+  white-space: nowrap;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+.sd-menu__item:hover,
+.sd-menu__item:focus-visible { background-color: var(--sd-brand); color: #fff; outline: none; }
+
+/* One hint at a time: while the menu is open the tooltip stays down. */
+.sd-menu.is-open .sd-tip::after,
+.sd-menu.is-open .sd-tip::before { opacity: 0; }
+
+/* ==================================================================
+   CLIENT MANAGEMENT
+   Components introduced for the All Clients directory, the Add Client
+   drawer and the client profile. Same conventions as everything above:
+   inset outlines, brand #3d348b, no page-local colors.
+   ================================================================== */
+
+/* ------------------------------------------------------------------
+   Icon button on a light surface (table row actions, card headers).
+   No `display` on purpose — the markup supplies `grid` / `sm:grid` so
+   responsive `hidden` utilities still win, same as .sd-navicon.
+   ------------------------------------------------------------------ */
+.sd-iconbtn {
+  place-items: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.375rem;
+  color: #6b7280;                   /* sub */
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.sd-iconbtn:hover { background-color: #f3f4f6; color: #23272f; }
+.sd-iconbtn:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+.sd-iconbtn.is-on { background-color: #eef1f4; color: var(--sd-brand); }
+.sd-iconbtn:disabled { opacity: 0.4; pointer-events: none; }
+
+/* ------------------------------------------------------------------
+   Filter chip — a dropdown trigger that shows whether a filter is set.
+   The "on" state carries both a colour change and the chosen value in
+   the label, so the filter is never signalled by colour alone.
+   ------------------------------------------------------------------ */
+.sd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;        /* stroke */
+  background-color: #fff;
+  color: #23272f;                   /* ink */
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.sd-chip:hover { background-color: #f3f4f6; }
+.sd-chip:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+.sd-chip.is-on {
+  border-color: var(--sd-brand);
+  background-color: #eef1f4;        /* sel */
+  color: var(--sd-brand);
+  font-weight: 600;
+}
+.sd-chip__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.25rem;
+  border-radius: 9999px;
+  background-color: var(--sd-brand);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------
+   Dropdown panel — row actions, filter popovers, column picker.
+   ------------------------------------------------------------------ */
+.sd-drop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  min-width: 190px;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;        /* line */
+  box-shadow: 0 12px 32px rgba(15, 15, 16, 0.13);
+}
+.sd-drop--right { right: 0; }
+.sd-drop--left  { left: 0; }
+.sd-drop--up    { top: auto; bottom: calc(100% + 4px); }
+/* Moved to <body> to escape a scrolling ancestor's clipping; it is then
+   positioned in viewport coordinates and has to clear the sticky app bar. */
+.sd-drop--portal { z-index: 55; }
+.sd-drop__scroll { max-height: 15rem; overflow-y: auto; }
+
+.sd-drop__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 13px;
+  color: #23272f;                   /* ink */
+  text-align: left;
+  white-space: nowrap;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+.sd-drop__item:hover,
+.sd-drop__item:focus-visible { background-color: var(--sd-brand); color: #fff; outline: none; }
+.sd-drop__item:hover .sd-drop__hint,
+.sd-drop__item:focus-visible .sd-drop__hint { color: rgba(255, 255, 255, 0.75); }
+.sd-drop__item--danger { color: #b91c1c; }
+.sd-drop__item--danger:hover,
+.sd-drop__item--danger:focus-visible { background-color: #ef4444; color: #fff; }
+.sd-drop__hint { margin-left: auto; color: #9ca3af; font-size: 12px; }
+.sd-drop__sep { height: 1px; margin: 0.25rem 0; background-color: #e5e7eb; }
+.sd-drop__label {
+  padding: 0.5rem 0.625rem 0.25rem;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;                   /* faint */
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+/* A checkable row keeps its native control, so the state is exposed to
+   assistive tech rather than being drawn with a tick glyph. */
+.sd-drop__check { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.5rem 0.625rem; border-radius: 0.375rem; font-size: 13px; color: #23272f; cursor: pointer; }
+.sd-drop__check:hover { background-color: #f3f4f6; }
+
+/* ------------------------------------------------------------------
+   Data table. The header is sticky inside its own scroll container,
+   so the page itself never scrolls sideways on narrow screens.
+   ------------------------------------------------------------------ */
+.sd-tablewrap { overflow-x: auto; overscroll-behavior-x: contain; }
+.sd-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.sd-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 2.5rem;
+  padding: 0 0.875rem;
+  background-color: #fafbfc;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;                   /* sub */
+  white-space: nowrap;
+}
+.sd-table td {
+  padding: 0.6875rem 0.875rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #23272f;
+  vertical-align: middle;
+}
+.sd-table tbody tr { transition: background-color 0.1s ease; }
+.sd-table tbody tr:hover { background-color: #fafbfc; }
+.sd-table tbody tr.is-selected { background-color: #eef1f4; }
+.sd-table tbody tr:last-child td { border-bottom: 0; }
+.sd-table__num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Sortable header. aria-sort lives on the <th>; the arrow only
+   reinforces it and the direction is also read out by the button label. */
+.sd-th-sort { display: inline-flex; align-items: center; gap: 0.25rem; color: inherit; font: inherit; }
+.sd-th-sort:hover { color: #23272f; }
+.sd-th-sort:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 2px; border-radius: 3px; }
+.sd-th-sort__ind { opacity: 0; transition: opacity 0.1s ease, transform 0.1s ease; }
+.sd-th-sort:hover .sd-th-sort__ind { opacity: 0.45; }
+th[aria-sort] .sd-th-sort { color: #23272f; }
+th[aria-sort] .sd-th-sort__ind { opacity: 1; }
+th[aria-sort="descending"] .sd-th-sort__ind { transform: rotate(180deg); }
+
+/* Row actions stay out of the way until the row is touched, but are
+   always present for keyboard users (focus-within) and on touch, where
+   there is no hover at all. */
+.sd-rowactions { display: flex; align-items: center; gap: 0.125rem; opacity: 1; transition: opacity 0.12s ease; }
+@media (hover: hover) and (pointer: fine) {
+  .sd-rowactions { opacity: 0; }
+  tr:hover .sd-rowactions,
+  tr:focus-within .sd-rowactions,
+  .sd-rowactions:focus-within { opacity: 1; }
+}
+
+/* ------------------------------------------------------------------
+   Avatar. Falls back to initials, which is the normal case here —
+   most salon clients are created without a photo.
+   ------------------------------------------------------------------ */
+.sd-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background-color: #eef1f4;        /* sel */
+  color: var(--sd-brand);                   /* brand — 8.9:1 on #eef1f4 */
+  font-weight: 700;
+  line-height: 1;
+  overflow: hidden;
+}
+.sd-avatar img { height: 100%; width: 100%; object-fit: cover; }
+.sd-avatar--sm { height: 2rem;   width: 2rem;   font-size: 11px; }
+.sd-avatar--md { height: 2.5rem; width: 2.5rem; font-size: 12px; }
+.sd-avatar--lg { height: 4.5rem; width: 4.5rem; font-size: 22px; }
+
+/* ------------------------------------------------------------------
+   Tag pill + status badge.
+   Every badge states its status in words; the colour is reinforcement.
+   ------------------------------------------------------------------ */
+.sd-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  height: 1.375rem;
+  padding: 0 0.5rem;
+  border-radius: 0.375rem;
+  background-color: #eef1f4;        /* sel */
+  color: #23272f;                   /* ink */
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sd-tag__text { overflow: hidden; text-overflow: ellipsis; }
+.sd-tag__x {
+  display: inline-grid;
+  place-items: center;
+  height: 0.875rem;
+  width: 0.875rem;
+  margin-right: -0.125rem;
+  border-radius: 9999px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+.sd-tag__x:hover { background-color: #d1d5db; color: #23272f; }
+.sd-tag__x:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+
+.sd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.375rem;
+  padding: 0 0.5rem;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sd-badge__dot { height: 0.375rem; width: 0.375rem; border-radius: 9999px; background-color: currentColor; flex-shrink: 0; }
+.sd-badge--active   { background-color: #dcfce7; color: #166534; }
+.sd-badge--inactive { background-color: #f3f4f6; color: #4b5563; }
+.sd-badge--lead     { background-color: #e0e7ff; color: #3730a3; }
+.sd-badge--blocked  { background-color: #fee2e2; color: #991b1b; }
+.sd-badge--archived { background-color: #f3f4f6; color: #6b7280; }
+/* "Primary" is not a status — it says which record we reach for first —
+   so it gets the brand tint rather than one of the status colours.
+   #3d348b on #eef1f4 is 8.9:1. */
+.sd-badge--primary  { background-color: #eef1f4; color: var(--sd-brand); }
+
+/* One contact method: number or address, its type, its preferences. */
+.sd-contact {
+  padding: 0.875rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.sd-contact:last-child { border-bottom: 0; }
+.sd-contact:first-child { padding-top: 0; }
+/* Deactivated methods stay listed — they are part of the history — but
+   read as switched off. The word "Inactive" carries the meaning; the
+   fade only reinforces it. */
+.sd-contact.is-inactive .sd-contact__value { color: #9ca3af; text-decoration: line-through; }
+.sd-contact__value { font-size: 14px; color: #23272f; word-break: break-word; }
+
+/* ------------------------------------------------------------------
+   Token (multi-value) input — Tags on the client form.
+   Wraps like a textarea; the tokens are buttons so each can be removed
+   with the keyboard.
+   ------------------------------------------------------------------ */
+.sd-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  background-color: #fff;
+  outline: 1px solid #d1d5db;
+  outline-offset: -1px;
+  transition: outline-color 0.12s ease;
+}
+.sd-tokens:focus-within { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+.sd-tokens.is-error { outline-color: #ef4444; }
+.sd-tokens__input {
+  flex: 1 1 90px;
+  min-width: 90px;
+  height: 1.75rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0 0.25rem;
+  font-size: 14px;
+  color: #23272f;
+}
+.sd-tokens__input::placeholder { color: #9ca3af; }
+
+/* ------------------------------------------------------------------
+   Scrim + right-side drawer (Add / Edit Client).
+   Toggled with the `hidden` attribute — which wins outright thanks to
+   the [hidden] rule at the top — then animated by adding .is-open on
+   the next frame.
+   ------------------------------------------------------------------ */
+.sd-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background-color: rgba(15, 15, 16, 0.45);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.sd-scrim.is-open { opacity: 1; }
+
+.sd-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 34rem;                 /* 544px */
+  background-color: #fff;
+  box-shadow: -12px 0 44px rgba(15, 15, 16, 0.20);
+  transform: translateX(100%);
+  transition: transform 0.22s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.sd-drawer.is-open { transform: translateX(0); }
+.sd-drawer--wide { max-width: 44rem; }
+
+.sd-drawer__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.125rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.sd-drawer__body { flex: 1 1 auto; overflow-y: auto; padding: 1.25rem; }
+.sd-drawer__foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sd-scrim, .sd-drawer { transition: none; }
+}
+
+/* ------------------------------------------------------------------
+   Centred dialog — discard / delete confirmations.
+   ------------------------------------------------------------------ */
+.sd-modal { position: fixed; inset: 0; z-index: 70; display: block; overflow-y: auto; padding: 1rem; }
+/* The dialog carries its own backdrop as a child, so that copy has to drop
+   below the panel. .sd-scrim's own z-index is set for the drawer, where the
+   scrim is a sibling of the page rather than a child of the dialog. */
+.sd-modal > .sd-scrim { z-index: 0; }
+.sd-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 27rem;
+  margin: 8vh auto 2rem;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background-color: #fff;
+  box-shadow: 0 24px 64px rgba(15, 15, 16, 0.28);
+}
+
+/* ------------------------------------------------------------------
+   Inline alert — duplicate-match notice, soft-delete notice.
+   Each carries an icon and a heading, so the meaning does not rest on
+   the tint (WCAG 1.4.1).
+   ------------------------------------------------------------------ */
+.sd-alert { border-radius: 0.5rem; border: 1px solid; padding: 0.875rem 1rem; font-size: 13px; line-height: 1.45; }
+.sd-alert--warn   { background-color: #fffbeb; border-color: #fcd34d; color: #78350f; }
+.sd-alert--info   { background-color: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; }
+.sd-alert--danger { background-color: #fef2f2; border-color: #fecaca; color: #7f1d1d; }
+.sd-alert--success{ background-color: #f0fdf4; border-color: #bbf7d0; color: #14532d; }
+
+/* ------------------------------------------------------------------
+   Underline tabs — client profile. Scrolls sideways on narrow screens
+   rather than wrapping into a second row.
+   ------------------------------------------------------------------ */
+.sd-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sd-tabs::-webkit-scrollbar { display: none; }
+.sd-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.75rem;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;                   /* sub */
+  white-space: nowrap;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.sd-tab:hover { color: #23272f; }
+.sd-tab:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 2px; border-radius: 3px; }
+.sd-tab[aria-selected="true"] { color: #23272f; border-bottom-color: var(--sd-brand); font-weight: 600; }
+.sd-tab__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3125rem;
+  border-radius: 0.375rem;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 600;
+}
+.sd-tab[aria-selected="true"] .sd-tab__count { background-color: #eef1f4; color: var(--sd-brand); }
+
+/* ------------------------------------------------------------------
+   Definition rows — the client Overview panel.
+   ------------------------------------------------------------------ */
+.sd-dl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+@media (min-width: 640px) { .sd-dl { grid-template-columns: 8.5rem minmax(0, 1fr); } }
+.sd-dl__t { padding: 0.5rem 0; font-size: 13px; color: #6b7280; }
+.sd-dl__d { padding: 0 0 0.5rem; font-size: 13px; color: #23272f; word-break: break-word; }
+@media (min-width: 640px) { .sd-dl__d { padding: 0.5rem 0; } }
+.sd-dl__d:empty::after,
+.sd-dl__d[data-empty]::after { content: '—'; color: #9ca3af; }
+
+/* ------------------------------------------------------------------
+   Timeline — activity history on the client profile.
+   ------------------------------------------------------------------ */
+.sd-time { position: relative; padding-left: 1.75rem; }
+.sd-time::before {
+  content: '';
+  position: absolute;
+  left: 0.4375rem;
+  top: 0.375rem;
+  bottom: 0.375rem;
+  width: 1px;
+  background-color: #e5e7eb;
+}
+.sd-time__item { position: relative; padding-bottom: 1.125rem; }
+.sd-time__item:last-child { padding-bottom: 0; }
+.sd-time__dot {
+  position: absolute;
+  left: -1.75rem;
+  top: 0.1875rem;
+  height: 0.9375rem;
+  width: 0.9375rem;
+  border-radius: 9999px;
+  background-color: #fff;
+  border: 2px solid #d1d5db;
+}
+.sd-time__item--brand .sd-time__dot { border-color: var(--sd-brand); }
+
+/* ------------------------------------------------------------------
+   Skeleton row — the directory's loading state.
+   ------------------------------------------------------------------ */
+.sd-skel {
+  border-radius: 0.375rem;
+  background-image: linear-gradient(90deg, #eef0f3 25%, #e2e5ea 37%, #eef0f3 63%);
+  background-size: 400% 100%;
+  animation: sd-skel 1.4s ease infinite;
+}
+@keyframes sd-skel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+@media (prefers-reduced-motion: reduce) { .sd-skel { animation: none; } }
+
+/* ------------------------------------------------------------------
+   Toast — "Client created" confirmation.
+   ------------------------------------------------------------------ */
+.sd-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background-color: #0f0f10;        /* head */
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 12px 32px rgba(15, 15, 16, 0.3);
+  transform: translate(-50%, 8px);
+  opacity: 0;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.sd-toast.is-open { opacity: 1; transform: translate(-50%, 0); }
+.sd-toast a { color: #fff; font-weight: 600; text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { .sd-toast { transition: none; } }
+
+/* Body lock while a drawer or dialog owns the screen. */
+body.sd-locked { overflow: hidden; }
+
+/* ------------------------------------------------------------------
+   Date picker — calendar popover on a readonly field.
+   Promoted out of designsystem.html so every page shares one
+   implementation (see SD.datePicker in assets/js/styledesk.js).
+   Month and year are native <select>s dressed to match the mini
+   buttons: same look, but keyboard and screen-reader support come
+   free instead of being reimplemented.
+   ------------------------------------------------------------------ */
+.sd-cal {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 300px;
+  max-width: calc(100vw - 2rem);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;        /* line */
+  box-shadow: 0 12px 32px rgba(15, 15, 16, 0.13);
+}
+/* Flipped above the field when there is no room below. */
+.sd-cal--up { top: auto; bottom: calc(100% + 4px); }
+/* Right-aligned when the field sits near the viewport edge. */
+.sd-cal--right { left: auto; right: 0; }
+
+.sd-cal__mini {
+  height: 2rem;
+  width: 100%;
+  border-radius: 0.375rem;
+  background-color: #fff;
+  padding: 0 1.6rem 0 0.625rem;
+  font-size: 13px;
+  color: #23272f;                   /* ink */
+  outline: 1px solid #d1d5db;       /* stroke */
+  outline-offset: -1px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%239ca3af' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.45rem center;
+}
+.sd-cal__mini:hover { background-color: #f3f4f6; }
+.sd-cal__mini:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+
+/* No `display` — the markup supplies `grid`, same rule as .sd-navicon. */
+.sd-cal__nav {
+  place-items: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.375rem;
+  color: #6b7280;                   /* sub */
+  flex-shrink: 0;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+.sd-cal__nav:hover { background-color: #f3f4f6; color: #23272f; }
+.sd-cal__nav:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+.sd-cal__nav:disabled { opacity: 0.35; pointer-events: none; }
+
+.sd-cal__dow {
+  display: grid;
+  place-items: center;
+  height: 1.75rem;
+  font-size: 11px;
+  font-weight: 500;
+  color: #9ca3af;                   /* faint */
+}
+
+.sd-cal__day {
+  display: grid;
+  place-items: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.375rem;
+  font-size: 13px;
+  color: #23272f;
+  transition: background-color 0.1s ease;
+}
+.sd-cal__day:hover { background-color: #f3f4f6; }
+.sd-cal__day:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+/* Days spilling in from the neighbouring month. */
+.sd-cal__day.is-out { color: #9ca3af; }
+/* Today is outlined, the selection is filled — two different marks, so
+   "today" is never mistaken for "chosen". */
+.sd-cal__day.is-today { box-shadow: inset 0 0 0 1px var(--sd-brand); }
+.sd-cal__day.is-selected { background-color: var(--sd-brand); color: #fff; font-weight: 600; }
+.sd-cal__day.is-selected.is-today { box-shadow: none; }
+.sd-cal__day:disabled { color: #d1d5db; pointer-events: none; }
+
+/* ------------------------------------------------------------------
+   Table → cards below sm.
+   Four columns cannot survive a 322px panel, and a sideways-scrolling
+   table hides the columns that matter (the amount is always last).
+   Each row becomes a card and each cell carries a real <span> label —
+   not a ::before, which is generated content and not dependably
+   announced. The table role is lost at this width; the content still
+   reads as "Date: Aug 23, 2026".
+   ------------------------------------------------------------------ */
+.sd-cell__label { display: none; }
+
+@media (max-width: 639px) {
+  .sd-table--cards { display: block; min-width: 0; }   /* beats the min-w-[…] utility: styles.css loads last */
+  .sd-table--cards thead { display: none; }            /* the inline labels replace it */
+  .sd-table--cards tbody { display: block; }
+
+  .sd-table--cards tr {
+    display: block;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid #e5e7eb;                          /* line */
+    border-radius: 0.5rem;
+    background-color: #fff;
+  }
+  .sd-table--cards tr + tr { margin-top: 0.625rem; }
+  .sd-table--cards tbody tr:last-child td { border-bottom: 0; }
+
+  .sd-table--cards td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0;
+    border-bottom: 0;
+    text-align: right;
+  }
+  .sd-table--cards td:first-child { padding-top: 0; }
+  .sd-table--cards td:last-child { padding-bottom: 0; }
+
+  .sd-cell__label {
+    display: block;
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;                                     /* sub */
+    text-align: left;
+  }
+
+  /* A card is not a clickable row, and the hover tint on a touch screen
+     just reads as accidental striping. */
+  .sd-table--cards tbody tr:hover { background-color: #fff; }
+}
+
+/* ------------------------------------------------------------------
+   List row → card below sm.
+   The counterpart to .sd-table--cards for rows that were never a
+   table: appointments, purchases, forms, notes, messages, contact
+   methods. Above sm they stay hairline-separated rows; below it each
+   becomes a card with its own edge, which is what a row of stacked
+   text needs on a phone to read as one thing.
+
+   The row markup gates its own borders behind `sm:`, so this class
+   owns the mobile treatment outright rather than fighting
+   `last:border-0` — that utility carries a pseudo-class and would win
+   a specificity tie.
+   ------------------------------------------------------------------ */
+@media (max-width: 639px) {
+  .sd-rowcard {
+    padding: 0.875rem;
+    border: 1px solid #e5e7eb;        /* line */
+    border-radius: 0.5rem;
+    background-color: #fff;
+  }
+  .sd-rowcard + .sd-rowcard { margin-top: 0.625rem; }
+
+  /* Contact methods are already a bordered list; give them the same
+     card edge and drop the divider that separated them. */
+  .sd-contact {
+    padding: 0.875rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background-color: #fff;
+  }
+  .sd-contact + .sd-contact { margin-top: 0.625rem; }
+  .sd-contact:first-child { padding-top: 0.875rem; }
+  .sd-contact:last-child { border-bottom: 1px solid #e5e7eb; }
+}
+
+/* ==================================================================
+   ACCOUNT SETTINGS
+   The logged-in user's own settings. Kept visually distinct from the
+   business settings pages only by its own header — the controls are
+   the same ones the rest of the app uses.
+   ================================================================== */
+
+/* ------------------------------------------------------------------
+   Avatar dropdown in the app bar (§2)
+   ------------------------------------------------------------------ */
+.sd-acct { position: relative; }
+
+.sd-acct__btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding: 0 0.375rem 0 0.25rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.12s ease;
+}
+@media (min-width: 640px) { .sd-acct__btn { padding-left: 0.5rem; } }
+.sd-acct__btn:hover { background-color: rgba(255, 255, 255, 0.10); }
+.sd-acct__btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: 2px; }
+.sd-acct__btn[aria-expanded="true"] { background-color: rgba(255, 255, 255, 0.16); }
+
+.sd-acct__pop {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 268px;
+  max-width: calc(100vw - 1.5rem);
+  padding: 0.25rem;
+  border-radius: 0.625rem;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;        /* line */
+  box-shadow: 0 16px 40px rgba(15, 15, 16, 0.20);
+}
+
+.sd-acct__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 0.625rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Whole row is the target, not just the label (§2). */
+.sd-acct__item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 13px;
+  color: #23272f;                   /* ink */
+  text-align: left;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+.sd-acct__item:hover,
+.sd-acct__item:focus-visible { background-color: var(--sd-brand); color: #fff; outline: none; }
+.sd-acct__item svg { flex-shrink: 0; color: #6b7280; }
+.sd-acct__item:hover svg,
+.sd-acct__item:focus-visible svg { color: #fff; }
+.sd-acct__item--danger { color: #b91c1c; }
+.sd-acct__item--danger svg { color: #b91c1c; }
+.sd-acct__item--danger:hover,
+.sd-acct__item--danger:focus-visible { background-color: #ef4444; color: #fff; }
+.sd-acct__item--danger:hover svg,
+.sd-acct__item--danger:focus-visible svg { color: #fff; }
+
+.sd-acct__sep { height: 1px; margin: 0.25rem 0; background-color: #e5e7eb; }
+
+/* ------------------------------------------------------------------
+   Settings shell — persistent header + sticky left navigation (§5, §7)
+   ------------------------------------------------------------------ */
+.sd-set__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 13px;
+  font-weight: 500;
+  color: #23272f;
+  text-align: left;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.sd-set__nav svg { flex-shrink: 0; color: #6b7280; }
+.sd-set__nav:hover { background-color: #f3f4f6; }
+.sd-set__nav:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+.sd-set__nav[aria-current="page"] {
+  background-color: #eef1f4;        /* sel */
+  color: var(--sd-brand);
+  font-weight: 600;
+}
+.sd-set__nav[aria-current="page"] svg { color: var(--sd-brand); }
+
+/* ------------------------------------------------------------------
+   Notification matrix (§27)
+   Below sm it stops being a grid and each notification becomes a card
+   with its channels listed underneath — four columns of checkboxes do
+   not survive a phone.
+   ------------------------------------------------------------------ */
+.sd-matrix { width: 100%; border-collapse: separate; border-spacing: 0; }
+.sd-matrix th {
+  padding: 0 0.5rem 0.625rem;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;                   /* faint */
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+}
+.sd-matrix th:first-child { text-align: left; padding-left: 0; }
+.sd-matrix td {
+  padding: 0.625rem 0.5rem;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+  vertical-align: middle;
+}
+.sd-matrix td:first-child {
+  text-align: left;
+  padding-left: 0;
+  font-size: 13px;
+  color: #23272f;
+}
+.sd-matrix__later { font-size: 11px; color: #9ca3af; }
+
+/* The per-cell channel name. Hidden while the column headers carry it,
+   shown once the matrix collapses. Declared BEFORE the media query —
+   after it, this would override the mobile rule and the checkboxes
+   would sit there unlabelled. */
+.sd-matrix__label { display: none; font-size: 12px; color: #6b7280; }
+
+@media (max-width: 639px) {
+  .sd-matrix, .sd-matrix tbody, .sd-matrix tr, .sd-matrix td { display: block; width: 100%; }
+  .sd-matrix thead { display: none; }
+  .sd-matrix tr {
+    padding: 0.875rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background-color: #fff;
+  }
+  .sd-matrix tr + tr { margin-top: 0.625rem; }
+  .sd-matrix td { padding: 0; border-top: 0; text-align: left; }
+  .sd-matrix td:first-child { font-weight: 500; margin-bottom: 0.625rem; }
+
+  /* The channel cells become one wrapped row of labelled checkboxes
+     rather than four stacked blocks. */
+  .sd-matrix td:not(:first-child) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    width: auto;
+    margin: 0 1rem 0.375rem 0;
+  }
+  .sd-matrix__label { display: inline; }
+}
+
+/* A switch-style row used for single on/off preferences. */
+.sd-optrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.sd-optrow:last-child { border-bottom: 0; }
+.sd-optrow:first-child { padding-top: 0; }
+
+/* ==================================================================
+   SIGN IN
+   ================================================================== */
+
+/* ------------------------------------------------------------------
+   Segmented control — two peer choices, not a primary and a fallback.
+   Password and magic link are both first-class ways in, so neither is
+   demoted to a text link.
+   ------------------------------------------------------------------ */
+.sd-seg {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  background-color: #f3f4f6;        /* hover */
+}
+.sd-seg__btn {
+  flex: 1 1 0;
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.375rem;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;                   /* sub */
+  white-space: nowrap;
+  transition: background-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+.sd-seg__btn:hover { color: #23272f; }
+.sd-seg__btn:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+.sd-seg__btn[aria-selected="true"] {
+  background-color: #fff;
+  color: var(--sd-brand);                   /* brand */
+  box-shadow: 0 1px 2px rgba(15, 15, 16, 0.10);
+}
+
+/* ------------------------------------------------------------------
+   "Or continue with" rule.
+   ------------------------------------------------------------------ */
+.sd-or {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  font-size: 12px;
+  color: #9ca3af;                   /* faint */
+  white-space: nowrap;
+}
+.sd-or::before,
+.sd-or::after {
+  content: '';
+  flex: 1 1 0;
+  height: 1px;
+  background-color: #e5e7eb;        /* line */
+}
+
+/* ------------------------------------------------------------------
+   Social sign-in button.
+   Neutral chrome on purpose: every provider's own guidelines want
+   their mark on a plain light surface, and four coloured buttons in a
+   column would fight both each other and the primary CTA.
+   ------------------------------------------------------------------ */
+.sd-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  width: 100%;
+  height: 2.75rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;        /* stroke */
+  background-color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: #23272f;                   /* ink */
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.sd-social:hover { background-color: #f9fafb; border-color: #9ca3af; }
+.sd-social:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 2px; }
+.sd-social__icon { display: inline-grid; place-items: center; height: 18px; width: 18px; flex-shrink: 0; }
+/* The secondary pair sits two-up and drops the wordy label. */
+.sd-social--compact { font-size: 13px; gap: 0.5rem; }
+
+/* ===== Weekly hours ================================================
+   A day per row: a checkbox that turns the day on, and beside it one or
+   more time periods. Two columns above sm so the day labels line up and
+   the eye can scan the week down one edge; stacked below it, where a
+   116px select pair plus a label will not fit on one line.
+
+   `is-off` dims only the periods column — the day's own label stays at
+   full contrast, because it is still the thing you click to switch the
+   day back on.
+   ------------------------------------------------------------------ */
+.sd-hours { display: flex; flex-direction: column; }
+
+.sd-hours__day {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  padding: 0.875rem 0;
+  border-top: 1px solid #f1f3f5;
+}
+.sd-hours__day:first-child { border-top: 0; padding-top: 0; }
+
+.sd-hours__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.sd-hours__spans {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.sd-hours__day.is-off .sd-hours__spans { opacity: 0.65; }
+
+@media (min-width: 640px) {
+  .sd-hours__day {
+    grid-template-columns: 160px minmax(0, 1fr);
+    align-items: start;
+    gap: 1rem;
+  }
+  .sd-hours__toggle { padding-top: 0.375rem; }
+}
+
+/* ===== Day timeline ================================================
+   One horizontal bar per resource covering a fixed window of the day,
+   with open hours, maintenance and bookings painted as absolutely
+   positioned segments over it.
+
+   The bar is `aria-hidden` decoration in effect: it carries a label but
+   the real content is the sentence rendered beneath it, which is what a
+   screen reader reads and what a phone shows when the bar is too narrow
+   to be read at all. Nothing here is colour-only.
+   ------------------------------------------------------------------ */
+.sd-avlist { display: flex; flex-direction: column; }
+
+.sd-avrow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.375rem;
+  padding: 0.625rem 0;
+  border-top: 1px solid #f1f3f5;
+}
+.sd-avrow:first-child { border-top: 0; }
+.sd-avrow__body { min-width: 0; }
+
+.sd-avrow__note {
+  margin-top: 0.375rem;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #5b6472;                      /* sub */
+}
+
+.sd-bar {
+  position: relative;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  background-color: #f3f4f6;
+  overflow: hidden;
+}
+
+.sd-bar__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #e5e7eb;
+}
+
+.sd-bar__seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 0.25rem;
+}
+
+/* Open is the ground the others sit on, so it is the flattest of the
+   four; booked and maintenance have to read as distinct at 4px wide,
+   which is why they differ in texture as well as hue. */
+.sd-bar__seg--open   { background-color: #dcfce7; }
+.sd-bar__seg--booked { background-color: var(--sd-brand); }
+.sd-bar__seg--maint  {
+  background-color: #f59e0b;
+  background-image: repeating-linear-gradient(
+    45deg, rgba(255, 255, 255, 0.45) 0 3px, transparent 3px 6px);
+}
+.sd-bar__seg--closed {
+  background-color: #f3f4f6;
+  background-image: repeating-linear-gradient(
+    45deg, #e5e7eb 0 3px, transparent 3px 6px);
+}
+
+.sd-axis {
+  position: relative;
+  height: 1rem;
+  margin-bottom: 0.25rem;
+}
+.sd-axis__mark {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 10.5px;
+  line-height: 1rem;
+  color: #99a1ad;                      /* faint */
+  white-space: nowrap;
+}
+/* The first and last marks would hang off the ends of the card. */
+.sd-axis__mark:first-child { transform: none; }
+.sd-axis__mark:last-child  { transform: translateX(-100%); }
+
+.sd-swatch {
+  display: inline-block;
+  height: 0.625rem;
+  width: 1.125rem;
+  border-radius: 0.1875rem;
+  flex-shrink: 0;
+}
+.sd-swatch--open   { background-color: #dcfce7; }
+.sd-swatch--booked { background-color: var(--sd-brand); }
+.sd-swatch--maint  {
+  background-color: #f59e0b;
+  background-image: repeating-linear-gradient(
+    45deg, rgba(255, 255, 255, 0.45) 0 3px, transparent 3px 6px);
+}
+.sd-swatch--closed {
+  background-color: #f3f4f6;
+  background-image: repeating-linear-gradient(
+    45deg, #e5e7eb 0 3px, transparent 3px 6px);
+}
+
+@media (min-width: 768px) {
+  .sd-avrow {
+    grid-template-columns: 190px minmax(0, 1fr);
+    align-items: center;
+    gap: 1rem;
+  }
+  /* The axis has to line up with the bars, not with the names. */
+  .sd-axis { margin-left: calc(190px + 1rem); }
+}
+
+/* ===== Section sub-navigation ======================================
+   The pill row under a page title that moves between the screens of one
+   module. Visually the same family as `.sd-seg` — grey track, white
+   lifted pill for the current item — but sized to its labels rather
+   than split into equal thirds, because these are destinations with
+   names of different lengths, not a three-way switch.
+
+   Two things this owns that the utility version got wrong:
+
+   1. `inline-flex` + `align-items: center`. An `<a>` is inline by
+      default, and `height` does nothing to a non-replaced inline box —
+      the label sat at the top of its 36px pill with the background
+      offset under it.
+   2. It never wraps. A segmented control that breaks onto a second line
+      stops reading as one control; the last item is stranded on its own
+      row, left-aligned under the first. Below the width it needs, this
+      scrolls sideways in a single line instead.
+
+   The class declares `display` because the markup carries no display
+   utility of its own — so do not pair it with `hidden`, which would
+   lose the specificity tie. Focus rings are inset: `overflow-x: auto`
+   computes `overflow-y` to auto as well, and an outset ring on the
+   first or last item would be clipped by it.
+   ------------------------------------------------------------------ */
+.sd-subnav {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  background-color: #f3f4f6;        /* hover */
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sd-subnav::-webkit-scrollbar { display: none; }
+
+.sd-subnav__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.375rem;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  color: #6b7280;                   /* sub */
+  white-space: nowrap;
+  transition: background-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+.sd-subnav__item:hover { color: #23272f; background-color: rgba(255, 255, 255, 0.6); }
+.sd-subnav__item:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+
+.sd-subnav__item[aria-current="page"] {
+  background-color: #fff;
+  color: var(--sd-brand);                   /* brand */
+  box-shadow: 0 1px 2px rgba(15, 15, 16, 0.10);
+}
+.sd-subnav__item[aria-current="page"]:hover { background-color: #fff; }
+
+/* A divider inside a nav sub-menu. Services and Resources are one
+   module but two jobs — what you sell, and what it takes to deliver
+   it — and eight undifferentiated links read as a longer list than two
+   groups of three and four. */
+.sd-menu__rule {
+  height: 1px;
+  margin: 0.3125rem 0.5rem;
+  background-color: #eef0f2;
+}
+
+/* A colour chip in a form, and the small dot that carries the same
+   colour into a table row. The dot is never the only thing saying which
+   category a row is — the name sits right beside it — so a viewer who
+   cannot separate the hues loses nothing. */
+.sd-dot {
+  display: inline-block;
+  height: 0.5rem;
+  width: 0.5rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.sd-swatchbtn {
+  display: inline-grid;
+  place-items: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;        /* line */
+  background-color: #fff;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.sd-swatchbtn__dot {
+  height: 1rem;
+  width: 1rem;
+  border-radius: 9999px;
+  background-color: var(--sw, var(--sd-brand));
+}
+.sd-swatchbtn:hover { border-color: #9ca3af; }
+.sd-swatchbtn:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+
+/* The chosen chip is marked by a ring and a lifted edge, not by colour
+   alone — on a row of seven colours, "the highlighted one" has to be
+   legible without comparing hues. */
+.sd-swatchbtn.is-on {
+  border-color: var(--sd-brand);
+  box-shadow: 0 0 0 2px rgba(61, 52, 139, 0.18);
+}
+
+/* ===== Long-form editor ============================================
+   The Add/Edit Service screen is twelve sections plus a live check.
+   These are the pieces that only that shape of form needs.
+   ------------------------------------------------------------------ */
+
+/* One section. A card rather than a rule between blocks, because at
+   this length the eye needs an edge to tell it where a section ends. */
+.sd-card {
+  background-color: #fff;
+  border: 1px solid #e5e7eb;        /* line */
+  border-radius: 10px;              /* card */
+  padding: 1.25rem;
+  scroll-margin-top: 1rem;
+}
+@media (min-width: 640px) {
+  .sd-card { padding: 1.5rem; }
+}
+
+/* The section rail. Sticky, so at twelve sections you always know where
+   you are and can jump without scrolling back. */
+/* No `display` here on purpose. styles.css loads after the Tailwind
+   build, so a component class would beat the `hidden` utility that
+   takes this rail off a phone. The markup supplies flex itself. */
+.sd-formnav {
+  position: sticky;
+  top: 1rem;
+  gap: 0.125rem;
+}
+.sd-set__link {
+  display: block;
+  padding: 0.4375rem 0.625rem;
+  border-radius: 0.375rem;
+  border-left: 2px solid transparent;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #6b7280;                   /* sub */
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.sd-set__link:hover { background-color: #f3f4f6; color: #23272f; }
+.sd-set__link:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+/* The bar as well as the weight: on a list of thirteen, colour alone is
+   not enough to find your place at a glance. */
+.sd-set__link.is-current {
+  border-left-color: var(--sd-brand);
+  background-color: #eef1f4;        /* sel */
+  color: var(--sd-brand);
+  font-weight: 600;
+}
+
+/* A choosable card — pricing types, add-ons. Bigger than a checkbox
+   because each option carries a sentence explaining it. */
+.sd-pick {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+.sd-pick:hover { border-color: #d1d5db; }
+.sd-pick.is-on { border-color: var(--sd-brand); background-color: #eef1f4; }
+.sd-pick:focus-within { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+
+/* A compact radio rendered as a pill — used where two options are a
+   mode switch rather than a list to read. */
+.sd-radiochip {
+  display: inline-flex;
+  align-items: center;
+  height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+.sd-radiochip:hover { border-color: #d1d5db; color: #23272f; }
+.sd-radiochip.is-on { border-color: var(--sd-brand); background-color: var(--sd-brand); color: #fff; }
+.sd-radiochip:focus-within { outline: 2px solid var(--sd-brand); outline-offset: 2px; }
+
+/* One resource requirement line. Numbered, because "the room AND the
+   machine" only reads as two things if they are visibly two things. */
+.sd-req {
+  padding: 0.875rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: #fcfcfd;
+}
+.sd-req__n {
+  display: grid;
+  place-items: center;
+  height: 1.5rem;
+  width: 1.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background-color: #eef1f4;        /* sel */
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--sd-brand);
+}
+.sd-minilabel {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+/* A location row: the switch and its overrides on one line above sm,
+   stacked below it where two number boxes will not fit beside a label. */
+.sd-locrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+.sd-locrow.is-on { border-color: #d1d5db; background-color: #fcfcfd; }
+
+/* A derived total — the appointment timeline, the margin. Tinted so it
+   reads as an answer the form worked out rather than another input. */
+.sd-total,
+.sd-rule {
+  padding: 0.875rem 1rem;
+  border-radius: 0.5rem;
+  background-color: #f8f9fb;
+  border: 1px solid #eef0f2;
+}
+
+/* The appointment as a bar. Proportional, so a 45-minute processing gap
+   inside a two-hour colour is visible rather than merely stated. */
+.sd-seg2 {
+  display: flex;
+  gap: 2px;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+.sd-seg2__part { min-width: 3px; border-radius: 2px; }
+.sd-seg2--service    { background-color: var(--sd-brand); }
+.sd-seg2--processing {
+  background-color: #a5b4fc;
+  background-image: repeating-linear-gradient(
+    45deg, rgba(255, 255, 255, 0.5) 0 3px, transparent 3px 6px);
+}
+.sd-seg2--cleanup    { background-color: #cbd5e1; }
+.sd-seg2--buffer     { background-color: #e2e8f0; }
+
+.sd-swatch--tservice    { background-color: var(--sd-brand); }
+.sd-swatch--tprocessing {
+  background-color: #a5b4fc;
+  background-image: repeating-linear-gradient(
+    45deg, rgba(255, 255, 255, 0.5) 0 3px, transparent 3px 6px);
+}
+.sd-swatch--tcleanup    { background-color: #cbd5e1; }
+.sd-swatch--tbuffer     { background-color: #e2e8f0; }
+
+/* The day of slots. Every chip carries its verdict in its title, and the
+   count above the row states it in words — the green is a summary, not
+   the only way to read the answer. */
+.sd-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3125rem;
+}
+.sd-slot {
+  display: inline-flex;
+  align-items: center;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+  background-color: #f8f9fb;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #9ca3af;                   /* faint */
+  text-decoration: line-through;
+  text-decoration-color: #cbd5e1;
+  cursor: default;
+  white-space: nowrap;
+}
+.sd-slot.is-ok {
+  border-color: #86efac;
+  background-color: #f0fdf4;
+  color: #15803d;
+  text-decoration: none;
+}
+
+/* §23 — bookable, but outside the site's advertised hours. Amber, not
+   green: it reads as "possible with a decision" rather than "free",
+   which is exactly what it is. */
+.sd-slot.is-out {
+  border-color: #fcd34d;
+  background-color: #fffbeb;
+  color: #92400e;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sd-slot.is-out:hover { background-color: #fef3c7; }
+.sd-slot.is-out .sd-slot__who { color: #b45309; }
+
+/* The audit trail. */
+.sd-log { display: flex; flex-direction: column; }
+.sd-log__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 0;
+  border-top: 1px solid #f1f3f5;
+}
+.sd-log__row:first-child { border-top: 0; padding-top: 0; }
+
+/* ===== Booking workspace ===========================================
+   Three columns that are all live at once. The pieces below exist
+   because a receptionist with a phone against their ear needs to see
+   the client, the appointment and the diary together, and never be told
+   to go back a step.
+   ------------------------------------------------------------------ */
+
+/* A small caps label above a block of derived facts. Used a lot in the
+   client column, where every block needs saying what it is without
+   spending a heading on it. */
+.sd-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;                   /* faint */
+}
+
+/* Client search results. */
+.sd-hits { display: flex; flex-direction: column; gap: 1px; }
+.sd-hit {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  text-align: left;
+  transition: background-color 0.1s ease;
+}
+.sd-hit:hover { background-color: #f3f4f6; }
+.sd-hit:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+
+.sd-addnew {
+  display: block;
+  width: 100%;
+  margin-top: 0.375rem;
+  padding: 0.5rem;
+  border: 1px dashed #d1d5db;       /* stroke */
+  border-radius: 0.5rem;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--sd-brand);                   /* brand */
+  text-align: left;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+.sd-addnew:hover { background-color: #eef1f4; border-color: var(--sd-brand); }
+.sd-addnew:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+
+/* One staff signal — asked-for, sees-most, saw-last. Each is a button,
+   because the point of showing it is that you can act on it. */
+.sd-sig {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  text-align: left;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+.sd-sig + .sd-sig { margin-top: 0.25rem; }
+.sd-sig:hover { background-color: #f3f4f6; }
+.sd-sig.is-on { border-color: var(--sd-brand); background-color: #eef1f4; }
+.sd-sig:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+
+/* The label that says *which* signal this is. It carries the whole
+   point — "preferred" and "saw last time" are different facts and the
+   receptionist can only weigh them if the screen says which is which. */
+.sd-sig__kind {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;                   /* sub */
+  margin-bottom: 0.125rem;
+}
+
+.sd-again {
+  margin-top: 0.5rem;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--sd-brand);
+}
+.sd-again:hover { text-decoration: underline; }
+.sd-again:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 2px; border-radius: 2px; }
+
+/* A history-derived service suggestion. */
+.sd-sugg {
+  padding: 0.5rem 0.625rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  text-align: left;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+.sd-sugg:hover { border-color: var(--sd-brand); background-color: #eef1f4; }
+.sd-sugg:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+
+/* A service in the picker. */
+.sd-svcchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  height: 2rem;
+  padding: 0 0.6875rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #23272f;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+.sd-svcchip:hover { border-color: #d1d5db; background-color: #f9fafb; }
+.sd-svcchip:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+.sd-svcchip.is-on { border-color: var(--sd-brand); background-color: #eef1f4; color: var(--sd-brand); }
+
+/* A service already on the booking. */
+.sd-chosen {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: #fcfcfd;
+}
+
+/* A staff member with their next free slot on the right. */
+.sd-staffrow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5625rem 0.625rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  text-align: left;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+.sd-staffrow + .sd-staffrow { margin-top: 0.25rem; }
+.sd-staffrow:hover { background-color: #f3f4f6; }
+.sd-staffrow.is-on { border-color: var(--sd-brand); background-color: #eef1f4; }
+.sd-staffrow:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+
+.sd-avatar--any {
+  background-color: #eef1f4;
+  color: #6b7280;
+}
+
+/* The running summary. */
+.sd-sum { display: flex; flex-direction: column; }
+.sd-sum > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.4375rem 0;
+  border-top: 1px solid #f1f3f5;
+}
+.sd-sum > div:first-child { border-top: 0; padding-top: 0; }
+.sd-sum dt {
+  flex: 0 0 74px;
+  font-size: 11.5px;
+  color: #9ca3af;
+}
+.sd-sum dd {
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+  color: #23272f;
+}
+
+.sd-stars { letter-spacing: -1px; white-space: nowrap; }
+
+.sd-assigned { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+
+.sd-tag--plain {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border-color: transparent;
+}
+
+.sd-tick {
+  display: grid;
+  place-items: center;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+/* A chosen slot has to be distinguishable from a merely free one, and
+   the ring does that without relying on a third shade of green. */
+.sd-slot.is-picked {
+  border-color: var(--sd-brand);
+  background-color: var(--sd-brand);
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(61, 52, 139, 0.2);
+}
+.sd-slot.is-ok:hover { border-color: #22c55e; }
+.sd-slot:disabled { cursor: default; }
+
+/* The commit bar. Sticky at the foot of the workspace so the decision is
+   always one reach away, and so the running total is never scrolled off
+   while the receptionist is still choosing. */
+.sd-actionbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 -1rem -1.25rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(6px);
+}
+@media (min-width: 640px) {
+  .sd-actionbar { margin-left: -1.25rem; margin-right: -1.25rem; padding-left: 1.25rem; padding-right: 1.25rem; }
+}
+
+/* The walk-in's answer. A walk-in is standing at the desk, so the first
+   free slot is the whole question — it gets a button of its own rather
+   than being the leftmost green chip in a row of thirty. */
+.sd-now {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background-color: var(--sd-brand);        /* brand */
+  color: #fff;
+  text-align: left;
+  transition: background-color 0.12s ease;
+}
+.sd-now:hover { background-color: var(--sd-brand-dark); }
+.sd-now:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 2px; }
+.sd-now.is-on { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55); }
+
+/* An Add menu sits at the right end of the bar, so its panel hangs from
+   the right edge — anchored left it would run off the window. */
+.sd-menu--right .sd-menu__pop {
+  left: auto;
+  right: 0;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+/* ===== Booking accordion ===========================================
+   Column 2 is five decisions, not five pages. Each collapses so the
+   whole booking stays on one screen, and each carries a tick that means
+   "this section has everything the booking needs from it" — the same
+   list the Confirm button checks. A tick that merely meant "visited"
+   would tell the receptionist nothing.
+   ------------------------------------------------------------------ */
+.sd-acc {
+  background-color: #fff;
+  border: 1px solid #e5e7eb;        /* line */
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+/* The active step is emphasised by a stronger edge, not by being the
+   only one open — a receptionist correcting a service should not lose
+   the time they already chose. */
+.sd-acc.is-active { border-color: #c7c9d9; box-shadow: 0 1px 3px rgba(15, 15, 16, 0.06); }
+
+.sd-acc__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  text-align: left;
+  transition: background-color 0.1s ease;
+}
+.sd-acc__head:hover { background-color: #fafbfc; }
+.sd-acc__head:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+
+.sd-acc__tick {
+  display: grid;
+  place-items: center;
+  height: 1.25rem;
+  width: 1.25rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1.5px solid #d1d5db;      /* stroke */
+  color: transparent;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.sd-acc.is-done .sd-acc__tick {
+  background-color: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+
+.sd-acc__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #23272f;                   /* ink */
+}
+.sd-acc.is-done .sd-acc__title { color: #0f0f10; }
+
+/* The one-line answer already given, so a collapsed section still says
+   what is inside it. */
+.sd-acc__meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: #6b7280;                   /* sub */
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+}
+.sd-acc__chev {
+  flex-shrink: 0;
+  color: #9ca3af;                   /* faint */
+  transition: transform 0.15s ease;
+}
+.sd-acc[data-open] .sd-acc__chev { transform: rotate(180deg); }
+
+.sd-acc__body { padding: 0 1rem 1.125rem; }
+
+/* A chosen service, with its own edit and remove. */
+.sd-svc {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: #fcfcfd;
+}
+.sd-linkbtn {
+  display: inline-flex;
+  align-items: center;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+.sd-linkbtn:hover { background-color: #f3f4f6; color: #23272f; }
+.sd-linkbtn:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+.sd-linkbtn--danger:hover { background-color: #fef2f2; color: #ef4444; }
+
+.sd-svctotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f3f5;
+  font-size: 13px;
+  color: #6b7280;
+}
+.sd-svctotal b { font-size: 13.5px; color: #0f0f10; }
+
+/* A team member, which expands in place to hold their availability.
+   Splitting "who" from "when" makes the receptionist hold one answer in
+   their head while they go looking for the other. */
+.sd-staffcard {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: border-color 0.12s ease;
+}
+.sd-staffcard + .sd-staffcard { margin-top: 0.375rem; }
+.sd-staffcard.is-on { border-color: var(--sd-brand); }
+.sd-staffcard .sd-staffrow { border: 0; border-radius: 0; margin: 0; }
+.sd-staffcard.is-on > .sd-staffrow { background-color: #eef1f4; }
+
+.sd-when {
+  padding: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #fcfcfd;
+}
+/* When any team member may take it, each slot names who would — the
+   difference between "2 PM is free" and "2 PM is free with Priya". */
+.sd-slot__who {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0.75;
+  margin-top: 1px;
+}
+.sd-slot:has(.sd-slot__who) { height: auto; padding-top: 0.25rem; padding-bottom: 0.25rem; }
+
+.sd-bullets { display: flex; flex-direction: column; gap: 0.25rem; }
+.sd-bullets li {
+  position: relative;
+  padding-left: 0.75rem;
+  font-size: 12.5px;
+  color: #23272f;
+  line-height: 1.45;
+}
+.sd-bullets li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  height: 3px;
+  width: 3px;
+  border-radius: 9999px;
+  background-color: #9ca3af;
+}
+
+/* ===== Booking summary =============================================
+   Column 3 is the whole booking read back. It scrolls independently so
+   the commit at its foot is always reachable, however long the summary
+   grows.
+   ------------------------------------------------------------------ */
+.sd-sumscroll {
+  overflow-y: auto;
+  max-height: min(58vh, 620px);
+}
+.sd-sumblock {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f1f3f5;
+}
+.sd-sumblock:last-child { border-bottom: 0; }
+.sd-sumblock--money { background-color: #fafbfc; }
+
+.sd-money {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 12.5px;
+  color: #6b7280;
+  padding: 0.1875rem 0;
+}
+.sd-money--total {
+  margin-top: 0.375rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f0f10;
+}
+/* What the appointment costs and what is taken today are different
+   numbers. Conflating them is how a deposit gets charged twice. */
+.sd-money--due {
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--sd-brand);
+}
+
+/* ===== App Settings hub ============================================
+   Ten groups covering the whole settings surface. Entries whose screen
+   does not exist yet are shown, plainly marked — a hub that hid them
+   would misrepresent the module, and one that linked them anyway would
+   waste the reader's time.
+   ------------------------------------------------------------------ */
+.sd-seticon {
+  display: grid;
+  place-items: center;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  background-color: #eef1f4;        /* sel */
+  color: var(--sd-brand);                   /* brand */
+}
+
+.sd-setlist { display: flex; flex-direction: column; }
+
+.sd-setrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: 0.5rem;
+  border-top: 1px solid #f1f3f5;
+  transition: background-color 0.1s ease;
+}
+.sd-setrow:first-child { border-top: 0; }
+a.sd-setrow:hover { background-color: #f3f4f6; }
+a.sd-setrow:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+
+.sd-setrow__name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #23272f;                   /* ink */
+}
+.sd-setrow__note {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;                   /* sub */
+  line-height: 1.45;
+  margin-top: 0.0625rem;
+}
+.sd-setrow__go { flex-shrink: 0; color: #9ca3af; }
+a.sd-setrow:hover .sd-setrow__go { color: var(--sd-brand); }
+
+/* Not built yet reads as information, not as an error. */
+.sd-setrow.is-soon .sd-setrow__name { color: #6b7280; }
+.sd-soon {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #9ca3af;                   /* faint */
+  white-space: nowrap;
+}
+
+/* An entry the current role cannot open. Dimmed and struck through, so
+   it is legible as "exists, not for you" rather than "missing". */
+.sd-setrow.is-locked { opacity: 0.45; }
+.sd-setrow.is-locked .sd-setrow__name { text-decoration: line-through; }
+
+.sd-tag--owner {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+  border-color: transparent;
+  font-size: 10px;
+  vertical-align: 1px;
+}
+
+/* A closed location, or anything else kept for its history but no
+   longer in play. Dimmed rather than hidden: it still has to be
+   findable, and reopening it is one click. */
+.sd-card.is-dim { background-color: #fafbfc; }
+.sd-card.is-dim > *:not(:first-child) { opacity: 0.6; }
+
+/* ===== Roles & permissions =========================================
+   A role in the list, and the ninety-odd switches behind it.
+   ------------------------------------------------------------------ */
+.sd-rolerow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid #f1f3f5;
+  text-align: left;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+.sd-rolerow:last-child { border-bottom: 0; }
+.sd-rolerow:hover { background-color: #f9fafb; }
+.sd-rolerow:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+.sd-rolerow.is-on {
+  border-left-color: var(--sd-brand);
+  background-color: #eef1f4;        /* sel */
+}
+
+/* One permission group, collapsed by default when it grants nothing —
+   at twelve groups and ninety-five switches, everything open at once is
+   a wall rather than a form. */
+.sd-permgroup {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.sd-permgroup__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+  transition: background-color 0.1s ease;
+}
+.sd-permgroup__head:hover { background-color: #fafbfc; }
+.sd-permgroup__head:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+.sd-permgroup__title { font-size: 13px; font-weight: 600; color: #23272f; }
+.sd-permgroup__count {
+  margin-left: auto;
+  font-size: 12px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+.sd-permgroup__body { display: none; padding: 0 0.875rem 0.875rem; }
+.sd-permgroup[data-open] .sd-permgroup__body { display: block; }
+.sd-permgroup[data-open] .sd-acc__chev { transform: rotate(180deg); }
+
+.sd-perm {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.375rem 0.25rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+.sd-perm:hover { background-color: #f9fafb; }
+.sd-perm__label { font-size: 12.5px; color: #23272f; }
+
+/* A permission no role but Owner may hold. Shown rather than hidden, so
+   the boundary of the permission system is visible instead of being a
+   thing you discover by its absence. */
+.sd-perm.is-locked { opacity: 0.55; cursor: not-allowed; }
+.sd-perm.is-locked .sd-perm__label { text-decoration: line-through; }
+
+.sd-warn {
+  margin-left: 0.3125rem;
+  color: #d97706;                   /* warning */
+  font-size: 11px;
+  cursor: help;
+}
+
+/* ------------------------------------------------------------------
+   Business Hours
+   The seven-day editor itself reuses .sd-hours from the Locations and
+   Staff forms — one editor, one set of habits. What is new here is the
+   read-only furniture around it.
+   ------------------------------------------------------------------ */
+
+/* The per-day action buttons that sit to the right of the shift stack.
+   A third grid column on desktop; a plain row underneath on a phone. */
+.sd-hours__acts { display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; }
+@media (min-width: 640px) {
+  .sd-hours--wide .sd-hours__day { grid-template-columns: 150px minmax(0, 1fr) auto; }
+  .sd-hours__acts { padding-top: 0.3125rem; }
+}
+
+/* §27 — the week as bars. The proportions are the point: you can see
+   that Thursday runs late without reading a single number. */
+.sd-weekbar { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); gap: 0.5rem; align-items: center; }
+.sd-weekbar + .sd-weekbar { margin-top: 0.375rem; }
+.sd-weekbar__day { font-size: 11px; font-weight: 600; color: #6b7280; }
+.sd-weekbar__track {
+  position: relative;
+  height: 1.125rem;
+  border-radius: 0.3125rem;
+  background-color: #f1f3f5;
+  overflow: hidden;
+}
+.sd-weekbar__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 0.3125rem;
+  background-color: var(--sd-brand);
+}
+.sd-weekbar__fill.is-exception { background-color: #b45309; }
+.sd-weekbar__closed { font-size: 10.5px; color: #9ca3af; line-height: 1.125rem; padding-left: 0.5rem; }
+
+/* One closure or special-hours record in the list. */
+.sd-exrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.8125rem 1rem;
+  border-bottom: 1px solid #f1f3f5;
+  text-align: left;
+  transition: background-color 0.1s ease;
+}
+.sd-exrow:last-child { border-bottom: 0; }
+.sd-exrow:hover { background-color: #fafbfc; }
+.sd-exrow:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: -2px; }
+.sd-exrow__date { flex: 0 0 auto; width: 3.25rem; text-align: center; padding-top: 0.0625rem; }
+.sd-exrow__mon {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+.sd-exrow__day {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: #23272f;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.sd-exrow.is-past { opacity: 0.72; }
+.sd-exrow.is-past .sd-exrow__day, .sd-exrow.is-past .sd-exrow__mon { color: #b6bcc4; }
+
+/* The client-facing preview. Deliberately plainer than the app around
+   it — it is standing in for a different website. */
+.sd-preview { border: 1px solid #e5e7eb; border-radius: 0.625rem; background-color: #fdfdfe; padding: 0.75rem 0.875rem; }
+.sd-preview__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+  font-size: 12px;
+}
+.sd-preview__row.is-today { font-weight: 700; }
+.sd-preview__day { color: #6b7280; }
+.sd-preview__row.is-today .sd-preview__day { color: #23272f; }
+.sd-preview__val { color: #23272f; text-align: right; }
+.sd-preview__val.is-closed { color: #9ca3af; }
+.sd-preview__why { font-size: 10.5px; color: #b45309; display: block; }
+
+/* One entry in the change log. */
+.sd-logrow { display: flex; gap: 0.625rem; padding: 0.5625rem 0; border-bottom: 1px solid #f1f3f5; }
+.sd-logrow:last-child { border-bottom: 0; }
+.sd-logdot {
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.3125rem;
+  border-radius: 9999px;
+  background-color: #c7cbd1;
+}
+
+/* ------------------------------------------------------------------
+   Branding
+   ------------------------------------------------------------------
+   Note what these rules do *not* use: var(--sd-brand). The preview
+   panel paints its own custom properties on a container, so every
+   swatch, chip and preview surface reads from wherever it sits in the
+   tree. A rule that hardcoded the brand here would show the saved
+   colour inside a preview of an unsaved one.
+   ------------------------------------------------------------------ */
+
+/* A predefined colour, and the custom-picker tile beside them. */
+.sd-swatch {
+  position: relative;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.sd-swatch:hover { transform: scale(1.08); }
+.sd-swatch:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 2px; }
+.sd-swatch.is-on { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--sd-brand); }
+.sd-swatch.is-on::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 0.4375rem;
+  height: 0.75rem;
+  margin: -0.4375rem 0 0 -0.21875rem;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.45));
+}
+
+/* One editable colour: preview chip, hex field, native picker. */
+.sd-colorrow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.625rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid #f1f3f5;
+}
+.sd-colorrow:last-child { border-bottom: 0; }
+@media (min-width: 768px) {
+  .sd-colorrow { grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 1rem; }
+}
+.sd-colorrow__ctrl { display: flex; align-items: center; gap: 0.5rem; }
+
+/* The native colour input, restyled to a tappable chip. Chrome and
+   Safari both paint their own swatch inside, so the padding is removed
+   rather than fought with. */
+.sd-colorchip {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid #d7dbe0;
+  border-radius: 0.5rem;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+.sd-colorchip::-webkit-color-swatch-wrapper { padding: 2px; }
+.sd-colorchip::-webkit-color-swatch { border: 0; border-radius: 0.375rem; }
+.sd-colorchip::-moz-color-swatch { border: 0; border-radius: 0.375rem; }
+.sd-colorchip:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+
+.sd-hexfield { width: 7.5rem; font-variant-numeric: tabular-nums; text-transform: lowercase; }
+
+/* The contrast verdict beside a colour. Always carries its ratio in
+   words — the tint is reinforcement, never the only signal. */
+.sd-ratio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.375rem;
+  padding: 0 0.5rem;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sd-ratio--aaa  { background-color: #dcfce7; color: #166534; }
+.sd-ratio--aa   { background-color: #dcfce7; color: #166534; }
+.sd-ratio--low  { background-color: #fef3c7; color: #92400e; }
+.sd-ratio--fail { background-color: #fee2e2; color: #991b1b; }
+
+/* A logo slot: drop target when empty, preview when filled. */
+.sd-logoslot {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.625rem;
+  overflow: hidden;
+  background-color: #fff;
+}
+.sd-logoslot__stage {
+  display: grid;
+  place-items: center;
+  min-height: 6.5rem;
+  padding: 1rem;
+  background-color: #fbfbfd;
+  background-image:
+    linear-gradient(45deg, #f1f3f5 25%, transparent 25%, transparent 75%, #f1f3f5 75%),
+    linear-gradient(45deg, #f1f3f5 25%, transparent 25%, transparent 75%, #f1f3f5 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 7px 7px;
+}
+/* A logo meant for dark surfaces has to be judged on one. */
+.sd-logoslot__stage.is-dark {
+  background-color: #1f2937;
+  background-image:
+    linear-gradient(45deg, #2b3644 25%, transparent 25%, transparent 75%, #2b3644 75%),
+    linear-gradient(45deg, #2b3644 25%, transparent 25%, transparent 75%, #2b3644 75%);
+}
+.sd-logoslot__img { max-height: 4.5rem; max-width: 100%; object-fit: contain; }
+.sd-logoslot__body { padding: 0.75rem 0.875rem; border-top: 1px solid #f1f3f5; }
+.sd-logoslot.is-over .sd-logoslot__stage { background-color: #eef1f4; }
+.sd-logoslot.is-over { border-color: var(--sd-brand); }
+
+/* The favicon shown as a browser tab, because 16px in isolation tells
+   you nothing about whether it will read at 16px in a tab strip. */
+.sd-tabpreview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 13rem;
+  height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem 0.5rem 0 0;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-bottom: 0;
+  box-shadow: 0 -1px 3px rgba(15, 15, 16, 0.06);
+}
+.sd-tabpreview__icon { width: 1rem; height: 1rem; border-radius: 3px; object-fit: contain; flex: 0 0 auto; }
+.sd-tabpreview__name {
+  font-size: 11.5px;
+  color: #23272f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== The live preview =============================================
+   Each pane paints itself from the container's custom properties, so
+   what is on screen is the unsaved draft rather than the stored record.
+   ------------------------------------------------------------------ */
+
+.sd-pv {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.625rem;
+  overflow: hidden;
+  background-color: #fff;
+}
+.sd-pv__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--sd-brand);
+}
+.sd-pv__strip {
+  padding: 0.3125rem 0.75rem;
+  background-color: var(--sd-banner);
+  font-size: 10.5px;
+  color: #fff;
+}
+.sd-pv__logo { max-height: 1.25rem; max-width: 7rem; object-fit: contain; }
+/* Without a dark-surface logo, the primary one gets a white tile rather
+   than vanishing into a dark bar. */
+.sd-pv__logo.on-tile {
+  background-color: #fff;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+}
+.sd-pv__name { font-size: 12px; font-weight: 700; color: #fff; }
+.sd-pv__body { padding: 0.875rem; }
+.sd-pv__btn {
+  display: inline-flex;
+  align-items: center;
+  height: 1.875rem;
+  padding: 0 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 11.5px;
+  font-weight: 600;
+  background-color: var(--sd-btn);
+  color: var(--sd-btn-ink);
+}
+.sd-pv__btn--ghost {
+  background-color: transparent;
+  color: var(--sd-brand);
+  border: 1px solid currentColor;
+}
+.sd-pv__link { color: var(--sd-link); text-decoration: underline; font-size: 11.5px; }
+.sd-pv__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 1.375rem;
+  padding: 0 0.5rem;
+  border-radius: 9999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #fff;
+  background-color: var(--sd-accent);
+}
+.sd-pv__slot {
+  display: inline-flex;
+  align-items: center;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--sd-brand);
+  color: var(--sd-brand);
+}
+.sd-pv__slot.is-on { background-color: var(--sd-brand); color: #fff; }
+
+/* Email and receipt panes read as documents, not as app screens. */
+.sd-pv__email { background-color: #f6f7f9; padding: 0.875rem; }
+.sd-pv__sheet { background-color: #fff; border-radius: 0.375rem; overflow: hidden; border: 1px solid #e9ebef; }
+.sd-pv__mhead { padding: 0.875rem; text-align: center; }
+.sd-pv__mhead.is-brand { background-color: var(--sd-brand); }
+.sd-pv__mhead.is-dark  { background-color: #1f2937; }
+.sd-pv__mhead.is-light { background-color: #fff; border-bottom: 1px solid #e9ebef; }
+.sd-pv__mfoot {
+  padding: 0.75rem 0.875rem;
+  border-top: 1px solid #f1f3f5;
+  font-size: 10px;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.5;
+}
+.sd-pv__rrow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 11px;
+  padding: 0.1875rem 0;
+}
+.sd-pv__rtot {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0.4375rem 0 0;
+  margin-top: 0.375rem;
+  border-top: 1px solid #e9ebef;
+  color: var(--sd-brand);
+}
