@@ -9,13 +9,18 @@ use Illuminate\View\ComponentAttributeBag;
 use InvalidArgumentException;
 
 /**
- * Inline a vendored Font Awesome Pro icon.
+ * Inline a vendored Font Awesome Pro Sharp Light icon.
  *
  * The icons are inlined rather than delivered as a webfont or through Font
  * Awesome's JS: an inline <svg> inherits currentColor, so the existing
  * .sd-navicon hover, focus and is-active colours keep working with no icon
  * stylesheet involved, and there is no font to download before the nav can
  * paint.
+ *
+ * The directory is named for the style it holds. Font Awesome ships the same
+ * icon names across a dozen families, so a generic "icons" folder would give
+ * no way to tell which one a file came from, and the next person copying an
+ * icon in would have no way to match it.
  *
  * Only the icons the app actually uses are vendored into resources/icons.
  * The full Pro bundle is 1.1 GB of licensed third-party assets and is
@@ -99,11 +104,11 @@ class Icon
             throw new InvalidArgumentException("Invalid icon name [{$name}].");
         }
 
-        $path = resource_path("icons/light/{$name}.svg");
+        $path = resource_path("icons/sharp-light/{$name}.svg");
 
         if (! is_file($path)) {
             throw new InvalidArgumentException(
-                "Icon [{$name}] is not vendored. Copy svgs/light/{$name}.svg from the Font Awesome Pro bundle into resources/icons/light/."
+                "Icon [{$name}] is not vendored. Copy svgs/sharp-light/{$name}.svg from the Font Awesome Pro bundle into resources/icons/sharp-light/."
             );
         }
 

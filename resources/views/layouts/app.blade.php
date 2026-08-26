@@ -108,12 +108,12 @@
   <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
     <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
       <!-- Primary icon rail -->
-      <nav class="hidden lg:flex self-stretch items-center gap-0.5 shrink-0" aria-label="Primary">
+      <nav class="hidden lg:flex self-stretch items-center gap-1 shrink-0" aria-label="Primary">
         <a href="{{ route('dashboard') }}" class="sd-navicon grid sd-tip is-active" data-tip="Dashboard" aria-label="Dashboard" aria-current="page">
           <x-icon name="grid-2" size="18" />
         </a>
         <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
-          <x-icon name="calendar-days" size="18" />
+          <x-icon name="calendar" size="18" />
         </a>
         <div class="sd-menu" data-menu>
           <a href="#" data-pending-route="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
@@ -169,7 +169,7 @@
       </div>
 
       <!-- Account cluster -->
-      <div class="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+      <div class="ml-auto flex items-center gap-1 shrink-0">
 
         <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
           <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
