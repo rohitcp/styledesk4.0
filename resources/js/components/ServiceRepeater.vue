@@ -111,12 +111,17 @@ function remove(index) {
             <div>
                 <p class="block text-[13px] font-medium text-ink mb-1.5">Pricing</p>
 
-                <div class="grid sm:grid-cols-2 gap-x-4 gap-y-3">
-                    <div v-for="currency in currencies" :key="currency.code">
-                        <label :for="`service-${i}-price-${currency.code}`" class="block text-[12px] text-sub mb-1">
-                            {{ currency.code }} — {{ currency.label }}
+                <!-- Three per row, wrapping onto the next. A fixed column count
+                     rather than auto-fit keeps every field the same width
+                     whether one currency is enabled or five, so the row does
+                     not reflow into odd sizes as currencies are added. -->
+                <div class="grid sm:grid-cols-3 gap-x-4 gap-y-3">
+                    <div v-for="currency in currencies" :key="currency.code" class="min-w-0">
+                        <label :for="`service-${i}-price-${currency.code}`"
+                               class="flex flex-wrap items-baseline gap-x-1 text-[12px] text-sub mb-1">
+                            <span class="truncate">{{ currency.code }} — {{ currency.label }}</span>
                             <span v-if="currency.primary"
-                                  class="ml-1 text-[10px] font-semibold uppercase tracking-wide text-brand">Primary</span>
+                                  class="text-[10px] font-semibold uppercase tracking-wide text-brand">Primary</span>
                         </label>
                         <div class="relative">
                             <span class="styledesk_input__prefix">{{ currency.symbol }}</span>

@@ -142,16 +142,20 @@ onBeforeUnmount(() => {
                 {{ selected.length ? nameOf(selected[0]) : placeholder }}
             </span>
 
-            <span v-else class="styledesk_timepicker__value flex flex-wrap items-center gap-1.5">
-                <span v-if="!selected.length" class="text-faint">{{ placeholder }}</span>
+            <!-- Three per row, each the same width. A grid rather than
+                 wrapping flex: chips sized to their own text give ragged rows
+                 that shift every time a selection changes, and "United Arab
+                 Emirates" next to "Spain" reads as two different controls. -->
+            <span v-else class="styledesk_timepicker__value grid grid-cols-3 gap-1.5">
+                <span v-if="!selected.length" class="text-faint col-span-3">{{ placeholder }}</span>
 
                 <span v-for="code in selected" :key="code"
-                      class="inline-flex items-center gap-1.5 h-7 pl-2.5 pr-1 rounded-md bg-sel text-ink text-[13px]">
-                    {{ nameOf(code) }}
+                      class="flex items-center gap-1 h-7 min-w-0 pl-2.5 pr-1 rounded-md bg-sel text-ink text-[13px]">
+                    <span class="truncate" :title="nameOf(code)">{{ nameOf(code) }}</span>
                     <span v-if="code === primary"
-                          class="text-[10px] font-semibold uppercase tracking-wide text-brand">Primary</span>
+                          class="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-brand">Primary</span>
                     <span role="button" tabindex="0" aria-label="Remove"
-                          class="h-5 w-5 grid place-items-center rounded text-faint hover:text-danger hover:bg-hover"
+                          class="ml-auto h-5 w-5 grid place-items-center shrink-0 rounded text-faint hover:text-danger hover:bg-hover"
                           @click.stop="remove(code)" @keydown.enter.stop="remove(code)">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
                     </span>
