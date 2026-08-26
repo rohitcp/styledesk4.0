@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue';
 import CategoryPicker from './CategoryPicker.vue';
+import CategoryModal from './CategoryModal.vue';
 import ColorPicker from './ColorPicker.vue';
 import { setCategories } from '../stores/categories';
 import { onboarding } from '../stores/onboarding';
@@ -22,6 +23,24 @@ const props = defineProps({
 
 // Seed the shared store once; every picker on the page reads from it.
 onMounted(() => setCategories(props.categories));
+
+/**
+ * Which row asked for the modal.
+ *
+ * One dialog serves every row, so it has to remember who opened it in order to
+ * select the new category back onto that row rather than the first one.
+ */
+const addingForRow = ref(null);
+
+function openCategoryModal(index) {
+    addingForRow.value = index;
+}
+
+function onCategoryCreated(category) {
+    if (addingForRow.value !== null && rows.value[addingForRow.value]) {
+        rows.value[addingForRow.value].service_category_id = category.id;
+    }
+}
 
 const blank = () => ({
     name: '',
@@ -64,7 +83,7 @@ function remove(index) {
             <div>
                 <label :for="`service-name-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Service name</label>
                 <input :id="`service-name-${i}`" v-model="row.name" :name="`services[${i}][name]`"
-                       type="text" class="sd-input" data-capitalize placeholder="Women's Cut &amp; Finish">
+                       type="text" class="sd-input" v-capitalize placeholder="Women's Cut &amp; Finish">
             </div>
 
             <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
@@ -72,8 +91,14 @@ function remove(index) {
                     <label class="block text-[13px] font-medium text-ink mb-1.5">Service category</label>
                     <CategoryPicker v-model="row.service_category_id"
                                     :name="`services[${i}][service_category_id]`"
-                                    :can-create="canCreateCategory"
                                     :aria-label="`Service ${i + 1} category`" />
+
+                    <!-- Outside the combo, so the dropdown lists categories and
+                         nothing else. -->
+                    <button v-if="canCreateCategory" type="button" class="styledesk_addlink"
+                            @click="openCategoryModal(i)">
+                        + Add Category
+                    </button>
                 </div>
 
                 <div>
@@ -153,5 +178,9 @@ function remove(index) {
                 class="h-10 px-4 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
             Add another service
         </button>
+
+        <CategoryModal :open="addingForRow !== null"
+                       @created="onCategoryCreated"
+                       @close="addingForRow = null" />
     </div>
 </template>

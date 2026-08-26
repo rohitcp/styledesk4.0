@@ -260,3 +260,73 @@
     color: #6b7280;
     pointer-events: none;
 }
+
+/* ------------------------------------------------------------------
+   Modal
+   ------------------------------------------------------------------
+   A centred dialog over a dimmed page. Plain CSS rather than utilities
+   because the overlay needs a stacking context above the combo panels, and
+   those already carry a z-index from this layer.
+   ------------------------------------------------------------------ */
+
+.styledesk_modal {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 6rem 1rem 1rem;
+    background: rgb(15 15 16 / 45%);
+}
+
+.styledesk_modal__dialog {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 20px 50px rgb(15 15 16 / 25%);
+    overflow: hidden;
+}
+
+.styledesk_modal__head {
+    padding: 1.125rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.styledesk_modal__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f0f10;
+}
+
+.styledesk_modal__body {
+    padding: 1.25rem;
+}
+
+.styledesk_modal__foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.625rem;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid #e5e7eb;
+    background: #fafbfc;
+}
+
+.styledesk_addlink {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--sd-link);
+    cursor: pointer;
+}
+
+.styledesk_addlink:hover { text-decoration: underline; }

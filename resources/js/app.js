@@ -14,7 +14,7 @@ import './prototype/styledesk';
 import './prototype/branding';
 import './prototype/account';
 
-import { initCapitalization } from './capitalize';
+import { capitalizeFirst, initCapitalization } from './capitalize';
 import { initPhoneFields } from './phone';
 import { createApp } from 'vue';
 
@@ -70,7 +70,44 @@ export function mountVueIslands(root = document) {
         }
 
         el.dataset.vueMounted = 'true';
-        createApp(component, readProps(el)).mount(el);
+
+        const app = createApp(component, readProps(el));
+
+        /**
+         * v-capitalize: the project capitalisation rule for Vue-bound inputs.
+         *
+         * The document-level data-capitalize handler cannot work here. It
+         * rewrites the DOM value, but v-model has already read the raw value
+         * into component state, and the next render puts the raw value back —
+         * so the field appears to un-capitalise itself as you type. Dispatching
+         * an input event after the change is what lets v-model see it.
+         *
+         * The re-dispatch cannot loop: capitalising an already-capitalised
+         * value returns it unchanged and the guard below exits.
+         */
+        app.directive('capitalize', {
+            mounted(el) {
+                el.addEventListener('input', () => {
+                    const next = capitalizeFirst(el.value);
+
+                    if (next === el.value) {
+                        return;
+                    }
+
+                    const start = el.selectionStart;
+                    const end = el.selectionEnd;
+
+                    el.value = next;
+                    el.dispatchEvent(new Event('input'));
+
+                    if (el.setSelectionRange && start !== null) {
+                        el.setSelectionRange(start, end);
+                    }
+                });
+            },
+        });
+
+        app.mount(el);
     });
 }
 
