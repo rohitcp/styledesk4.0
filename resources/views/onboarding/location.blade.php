@@ -35,14 +35,39 @@
                        value="{{ old('city', $location?->city) }}" required>
                 @error('city')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
             </div>
+            @php
+                $selectedCountry = old('country', $location?->country ?? 'US');
+                $selectedState = old('state', $location?->state);
+                $countryRegions = $regions[$selectedCountry] ?? [];
+            @endphp
+
             <div>
-                <label for="state" class="block text-[13px] font-medium text-ink mb-1.5">State / Region</label>
-                <select id="state" name="state" class="sd-input" autocomplete="address-level1">
-                    <option value="">Select…</option>
-                    @foreach (array_keys($usStates) as $code)
-                        <option value="{{ $code }}" @selected(old('state', $location?->state) === $code)>{{ $code }}</option>
-                    @endforeach
-                </select>
+                <label for="{{ $countryRegions ? 'state' : 'state_text' }}" class="block text-[13px] font-medium text-ink mb-1.5">
+                    State / Region
+                </label>
+
+                {{-- Both controls are rendered and one is disabled, rather than
+                     swapping elements in and out. A disabled control is not
+                     submitted, so exactly one `state` value ever posts, and the
+                     combo does not have to be torn down and rebuilt when the
+                     country changes. --}}
+                <div id="state-select-wrap" @class(['hidden' => ! $countryRegions])>
+                    <select id="state" name="state" class="sd-input" autocomplete="address-level1"
+                            @disabled(! $countryRegions)>
+                        <option value="">Select…</option>
+                        @foreach ($countryRegions as $code => $name)
+                            <option value="{{ $code }}" @selected($selectedState === $code)>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div id="state-text-wrap" @class(['hidden' => (bool) $countryRegions])>
+                    <input id="state_text" name="state" type="text" class="sd-input"
+                           autocomplete="address-level1" value="{{ $countryRegions ? '' : $selectedState }}"
+                           placeholder="State, province or region" @disabled((bool) $countryRegions)>
+                </div>
+
+                @error('state')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
             </div>
             <div>
                 <label for="postal_code" class="block text-[13px] font-medium text-ink mb-1.5">Postal code</label>
@@ -56,8 +81,8 @@
             <div>
                 <label for="country" class="block text-[13px] font-medium text-ink mb-1.5">Country</label>
                 <select id="country" name="country" class="sd-input" required>
-                    @foreach (['US' => 'United States', 'CA' => 'Canada', 'GB' => 'United Kingdom', 'AU' => 'Australia', 'MX' => 'Mexico', 'FR' => 'France', 'DE' => 'Germany', 'ES' => 'Spain'] as $iso => $label)
-                        <option value="{{ $iso }}" @selected(old('country', $location?->country ?? 'US') === $iso)>{{ $label }}</option>
+                    @foreach ($countries as $iso => $label)
+                        <option value="{{ $iso }}" @selected($selectedCountry === $iso)>{{ $label }}</option>
                     @endforeach
                 </select>
                 <p class="mt-1.5 text-[12px] text-sub">Sets your currency. Changeable in Settings.</p>
@@ -177,38 +202,8 @@
             });
         }
 
-        /* ---- Timezone inferred from the state ----------------------------
-           The spec asks for the timezone to be worked out from the address
-           where possible. It is a suggestion, not a decision: once the user
-           picks a zone themselves we stop overriding it, because silently
-           changing it back would be worse than not helping at all. */
-        var STATE_ZONES = @json(config('locations.us_states'));
-        var stateEl = document.getElementById('state');
-        var tzEl = document.getElementById('timezone');
-        var tzHint = document.getElementById('tz-hint');
-        var tzTouched = false;
-
-        tzEl.addEventListener('change', function () { tzTouched = true; });
-
-        stateEl.addEventListener('change', function () {
-            var guess = STATE_ZONES[stateEl.value];
-
-            if (!guess || tzTouched || tzEl.value === guess) return;
-
-            tzEl.value = guess;
-
-            // The visible control is the combo button, not the select, so it
-            // has to be told the value changed underneath it.
-            if (window.SD && typeof window.SD.comboRefresh === 'function') {
-                SD.comboRefresh(tzEl);
-            }
-
-            tzHint.textContent = 'Set from your state — change it if that is not right.';
-            paintPreview();
-        });
-
-        /* ---- Location preview ------------------------------------------
-           Mirrors the form into the rail. */
+        /* ---- Location preview -------------------------------------------
+           Mirrors the form into the rail in the other column. */
         var pv = {
             name: document.getElementById('pv-name'),
             addr: document.getElementById('pv-addr'),
@@ -218,14 +213,20 @@
 
         function val(id) {
             var el = document.getElementById(id);
-            return el ? el.value.trim() : '';
+
+            return el && !el.disabled ? el.value.trim() : '';
         }
 
         function paintPreview() {
             pv.name.textContent = val('name') || 'Main Location';
 
-            var parts = [val('address_line1'), val('address_line2'), val('city'), val('state'), val('postal_code')]
-                .filter(Boolean);
+            // state_text is the fallback field for countries without a region
+            // list; only one of the two is ever enabled, so reading both and
+            // dropping the blank is enough.
+            var parts = [
+                val('address_line1'), val('address_line2'), val('city'),
+                val('state') || val('state_text'), val('postal_code'),
+            ].filter(Boolean);
 
             pv.addr.textContent = parts.length ? parts.join(', ') : 'Add your address to see it here.';
             pv.tz.textContent = val('timezone') || '—';
@@ -235,6 +236,99 @@
                 ? 'Closed every day'
                 : 'Open ' + open + ' ' + (open === 1 ? 'day' : 'days') + ' a week';
         }
+
+        /* ---- Region list follows the country -----------------------------
+           A country with regions shows the combo; one without shows a free
+           text field. Both exist in the markup and the unused one is disabled,
+           so exactly one `state` value posts and the combo never has to be
+           torn down and rebuilt. */
+        var REGIONS = @json($regions);
+        var REGION_ZONES = @json($regionTimezones);
+        var COUNTRY_ZONES = @json($countryTimezones);
+
+        var countryEl = document.getElementById('country');
+        var stateEl = document.getElementById('state');
+        var stateTextEl = document.getElementById('state_text');
+        var selectWrap = document.getElementById('state-select-wrap');
+        var textWrap = document.getElementById('state-text-wrap');
+        var tzEl = document.getElementById('timezone');
+        var tzHint = document.getElementById('tz-hint');
+        var tzTouched = false;
+
+        tzEl.addEventListener('change', function () { tzTouched = true; });
+
+        function applyZone(zone, note) {
+            if (!zone || tzTouched || tzEl.value === zone) return;
+
+            tzEl.value = zone;
+
+            // The visible control is the combo button, not the select, so it
+            // has to be told the value changed underneath it.
+            if (window.SD && typeof window.SD.comboRefresh === 'function') {
+                SD.comboRefresh(tzEl);
+            }
+
+            tzHint.textContent = note;
+            paintPreview();
+        }
+
+        function paintRegions(keepValue) {
+            var country = countryEl.value;
+            var regions = REGIONS[country];
+            var previous = keepValue ? stateEl.value : '';
+
+            if (regions) {
+                var options = ['<option value="">Select…</option>'];
+
+                Object.keys(regions).forEach(function (code) {
+                    options.push('<option value="' + code + '">' + regions[code] + '</option>');
+                });
+
+                stateEl.innerHTML = options.join('');
+                stateEl.value = regions[previous] ? previous : '';
+
+                selectWrap.classList.remove('hidden');
+                textWrap.classList.add('hidden');
+                stateEl.disabled = false;
+                stateTextEl.disabled = true;
+
+                // The combo reads select.options each time it opens, so the
+                // new list is picked up on its own; only the button label,
+                // which is painted once, has to be told.
+                if (window.SD && typeof window.SD.comboRefresh === 'function') {
+                    SD.comboRefresh(stateEl);
+                }
+            } else {
+                selectWrap.classList.add('hidden');
+                textWrap.classList.remove('hidden');
+                stateEl.disabled = true;
+                stateTextEl.disabled = false;
+            }
+        }
+
+        countryEl.addEventListener('change', function () {
+            paintRegions(false);
+
+            // A new country means a new default zone; the region-level guess
+            // below refines it once a region is chosen.
+            applyZone(
+                COUNTRY_ZONES[countryEl.value],
+                'Set from your country — change it if that is not right.'
+            );
+
+            paintPreview();
+        });
+
+        /* ---- Timezone refined by the region -------------------------------
+           The spec asks for the timezone to be worked out from the address
+           where possible. It is a suggestion, not a decision: once the user
+           picks a zone themselves we stop overriding it, because silently
+           changing it back would be worse than not helping at all. */
+        stateEl.addEventListener('change', function () {
+            var byRegion = (REGION_ZONES[countryEl.value] || {})[stateEl.value];
+
+            applyZone(byRegion, 'Set from your state — change it if that is not right.');
+        });
 
         // Delegated: SD.combo moves each select inside a new wrapper, and a
         // listener bound to the element before that still fires, but new

@@ -153,6 +153,42 @@ class OnboardingTest extends TestCase
         $this->assertTrue($onboarding->business_completed);
     }
 
+    public function test_every_inferred_timezone_can_actually_be_selected(): void
+    {
+        // Inference sets the timezone select to a value. If that value is not
+        // one of the offered options the field silently reads as blank, and
+        // the only symptom is a form that will not submit.
+        $offered = array_keys(config('locations.timezones'));
+
+        $referenced = array_values(config('locations.country_timezones'));
+
+        foreach (config('locations.region_timezones') as $map) {
+            $referenced = array_merge($referenced, array_values($map));
+        }
+
+        $this->assertSame([], array_values(array_diff(array_unique($referenced), $offered)));
+    }
+
+    public function test_every_country_offered_has_a_default_timezone(): void
+    {
+        $missing = array_diff(
+            array_keys(config('locations.countries')),
+            array_keys(config('locations.country_timezones'))
+        );
+
+        $this->assertSame([], array_values($missing));
+    }
+
+    public function test_regions_are_only_listed_for_countries_we_offer(): void
+    {
+        $unknown = array_diff(
+            array_keys(config('locations.regions')),
+            array_keys(config('locations.countries'))
+        );
+
+        $this->assertSame([], array_values($unknown));
+    }
+
     public function test_a_user_without_a_business_is_sent_to_step_one(): void
     {
         $this->actingAs($this->user())

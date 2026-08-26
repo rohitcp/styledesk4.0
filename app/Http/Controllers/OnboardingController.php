@@ -190,7 +190,10 @@ class OnboardingController extends Controller
     {
         return view('onboarding.location', [
             'location' => $request->user()->tenant?->locations()->where('is_primary', true)->first(),
-            'usStates' => config('locations.us_states'),
+            'countries' => config('locations.countries'),
+            'regions' => config('locations.regions'),
+            'regionTimezones' => config('locations.region_timezones'),
+            'countryTimezones' => config('locations.country_timezones'),
             'timezones' => $this->timezoneOptions(),
             'progress' => $this->progress('location'),
             'previousStep' => $this->previousStep('location'),
