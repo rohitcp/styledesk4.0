@@ -1,8 +1,9 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import CategoryPicker from './CategoryPicker.vue';
 import CategoryModal from './CategoryModal.vue';
 import ColorPicker from './ColorPicker.vue';
+import ConfirmDialog from './ConfirmDialog.vue';
 import { setCategories } from '../stores/categories';
 import { onboarding } from '../stores/onboarding';
 
@@ -63,14 +64,48 @@ function add() {
     rows.value.push(blank());
 }
 
-function remove(index) {
-    rows.value.splice(index, 1);
+/**
+ * Which row the confirmation is asking about, or null when it is closed.
+ *
+ * An index rather than a boolean plus a separate "pending" variable: two
+ * pieces of state can disagree, and the disagreement here would discard the
+ * wrong service.
+ */
+const pendingRemoval = ref(null);
 
-    // Never leave the list empty: an empty repeater gives the user nothing to
-    // type into and looks broken.
-    if (!rows.value.length) {
-        rows.value.push(blank());
+const confirmMessage = computed(() => {
+    const row = pendingRemoval.value === null ? null : rows.value[pendingRemoval.value];
+
+    if (!row) {
+        return '';
     }
+
+    const name = row.name.trim();
+    const subject = name ? `“${name}”` : 'This service';
+
+    // The last row is cleared rather than deleted, so say so — otherwise the
+    // row reappearing empty reads as the Remove having failed.
+    return rows.value.length === 1
+        ? `${subject} will be cleared. Its name, price and duration are not saved yet, so they cannot be recovered.`
+        : `${subject} will be removed. Its name, price and duration are not saved yet, so they cannot be recovered.`;
+});
+
+function confirmRemove(index) {
+    pendingRemoval.value = index;
+}
+
+function removeConfirmed() {
+    if (pendingRemoval.value !== null) {
+        rows.value.splice(pendingRemoval.value, 1);
+
+        // Never leave the list empty: an empty repeater gives the user nothing
+        // to type into and looks broken.
+        if (!rows.value.length) {
+            rows.value.push(blank());
+        }
+    }
+
+    pendingRemoval.value = null;
 }
 </script>
 
@@ -172,7 +207,7 @@ function remove(index) {
             </div>
 
             <div class="flex justify-end pt-1">
-                <button type="button" @click="remove(i)"
+                <button type="button" @click="confirmRemove(i)"
                         class="h-8 px-3 rounded-md text-[13px] font-semibold text-sub hover:text-danger hover:bg-hover transition-colors">
                     Remove
                 </button>
@@ -187,5 +222,11 @@ function remove(index) {
         <CategoryModal :open="addingForRow !== null"
                        @created="onCategoryCreated"
                        @close="addingForRow = null" />
+
+        <!-- One dialog for the whole repeater, not one per row: N dialogs mean
+             N Escape handlers competing for the same keypress. -->
+        <ConfirmDialog :open="pendingRemoval !== null" title="Remove this service?"
+                       :message="confirmMessage" confirm-label="Remove"
+                       @confirm="removeConfirmed" @cancel="pendingRemoval = null" />
     </div>
 </template>
