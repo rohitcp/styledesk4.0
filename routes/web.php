@@ -30,6 +30,18 @@ Route::get('/', function () {
 | to this group as each module is specified and built.
 */
 /*
+| Public booking, by path.
+|
+| The spec's canonical booking URL is /book/{slug} on the central domain. The
+| tenant subdomain (routes/tenant.php) stays available as an alias, and both
+| resolve the same tenant, so a business can share whichever address it
+| prefers. Deliberately outside auth: clients booking are not StyleDesk users.
+*/
+Route::middleware(['tenant.route'])->get('book/{tenant}', function (App\Models\Tenant $tenant) {
+    return 'Public booking site for '.$tenant->name.' ('.$tenant->getTenantKey().')';
+})->name('booking.path');
+
+/*
 | Correcting a mistyped sign-up address. Sits behind auth but deliberately
 | outside the `verified` gate — the whole point is that this user cannot
 | verify yet.

@@ -87,6 +87,28 @@ class TenancyResolutionTest extends TestCase
             ->assertSee($tenant->id);
     }
 
+    public function test_booking_is_reachable_by_path_as_well_as_subdomain(): void
+    {
+        $tenant = $this->tenant('bella');
+
+        // The spec's canonical URL...
+        $this->get('http://styledesk.test/book/bella')
+            ->assertOk()
+            ->assertSee($tenant->getTenantKey());
+
+        // ...and the subdomain alias, resolving the same tenant.
+        $this->get('http://bella.styledesk.test/')
+            ->assertOk()
+            ->assertSee($tenant->getTenantKey());
+    }
+
+    public function test_an_unknown_booking_slug_is_not_found(): void
+    {
+        // Route model binding resolves the slug to a real tenant, so an
+        // unknown value 404s rather than being trusted as an identifier.
+        $this->get('http://styledesk.test/book/does-not-exist')->assertNotFound();
+    }
+
     public function test_tenancy_does_not_switch_the_database_connection(): void
     {
         $tenant = $this->tenant();

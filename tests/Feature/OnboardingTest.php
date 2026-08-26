@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BusinessType;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
@@ -92,12 +93,15 @@ class OnboardingTest extends TestCase
     public function test_step_one_creates_the_tenant_and_links_the_user(): void
     {
         $user = $this->user();
+        $type = BusinessType::create(['name' => 'Hair Salon', 'slug' => 'hair-salon']);
 
         $this->actingAs($user)
             ->post('http://styledesk.test/onboarding/business', [
                 'name' => 'Bella Beauty Studio',
                 'slug' => 'bella',
+                'business_phone' => '555 0100',
                 'business_email' => 'hello@bella.test',
+                'business_type_ids' => [$type->id],
             ])
             ->assertRedirect(route('onboarding.location'));
 
@@ -111,6 +115,59 @@ class OnboardingTest extends TestCase
 
         // The booking subdomain must exist, or the public site is unreachable.
         $this->assertSame('bella', $tenant->domains()->first()->domain);
+
+        // Sign-up never asks for payment, so the workspace opens on a trial.
+        $this->assertSame('trial', $tenant->status);
+        $this->assertSame('trialing', $tenant->subscription_status);
+        $this->assertSame(14, $tenant->trialDaysRemaining());
+        $this->assertSame($user->id, $tenant->owner_user_id);
+        $this->assertSame(['Hair Salon'], $tenant->businessTypes->pluck('name')->all());
+    }
+
+    public function test_business_type_is_required(): void
+    {
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Bella Beauty Studio',
+                'business_phone' => '555 0100',
+            ])
+            ->assertSessionHasErrors('business_type_ids');
+
+        $this->assertSame(0, Tenant::count());
+    }
+
+    public function test_the_slug_is_generated_from_the_business_name(): void
+    {
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Bella Beauty Studio',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+            ])
+            ->assertRedirect(route('onboarding.location'));
+
+        $this->assertSame('bella-beauty-studio', Tenant::first()->slug);
+    }
+
+    public function test_a_taken_slug_gets_a_numeric_suffix(): void
+    {
+        Tenant::create(['name' => 'Bella Beauty Studio', 'slug' => 'bella-beauty-studio']);
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $user = $this->user();
+
+        $this->actingAs($user)
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Bella Beauty Studio',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+            ])
+            ->assertRedirect(route('onboarding.location'));
+
+        // Found via the user, not Tenant::first(): the primary key is a UUID,
+        // so "first" is not creation order and would pick either row.
+        $this->assertSame('bella-beauty-studio-2', $user->fresh()->tenant->slug);
     }
 
     public function test_reserved_slugs_are_rejected(): void

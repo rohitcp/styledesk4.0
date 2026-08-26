@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\BookingSettings;
+use App\Models\BusinessType;
 use App\Models\Location;
 use App\Models\Service;
 use App\Models\Staff;
@@ -37,6 +38,9 @@ class OnboardingController extends Controller
      * Subdomains that must never become a tenant slug: they either already
      * resolve to something else or would be mistaken for infrastructure.
      */
+    /** Trial length in days, per spec section 18. */
+    private const TRIAL_DAYS = 14;
+
     private const RESERVED_SLUGS = [
         'www', 'app', 'admin', 'api', 'mail', 'billing', 'status',
         'support', 'help', 'blog', 'static', 'assets', 'cdn',
@@ -48,6 +52,7 @@ class OnboardingController extends Controller
     {
         return view('onboarding.business', [
             'tenant' => $request->user()->tenant,
+            'businessTypes' => BusinessType::active()->get(),
             'progress' => $this->progress('business'),
         ]);
     }
@@ -59,19 +64,24 @@ class OnboardingController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'business_type_ids' => ['required', 'array', 'min:1'],
+            'business_type_ids.*' => ['integer', 'exists:business_types,id'],
+            // Optional: generated from the name when left blank, but still
+            // validated when the user overrides the suggestion.
             'slug' => [
-                'required', 'string', 'max:60',
+                'nullable', 'string', 'max:60',
                 'regex:/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/',
                 Rule::notIn(self::RESERVED_SLUGS),
                 Rule::unique('tenants', 'slug')->ignore($tenantId, 'id'),
             ],
-            'business_phone' => ['nullable', 'string', 'max:32'],
+            'business_phone' => ['required', 'string', 'max:32'],
             'business_phone_country' => ['nullable', 'string', 'size:2'],
             'business_email' => ['nullable', 'email', 'max:255'],
             'website_scheme' => ['nullable', 'string', 'max:16'],
             'website' => ['nullable', 'string', 'max:255'],
             'logo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
         ], [
+            'business_type_ids.required' => 'Choose at least one business type.',
             'slug.regex' => 'Use lowercase letters, numbers and hyphens only.',
             'slug.not_in' => 'That address is reserved. Please choose another.',
             'logo.max' => 'The logo must be 2 MB or smaller.',
@@ -79,7 +89,7 @@ class OnboardingController extends Controller
 
         $attributes = [
             'name' => $data['name'],
-            'slug' => $data['slug'],
+            'slug' => $this->resolveSlug($data['slug'] ?? null, $data['name'], $tenantId),
             'business_phone' => $data['business_phone'] ?? null,
             'business_phone_country' => $data['business_phone_country'] ?? null,
             'business_email' => $data['business_email'] ?? null,
@@ -90,11 +100,20 @@ class OnboardingController extends Controller
             $attributes['logo_path'] = $request->file('logo')->store('logos', 'public');
         }
 
-        DB::transaction(function () use ($user, $tenantId, $attributes) {
+        DB::transaction(function () use ($user, $tenantId, $attributes, $data) {
             if ($tenantId === null) {
                 // First pass: this is what brings the tenant into existence and
                 // gives the user something for tenancy to resolve from.
-                $tenant = Tenant::create($attributes + ['status' => 'onboarding']);
+                //
+                // Payment is never required to sign up, so the workspace opens
+                // on a trial and the subscription module converts it later.
+                $tenant = Tenant::create($attributes + [
+                    'status' => 'trial',
+                    'owner_user_id' => $user->id,
+                    'subscription_status' => 'trialing',
+                    'trial_started_at' => now(),
+                    'trial_ends_at' => now()->addDays(self::TRIAL_DAYS),
+                ]);
                 $tenant->domains()->create(['domain' => $tenant->slug]);
 
                 $user->tenant_id = $tenant->getTenantKey();
@@ -107,6 +126,8 @@ class OnboardingController extends Controller
                 $tenant->domains()->delete();
                 $tenant->domains()->create(['domain' => $tenant->slug]);
             }
+
+            $tenant->businessTypes()->sync($data['business_type_ids']);
 
             $this->onboardingFor($tenant)->update([
                 'business_completed' => true,
@@ -402,6 +423,32 @@ class OnboardingController extends Controller
             'current' => $step === $current,
             'done' => $onboarding !== null && $i < $currentIndex && $onboarding->hasCompleted($step),
         ])->all();
+    }
+
+    /**
+     * Slug for the booking URL.
+     *
+     * Generated from the business name when the user has not overridden it,
+     * with a numeric suffix on collision — "bella-beauty-studio" becomes
+     * "bella-beauty-studio-2" rather than failing validation and making the
+     * user invent one.
+     */
+    private function resolveSlug(?string $given, string $name, ?string $tenantId): string
+    {
+        $base = Str::slug($given ?: $name) ?: 'business';
+
+        if (in_array($base, self::RESERVED_SLUGS, true)) {
+            $base .= '-business';
+        }
+
+        $slug = $base;
+        $suffix = 1;
+
+        while (Tenant::where('slug', $slug)->when($tenantId, fn ($q) => $q->where('id', '!=', $tenantId))->exists()) {
+            $slug = $base.'-'.(++$suffix);
+        }
+
+        return $slug;
     }
 
     private function joinWebsite(?string $scheme, ?string $host): ?string

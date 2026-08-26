@@ -15,6 +15,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Reference data the onboarding wizard needs in order to render.
+        $this->call(BusinessTypeSeeder::class);
+
         // User::factory(10)->create();
 
         User::factory()->create([

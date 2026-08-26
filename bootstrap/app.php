@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.subdomain' => InitializeTenancyBySubdomain::class,
             'tenant.user' => \App\Http\Middleware\InitializeTenancyFromUser::class,
             'tenant.central-only' => PreventAccessFromCentralDomains::class,
+            'tenant.route' => \App\Http\Middleware\InitializeTenancyFromRoute::class,
 
             // The two halves of the onboarding gate. Together they form a
             // closed loop: an unfinished account cannot reach the app, and a

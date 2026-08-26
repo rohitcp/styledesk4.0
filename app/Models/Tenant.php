@@ -35,6 +35,20 @@ class Tenant extends BaseTenant
     ];
 
     /**
+     * Neither the base model nor HasDataColumn declares casts, so this does
+     * not need to merge anything from the parent.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'trial_started_at' => 'datetime',
+            'trial_ends_at' => 'datetime',
+        ];
+    }
+
+    /**
      * Attributes stored as real columns rather than inside the `data` blob.
      *
      * @return array<int, string>
@@ -52,6 +66,13 @@ class Tenant extends BaseTenant
             'website',
             'logo_path',
             'currency',
+            'owner_user_id',
+            'timezone',
+            'locale',
+            'trial_started_at',
+            'trial_ends_at',
+            'subscription_status',
+            'plan_id',
         ];
     }
 
@@ -64,6 +85,31 @@ class Tenant extends BaseTenant
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function businessTypes(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(BusinessType::class);
+    }
+
+    public function owner(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_user_id');
+    }
+
+    /**
+     * Whole days left in the trial, floored at zero.
+     *
+     * Shown in the app chrome, so it must never read as negative once the
+     * trial has lapsed — that is what subscription_status is for.
+     */
+    public function trialDaysRemaining(): int
+    {
+        if ($this->trial_ends_at === null) {
+            return 0;
+        }
+
+        return max(0, (int) now()->startOfDay()->diffInDays($this->trial_ends_at->startOfDay(), false));
     }
 
     public function onboarding(): \Illuminate\Database\Eloquent\Relations\HasOne
