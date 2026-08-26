@@ -371,7 +371,7 @@ onBeforeUnmount(() => {
                     <label for="invite-message" class="block text-[13px] font-medium text-ink mb-1.5">
                         Message <span class="text-faint font-normal">(optional)</span>
                     </label>
-                    <textarea id="invite-message" v-model="form.message" rows="2" class="sd-input h-auto py-2"
+                    <textarea id="invite-message" v-model="form.message" rows="2" class="sd-input"
                               placeholder="Looking forward to having you on the team."></textarea>
                     <p v-if="errors.message" class="mt-1.5 text-[12px] text-danger">{{ errors.message[0] }}</p>
                 </div>

@@ -139,7 +139,7 @@
                 <label for="description" class="block text-[13px] font-medium text-ink mb-1.5">
                   Description <span class="text-faint font-normal">(optional)</span>
                 </label>
-                <textarea id="description" name="description" rows="3" class="sd-input h-auto py-2" data-capitalize
+                <textarea id="description" name="description" rows="3" class="sd-input" data-capitalize
                           placeholder="A sentence clients will read on your booking page.">{{ old('description', $tenant->description) }}</textarea>
                 @error('description')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
               </div>
@@ -197,17 +197,6 @@
                        value="{{ old('website', $tenant->website) }}">
                 @error('website')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
               </div>
-            </section>
-
-            <section class="bg-white border border-line rounded-card p-5">
-              <h2 class="text-[15px] font-semibold text-head">Business address</h2>
-              <p class="text-[13px] text-sub mt-1.5 leading-relaxed">
-                Addresses belong to locations, so they are edited there — a business with three branches has three
-                addresses and no single one to put here.
-              </p>
-              <a href="{{ route('settings.index') }}" class="inline-flex items-center h-9 px-3 mt-3 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-                Manage locations →
-              </a>
             </section>
 
             <section class="bg-white border border-line rounded-card p-5 space-y-4">

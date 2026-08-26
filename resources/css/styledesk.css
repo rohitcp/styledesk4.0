@@ -697,3 +697,25 @@ a.styledesk_settingcard:focus-visible {
     outline: 1px solid var(--color-danger, #ef4444);
     outline-offset: -2px;
 }
+
+/* ------------------------------------------------------------------
+   Multi-line inputs
+   ------------------------------------------------------------------
+   .sd-input is drawn for a single line: fixed 2.75rem height and
+   `padding: 0 0.875rem`, with no vertical padding at all because the line
+   is centred by the height instead. On a <textarea> that leaves the text
+   pressed against the top border.
+
+   It has to be fixed here rather than with a py-* utility on the element,
+   because prototype.css loads after Tailwind, so the shorthand `padding`
+   above wins over any utility. This layer loads after both.
+   ------------------------------------------------------------------ */
+
+textarea.sd-input {
+    height: auto;
+    padding: 0.625rem 0.875rem;
+    line-height: 1.5;
+    /* Vertical only: a textarea widened past its container drags the
+       layout with it. */
+    resize: vertical;
+}
