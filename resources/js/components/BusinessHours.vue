@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, watch } from 'vue';
+import { nextTick, onMounted, reactive, watch } from 'vue';
 import TimePicker from './TimePicker.vue';
 
 /**
@@ -50,40 +50,75 @@ function copyMondayToWeek() {
  * the DOM. Vue's own updates do not fire a native change event on the form, so
  * without this nudge the rail would drift out of step after a copy.
  */
-watch(rows, () => {
+function announce() {
     document.getElementById('stepForm')?.dispatchEvent(new Event('change', { bubbles: true }));
-}, { deep: true });
+}
+
+watch(rows, announce, { deep: true });
+
+/**
+ * Announce once on mount as well as on change.
+ *
+ * Islands are resolved through a dynamic import, so this component mounts
+ * after the page has already run its first paint of the rail — at which point
+ * none of these inputs existed and it counted zero open days. Without this the
+ * rail reads "Closed every day" until the user happens to touch something.
+ */
+onMounted(() => nextTick(announce));
 </script>
 
 <template>
-    <fieldset class="pt-2">
-        <div class="flex flex-wrap items-center gap-3 mb-2.5">
-            <legend class="text-[13px] font-medium text-ink">Opening hours</legend>
+    <!-- Structure and spacing follow onboarding-location.html: a card with its
+         own header, rows separated by hairlines, px-5 sm:px-6 py-3.5 per row
+         and gap-x-4 gap-y-3 between controls. -->
+    <section class="bg-white border border-line rounded-card overflow-hidden">
+        <div class="px-5 sm:px-6 py-4 border-b border-line flex flex-wrap items-center gap-3">
+            <div class="min-w-0">
+                <h2 class="text-[15px] font-semibold text-head">Business hours</h2>
+                <p class="text-[13px] text-sub mt-0.5">
+                    Your default booking availability. Staff schedules can override this later.
+                </p>
+            </div>
+
             <button type="button" @click="copyMondayToWeek"
-                    class="ml-auto h-8 px-3 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[12px] font-semibold transition-colors">
-                Copy Monday to Tuesday–Friday
+                    class="ml-auto h-9 px-3.5 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold shrink-0 transition-colors">
+                Copy Monday to Tue–Fri
             </button>
         </div>
 
-        <div class="rounded-card border border-line divide-y divide-line">
-            <div v-for="(row, day) in rows" :key="day" class="flex flex-wrap items-center gap-3 px-4 py-3">
-                <label class="flex items-center gap-2.5 cursor-pointer w-[150px]">
-                    <input v-model="row.isOpen" type="checkbox" :name="`hours[${day}][is_open]`" value="1" class="sd-check">
-                    <span class="text-[13px] text-ink">{{ row.label }}</span>
+        <div class="divide-y divide-line">
+            <div v-for="(row, day) in rows" :key="day"
+                 class="px-5 sm:px-6 py-3.5 flex flex-wrap items-center gap-x-4 gap-y-3">
+
+                <span class="text-[14px] font-medium text-ink w-[92px] shrink-0">{{ row.label }}</span>
+
+                <label class="flex items-center gap-2 shrink-0 cursor-pointer">
+                    <input v-model="row.isOpen" type="checkbox" :name="`hours[${day}][is_open]`"
+                           value="1" class="sd-switch">
+                    <span class="text-[13px]" :class="row.isOpen ? 'text-ink' : 'text-faint'">
+                        {{ row.isOpen ? 'Open' : 'Closed' }}
+                    </span>
                 </label>
 
-                <div class="w-[150px]">
-                    <TimePicker v-model="row.opensAt" :name="`hours[${day}][opens_at]`" :disabled="!row.isOpen"
-                                :aria-label="`${row.label} opening time`" />
+                <!-- Times are removed on a closed day rather than disabled, as
+                     in the prototype: a row of greyed controls invites the
+                     reader to work out whether they still apply. -->
+                <div v-if="row.isOpen" class="flex items-center gap-2 ml-auto">
+                    <div class="w-[124px]">
+                        <TimePicker v-model="row.opensAt" :name="`hours[${day}][opens_at]`"
+                                    :aria-label="`${row.label} opening time`" />
+                    </div>
+
+                    <span class="text-[13px] text-faint">to</span>
+
+                    <div class="w-[124px]">
+                        <TimePicker v-model="row.closesAt" :name="`hours[${day}][closes_at]`"
+                                    :aria-label="`${row.label} closing time`" />
+                    </div>
                 </div>
 
-                <span class="text-sub">to</span>
-
-                <div class="w-[150px]">
-                    <TimePicker v-model="row.closesAt" :name="`hours[${day}][closes_at]`" :disabled="!row.isOpen"
-                                :aria-label="`${row.label} closing time`" />
-                </div>
+                <span v-else class="ml-auto text-[13px] text-faint">Closed all day</span>
             </div>
         </div>
-    </fieldset>
+    </section>
 </template>
