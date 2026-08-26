@@ -1,4 +1,19 @@
 import './echo';
+
+/**
+ * The prototype's shared front-end modules, imported verbatim from
+ * html/assets/js. They are IIFEs that publish window.SD and window.SDA, so a
+ * side-effect import is all they need.
+ *
+ * These carry the prototype's own caveat (styledesk.js, top of file): the
+ * onboarding draft they keep in localStorage is a prototype store, not the
+ * source of truth. Onboarding completion is decided server-side; these
+ * modules stay for the UI behaviour they provide, not for state.
+ */
+import './prototype/styledesk';
+import './prototype/branding';
+import './prototype/account';
+
 import { createApp } from 'vue';
 
 /**

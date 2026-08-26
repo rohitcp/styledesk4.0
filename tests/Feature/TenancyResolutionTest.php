@@ -36,7 +36,7 @@ class TenancyResolutionTest extends TestCase
     {
         $tenant = $this->tenant();
 
-        $user = User::create(['name' => 'Rohit', 'email' => 'r@styledesk.test', 'password' => 'secret123']);
+        $user = User::create(['first_name' => 'Rohit', 'last_name' => 'Philip', 'email' => 'r@styledesk.test', 'password' => 'secret123']);
         $user->tenant_id = $tenant->id;
         $user->save();
 
@@ -65,7 +65,7 @@ class TenancyResolutionTest extends TestCase
     {
         // Sign-up creates the user before the business exists; blocking here
         // would make the onboarding routes unreachable.
-        $user = User::create(['name' => 'New', 'email' => 'new@styledesk.test', 'password' => 'secret123']);
+        $user = User::create(['first_name' => 'New', 'last_name' => 'User', 'email' => 'new@styledesk.test', 'password' => 'secret123']);
 
         Route::middleware(['web', 'auth', 'tenant.user'])->get('/_test/onboarding', function () {
             return tenancy()->initialized ? 'initialized' : 'no-tenant';

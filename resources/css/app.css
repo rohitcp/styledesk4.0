@@ -1,6 +1,15 @@
 @import 'tailwindcss';
+
+/* The prototype's stylesheet, imported verbatim from html/assets/css.
+   It is the authority for the sd-* component classes and the --sd-* brand
+   tokens; the @theme blocks below simply expose those to Tailwind utilities.
+   Keeping it unmodified is deliberate: the 37-page prototype and the app then
+   render from the same source, so the two cannot drift apart. */
+@import './prototype.css';
 @import './styledesk.css';
 
+@source '../views';
+@source '../js';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
