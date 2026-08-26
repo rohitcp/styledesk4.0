@@ -49,4 +49,22 @@ class TenantOnboarding extends Model
     {
         return $this->completed_at !== null;
     }
+
+    /**
+     * Whether enough is set up to let someone into the application.
+     *
+     * Spec section 23: account, verified address, business, location and
+     * timezone. Services, team and online booking are explicitly skippable
+     * and must not hold anyone out of the product — the point of the wizard
+     * is to get a business running, not to collect every field first.
+     *
+     * Distinct from isComplete(), which means the user actually walked the
+     * wizard to the end.
+     */
+    public function meetsMinimumSetup(): bool
+    {
+        return $this->business_completed
+            && $this->location_completed
+            && $this->hours_completed;
+    }
 }

@@ -347,6 +347,46 @@ class OnboardingTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_the_app_opens_once_the_minimum_setup_is_met(): void
+    {
+        // Section 23: business, location and hours are the minimum. Services,
+        // team and booking are skippable and must not hold anyone out.
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Acme Salon', 'slug' => 'acme']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+
+        TenantOnboarding::create([
+            'tenant_id' => $tenant->getTenantKey(),
+            'current_step' => 'services',
+            'business_completed' => true,
+            'location_completed' => true,
+            'hours_completed' => true,
+        ]);
+
+        $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/dashboard')
+            ->assertOk();
+    }
+
+    public function test_the_app_stays_closed_until_location_and_hours_exist(): void
+    {
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Acme Salon', 'slug' => 'acme']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+
+        TenantOnboarding::create([
+            'tenant_id' => $tenant->getTenantKey(),
+            'current_step' => 'location',
+            'business_completed' => true,
+        ]);
+
+        $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/dashboard')
+            ->assertRedirect(route('onboarding.location'));
+    }
+
     public function test_progress_survives_a_cleared_browser(): void
     {
         // The whole point of holding progress server-side: there is no request
@@ -355,7 +395,13 @@ class OnboardingTest extends TestCase
         $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
         $user->tenant_id = $tenant->getTenantKey();
         $user->save();
-        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'booking']);
+        // Deliberately below the minimum, so the redirect is about resuming
+        // rather than about the minimum-setup allowance.
+        TenantOnboarding::create([
+            'tenant_id' => $tenant->getTenantKey(),
+            'current_step' => 'booking',
+            'business_completed' => true,
+        ]);
 
         $this->actingAs($user->fresh())
             ->get('http://styledesk.test/dashboard')

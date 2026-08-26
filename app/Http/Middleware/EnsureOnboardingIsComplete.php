@@ -32,7 +32,11 @@ class EnsureOnboardingIsComplete
 
         $onboarding = $user->tenant?->onboarding;
 
-        if ($onboarding !== null && ! $onboarding->isComplete()) {
+        // Minimum setup, not full completion: services, team and booking are
+        // skippable by design, so a business with its location and hours in
+        // place is allowed into the product even if it never finished the
+        // wizard. The dashboard's getting-started checklist picks up the rest.
+        if ($onboarding !== null && ! $onboarding->isComplete() && ! $onboarding->meetsMinimumSetup()) {
             return redirect()->route('onboarding.'.$onboarding->current_step);
         }
 
