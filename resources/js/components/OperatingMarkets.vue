@@ -26,7 +26,8 @@ const props = defineProps({
 
 const countries = ref(props.selectedCountries.length ? [...props.selectedCountries] : ['US']);
 const currencies = ref(props.selectedCurrencies.length ? [...props.selectedCurrencies] : ['USD']);
-const language = ref(props.selectedLanguage);
+// Held as an array so the same component can back it; only the first is used.
+const language = ref([props.selectedLanguage]);
 
 // Whether the user has taken the currency list over. Once they have, the
 // country stops rewriting it — a business may well price in something other
@@ -97,13 +98,14 @@ function onPrimaryCountry(code) {
 
         <div>
             <div>
-                <label for="default_language" class="block text-[13px] font-medium text-ink mb-1.5">
+                <label class="block text-[13px] font-medium text-ink mb-1.5">
                     Default language <span class="text-danger" aria-hidden="true">*</span>
                 </label>
 
-                <select id="default_language" v-model="language" name="default_language" class="sd-input" required>
-                    <option v-for="(label, code) in languages" :key="code" :value="code">{{ label }}</option>
-                </select>
+                <MultiSelect v-model="language" :options="languages" name="default_language" single
+                             aria-label="Default language"
+                             placeholder="Select a language"
+                             search-placeholder="Search language…" />
 
                 <p class="mt-1.5 text-[12px] text-sub">Used for the app, booking page, emails and receipts.</p>
             </div>

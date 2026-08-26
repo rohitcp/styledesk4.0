@@ -19,6 +19,13 @@ const props = defineProps({
     searchPlaceholder: { type: String, default: 'Search…' },
     hint: { type: String, default: '' },
     ariaLabel: { type: String, default: 'Selection' },
+    /**
+     * Single mode: one value, no chips, no primary. Kept in this component
+     * rather than duplicated into a second one, because the search, the panel,
+     * the outside-click handling and the keyboard behaviour are identical —
+     * only the selection rule differs.
+     */
+    single: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:modelValue', 'primary-changed']);
@@ -50,6 +57,13 @@ function isSelected(code) {
 }
 
 function toggleOption(code) {
+    if (props.single) {
+        selected.value = [code];
+        open.value = false;
+
+        return;
+    }
+
     if (isSelected(code)) {
         // Removing the primary promotes whatever is next, so the list is never
         // left without one.
@@ -113,12 +127,22 @@ onBeforeUnmount(() => {
 
 <template>
     <div ref="root" class="styledesk_timepicker">
-        <!-- Order matters on submit: the server treats the first as primary. -->
-        <input v-for="code in selected" :key="code" type="hidden" :name="`${name}[]`" :value="code">
+        <!-- Single mode posts one value; multi posts an array whose order
+             matters, because the server treats the first as primary. -->
+        <input v-if="single" type="hidden" :name="name" :value="selected[0] ?? ''">
+        <template v-else>
+            <input v-for="code in selected" :key="code" type="hidden" :name="`${name}[]`" :value="code">
+        </template>
 
-        <button type="button" class="styledesk_timepicker__field" style="height: auto; min-height: 2.75rem; padding: 0.375rem 0.75rem"
+        <button type="button" class="styledesk_timepicker__field"
+                :style="single ? {} : { height: 'auto', minHeight: '2.75rem', padding: '0.375rem 0.75rem' }"
                 :aria-label="ariaLabel" :aria-expanded="open" aria-haspopup="listbox" @click.stop="toggle">
-            <span class="styledesk_timepicker__value flex flex-wrap items-center gap-1.5">
+            <span v-if="single" class="styledesk_timepicker__value"
+                  :class="{ 'styledesk_timepicker__value--empty': !selected.length }">
+                {{ selected.length ? nameOf(selected[0]) : placeholder }}
+            </span>
+
+            <span v-else class="styledesk_timepicker__value flex flex-wrap items-center gap-1.5">
                 <span v-if="!selected.length" class="text-faint">{{ placeholder }}</span>
 
                 <span v-for="code in selected" :key="code"
@@ -158,7 +182,7 @@ onBeforeUnmount(() => {
                         </svg>
                     </span>
                     <span class="flex-1 text-left">{{ country.name }}</span>
-                    <span v-if="isSelected(country.code) && country.code !== primary"
+                    <span v-if="!single && isSelected(country.code) && country.code !== primary"
                           role="button" tabindex="0" class="text-[11px] font-semibold text-link"
                           @click.stop="makePrimary(country.code)" @keydown.enter.stop="makePrimary(country.code)">
                         Make primary
