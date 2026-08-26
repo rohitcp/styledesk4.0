@@ -32,4 +32,11 @@ Thumbs.db
 
 # FontAwesome Pro web bundle — 1.1 GB / ~170k files of licensed third-party
 # assets. Restore it from your Font Awesome account rather than from git.
+#
+# Both locations are listed because the bundle has lived in each. A path-
+# anchored rule stops matching the moment the folder moves, and the only
+# symptom is that it silently becomes committable again — which is how it
+# got into history the first time. The individual icons the app actually
+# uses are vendored under resources/icons/ instead.
 /html/fontawesome-pro-plus-7.3.1-web
+/fontawesome-pro-plus-7.3.1-web
