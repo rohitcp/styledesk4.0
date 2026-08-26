@@ -28,19 +28,25 @@
                    autocomplete="address-line2" value="{{ old('address_line2', $location?->address_line2) }}">
         </div>
 
-        <div class="grid sm:grid-cols-3 gap-x-4 gap-y-5">
-            <div>
-                <label for="city" class="block text-[13px] font-medium text-ink mb-1.5">City</label>
-                <input id="city" name="city" type="text" class="sd-input" autocomplete="address-level2"
-                       value="{{ old('city', $location?->city) }}" required>
-                @error('city')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
-            </div>
             @php
                 $selectedCountry = old('country', $location?->country ?? 'US');
                 $selectedState = old('state', $location?->state);
                 $countryRegions = $regions[$selectedCountry] ?? [];
             @endphp
 
+        {{-- Country first: the region list below is derived from it, so
+             choosing the country is the step that makes the next field
+             meaningful. --}}
+        <div class="grid sm:grid-cols-2 gap-x-4 gap-y-5">
+            <div>
+                <label for="country" class="block text-[13px] font-medium text-ink mb-1.5">Country</label>
+                <select id="country" name="country" class="sd-input" required>
+                    @foreach ($countries as $iso => $label)
+                        <option value="{{ $iso }}" @selected($selectedCountry === $iso)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <p class="mt-1.5 text-[12px] text-sub">Sets your currency. Changeable in Settings.</p>
+            </div>
             <div>
                 <label for="{{ $countryRegions ? 'state' : 'state_text' }}" class="block text-[13px] font-medium text-ink mb-1.5">
                     State / Region
@@ -69,6 +75,15 @@
 
                 @error('state')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
             </div>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-x-4 gap-y-5">
+            <div>
+                <label for="city" class="block text-[13px] font-medium text-ink mb-1.5">City</label>
+                <input id="city" name="city" type="text" class="sd-input" autocomplete="address-level2"
+                       value="{{ old('city', $location?->city) }}" required>
+                @error('city')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+            </div>
             <div>
                 <label for="postal_code" class="block text-[13px] font-medium text-ink mb-1.5">Postal code</label>
                 <input id="postal_code" name="postal_code" type="text" class="sd-input" autocomplete="postal-code"
@@ -77,22 +92,10 @@
             </div>
         </div>
 
-        <div class="grid sm:grid-cols-2 gap-x-4 gap-y-5">
-            <div>
-                <label for="country" class="block text-[13px] font-medium text-ink mb-1.5">Country</label>
-                <select id="country" name="country" class="sd-input" required>
-                    @foreach ($countries as $iso => $label)
-                        <option value="{{ $iso }}" @selected($selectedCountry === $iso)>{{ $label }}</option>
-                    @endforeach
-                </select>
-                <p class="mt-1.5 text-[12px] text-sub">Sets your currency. Changeable in Settings.</p>
-            </div>
             <div>
                 <label for="phone" class="block text-[13px] font-medium text-ink mb-1.5">Location phone <span class="text-faint font-normal">(optional)</span></label>
                 <input id="phone" name="phone" type="tel" class="sd-input" autocomplete="tel"
                        value="{{ old('phone', $location?->phone) }}">
-            </div>
-        </div>
 
         <div>
             <label for="timezone" class="block text-[13px] font-medium text-ink mb-1.5">Timezone</label>
