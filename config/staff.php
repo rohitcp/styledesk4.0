@@ -64,6 +64,21 @@ return [
         'consultant' => 'Consultant',
     ],
 
+    /*
+    | Offered as a list rather than a free-text box so the same person is not
+    | recorded as "she/her", "She/Her" and "shehers" in three places — but the
+    | list is not the whole world, which is why the field stays optional and
+    | "Prefer not to say" is a real answer rather than an empty one.
+    */
+    'pronouns' => [
+        'she/her' => 'she/her',
+        'he/him' => 'he/him',
+        'they/them' => 'they/them',
+        'she/they' => 'she/they',
+        'he/they' => 'he/they',
+        'prefer-not-to-say' => 'Prefer not to say',
+    ],
+
     'phone_types' => [
         'mobile' => 'Mobile',
         'work' => 'Work',
@@ -81,6 +96,10 @@ return [
         'active' => ['label' => 'Active', 'class' => 'styledesk_badge--active'],
         'inactive' => ['label' => 'Inactive', 'class' => 'styledesk_badge--soon'],
         'pending-invite' => ['label' => 'Pending invite', 'class' => 'styledesk_badge--setup'],
+        // Queued but not yet handed to the mail provider. Almost always means
+        // no queue worker is running.
+        'invite-queued' => ['label' => 'Invite queued', 'class' => 'styledesk_badge--setup'],
+        'invite-failed' => ['label' => 'Invite failed', 'class' => 'styledesk_badge--soon'],
         'invite-expired' => ['label' => 'Invite expired', 'class' => 'styledesk_badge--setup'],
         'suspended' => ['label' => 'Suspended', 'class' => 'styledesk_badge--soon'],
         'archived' => ['label' => 'Archived', 'class' => 'styledesk_badge--soon'],

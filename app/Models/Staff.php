@@ -131,6 +131,17 @@ class Staff extends Model
             return 'invite-expired';
         }
 
+        if ($this->invite_status === 'failed') {
+            return 'invite-failed';
+        }
+
+        // Queued but not yet delivered. Shown apart from "pending invite" so
+        // a stalled queue is visible on the screen rather than only in the
+        // jobs table.
+        if ($this->user_id === null && $this->invite_status === 'pending') {
+            return 'invite-queued';
+        }
+
         // Invited but not yet accepted: there is no account behind this row.
         if ($this->user_id === null && in_array($this->invite_status, ['sent', 'pending'], true)) {
             return 'pending-invite';

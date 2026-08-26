@@ -167,7 +167,7 @@ class StaffController extends Controller
             'middle_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'preferred_name' => ['nullable', 'string', 'max:100'],
-            'pronouns' => ['nullable', 'string', 'max:40'],
+            'pronouns' => ['nullable', Rule::in(array_keys(config('staff.pronouns')))],
             'job_title' => ['nullable', 'string', 'max:100'],
             'employee_ref' => ['nullable', 'string', 'max:40'],
             'bio' => ['nullable', 'string', 'max:2000'],

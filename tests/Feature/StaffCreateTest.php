@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Support\RoleGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -218,6 +219,104 @@ class StaffCreateTest extends TestCase
         $this->assertSame(2, Staff::withoutGlobalScopes()->where('email', 'kit@acme.test')->count());
     }
 
+    public function test_pronouns_come_from_the_offered_list(): void
+    {
+        Queue::fake();
+
+        $owner = $this->owner();
+
+        $this->actingAs($owner)
+            ->post('http://styledesk.test/settings/staff', $this->payload([
+                'pronouns' => 'they/them',
+                'login_enabled' => '0',
+            ]));
+
+        $this->assertSame('they/them', Staff::withoutGlobalScopes()->where('email', 'kit@acme.test')->value('pronouns'));
+
+        // Free text would record the same person as "she/her", "She/Her" and
+        // "shehers" across three screens.
+        $this->actingAs($owner)
+            ->postJson('http://styledesk.test/settings/staff', $this->payload([
+                'email' => 'other@acme.test',
+                'pronouns' => 'whatever i typed',
+                'login_enabled' => '0',
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('pronouns');
+    }
+
+    // ------------------------------------------------- invitation delivery
+
+    /**
+     * An invitation is not "sent" until something has actually sent it.
+     *
+     * Marking it at queue time was a small lie with a real cost: with no
+     * worker running, the directory reported an invitation as sent that was
+     * still sitting in the jobs table.
+     */
+    public function test_a_queued_invitation_is_not_reported_as_sent(): void
+    {
+        Queue::fake();
+
+        $this->actingAs($this->owner())
+            ->post('http://styledesk.test/settings/staff', $this->payload([
+                'login_enabled' => '1',
+                'send_invitation' => '1',
+            ]));
+
+        $staff = Staff::withoutGlobalScopes()->where('email', 'kit@acme.test')->firstOrFail();
+
+        $this->assertSame('pending', $staff->invite_status);
+        $this->assertSame('invite-queued', $staff->status());
+        $this->assertSame('Invite queued', $staff->statusLabel());
+    }
+
+    public function test_delivering_the_invitation_marks_it_sent(): void
+    {
+        Queue::fake();
+
+        $this->actingAs($this->owner())
+            ->post('http://styledesk.test/settings/staff', $this->payload([
+                'login_enabled' => '1',
+                'send_invitation' => '1',
+            ]));
+
+        $invitation = TeamInvitation::withoutGlobalScopes()->where('email', 'kit@acme.test')->firstOrFail();
+
+        $token = $invitation->regenerateToken();
+        $invitation->save();
+
+        Mail::fake();
+        (new SendTeamInvitationEmail($invitation->fresh(), $token))->handle();
+
+        $staff = Staff::withoutGlobalScopes()->where('email', 'kit@acme.test')->firstOrFail();
+
+        $this->assertSame('sent', $staff->invite_status);
+        $this->assertSame('pending-invite', $staff->status());
+    }
+
+    public function test_a_failed_delivery_is_visible_on_the_record(): void
+    {
+        Queue::fake();
+
+        $this->actingAs($this->owner())
+            ->post('http://styledesk.test/settings/staff', $this->payload([
+                'login_enabled' => '1',
+                'send_invitation' => '1',
+            ]));
+
+        $invitation = TeamInvitation::withoutGlobalScopes()->where('email', 'kit@acme.test')->firstOrFail();
+
+        (new SendTeamInvitationEmail($invitation, 'irrelevant'))->failed(new \RuntimeException('SMTP down'));
+
+        $staff = Staff::withoutGlobalScopes()->where('email', 'kit@acme.test')->firstOrFail();
+
+        // Visible on the screen rather than only in the logs, so nobody has to
+        // report never receiving it before anyone notices.
+        $this->assertSame('invite-failed', $staff->status());
+        $this->assertSame('Invite failed', $staff->statusLabel());
+    }
+
     // ---------------------------------------------------- profile image
 
     public function test_a_profile_image_uploads_on_its_own_and_returns_a_path(): void
@@ -383,8 +482,10 @@ class StaffCreateTest extends TestCase
         // The two are bound, which is what stops acceptance creating a second
         // person with the same name.
         $this->assertSame($staff->id, $invitation->staff_id);
-        $this->assertSame('sent', $staff->invite_status);
-        $this->assertSame('pending-invite', $staff->status());
+        // Queued, not delivered — the job flips this once the provider has
+        // accepted it.
+        $this->assertSame('pending', $staff->invite_status);
+        $this->assertSame('invite-queued', $staff->status());
     }
 
     public function test_no_invitation_is_sent_without_a_login(): void

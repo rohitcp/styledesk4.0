@@ -89,3 +89,46 @@ set `MAILBOX_DECORATE=postmark`.
 `MAIL_MAILER=postmark` with `POSTMARK_API_KEY` set. Mailgun and Letter are
 swapped the same way — add the mailer to `config/mail.php` and change the one
 env var; no application code references a provider directly.
+
+## Background processes
+
+The site is served by MAMP, but two things run outside it. Neither is optional
+in the sense of "nice to have" — without them, features silently do nothing.
+
+### Queue worker — required for any email
+
+```
+php artisan queue:work
+```
+
+`QUEUE_CONNECTION=database`, so every queued job waits in the `jobs` table
+until a worker picks it up. With no worker running, adding a staff member
+creates the invitation, records the delivery attempt as `queued`, and the email
+never leaves — the row simply sits there. This is the most common reason an
+invitation "was not sent": it was, and it is still waiting.
+
+The staff directory distinguishes the two states. **Invite queued** means the
+job exists and no worker has taken it; **Pending invite** means the mail
+provider has accepted it and the person has not accepted yet.
+
+`composer run dev` starts a worker alongside the Vite server and `artisan
+serve`, so it is only MAMP-served development that needs the worker started by
+hand.
+
+### Reverb — required for live updates
+
+```
+php artisan reverb:start
+```
+
+Only the team screen's Pending → Active flip depends on it. Without Reverb the
+acceptance still completes and the screen shows it after a refresh; the failed
+broadcast is logged as a warning and not retried, so an unreachable websocket
+server does not fill `failed_jobs`.
+
+### Checking what is stuck
+
+```
+php artisan queue:work --stop-when-empty   # drain whatever is waiting
+php artisan queue:failed                   # anything that gave up
+```

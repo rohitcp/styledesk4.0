@@ -10,6 +10,8 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Someone accepted an invitation.
@@ -23,7 +25,34 @@ class TeamInvitationAccepted implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    /**
+     * One attempt.
+     *
+     * This is a cosmetic live update. Retrying it three times against a
+     * websocket server that is not running turns one unreachable host into
+     * three failed jobs and a minute of a worker's attention, for a row that
+     * a page refresh would have redrawn anyway.
+     */
+    public int $tries = 1;
+
     public function __construct(public TeamInvitation $invitation) {}
+
+    /**
+     * Broadcasting failed, which changes nothing that matters.
+     *
+     * The invitation was accepted and committed before this was dispatched;
+     * all that is lost is the open team screen redrawing by itself. Logged at
+     * warning rather than error, and explained, because the usual cause is
+     * simply that Reverb is not running locally.
+     */
+    public function failed(?Throwable $e = null): void
+    {
+        Log::warning('Could not broadcast an accepted invitation. The team screen will need a refresh to show it.', [
+            'team_invitation_id' => $this->invitation->id,
+            'tenant_id' => $this->invitation->tenant_id,
+            'exception' => $e?->getMessage(),
+        ]);
+    }
 
     /**
      * One private channel per tenant.

@@ -131,7 +131,9 @@ class CreateStaffMember
         // Bind the two, so acceptance completes this record rather than
         // creating a second person with the same name.
         $invitation->forceFill(['staff_id' => $staff->id])->save();
-        $staff->forceFill(['invite_status' => 'sent'])->save();
+        // Pending, not sent: the job has been queued, not delivered. The
+        // job itself flips this once the mail provider has accepted it.
+        $staff->forceFill(['invite_status' => 'pending'])->save();
 
         AuditLog::record('staff.invitation_sent', $actor, $staff, [], [
             'email' => $staff->email,

@@ -75,13 +75,8 @@
               <input id="preferred_name" name="preferred_name" type="text" class="sd-input" data-capitalize
                      placeholder="What the team and clients call them" value="{{ old('preferred_name') }}">
             </div>
-            <div>
-              <label for="pronouns" class="block text-[13px] font-medium text-ink mb-1.5">
-                Pronouns <span class="text-faint font-normal">(optional)</span>
-              </label>
-              <input id="pronouns" name="pronouns" type="text" class="sd-input" placeholder="she/her"
-                     value="{{ old('pronouns') }}">
-            </div>
+            <x-combo name="pronouns" label="Pronouns" :options="config('staff.pronouns')"
+                     :selected="old('pronouns')" placeholder="Not specified" />
             <div>
               <label for="job_title" class="block text-[13px] font-medium text-ink mb-1.5">Job title</label>
               <input id="job_title" name="job_title" type="text" class="sd-input" data-capitalize

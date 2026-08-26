@@ -68,6 +68,16 @@ class SendTeamInvitationEmail implements ShouldQueue
             ->send(new TeamInvitationMail($this->invitation, $this->plainToken));
 
         $this->record(TeamInvitationDelivery::STATUS_SENT);
+
+        /**
+         * The staff record only says "sent" once it has been.
+         *
+         * Marking it at queue time was a small lie with a real cost: with no
+         * worker running, the directory reported an invitation as sent that
+         * was still sitting in the jobs table, and the only way to find out
+         * was for the person to say they never received it.
+         */
+        $this->invitation->staff?->forceFill(['invite_status' => 'sent'])->save();
     }
 
     /**
@@ -80,6 +90,8 @@ class SendTeamInvitationEmail implements ShouldQueue
     public function failed(Throwable $e): void
     {
         $this->record(TeamInvitationDelivery::STATUS_FAILED, $e->getMessage());
+
+        $this->invitation->staff?->forceFill(['invite_status' => 'failed'])->save();
 
         Log::error('Team invitation email failed to send.', [
             'team_invitation_id' => $this->invitation->id,
