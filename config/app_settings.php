@@ -46,6 +46,8 @@ return [
                     'name' => 'Business',
                     'description' => 'Business name, type, contact details and operating configuration.',
                     'icon' => 'building',
+                    'route' => 'settings.business.show',
+                    'status' => 'active',
                     'keywords' => ['company', 'name', 'details', 'profile', 'about'],
                 ],
                 [

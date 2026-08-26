@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ServiceCategoryController;
+use App\Http\Controllers\Settings\BusinessSettingsController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
 use App\Http\Controllers\VerificationEmailController;
@@ -164,6 +165,22 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
     ->name('settings.')
     ->group(function () {
         Route::get('/', AppSettingsController::class)->name('index');
+
+        /*
+        | Business — company-level information.
+        |
+        | Read-only by default with a separate /edit address, so the page a
+        | person lands on is never a form they did not ask for, and the edit
+        | screen is linkable and back-button friendly.
+        */
+        Route::controller(BusinessSettingsController::class)
+            ->prefix('business')
+            ->name('business.')
+            ->group(function () {
+                Route::get('/', 'show')->name('show');
+                Route::get('edit', 'edit')->name('edit');
+                Route::patch('/', 'update')->name('update');
+            });
     });
 
 Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(function () {

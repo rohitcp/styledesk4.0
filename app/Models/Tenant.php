@@ -77,6 +77,26 @@ class Tenant extends BaseTenant
             'trial_ends_at',
             'subscription_status',
             'plan_id',
+
+            // Business settings screen. Every one of these needs to be here:
+            // a column missing from this list is silently written into the
+            // `data` JSON instead, and the real column stays null.
+            'legal_name',
+            'business_category',
+            'description',
+            'support_email',
+            'booking_email',
+            'date_format',
+            'time_format',
+            'first_day_of_week',
+            'default_booking_duration',
+            'default_appointment_interval',
+            'default_tax_behavior',
+            'default_staff_assignment',
+            'instagram_url',
+            'facebook_url',
+            'tiktok_url',
+            'google_business_url',
         ];
     }
 

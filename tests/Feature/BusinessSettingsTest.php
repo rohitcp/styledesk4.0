@@ -1,0 +1,319 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\BusinessType;
+use App\Models\Location;
+use App\Models\Staff;
+use App\Models\Tenant;
+use App\Models\TenantOnboarding;
+use App\Models\User;
+use Database\Seeders\BusinessTypeSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\TestCase;
+
+/**
+ * Acceptance criteria from the Business settings spec.
+ */
+class BusinessSettingsTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Tenant $tenant;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::create([
+            'name' => 'Nadia Hair Studio',
+            'slug' => 'nadia',
+            'business_email' => 'hello@nadia.test',
+        ]);
+
+        TenantOnboarding::create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'current_step' => 'complete',
+            'completed_at' => now(),
+        ]);
+    }
+
+    private function member(string $role): User
+    {
+        $user = User::create([
+            'first_name' => 'Sam', 'last_name' => 'Person',
+            'email' => $role.'@styledesk.test', 'password' => 'Str0ng!Pass',
+        ]);
+        $user->markEmailAsVerified();
+        $user->forceFill(['tenant_id' => $this->tenant->getTenantKey()])->save();
+
+        if ($role === 'owner') {
+            $this->tenant->forceFill(['owner_user_id' => $user->id])->save();
+        } else {
+            Staff::withoutGlobalScopes()->create([
+                'tenant_id' => $this->tenant->getTenantKey(),
+                'user_id' => $user->id,
+                'first_name' => 'Sam', 'last_name' => 'Person',
+                'email' => $role.'@styledesk.test', 'role' => $role,
+            ]);
+        }
+
+        return $user->fresh();
+    }
+
+    /** @return array<string, mixed> */
+    private function validPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'name' => 'Nadia Hair Studio',
+            'status' => 'active',
+            'business_email' => 'hello@nadia.test',
+        ], $overrides);
+    }
+
+    // ------------------------------------------------------- authorisation
+
+    public static function allowedRoles(): array
+    {
+        return [['owner'], ['administrator']];
+    }
+
+    public static function deniedRoles(): array
+    {
+        return [['manager'], ['front-desk'], ['service-provider']];
+    }
+
+    #[DataProvider('allowedRoles')]
+    public function test_owners_and_administrators_can_view_and_edit(string $role): void
+    {
+        $user = $this->member($role);
+
+        $this->actingAs($user)->get('http://styledesk.test/settings/business')->assertOk();
+        $this->actingAs($user)->get('http://styledesk.test/settings/business/edit')->assertOk();
+    }
+
+    /**
+     * The spec requires both the read and the write endpoint to be protected —
+     * gating only the page would leave the PATCH open to anyone signed in.
+     */
+    #[DataProvider('deniedRoles')]
+    public function test_other_roles_are_redirected_from_both_reading_and_writing(string $role): void
+    {
+        $user = $this->member($role);
+
+        $this->actingAs($user)->get('http://styledesk.test/settings/business')
+            ->assertRedirect(route('dashboard'));
+
+        $this->actingAs($user)->get('http://styledesk.test/settings/business/edit')
+            ->assertRedirect(route('dashboard'));
+
+        $this->actingAs($user)->patch('http://styledesk.test/settings/business', $this->validPayload(['name' => 'Hijacked']))
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertSame('Nadia Hair Studio', $this->tenant->fresh()->name);
+    }
+
+    public function test_a_signed_out_visitor_cannot_reach_business_settings(): void
+    {
+        $this->get('http://styledesk.test/settings/business')->assertRedirect(route('login'));
+        $this->patch('http://styledesk.test/settings/business', $this->validPayload())->assertRedirect(route('login'));
+    }
+
+    // ------------------------------------------------------------ view mode
+
+    public function test_the_view_shows_values_as_text_not_as_form_controls(): void
+    {
+        $this->tenant->forceFill([
+            'legal_name' => 'Nadia Hair Studio Ltd',
+            'support_email' => 'help@nadia.test',
+        ])->save();
+
+        $response = $this->actingAs($this->member('owner'))->get('http://styledesk.test/settings/business');
+
+        $response->assertOk()
+            ->assertSee('Nadia Hair Studio Ltd')
+            ->assertSee('help@nadia.test')
+            ->assertSee('Edit business');
+
+        // Read-only means no inputs at all, not disabled ones.
+        $this->assertStringNotContainsString('<input', $this->stripLayout($response->getContent()));
+    }
+
+    public function test_the_primary_address_comes_from_the_primary_location(): void
+    {
+        Location::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Riverside', 'address_line1' => '1 River Street', 'city' => 'Austin',
+            'state' => 'Texas', 'postal_code' => '78701', 'country' => 'US',
+            'timezone' => 'America/Chicago', 'is_primary' => true,
+        ]);
+
+        $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/settings/business')
+            ->assertOk()
+            ->assertSee('1 River Street')
+            ->assertSee('Austin')
+            ->assertSee('United States')
+            // Addresses belong to Locations, so this page links out rather
+            // than offering a second place to edit them.
+            ->assertSee('Manage locations');
+    }
+
+    public function test_the_business_id_is_shown_but_never_editable(): void
+    {
+        $owner = $this->member('owner');
+
+        $this->actingAs($owner)
+            ->get('http://styledesk.test/settings/business')
+            ->assertOk()
+            ->assertSee($this->tenant->getTenantKey());
+
+        // Changing it would orphan every row pointing at it, so it is not in
+        // the accepted fields at all.
+        $this->actingAs($owner)
+            ->patch('http://styledesk.test/settings/business', $this->validPayload(['id' => 'hijacked-id']))
+            ->assertRedirect(route('settings.business.show'));
+
+        $this->assertNotNull(Tenant::find($this->tenant->getTenantKey()));
+    }
+
+    // ------------------------------------------------------------ edit mode
+
+    public function test_saving_updates_the_business_and_returns_to_view_mode(): void
+    {
+        $this->seed(BusinessTypeSeeder::class);
+        $type = BusinessType::where('slug', 'hair-salon')->first();
+
+        $response = $this->actingAs($this->member('owner'))
+            ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                'legal_name' => 'nadia hair studio ltd',
+                'business_category' => 'curly hair specialists',
+                'description' => 'a small studio in austin.',
+                'business_type_ids' => [$type->id],
+                'support_email' => 'help@nadia.test',
+                'booking_email' => 'bookings@nadia.test',
+                'website' => 'https://nadiahair.test',
+                'instagram_url' => 'https://instagram.com/nadiahair',
+                'date_format' => 'd/m/Y',
+                'time_format' => '24',
+                'first_day_of_week' => 1,
+                'default_booking_duration' => 45,
+                'default_appointment_interval' => 15,
+                'default_tax_behavior' => 'inclusive',
+                'default_staff_assignment' => 'any',
+            ]));
+
+        $response->assertRedirect(route('settings.business.show'));
+        $response->assertSessionHas('status', 'Business settings updated successfully.');
+
+        $tenant = $this->tenant->fresh();
+
+        // The project capitalisation rule: first character only.
+        $this->assertSame('Nadia hair studio ltd', $tenant->legal_name);
+        $this->assertSame('Curly hair specialists', $tenant->business_category);
+        $this->assertSame('d/m/Y', $tenant->date_format);
+        $this->assertSame(45, (int) $tenant->default_booking_duration);
+        $this->assertSame('inclusive', $tenant->default_tax_behavior);
+        $this->assertSame([$type->id], $tenant->businessTypes->pluck('id')->all());
+    }
+
+    /**
+     * The tenants table keeps undeclared attributes in a `data` JSON column,
+     * so a field missing from Tenant::getCustomColumns() saves silently into
+     * JSON and its real column stays null. Nothing about the page looks wrong
+     * when that happens — the value round-trips through the model — which is
+     * why this is asserted against the raw row.
+     */
+    public function test_every_field_lands_in_a_real_column_rather_than_the_data_json(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                'legal_name' => 'Nadia Ltd',
+                'date_format' => 'Y-m-d',
+                'default_tax_behavior' => 'exclusive',
+                'tiktok_url' => 'https://tiktok.com/@nadia',
+            ]));
+
+        $row = DB::table('tenants')->where('id', $this->tenant->getTenantKey())->first();
+
+        $this->assertSame('Nadia Ltd', $row->legal_name);
+        $this->assertSame('Y-m-d', $row->date_format);
+        $this->assertSame('exclusive', $row->default_tax_behavior);
+        $this->assertSame('https://tiktok.com/@nadia', $row->tiktok_url);
+
+        $data = json_decode((string) $row->data, true) ?: [];
+
+        foreach (['legal_name', 'date_format', 'default_tax_behavior', 'tiktok_url'] as $field) {
+            $this->assertArrayNotHasKey($field, $data, "[{$field}] was swept into the data JSON.");
+        }
+    }
+
+    public function test_the_form_is_prepopulated_with_existing_values(): void
+    {
+        $this->seed(BusinessTypeSeeder::class);
+        $this->tenant->forceFill(['legal_name' => 'Nadia Hair Studio Ltd', 'date_format' => 'd/m/Y'])->save();
+
+        $response = $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/settings/business/edit');
+
+        $response->assertOk()->assertSee('value="Nadia Hair Studio Ltd"', false);
+
+        /**
+         * The combos are Vue islands, so the current value arrives as a prop
+         * rather than a selected option — and Blade's @json escapes forward
+         * slashes, so the stored "d/m/Y" reaches the attribute as "d\/m\/Y".
+         */
+        $this->assertStringContainsString('d\\/m\\/Y', $response->getContent());
+    }
+
+    public function test_required_fields_are_enforced(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->patch('http://styledesk.test/settings/business', ['name' => '', 'business_email' => '', 'status' => ''])
+            ->assertSessionHasErrors(['name', 'business_email', 'status']);
+    }
+
+    public function test_contact_and_presence_values_must_be_well_formed(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                'business_email' => 'not-an-email',
+                'support_email' => 'also-not',
+                // These become links on the public booking profile, so a value
+                // that is not a URL is a broken link on a page clients see.
+                'website' => 'nadiahair',
+                'instagram_url' => 'javascript:alert(1)',
+            ]))
+            ->assertSessionHasErrors(['business_email', 'support_email', 'website', 'instagram_url']);
+    }
+
+    public function test_a_value_outside_the_offered_options_is_rejected(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                'date_format' => 'D-M-Y-nonsense',
+                'default_tax_behavior' => 'free',
+                'status' => 'archived',
+            ]))
+            ->assertSessionHasErrors(['date_format', 'default_tax_behavior', 'status']);
+    }
+
+    public function test_the_settings_directory_links_to_the_module(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/settings')
+            ->assertOk()
+            ->assertSee(route('settings.business.show'), false)
+            ->assertSee('Active');
+    }
+
+    /** Drops the shared layout so assertions only see the page's own markup. */
+    private function stripLayout(string $html): string
+    {
+        $start = strpos($html, '<main');
+
+        return $start === false ? $html : substr($html, $start);
+    }
+}
