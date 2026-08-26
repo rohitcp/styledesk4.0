@@ -69,6 +69,7 @@ class OnboardingController extends Controller
             'tenant' => $request->user()->tenant,
             'businessTypes' => BusinessType::active()->get(),
             'progress' => $this->progress('business'),
+            'previousStep' => $this->previousStep('business'),
         ]);
     }
 
@@ -189,7 +190,10 @@ class OnboardingController extends Controller
     {
         return view('onboarding.location', [
             'location' => $request->user()->tenant?->locations()->where('is_primary', true)->first(),
+            'usStates' => config('locations.us_states'),
+            'timezones' => $this->timezoneOptions(),
             'progress' => $this->progress('location'),
+            'previousStep' => $this->previousStep('location'),
         ]);
     }
 
@@ -255,6 +259,7 @@ class OnboardingController extends Controller
         return view('onboarding.services', [
             'services' => $request->user()->tenant->services()->get(),
             'progress' => $this->progress('services'),
+            'previousStep' => $this->previousStep('services'),
         ]);
     }
 
@@ -311,6 +316,7 @@ class OnboardingController extends Controller
             'staff' => $tenant->staff()->with('services')->get(),
             'services' => $tenant->services()->get(),
             'progress' => $this->progress('team'),
+            'previousStep' => $this->previousStep('team'),
         ]);
     }
 
@@ -383,6 +389,7 @@ class OnboardingController extends Controller
             'tenant' => $tenant,
             'settings' => $tenant->bookingSettings,
             'progress' => $this->progress('booking'),
+            'previousStep' => $this->previousStep('booking'),
         ]);
     }
 
@@ -475,6 +482,49 @@ class OnboardingController extends Controller
     }
 
     // ---------------------------------------------------------------- helpers
+
+    /**
+     * The step before this one, or null on the first.
+     *
+     * Going back must never look like progress: it does not touch
+     * current_step, so leaving a step to re-read an earlier one cannot rewind
+     * what the wizard believes has been completed.
+     */
+    /**
+     * Timezones with their current UTC offset.
+     *
+     * The offset is computed now rather than stored, so the label follows
+     * daylight saving instead of drifting half the year.
+     *
+     * @return array<string, string>
+     */
+    private function timezoneOptions(): array
+    {
+        $options = [];
+
+        foreach (config('locations.timezones') as $identifier => $label) {
+            $offset = (new \DateTimeZone($identifier))->getOffset(new \DateTime('now', new \DateTimeZone('UTC')));
+            $sign = $offset < 0 ? '−' : '+';
+            $offset = abs($offset);
+
+            $options[$identifier] = sprintf(
+                '(GMT%s%02d:%02d) %s',
+                $sign,
+                intdiv($offset, 3600),
+                intdiv($offset % 3600, 60),
+                $label
+            );
+        }
+
+        return $options;
+    }
+
+    private function previousStep(string $current): ?string
+    {
+        $index = array_search($current, self::FORM_STEPS, true);
+
+        return $index > 0 ? self::FORM_STEPS[$index - 1] : null;
+    }
 
     private function onboardingFor(Tenant $tenant): TenantOnboarding
     {

@@ -105,6 +105,54 @@ class OnboardingTest extends TestCase
 
     }
 
+    public function test_steps_after_the_first_offer_a_back_link(): void
+    {
+        $this->seedBusinessTypes();
+
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Acme Salon', 'slug' => 'acme']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'business']);
+
+        // The first step has nowhere to go back to.
+        $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/onboarding/business')
+            ->assertOk()
+            ->assertDontSee(route('onboarding.location'));
+
+        $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/onboarding/location')
+            ->assertOk()
+            ->assertSee(route('onboarding.business'));
+    }
+
+    public function test_going_back_does_not_rewind_progress(): void
+    {
+        // Back is a link, not a submission: re-reading an earlier step must
+        // not move current_step or unset a completed flag.
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Acme Salon', 'slug' => 'acme']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+        $onboarding = TenantOnboarding::create([
+            'tenant_id' => $tenant->getTenantKey(),
+            'current_step' => 'location',
+            'business_completed' => true,
+        ]);
+
+        $this->seedBusinessTypes();
+
+        $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/onboarding/business')
+            ->assertOk();
+
+        $onboarding->refresh();
+
+        $this->assertSame('location', $onboarding->current_step);
+        $this->assertTrue($onboarding->business_completed);
+    }
+
     public function test_a_user_without_a_business_is_sent_to_step_one(): void
     {
         $this->actingAs($this->user())

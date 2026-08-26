@@ -4,6 +4,16 @@
 @section('heading', 'Where do you operate?')
 @section('subheading', 'Your primary location and the hours you are open. Add more locations later in Settings.')
 
+@php
+    // Built once and reused by all fourteen hour selects rather than
+    // regenerated per row.
+    $times = [];
+    for ($minutes = 0; $minutes < 24 * 60; $minutes += 15) {
+        $value = sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
+        $times[$value] = date('g:i A', mktime(0, $minutes));
+    }
+@endphp
+
 @section('form')
     <form id="stepForm" method="POST" action="{{ route('onboarding.location.store') }}" class="mt-6 space-y-5">
         @csrf
@@ -37,8 +47,12 @@
             </div>
             <div>
                 <label for="state" class="block text-[13px] font-medium text-ink mb-1.5">State / Region</label>
-                <input id="state" name="state" type="text" class="sd-input" autocomplete="address-level1"
-                       value="{{ old('state', $location?->state) }}">
+                <select id="state" name="state" class="sd-input" autocomplete="address-level1">
+                    <option value="">Select…</option>
+                    @foreach (array_keys($usStates) as $code)
+                        <option value="{{ $code }}" @selected(old('state', $location?->state) === $code)>{{ $code }}</option>
+                    @endforeach
+                </select>
             </div>
             <div>
                 <label for="postal_code" class="block text-[13px] font-medium text-ink mb-1.5">Postal code</label>
@@ -68,11 +82,13 @@
         <div>
             <label for="timezone" class="block text-[13px] font-medium text-ink mb-1.5">Timezone</label>
             <select id="timezone" name="timezone" class="sd-input" required>
-                @foreach (DateTimeZone::listIdentifiers() as $tz)
-                    <option value="{{ $tz }}" @selected(old('timezone', $location?->timezone ?? 'America/New_York') === $tz)>{{ $tz }}</option>
+                @foreach ($timezones as $identifier => $label)
+                    <option value="{{ $identifier }}" @selected(old('timezone', $location?->timezone ?? 'America/New_York') === $identifier)>{{ $label }}</option>
                 @endforeach
             </select>
-            <p class="mt-1.5 text-[12px] text-sub">Bookings and reminders are scheduled against this.</p>
+            <p id="tz-hint" class="mt-1.5 text-[12px] text-sub" role="status" aria-live="polite">
+                Bookings and reminders are scheduled against this.
+            </p>
             @error('timezone')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
         </div>
 
@@ -97,22 +113,44 @@
                             <input type="checkbox" name="hours[{{ $day }}][is_open]" value="1" class="sd-check" @checked($isOpen)>
                             <span class="text-[13px] text-ink">{{ $label }}</span>
                         </label>
-                        <input type="time" name="hours[{{ $day }}][opens_at]" class="sd-input w-auto"
-                               value="{{ old("hours.$day.opens_at", $saved?->opens_at ? substr($saved->opens_at, 0, 5) : '09:00') }}">
+                        @php
+                            $opensAt = old("hours.$day.opens_at", $saved?->opens_at ? substr($saved->opens_at, 0, 5) : '09:00');
+                            $closesAt = old("hours.$day.closes_at", $saved?->closes_at ? substr($saved->closes_at, 0, 5) : '17:00');
+                        @endphp
+                        <select name="hours[{{ $day }}][opens_at]" aria-label="{{ $label }} opening time" class="sd-input w-auto">
+                            @foreach ($times as $value => $display)
+                                <option value="{{ $value }}" @selected($opensAt === $value)>{{ $display }}</option>
+                            @endforeach
+                        </select>
                         <span class="text-sub">to</span>
-                        <input type="time" name="hours[{{ $day }}][closes_at]" class="sd-input w-auto"
-                               value="{{ old("hours.$day.closes_at", $saved?->closes_at ? substr($saved->closes_at, 0, 5) : '17:00') }}">
+                        <select name="hours[{{ $day }}][closes_at]" aria-label="{{ $label }} closing time" class="sd-input w-auto">
+                            @foreach ($times as $value => $display)
+                                <option value="{{ $value }}" @selected($closesAt === $value)>{{ $display }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 @endforeach
             </div>
         </fieldset>
 
-        <div class="pt-2">
-            <button type="submit" class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
-                Continue
-            </button>
-        </div>
     </form>
+
+    <div class="flex flex-wrap items-center gap-3 pt-6">
+        <button type="submit" form="stepForm"
+                class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+            Continue
+        </button>
+
+        {{-- A link, not a form post: going back only re-reads an earlier step,
+             so it must not submit anything or move current_step. --}}
+        @if ($previousStep)
+            <a href="{{ route('onboarding.'.$previousStep) }}"
+               class="inline-flex items-center gap-1.5 h-11 px-4 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Back
+            </a>
+        @endif
+    </div>
 @endsection
 
 @section('rail')
@@ -155,6 +193,51 @@
        convenience over the same inputs the form already posts — nothing is
        stored differently as a result. */
     document.addEventListener('DOMContentLoaded', function () {
+        /* ---- Every dropdown becomes a searchable combo -------------------
+           SD.combo keeps the native <select> underneath as the value holder
+           and hides it from the a11y tree, so the form still posts normally
+           and everything below — inference, the preview, the copy action —
+           keeps reading .value as if nothing had changed. */
+        if (window.SD && typeof window.SD.combo === 'function') {
+            SD.combo(document.getElementById('state'), { searchPlaceholder: 'Search state…', width: '220px' });
+            SD.combo(document.getElementById('country'), { searchPlaceholder: 'Search country…', width: '260px' });
+            SD.combo(document.getElementById('timezone'), { searchPlaceholder: 'Search timezone…', width: '320px' });
+
+            document.querySelectorAll('#stepForm select[name^="hours"]').forEach(function (el) {
+                SD.combo(el, { searchPlaceholder: 'Search time…', width: '190px' });
+            });
+        }
+
+        /* ---- Timezone inferred from the state ----------------------------
+           The spec asks for the timezone to be worked out from the address
+           where possible. It is a suggestion, not a decision: once the user
+           picks a zone themselves we stop overriding it, because silently
+           changing it back would be worse than not helping at all. */
+        var STATE_ZONES = @json(config('locations.us_states'));
+        var stateEl = document.getElementById('state');
+        var tzEl = document.getElementById('timezone');
+        var tzHint = document.getElementById('tz-hint');
+        var tzTouched = false;
+
+        tzEl.addEventListener('change', function () { tzTouched = true; });
+
+        stateEl.addEventListener('change', function () {
+            var guess = STATE_ZONES[stateEl.value];
+
+            if (!guess || tzTouched || tzEl.value === guess) return;
+
+            tzEl.value = guess;
+
+            // The visible control is the combo button, not the select, so it
+            // has to be told the value changed underneath it.
+            if (window.SD && typeof window.SD.comboRefresh === 'function') {
+                SD.comboRefresh(tzEl);
+            }
+
+            tzHint.textContent = 'Set from your state — change it if that is not right.';
+            paintPreview();
+        });
+
         var button = document.getElementById('copy-monday');
 
         if (!button) return;
@@ -188,10 +271,11 @@
                 : 'Open ' + open + ' ' + (open === 1 ? 'day' : 'days') + ' a week';
         }
 
-        document.querySelectorAll('#stepForm input, #stepForm select').forEach(function (el) {
-            el.addEventListener('input', paintPreview);
-            el.addEventListener('change', paintPreview);
-        });
+        // Delegated: SD.combo moves each select inside a new wrapper, and a
+        // listener bound to the element before that still fires, but new
+        // controls it creates would not be covered by a per-element bind.
+        document.getElementById('stepForm').addEventListener('input', paintPreview);
+        document.getElementById('stepForm').addEventListener('change', paintPreview);
 
         paintPreview();
 
