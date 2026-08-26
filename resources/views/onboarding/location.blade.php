@@ -10,7 +10,7 @@
 
         <div>
             <label for="name" class="block text-[13px] font-medium text-ink mb-1.5">Location name</label>
-            <input id="name" name="name" type="text" class="sd-input"
+            <input id="name" name="name" type="text" class="sd-input" data-capitalize
                    value="{{ old('name', $location?->name ?? 'Main Location') }}" required>
             @error('name')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
         </div>
@@ -68,7 +68,7 @@
                 </div>
 
                 <div id="state-text-wrap" @class(['hidden' => (bool) $countryRegions])>
-                    <input id="state_text" name="state" type="text" class="sd-input"
+                    <input id="state_text" name="state" type="text" class="sd-input" data-capitalize
                            autocomplete="address-level1" value="{{ $countryRegions ? '' : $selectedState }}"
                            placeholder="State, province or region" @disabled((bool) $countryRegions)>
                 </div>
@@ -80,7 +80,7 @@
         <div class="grid sm:grid-cols-2 gap-x-4 gap-y-5">
             <div>
                 <label for="city" class="block text-[13px] font-medium text-ink mb-1.5">City</label>
-                <input id="city" name="city" type="text" class="sd-input" autocomplete="address-level2"
+                <input id="city" name="city" type="text" class="sd-input" data-capitalize autocomplete="address-level2"
                        value="{{ old('city', $location?->city) }}" required>
                 @error('city')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
             </div>

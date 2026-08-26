@@ -32,13 +32,13 @@
         <div class="grid sm:grid-cols-2 gap-x-4 gap-y-5">
             <div>
                 <label for="first_name" class="block text-[13px] font-medium text-ink mb-1.5">First name</label>
-                <input id="first_name" name="first_name" type="text" autocomplete="given-name" class="sd-input"
+                <input id="first_name" name="first_name" type="text" autocomplete="given-name" class="sd-input" data-capitalize
                        value="{{ old('first_name') }}" required autofocus>
                 @error('first_name')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
             </div>
             <div>
                 <label for="last_name" class="block text-[13px] font-medium text-ink mb-1.5">Last name</label>
-                <input id="last_name" name="last_name" type="text" autocomplete="family-name" class="sd-input"
+                <input id="last_name" name="last_name" type="text" autocomplete="family-name" class="sd-input" data-capitalize
                        value="{{ old('last_name') }}" required>
                 @error('last_name')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
             </div>

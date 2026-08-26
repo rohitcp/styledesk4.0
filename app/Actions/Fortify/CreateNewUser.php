@@ -3,6 +3,7 @@
 namespace App\Actions\Fortify;
 
 use App\Models\User;
+use App\Support\InputCase;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -52,8 +53,11 @@ class CreateNewUser implements CreatesNewUsers
         ])->validate();
 
         return User::create([
-            'first_name' => $input['first_name'],
-            'last_name' => $input['last_name'],
+            // Names follow the project capitalisation rule; the email above
+            // deliberately does not, because case there is not the user's to
+            // choose and lower-casing it is what keeps the address unique.
+            'first_name' => InputCase::sentence($input['first_name']),
+            'last_name' => InputCase::sentence($input['last_name']),
             'email' => $input['email'],
             'password' => $input['password'],
             'terms_accepted_at' => now(),

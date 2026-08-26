@@ -15,7 +15,7 @@
                 <label for="bizName" class="block text-[13px] font-medium text-ink mb-1.5">
                     Business name <span class="text-danger" aria-hidden="true">*</span>
                 </label>
-                <input id="bizName" name="name" type="text" class="sd-input" placeholder="Bella Beauty Studio"
+                <input id="bizName" name="name" type="text" class="sd-input" data-capitalize placeholder="Bella Beauty Studio"
                        autocomplete="organization" value="{{ old('name', $tenant?->name) }}"
                        aria-describedby="bizName-error" required autofocus>
                 @error('name')
@@ -254,32 +254,6 @@
         var touched = slug.value !== '';
 
         slug.addEventListener('input', function () { touched = true; });
-
-        /* Capitalise the first letter of each word, matching the server rule.
-           Only a leading lower-case letter is touched, so deliberate
-           capitalisation like "MedSpa" survives. The caret is restored because
-           rewriting .value otherwise jumps it to the end mid-word. */
-        name.addEventListener('input', function () {
-            var caret = name.selectionStart;
-            var next = name.value.replace(/(^|[^\p{L}\p{N}])(\p{Ll})/gu, function (_, before, letter) {
-                return before + letter.toUpperCase();
-            });
-
-            if (next !== name.value) {
-                name.value = next;
-                name.setSelectionRange(caret, caret);
-            }
-        });
-
-        name.addEventListener('input', function () {
-            if (touched) return;
-
-            slug.value = name.value.toLowerCase()
-                .normalize('NFD').replace(/[̀-ͯ]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '')
-                .slice(0, 60);
-        });
 
         /* ---- Logo preview ----------------------------------------------
            Read locally rather than uploaded first, so the user sees what they

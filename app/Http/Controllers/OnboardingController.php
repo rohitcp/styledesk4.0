@@ -16,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Support\InputCase;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -104,7 +105,7 @@ class OnboardingController extends Controller
         ]);
 
         $attributes = [
-            'name' => $this->capitalizeName($data['name']),
+            'name' => InputCase::sentence($data['name']),
             'slug' => $this->resolveSlug($data['slug'] ?? null, $data['name'], $tenantId),
             'business_phone' => $data['business_phone'] ?? null,
             'business_phone_country' => $data['business_phone_country'] ?? null,
@@ -221,6 +222,8 @@ class OnboardingController extends Controller
             'hours.*.closes_at' => ['nullable', 'date_format:H:i'],
         ]);
 
+        $data = InputCase::apply($data, ['name', 'city', 'state']);
+
         DB::transaction(function () use ($tenant, $data, $request) {
             $location = $tenant->locations()->updateOrCreate(
                 ['is_primary' => true],
@@ -282,6 +285,8 @@ class OnboardingController extends Controller
             'services.*.color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
 
+        $data = InputCase::apply($data, ['services.*.name', 'services.*.category']);
+
         DB::transaction(function () use ($tenant, $data) {
             $tenant->services()->delete();
 
@@ -339,6 +344,10 @@ class OnboardingController extends Controller
             'members.*.phone' => ['nullable', 'string', 'max:32'],
             'members.*.role' => ['nullable', Rule::in(self::ROLES)],
             'members.*.job_title' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $data = InputCase::apply($data, [
+            'members.*.first_name', 'members.*.last_name', 'members.*.job_title',
         ]);
 
         DB::transaction(function () use ($tenant, $user, $data) {
@@ -582,23 +591,6 @@ class OnboardingController extends Controller
         }
 
         return $slug;
-    }
-
-    /**
-     * Capitalises the first letter of each word in the business name.
-     *
-     * Only the leading letter of a word, and only when it is lower case:
-     * Str::title() would also lower-case the rest, turning "BELLA" into
-     * "Bella" and "MedSpa" into "Medspa", overriding capitalisation the owner
-     * chose deliberately.
-     */
-    private function capitalizeName(string $name): string
-    {
-        return preg_replace_callback(
-            '/(?<![\p{L}\p{N}])\p{Ll}/u',
-            fn (array $m) => mb_strtoupper($m[0]),
-            trim($name)
-        ) ?? trim($name);
     }
 
     private function joinWebsite(?string $scheme, ?string $host): ?string

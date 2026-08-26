@@ -2,6 +2,8 @@
 
 namespace App\Actions\Fortify;
 
+use App\Support\InputCase;
+
 use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Validator;
@@ -38,8 +40,8 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             $this->updateVerifiedUser($user, $input);
         } else {
             $user->forceFill([
-                'first_name' => $input['first_name'],
-                'last_name' => $input['last_name'],
+                'first_name' => InputCase::sentence($input['first_name']),
+                'last_name' => InputCase::sentence($input['last_name']),
                 'email' => $input['email'],
             ])->save();
         }
@@ -53,8 +55,8 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
     protected function updateVerifiedUser(User $user, array $input): void
     {
         $user->forceFill([
-            'first_name' => $input['first_name'],
-            'last_name' => $input['last_name'],
+            'first_name' => InputCase::sentence($input['first_name']),
+            'last_name' => InputCase::sentence($input['last_name']),
             'email' => $input['email'],
             'email_verified_at' => null,
         ])->save();

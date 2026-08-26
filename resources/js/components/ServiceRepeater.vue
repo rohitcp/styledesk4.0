@@ -53,12 +53,12 @@ function remove(index) {
                 <div>
                     <label :for="`service-name-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Service name</label>
                     <input :id="`service-name-${i}`" v-model="row.name" :name="`services[${i}][name]`"
-                           type="text" class="sd-input" placeholder="Women's Cut &amp; Finish">
+                           type="text" class="sd-input" data-capitalize placeholder="Women's Cut &amp; Finish">
                 </div>
                 <div>
                     <label :for="`service-category-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Category</label>
                     <input :id="`service-category-${i}`" v-model="row.category" :name="`services[${i}][category]`"
-                           type="text" class="sd-input" placeholder="Hair">
+                           type="text" class="sd-input" data-capitalize placeholder="Hair">
                 </div>
                 <div>
                     <label :for="`service-duration-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Duration (minutes)</label>

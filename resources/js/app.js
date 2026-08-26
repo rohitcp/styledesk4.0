@@ -14,6 +14,7 @@ import './prototype/styledesk';
 import './prototype/branding';
 import './prototype/account';
 
+import { initCapitalization } from './capitalize';
 import { initPhoneFields } from './phone';
 import { createApp } from 'vue';
 
@@ -76,6 +77,7 @@ export function mountVueIslands(root = document) {
 document.addEventListener('DOMContentLoaded', () => {
     mountVueIslands();
     initPhoneFields();
+    initCapitalization();
 });
 
 /**

@@ -38,19 +38,19 @@ function remove(index) {
                 <div>
                     <label :for="`member-first-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">First name</label>
                     <input :id="`member-first-${i}`" v-model="row.first_name" :name="`members[${i}][first_name]`"
-                           type="text" class="sd-input">
+                           type="text" class="sd-input" data-capitalize>
                 </div>
                 <div>
                     <label :for="`member-last-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Last name</label>
                     <input :id="`member-last-${i}`" v-model="row.last_name" :name="`members[${i}][last_name]`"
-                           type="text" class="sd-input">
+                           type="text" class="sd-input" data-capitalize>
                 </div>
                 <div>
                     <label :for="`member-title-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">
                         Job title <span class="text-faint font-normal">(optional)</span>
                     </label>
                     <input :id="`member-title-${i}`" v-model="row.job_title" :name="`members[${i}][job_title]`"
-                           type="text" class="sd-input" placeholder="Senior Stylist">
+                           type="text" class="sd-input" data-capitalize placeholder="Senior Stylist">
                 </div>
                 <div>
                     <label :for="`member-email-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Email</label>

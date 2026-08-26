@@ -243,7 +243,9 @@ class OnboardingTest extends TestCase
             ])
             ->assertRedirect(route('onboarding.location'));
 
-        $this->assertSame('Bella Beauty Studio', $user->fresh()->tenant->name);
+        // First character only, per the project-wide rule. An earlier version
+        // capitalised every word; InputCapitalizationTest owns that rule now.
+        $this->assertSame('Bella beauty studio', $user->fresh()->tenant->name);
     }
 
     public function test_capitalisation_leaves_deliberate_casing_alone(): void
