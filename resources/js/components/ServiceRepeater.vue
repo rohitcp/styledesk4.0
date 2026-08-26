@@ -57,13 +57,17 @@ function remove(index) {
 
 <template>
     <div class="space-y-3">
-        <div v-for="(row, i) in rows" :key="i" class="rounded-card border border-line bg-white p-4">
+        <div v-for="(row, i) in rows" :key="i" class="rounded-card border border-line bg-white p-4 space-y-4">
+
+            <!-- Name takes the full width: it is the longest value on the card
+                 and the one people scan the list by. -->
+            <div>
+                <label :for="`service-name-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Service name</label>
+                <input :id="`service-name-${i}`" v-model="row.name" :name="`services[${i}][name]`"
+                       type="text" class="sd-input" data-capitalize placeholder="Women's Cut &amp; Finish">
+            </div>
+
             <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
-                <div>
-                    <label :for="`service-name-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Service name</label>
-                    <input :id="`service-name-${i}`" v-model="row.name" :name="`services[${i}][name]`"
-                           type="text" class="sd-input" data-capitalize placeholder="Women's Cut &amp; Finish">
-                </div>
                 <div>
                     <label class="block text-[13px] font-medium text-ink mb-1.5">Service category</label>
                     <CategoryPicker v-model="row.service_category_id"
@@ -71,34 +75,36 @@ function remove(index) {
                                     :can-create="canCreateCategory"
                                     :aria-label="`Service ${i + 1} category`" />
                 </div>
+
                 <div>
                     <label :for="`service-duration-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Duration (minutes)</label>
                     <input :id="`service-duration-${i}`" v-model="row.duration_minutes" :name="`services[${i}][duration_minutes]`"
                            type="number" min="1" max="1440" class="sd-input">
                 </div>
-                <div class="sm:col-span-2">
-                    <p class="block text-[13px] font-medium text-ink mb-1.5">Pricing</p>
+            </div>
 
-                    <div class="grid sm:grid-cols-2 gap-x-4 gap-y-3">
-                        <div v-for="currency in currencies" :key="currency.code">
-                            <label :for="`service-${i}-price-${currency.code}`" class="block text-[12px] text-sub mb-1">
-                                {{ currency.code }} — {{ currency.label }}
-                                <span v-if="currency.primary"
-                                      class="ml-1 text-[10px] font-semibold uppercase tracking-wide text-brand">Primary</span>
-                            </label>
-                            <div class="relative">
-                                <span class="styledesk_input__prefix">{{ currency.symbol }}</span>
-                                <input :id="`service-${i}-price-${currency.code}`"
-                                       v-model="row.prices[currency.code]"
-                                       :name="`services[${i}][prices][${currency.code}]`"
-                                       type="number" step="0.01" min="0" class="sd-input styledesk_input--prefixed" placeholder="0.00">
-                            </div>
+            <div>
+                <p class="block text-[13px] font-medium text-ink mb-1.5">Pricing</p>
+
+                <div class="grid sm:grid-cols-2 gap-x-4 gap-y-3">
+                    <div v-for="currency in currencies" :key="currency.code">
+                        <label :for="`service-${i}-price-${currency.code}`" class="block text-[12px] text-sub mb-1">
+                            {{ currency.code }} — {{ currency.label }}
+                            <span v-if="currency.primary"
+                                  class="ml-1 text-[10px] font-semibold uppercase tracking-wide text-brand">Primary</span>
+                        </label>
+                        <div class="relative">
+                            <span class="styledesk_input__prefix">{{ currency.symbol }}</span>
+                            <input :id="`service-${i}-price-${currency.code}`"
+                                   v-model="row.prices[currency.code]"
+                                   :name="`services[${i}][prices][${currency.code}]`"
+                                   type="number" step="0.01" min="0" class="sd-input styledesk_input--prefixed" placeholder="0.00">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="mt-4">
+            <div>
                 <label :for="`service-description-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">
                     Description <span class="text-faint font-normal">(optional)</span>
                 </label>
@@ -106,26 +112,36 @@ function remove(index) {
                           rows="2" class="sd-input h-auto py-2"></textarea>
             </div>
 
-            <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-                <label class="flex items-center gap-2.5 cursor-pointer">
+            <!-- Each switch on its own row with its label above it, so the two
+                 settings read as separate decisions rather than one pair. -->
+            <div>
+                <p class="block text-[13px] font-medium text-ink mb-1.5">Bookable online</p>
+                <label class="flex items-center gap-2.5 cursor-pointer w-fit">
                     <input v-model="row.online_booking_enabled" :name="`services[${i}][online_booking_enabled]`"
-                           type="checkbox" value="1" class="sd-check">
-                    <span class="text-[13px] text-ink">Bookable online</span>
+                           type="checkbox" value="1" class="sd-switch">
+                    <span class="text-[13px]" :class="row.online_booking_enabled ? 'text-ink' : 'text-faint'">
+                        {{ row.online_booking_enabled ? 'Shown on your booking page' : 'Internal only' }}
+                    </span>
                 </label>
-
-                <label class="flex items-center gap-2.5 cursor-pointer">
-                    <input v-model="row.taxable" :name="`services[${i}][taxable]`"
-                           type="checkbox" value="1" class="sd-check">
-                    <span class="text-[13px] text-ink">Taxable</span>
-                </label>
-
-                <div class="flex items-center gap-3">
-                    <span class="text-[13px] text-ink">Calendar colour</span>
-                    <ColorPicker v-model="row.color" :name="`services[${i}][color]`" />
-                </div>
             </div>
 
-            <div class="mt-3 flex justify-end">
+            <div>
+                <p class="block text-[13px] font-medium text-ink mb-1.5">Taxable</p>
+                <label class="flex items-center gap-2.5 cursor-pointer w-fit">
+                    <input v-model="row.taxable" :name="`services[${i}][taxable]`"
+                           type="checkbox" value="1" class="sd-switch">
+                    <span class="text-[13px]" :class="row.taxable ? 'text-ink' : 'text-faint'">
+                        {{ row.taxable ? 'Tax applies' : 'No tax' }}
+                    </span>
+                </label>
+            </div>
+
+            <div>
+                <p class="block text-[13px] font-medium text-ink mb-1.5">Calendar colour</p>
+                <ColorPicker v-model="row.color" :name="`services[${i}][color]`" />
+            </div>
+
+            <div class="flex justify-end pt-1">
                 <button type="button" @click="remove(i)"
                         class="h-8 px-3 rounded-md text-[13px] font-semibold text-sub hover:text-danger hover:bg-hover transition-colors">
                     Remove
