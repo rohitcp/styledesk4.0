@@ -107,55 +107,19 @@
   <!-- ===== App bar ===== -->
   <header class="sticky top-0 z-30 bg-brand border-b border-white/10">
     <div class="relative w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center gap-2 sm:gap-3">
+      {{-- Below lg the icon rail is hidden; this is what replaces it. Placed
+           where the rail sits so navigation stays in the same corner at every
+           width. --}}
+      <button type="button" data-drawer-toggle
+              class="sd-navicon grid lg:hidden shrink-0" aria-label="Main menu"
+              aria-expanded="false" aria-controls="sd-drawer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+
       <!-- Primary icon rail -->
-      <nav class="hidden lg:flex self-stretch items-center gap-1 shrink-0" aria-label="Primary">
-        <a href="{{ route('dashboard') }}" class="sd-navicon grid sd-tip is-active" data-tip="Dashboard" aria-label="Dashboard" aria-current="page">
-          <x-icon name="grid-2" size="18" />
-        </a>
-        <a href="#" class="sd-navicon grid sd-tip" data-tip="Calendar" aria-label="Calendar">
-          <x-icon name="calendar" size="18" />
-        </a>
-        <div class="sd-menu" data-menu>
-          <a href="#" data-pending-route="clients.html" class="sd-navicon grid sd-tip" data-tip="Clients" aria-label="Clients"
-             aria-haspopup="true" aria-expanded="false">
-            <x-icon name="user" size="18" />
-          </a>
-          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Clients menu">
-            <a href="#" data-pending-route="clients.html" class="sd-menu__item" role="menuitem">All Clients</a>
-            <a href="#" class="sd-menu__item" role="menuitem">Groups</a>
-            <a href="#" class="sd-menu__item" role="menuitem">Forms &amp; Waivers</a>
-            <a href="#" class="sd-menu__item" role="menuitem">Memberships &amp; Packages</a>
-          </div>
-        </div>
-        <div class="sd-menu" data-menu>
-          <a href="#" data-pending-route="services.html" class="sd-navicon grid sd-tip" data-tip="Services &amp; resources"
-             aria-label="Services and resources" aria-haspopup="true" aria-expanded="false">
-            <x-icon name="tag" size="18" />
-          </a>
-          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Services and resources menu">
-            <a href="#" data-pending-route="services.html" class="sd-menu__item" role="menuitem">All Services</a>
-            <a href="#" data-pending-route="service-categories.html" class="sd-menu__item" role="menuitem">Categories</a>
-            <a href="#" data-pending-route="service-addons.html" class="sd-menu__item" role="menuitem">Add-ons</a>
-            <div class="sd-menu__rule" role="separator"></div>
-            <a href="#" data-pending-route="resources.html" class="sd-menu__item" role="menuitem">All Resources</a>
-            <a href="#" data-pending-route="resource-types.html" class="sd-menu__item" role="menuitem">Resource Types</a>
-            <a href="#" data-pending-route="resource-availability.html" class="sd-menu__item" role="menuitem">Availability</a>
-            <a href="#" data-pending-route="resource-maintenance.html" class="sd-menu__item" role="menuitem">Maintenance</a>
-          </div>
-        </div>
-        <a href="#" class="sd-navicon grid sd-tip" data-tip="Staff" aria-label="Staff">
-          <x-icon name="users" size="18" />
-        </a>
-        <a href="#" class="sd-navicon grid sd-tip" data-tip="Sales" aria-label="Sales">
-          <x-icon name="credit-card" size="18" />
-        </a>
-        <a href="#" class="sd-navicon grid sd-tip" data-tip="Marketing" aria-label="Marketing">
-          <x-icon name="bullhorn" size="18" />
-        </a>
-        <a href="#" class="sd-navicon grid sd-tip" data-tip="Reports" aria-label="Reports">
-          <x-icon name="chart-simple" size="18" />
-        </a>
-      </nav>
+      @include('layouts.partials.nav-rail')
 
       <!-- Search — centred between the rail and the account cluster -->
       <div class="flex-1 min-w-0 flex justify-center">
@@ -213,6 +177,8 @@
       </div>
     </div>
   </header>
+
+@include('layouts.partials.nav-drawer')
 
 <x-toast />
 

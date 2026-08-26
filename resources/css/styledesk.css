@@ -553,3 +553,138 @@ a.styledesk_settingcard:focus-visible {
         animation-duration: 0.01ms;
     }
 }
+
+/* ------------------------------------------------------------------
+   Navigation drawer
+   ------------------------------------------------------------------
+   The small-screen replacement for the icon rail. Plain CSS rather than
+   utilities because the open/closed transition needs a class to key off,
+   and the scrim has to sit above the sticky app bar's stacking context.
+   ------------------------------------------------------------------ */
+
+.styledesk_drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+}
+
+.styledesk_drawer__scrim {
+    position: absolute;
+    inset: 0;
+    background: rgb(15 15 16 / 45%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.styledesk_drawer.is-open .styledesk_drawer__scrim { opacity: 1; }
+
+.styledesk_drawer__panel {
+    position: absolute;
+    inset: 0 auto 0 0;
+    display: flex;
+    flex-direction: column;
+    /* Never the full width: a sliver of the page stays visible so it is
+       obvious the drawer is over the app rather than a new screen. */
+    width: min(19rem, 86vw);
+    background: #fff;
+    box-shadow: 0 0 40px rgb(15 15 16 / 22%);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+}
+
+.styledesk_drawer.is-open .styledesk_drawer__panel { transform: translateX(0); }
+
+@media (prefers-reduced-motion: reduce) {
+    .styledesk_drawer__scrim,
+    .styledesk_drawer__panel { transition-duration: 0.01ms; }
+}
+
+.styledesk_drawer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.styledesk_drawer__close {
+    display: grid;
+    place-items: center;
+    height: 2rem;
+    width: 2rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.styledesk_drawer__close:hover { background: #f3f4f6; color: #0f0f10; }
+
+.styledesk_drawer__body {
+    flex: 1;
+    overflow-y: auto;
+    /* Room past the last item on a phone, where the browser chrome overlaps
+       the bottom of the viewport. */
+    padding: 0.5rem 0.5rem 2rem;
+}
+
+.styledesk_drawerlink {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 8px;
+    color: #0f0f10;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.styledesk_drawerlink:hover { background: #f3f4f6; }
+
+.styledesk_drawerlink:focus-visible {
+    outline: 2px solid var(--sd-brand, #3d348b);
+    outline-offset: -2px;
+}
+
+.styledesk_drawerlink.is-active {
+    background: var(--sd-sel, #eeecf7);
+    color: var(--sd-brand, #3d348b);
+    font-weight: 600;
+}
+
+.styledesk_drawerlink__icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 1.25rem;
+    color: #6b7280;
+}
+
+.styledesk_drawerlink.is-active .styledesk_drawerlink__icon { color: inherit; }
+
+/* Children, indented to the parent's label rather than its icon, so the
+   list reads as one hierarchy instead of two columns. */
+.styledesk_drawer__sub {
+    display: flex;
+    flex-direction: column;
+    margin: 0.125rem 0 0.375rem 2.75rem;
+    border-left: 1px solid #e5e7eb;
+}
+
+.styledesk_drawersub {
+    padding: 0.375rem 0.75rem;
+    color: #4b5563;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.styledesk_drawersub:hover { color: #0f0f10; }
+
+.styledesk_drawer__rule {
+    height: 1px;
+    margin: 0.5rem 0.75rem;
+    background: #e5e7eb;
+}

@@ -1,0 +1,139 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Staff;
+use App\Models\Tenant;
+use App\Models\TenantOnboarding;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class NavigationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Tenant $tenant;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::create(['name' => 'Acme Salon', 'slug' => 'acme']);
+
+        TenantOnboarding::create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'current_step' => 'complete',
+            'completed_at' => now(),
+        ]);
+    }
+
+    private function member(string $role): User
+    {
+        $user = User::create([
+            'first_name' => 'Sam', 'last_name' => 'Person',
+            'email' => $role.'@styledesk.test', 'password' => 'Str0ng!Pass',
+        ]);
+        $user->markEmailAsVerified();
+        $user->forceFill(['tenant_id' => $this->tenant->getTenantKey()])->save();
+
+        if ($role === 'owner') {
+            $this->tenant->forceFill(['owner_user_id' => $user->id])->save();
+        } else {
+            Staff::withoutGlobalScopes()->create([
+                'tenant_id' => $this->tenant->getTenantKey(),
+                'user_id' => $user->id,
+                'first_name' => 'Sam', 'last_name' => 'Person',
+                'email' => $role.'@styledesk.test', 'role' => $role,
+            ]);
+        }
+
+        return $user->fresh();
+    }
+
+    public function test_the_app_bar_offers_a_menu_button_and_a_drawer(): void
+    {
+        $response = $this->actingAs($this->member('owner'))->get('http://styledesk.test/dashboard');
+
+        $response->assertOk()
+            ->assertSee('data-drawer-toggle', false)
+            ->assertSee('id="sd-drawer"', false)
+            // The button is what a screen reader and a test both identify it
+            // by; without it this is an unlabelled icon.
+            ->assertSee('aria-label="Main menu"', false)
+            ->assertSee('aria-controls="sd-drawer"', false);
+    }
+
+    /**
+     * Below lg the icon rail is hidden, so anything reachable only from the
+     * rail is unreachable on a tablet or phone unless the drawer repeats it.
+     */
+    public function test_the_drawer_offers_every_primary_destination(): void
+    {
+        $content = $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/dashboard')
+            ->assertOk()
+            ->getContent();
+
+        $drawer = $this->drawerMarkup($content);
+
+        foreach (config('navigation.primary') as $item) {
+            $this->assertStringContainsString(
+                e($item['label'], false),
+                $drawer,
+                "[{$item['label']}] is missing from the drawer."
+            );
+
+            foreach ($item['children'] ?? [] as $child) {
+                if (! empty($child['separator'])) {
+                    continue;
+                }
+
+                $this->assertStringContainsString(
+                    e($child['label'], false),
+                    $drawer,
+                    "[{$child['label']}] is missing from the drawer."
+                );
+            }
+        }
+
+        foreach (config('navigation.utility') as $item) {
+            $this->assertStringContainsString(e($item['label'], false), $drawer);
+        }
+    }
+
+    /**
+     * Shrinking the window must not become a way around a permission check.
+     */
+    public function test_app_settings_is_in_the_drawer_only_for_roles_that_may_open_it(): void
+    {
+        $owner = $this->actingAs($this->member('owner'))->get('http://styledesk.test/dashboard');
+        $this->assertStringContainsString('App settings', $this->drawerMarkup($owner->getContent()));
+
+        $manager = $this->actingAs($this->member('manager'))->get('http://styledesk.test/dashboard');
+        $this->assertStringNotContainsString('App settings', $this->drawerMarkup($manager->getContent()));
+    }
+
+    public function test_the_current_page_is_marked_in_both_the_rail_and_the_drawer(): void
+    {
+        $content = $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/dashboard')
+            ->getContent();
+
+        // Once in the rail and once in the drawer: the two render from the
+        // same config, so both should agree on where the user is.
+        $this->assertSame(2, substr_count($content, 'aria-current="page"'));
+    }
+
+    /** Everything between the drawer's opening tag and its closing nav. */
+    private function drawerMarkup(string $html): string
+    {
+        $start = strpos($html, 'id="sd-drawer"');
+
+        $this->assertNotFalse($start, 'The drawer is not on the page at all.');
+
+        $end = strpos($html, '</nav>', $start);
+
+        return substr($html, $start, $end - $start);
+    }
+}
