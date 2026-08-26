@@ -93,15 +93,13 @@
               </label>
               <input id="employee_ref" name="employee_ref" type="text" class="sd-input" value="{{ old('employee_ref') }}">
             </div>
-            <div>
-              <label for="avatar" class="block text-[13px] font-medium text-ink mb-1.5">
-                Profile image <span class="text-faint font-normal">(optional)</span>
-              </label>
-              <input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp"
-                     class="block w-full text-[13px] text-sub file:mr-3 file:h-9 file:px-3.5 file:rounded-md file:border file:border-stroke file:bg-white file:text-[13px] file:font-semibold file:text-ink hover:file:bg-hover file:cursor-pointer">
-              @error('avatar')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
-            </div>
           </div>
+
+          {{-- Its own row: the uploader carries a preview, a progress bar and
+               an error line, none of which fit beside another field. --}}
+          <x-image-upload name="avatar" label="Profile image"
+                          :endpoint="route('settings.staff.avatar.upload')"
+                          hint="JPG, PNG or WEBP, up to 2 MB. Shown on the booking page and in the team list." />
 
           <div>
             <label for="bio" class="block text-[13px] font-medium text-ink mb-1.5">
@@ -137,15 +135,8 @@
               <label for="phone" class="block text-[13px] font-medium text-ink mb-1.5">Primary phone</label>
               <input id="phone" name="phone" type="tel" class="sd-input" value="{{ old('phone') }}">
             </div>
-            <div>
-              <label for="phone_type" class="block text-[13px] font-medium text-ink mb-1.5">Phone type</label>
-              <select id="phone_type" name="phone_type" class="sd-input">
-                <option value="">Not specified</option>
-                @foreach (config('staff.phone_types') as $value => $label)
-                  <option value="{{ $value }}" @selected(old('phone_type') === $value)>{{ $label }}</option>
-                @endforeach
-              </select>
-            </div>
+            <x-combo name="phone_type" label="Phone type" :options="config('staff.phone_types')"
+                     :selected="old('phone_type')" placeholder="Not specified" />
             <div>
               <label for="secondary_phone" class="block text-[13px] font-medium text-ink mb-1.5">
                 Secondary phone <span class="text-faint font-normal">(optional)</span>
@@ -188,47 +179,16 @@
           </p>
 
           <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
-            <div>
-              <label for="role_id" class="block text-[13px] font-medium text-ink mb-1.5">
-                Role <span class="text-danger">*</span>
-              </label>
-              <select id="role_id" name="role_id" class="sd-input" required>
-                <option value="">Choose a role</option>
-                @foreach ($roles as $role)
-                  <option value="{{ $role->id }}" @selected((int) old('role_id') === $role->id)>{{ $role->name }}</option>
-                @endforeach
-              </select>
-              @error('role_id')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
-              {{-- Only roles this user may hand out are listed, per §32. --}}
-              <p class="mt-1.5 text-[12px] text-sub">You can only assign roles within your own access.</p>
-            </div>
-            <div>
-              <label for="location_id" class="block text-[13px] font-medium text-ink mb-1.5">Primary location</label>
-              <select id="location_id" name="location_id" class="sd-input">
-                <option value="">All locations</option>
-                @foreach ($locations as $location)
-                  <option value="{{ $location->id }}" @selected((int) old('location_id') === $location->id)>{{ $location->name }}</option>
-                @endforeach
-              </select>
-            </div>
-            <div>
-              <label for="employment_type" class="block text-[13px] font-medium text-ink mb-1.5">Employment type</label>
-              <select id="employment_type" name="employment_type" class="sd-input">
-                <option value="">Not specified</option>
-                @foreach (config('staff.employment_types') as $value => $label)
-                  <option value="{{ $value }}" @selected(old('employment_type') === $value)>{{ $label }}</option>
-                @endforeach
-              </select>
-            </div>
-            <div>
-              <label for="provider_type" class="block text-[13px] font-medium text-ink mb-1.5">Provider type</label>
-              <select id="provider_type" name="provider_type" class="sd-input">
-                <option value="">Not specified</option>
-                @foreach (config('staff.provider_types') as $value => $label)
-                  <option value="{{ $value }}" @selected(old('provider_type') === $value)>{{ $label }}</option>
-                @endforeach
-              </select>
-            </div>
+            {{-- Only roles this user may hand out are listed, per §32. --}}
+            <x-combo name="role_id" label="Role" required :options="$roles->pluck('name', 'id')"
+                     :selected="old('role_id')" placeholder="Choose a role"
+                     hint="You can only assign roles within your own access." />
+            <x-combo name="location_id" label="Primary location" :options="$locations->pluck('name', 'id')"
+                     :selected="old('location_id')" placeholder="All locations" />
+            <x-combo name="employment_type" label="Employment type" :options="config('staff.employment_types')"
+                     :selected="old('employment_type')" placeholder="Not specified" />
+            <x-combo name="provider_type" label="Provider type" :options="config('staff.provider_types')"
+                     :selected="old('provider_type')" placeholder="Not specified" />
           </div>
 
           <fieldset>

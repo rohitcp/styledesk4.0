@@ -15,7 +15,9 @@ use App\Models\TenantOnboarding;
 use App\Models\User;
 use App\Support\RoleGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -214,6 +216,92 @@ class StaffCreateTest extends TestCase
             ->assertRedirect(route('settings.staff.index'));
 
         $this->assertSame(2, Staff::withoutGlobalScopes()->where('email', 'kit@acme.test')->count());
+    }
+
+    // ---------------------------------------------------- profile image
+
+    public function test_a_profile_image_uploads_on_its_own_and_returns_a_path(): void
+    {
+        Storage::fake('brand');
+
+        $response = $this->actingAs($this->owner())
+            ->postJson('http://styledesk.test/settings/staff/avatar', [
+                'image' => UploadedFile::fake()->image('kit.png', 400, 400),
+            ]);
+
+        $response->assertOk()->assertJsonStructure(['path', 'url']);
+
+        Storage::disk('brand')->assertExists($response->json('path'));
+    }
+
+    public function test_an_oversized_image_is_refused_with_a_plain_message(): void
+    {
+        Storage::fake('brand');
+
+        $this->actingAs($this->owner())
+            ->postJson('http://styledesk.test/settings/staff/avatar', [
+                'image' => UploadedFile::fake()->create('huge.png', 4096, 'image/png'),
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.image.0', 'The profile image must be 2 MB or smaller.');
+    }
+
+    public function test_an_already_uploaded_image_is_used_rather_than_re_stored(): void
+    {
+        Queue::fake();
+        Storage::fake('brand');
+
+        $path = $this->actingAs($this->owner())
+            ->postJson('http://styledesk.test/settings/staff/avatar', [
+                'image' => UploadedFile::fake()->image('kit.png'),
+            ])->json('path');
+
+        $this->post('http://styledesk.test/settings/staff', $this->payload([
+            'avatar_path' => $path,
+            'login_enabled' => '0',
+        ]));
+
+        $staff = Staff::withoutGlobalScopes()->where('email', 'kit@acme.test')->firstOrFail();
+
+        // The same file, not a second copy of it.
+        $this->assertSame($path, $staff->avatar_path);
+        $this->assertSame(1, count(Storage::disk('brand')->files('staff')));
+    }
+
+    /**
+     * The path comes back from the browser, so a crafted value must not be
+     * able to point the avatar at any file on the disk.
+     */
+    public function test_a_forged_image_path_is_refused(): void
+    {
+        Queue::fake();
+
+        $owner = $this->owner();
+
+        foreach (['../../.env', '/etc/passwd', 'logos/someone-elses.png'] as $forged) {
+            $this->actingAs($owner)
+                ->postJson('http://styledesk.test/settings/staff', $this->payload([
+                    'avatar_path' => $forged,
+                    'login_enabled' => '0',
+                ]))
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('avatar_path');
+        }
+
+        $this->assertSame(0, Staff::withoutGlobalScopes()->where('email', 'kit@acme.test')->count());
+    }
+
+    public function test_a_service_provider_cannot_upload_an_image(): void
+    {
+        Storage::fake('brand');
+
+        $provider = $this->member('service-provider');
+
+        $this->actingAs($provider)
+            ->post('http://styledesk.test/settings/staff/avatar', [
+                'image' => UploadedFile::fake()->image('kit.png'),
+            ])
+            ->assertRedirect(route('dashboard'));
     }
 
     // ------------------------------------------------- privilege escalation

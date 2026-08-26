@@ -240,6 +240,35 @@ class StaffDirectoryTest extends TestCase
         $this->assertSame(['Amara Person'], $this->names());
     }
 
+    public function test_the_filters_are_combos_rather_than_native_selects(): void
+    {
+        $this->actingAs($this->owner());
+        $this->staff('Amara', 'manager');
+
+        $content = $this->get('http://styledesk.test/settings/staff')->getContent();
+
+        // Every dropdown in the app is the same searchable control; a native
+        // select here would be the one place that looked and behaved apart.
+        $this->assertStringNotContainsString('<select', $content);
+        $this->assertSame(7, substr_count($content, 'data-vue-component="MultiSelect"'));
+    }
+
+    /**
+     * The panel is hidden until asked for, but open when something is
+     * filtering — a shared URL must not hide the reason the list is short.
+     */
+    public function test_the_filter_panel_opens_itself_when_a_filter_is_active(): void
+    {
+        $this->actingAs($this->owner());
+        $this->staff('Amara', 'manager');
+
+        $closed = $this->get('http://styledesk.test/settings/staff')->getContent();
+        $this->assertMatchesRegularExpression('/id="staff-filters"[^>]*hidden/', $closed);
+
+        $open = $this->get('http://styledesk.test/settings/staff?role=manager')->getContent();
+        $this->assertDoesNotMatchRegularExpression('/id="staff-filters"[^>]*hidden/', $open);
+    }
+
     public function test_the_settings_card_opens_the_directory(): void
     {
         $this->actingAs($this->owner());

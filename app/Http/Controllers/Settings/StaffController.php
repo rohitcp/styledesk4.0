@@ -13,9 +13,11 @@ use App\Models\Staff;
 use App\Support\RoleGuard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -92,7 +94,16 @@ class StaffController extends Controller
             ]);
         }
 
-        if ($request->hasFile('avatar')) {
+        /**
+         * The async upload wins.
+         *
+         * With JavaScript the bytes have already been stored and the form
+         * carries only the path; without it the file arrives here instead.
+         * Checking the path first means a successful upload is never redone.
+         */
+        if ($request->filled('avatar_path')) {
+            $data['avatar_path'] = $request->string('avatar_path')->toString();
+        } elseif ($request->hasFile('avatar')) {
             $data['avatar_path'] = $request->file('avatar')->store('staff', 'brand');
         }
 
@@ -121,6 +132,32 @@ class StaffController extends Controller
     }
 
     /**
+     * Receive a profile image on its own, so the form can show real progress.
+     *
+     * Returns the stored path rather than keeping it in the session: the
+     * create form may be abandoned, and a session holding a file nobody will
+     * ever reference is a leak that only shows up as disk usage.
+     */
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $this->authorize('create', Staff::class);
+
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
+        ], [
+            'image.max' => 'The profile image must be 2 MB or smaller.',
+            'image.mimes' => 'Use a JPG, PNG or WEBP image.',
+        ]);
+
+        $path = $request->file('image')->store('staff', 'brand');
+
+        return response()->json([
+            'path' => $path,
+            'url' => Storage::disk('brand')->url($path),
+        ]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function validated(Request $request): array
@@ -135,6 +172,13 @@ class StaffController extends Controller
             'employee_ref' => ['nullable', 'string', 'max:40'],
             'bio' => ['nullable', 'string', 'max:2000'],
             'avatar' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
+            /**
+             * A path this application wrote, not an arbitrary string.
+             *
+             * It comes back from the browser, so without the shape check a
+             * crafted value could point the avatar at any file on the disk.
+             */
+            'avatar_path' => ['nullable', 'string', 'max:255', 'regex:/^staff\\/[A-Za-z0-9._-]+$/'],
 
             /**
              * Unique within the business, not globally.
