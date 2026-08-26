@@ -341,6 +341,38 @@
    room and two when there is not.
    ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------
+   Card grid
+   ------------------------------------------------------------------
+   Rows sized to the card, not to the container.
+
+   A fixed column count stretches each card to whatever share of the width
+   it gets, and .sd-thumb is a 16/9 box — so at three columns on a wide
+   screen the thumbnail grows to 276px and the card becomes mostly
+   placeholder. auto-fill holds the cards near the 248px they were drawn
+   at and lets the number of rows follow the width instead.
+   ------------------------------------------------------------------ */
+
+.styledesk_cardgrid {
+    display: grid;
+    /* auto-fit with a capped track, rather than auto-fill with 1fr: auto-fill
+       leaves an empty trailing column that reads as missing content, and an
+       uncapped 1fr lets a five-card row stretch each card past 400px on a wide
+       monitor. Between 232px and 300px the cards fill the row and the
+       thumbnail stays close to the proportions it was drawn at. */
+    grid-template-columns: repeat(auto-fit, minmax(232px, 300px));
+    justify-content: start;
+    gap: 1rem;
+}
+
+/* On a phone the 300px cap leaves the single card short of the screen with a
+   dead strip beside it. One full-width column reads as intended instead. */
+@media (max-width: 480px) {
+    .styledesk_cardgrid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .styledesk_chips {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
