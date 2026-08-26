@@ -75,9 +75,26 @@
 @endsection
 
 @section('rail')
-    <h2 class="text-[15px] font-semibold text-head">Why we ask</h2>
-    <p class="text-[13px] text-sub leading-relaxed mt-3">
-        Clients pick who they book with, so each person needs to exist before
-        they can appear on the booking page. Invitations can wait.
-    </p>
+    <h2 class="text-[15px] font-semibold text-head">Who will be in your workspace</h2>
+    <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Nobody is emailed until setup is finished.</p>
+
+    @php
+        $ownerInitials = strtoupper(mb_substr($owner->first_name, 0, 1).mb_substr($owner->last_name, 0, 1));
+        $teamPreviewProps = ['ownerName' => $owner->name, 'ownerInitials' => $ownerInitials];
+    @endphp
+
+    <div class="mt-5" data-vue-component="TeamPreview" data-props='@json($teamPreviewProps)'></div>
+
+    <ul class="mt-8 space-y-4">
+        @foreach ([
+            'Role decides what someone can see and change. Only the Owner can bill or delete the workspace.',
+            'Anyone assigned services becomes bookable, so clients can pick them by name.',
+            'Invitations go out in one batch when you finish — you can still edit or remove people first.',
+        ] as $point)
+            <li class="flex items-start gap-3">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="text-[13px] text-ink leading-relaxed">{{ $point }}</span>
+            </li>
+        @endforeach
+    </ul>
 @endsection

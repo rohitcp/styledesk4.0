@@ -5,7 +5,7 @@
 @section('subheading', 'Your primary location and the hours you are open. Add more locations later in Settings.')
 
 @section('form')
-    <form method="POST" action="{{ route('onboarding.location.store') }}" class="mt-6 space-y-5">
+    <form id="stepForm" method="POST" action="{{ route('onboarding.location.store') }}" class="mt-6 space-y-5">
         @csrf
 
         <div>
@@ -116,11 +116,37 @@
 @endsection
 
 @section('rail')
-    <h2 class="text-[15px] font-semibold text-head">Why we ask</h2>
-    <p class="text-[13px] text-sub leading-relaxed mt-3">
-        Your address and hours decide which appointment slots clients can pick.
-        The timezone matters most — reminders go out against it.
-    </p>
+    <h2 class="text-[15px] font-semibold text-head">Your location preview</h2>
+    <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Clients see this on your booking page.</p>
+
+    {{-- Mirrors the form. Hidden below lg, so nothing here is the only place a
+         value is stated. --}}
+    <div class="mt-5 rounded-card border border-line bg-white shadow-sm p-4" aria-hidden="true">
+        <p id="pv-name" class="text-[14px] font-semibold text-head truncate">Main Location</p>
+        <p id="pv-addr" class="text-[12px] text-sub mt-1 leading-relaxed">Add your address to see it here.</p>
+
+        <div class="mt-4 pt-3.5 border-t border-line">
+            <p class="text-[11px] font-semibold text-faint uppercase tracking-wide">Timezone</p>
+            <p id="pv-tz" class="text-[12px] text-ink font-medium mt-1">—</p>
+        </div>
+        <div class="mt-3.5 pt-3.5 border-t border-line">
+            <p class="text-[11px] font-semibold text-faint uppercase tracking-wide">Opening hours</p>
+            <p id="pv-hours" class="text-[12px] text-ink font-medium mt-1">—</p>
+        </div>
+    </div>
+
+    <ul class="mt-8 space-y-4">
+        @foreach ([
+            'Timezone drives appointments, reminders, reporting and what clients can book — worth getting right now.',
+            'These hours become your default booking availability. Staff schedules can override them later.',
+            'Got more than one site? Add further locations once setup is finished.',
+        ] as $point)
+            <li class="flex items-start gap-3">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="text-[13px] text-ink leading-relaxed">{{ $point }}</span>
+            </li>
+        @endforeach
+    </ul>
 @endsection
 
 @push('scripts')
@@ -132,6 +158,42 @@
         var button = document.getElementById('copy-monday');
 
         if (!button) return;
+
+        /* ---- Location preview ------------------------------------------
+           Mirrors the form into the rail. */
+        var pv = {
+            name: document.getElementById('pv-name'),
+            addr: document.getElementById('pv-addr'),
+            tz: document.getElementById('pv-tz'),
+            hours: document.getElementById('pv-hours'),
+        };
+
+        function val(id) {
+            var el = document.getElementById(id);
+            return el ? el.value.trim() : '';
+        }
+
+        function paintPreview() {
+            pv.name.textContent = val('name') || 'Main Location';
+
+            var parts = [val('address_line1'), val('address_line2'), val('city'), val('state'), val('postal_code')]
+                .filter(Boolean);
+
+            pv.addr.textContent = parts.length ? parts.join(', ') : 'Add your address to see it here.';
+            pv.tz.textContent = val('timezone') || '—';
+
+            var open = document.querySelectorAll('[name$="[is_open]"]:checked').length;
+            pv.hours.textContent = open === 0
+                ? 'Closed every day'
+                : 'Open ' + open + ' ' + (open === 1 ? 'day' : 'days') + ' a week';
+        }
+
+        document.querySelectorAll('#stepForm input, #stepForm select').forEach(function (el) {
+            el.addEventListener('input', paintPreview);
+            el.addEventListener('change', paintPreview);
+        });
+
+        paintPreview();
 
         button.addEventListener('click', function () {
             var source = {
@@ -149,6 +211,10 @@
                 if (from) from.value = source.from.value;
                 if (to) to.value = source.to.value;
             });
+
+            // Setting .checked in script fires no change event, so the
+            // preview would silently fall out of step with the form.
+            paintPreview();
         });
     });
 </script>

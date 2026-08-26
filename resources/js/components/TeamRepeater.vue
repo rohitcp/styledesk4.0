@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { onboarding } from '../stores/onboarding';
 
 /**
  * Repeatable team member rows for onboarding step 4.
@@ -14,6 +15,8 @@ defineProps({
 const blank = () => ({ first_name: '', last_name: '', email: '', phone: '', role: 'service-provider', job_title: '' });
 
 const rows = ref([]);
+
+watch(rows, (value) => { onboarding.team = value; }, { deep: true, immediate: true });
 
 function add() {
     rows.value.push(blank());

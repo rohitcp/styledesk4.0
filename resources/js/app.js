@@ -14,6 +14,7 @@ import './prototype/styledesk';
 import './prototype/branding';
 import './prototype/account';
 
+import { initPhoneFields } from './phone';
 import { createApp } from 'vue';
 
 /**
@@ -72,7 +73,10 @@ export function mountVueIslands(root = document) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => mountVueIslands());
+document.addEventListener('DOMContentLoaded', () => {
+    mountVueIslands();
+    initPhoneFields();
+});
 
 /**
  * Password reveal toggles.

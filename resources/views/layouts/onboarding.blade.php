@@ -75,8 +75,11 @@
         </div>
     </main>
 
-    <aside class="hidden lg:block lg:col-span-4 border-l border-line bg-white px-6 xl:px-8 pt-10">
-        <div class="max-w-[320px]">
+    {{-- Context rail. Classes match the prototype: hidden below lg, so the
+         inline hints under each field remain the accessible source of the same
+         information and nothing is only available here. --}}
+    <aside class="lg:col-span-4 min-w-0 hidden lg:block border-l border-line bg-gradient-to-b from-white via-[#faf9fd] to-[#f2effa]">
+        <div class="sticky top-0 px-8 py-10 max-w-[420px]">
             @yield('rail')
         </div>
     </aside>

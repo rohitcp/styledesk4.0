@@ -94,9 +94,86 @@
 @endsection
 
 @section('rail')
-    <h2 class="text-[15px] font-semibold text-head">Why we ask</h2>
-    <p class="text-[13px] text-sub leading-relaxed mt-3">
-        These rules decide which slots appear on your public booking page and how
-        late someone can cancel. All of it is editable in Settings.
-    </p>
+    <h2 class="text-[15px] font-semibold text-head">Your booking rules</h2>
+    <p class="text-[13px] text-sub mt-1.5 leading-relaxed">A summary of what the settings on the left allow.</p>
+
+    {{-- Mirrors the switches and selects. Hidden below lg, so it is never the
+         only place a setting is stated. --}}
+    <div id="pv-card" class="mt-5 rounded-card border border-line bg-white shadow-sm overflow-hidden" aria-hidden="true">
+        <div class="px-4 py-3 border-b border-line">
+            <p class="text-[11px] font-semibold text-faint uppercase tracking-wide">Booking link</p>
+            <p id="pv-url" class="text-[12px] text-ink font-medium mt-1 break-all">{{ config('app.url') }}/book/{{ $tenant->slug }}</p>
+        </div>
+        <ul id="pv-rules" class="divide-y divide-line"></ul>
+        <div class="px-4 py-2.5 bg-hover/40 border-t border-line">
+            <p id="pv-status" class="text-[12px] text-sub">Online booking is on.</p>
+        </div>
+    </div>
+
+    <ul class="mt-8 space-y-4">
+        @foreach ([
+            'Clients can only book inside the hours you set on the previous step.',
+            'Minimum notice protects your prep time; the cancellation window protects the slot.',
+            'Deposits, no-show fees and reminders are configured later in Settings.',
+        ] as $point)
+            <li class="flex items-start gap-3">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="text-[13px] text-ink leading-relaxed">{{ $point }}</span>
+            </li>
+        @endforeach
+    </ul>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var form = document.getElementById('stepForm');
+        var rules = document.getElementById('pv-rules');
+        var status = document.getElementById('pv-status');
+
+        if (!form || !rules) return;
+
+        function on(name) {
+            var el = form.querySelector('[name="' + name + '"]');
+            return el ? el.checked : false;
+        }
+
+        function num(name) {
+            var el = form.querySelector('[name="' + name + '"]');
+            return el ? el.value : '';
+        }
+
+        function row(label, value) {
+            return '<li class="flex items-center justify-between gap-3 px-4 py-2.5">' +
+                   '<span class="text-[12px] text-sub">' + label + '</span>' +
+                   '<span class="text-[12px] text-ink font-medium text-right">' + value + '</span></li>';
+        }
+
+        function paint() {
+            var who = [];
+            if (on('allow_new_clients')) who.push('New');
+            if (on('allow_existing_clients')) who.push('Existing');
+
+            var required = [];
+            if (on('require_email')) required.push('Email');
+            if (on('require_phone')) required.push('Phone');
+            if (on('require_card')) required.push('Card');
+
+            rules.innerHTML =
+                row('Who can book', who.length ? who.join(' & ') : 'Nobody') +
+                row('Minimum notice', num('min_notice_minutes') + ' min') +
+                row('Books up to', num('max_advance_days') + ' days ahead') +
+                row('Cancellation', num('cancellation_window_hours') + ' h before') +
+                row('Required', required.length ? required.join(', ') : 'Nothing');
+
+            status.textContent = on('is_enabled')
+                ? 'Online booking is on.'
+                : 'Online booking is off — the link will not accept bookings.';
+        }
+
+        form.addEventListener('input', paint);
+        form.addEventListener('change', paint);
+        paint();
+    });
+</script>
+@endpush

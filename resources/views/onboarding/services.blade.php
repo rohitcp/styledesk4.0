@@ -49,9 +49,26 @@
 @endsection
 
 @section('rail')
-    <h2 class="text-[15px] font-semibold text-head">Why we ask</h2>
-    <p class="text-[13px] text-sub leading-relaxed mt-3">
-        Services are what clients pick when they book, and their duration is what
-        decides how your calendar fills. Two or three is plenty to start.
-    </p>
+    <h2 class="text-[15px] font-semibold text-head">Your service menu</h2>
+    <p class="text-[13px] text-sub mt-1.5 leading-relaxed">This is what clients see when they book.</p>
+
+    {{-- Mirrors the rows in the other column through a shared reactive store:
+         they are separate Vue apps on separate subtrees, so props cannot pass
+         between them. Hidden below lg, so it is never the only place a value
+         appears. --}}
+    <div class="mt-5" data-vue-component="ServicePreview"
+         data-props='@json(["currency" => auth()->user()->tenant->currency])'></div>
+
+    <ul class="mt-8 space-y-4">
+        @foreach ([
+            'Duration decides how much of the calendar each booking takes, so keep it realistic.',
+            'Only services marked bookable online appear on your booking page. The rest stay internal.',
+            'Add-ons, staff-specific pricing and packages all come later — start with the basics.',
+        ] as $point)
+            <li class="flex items-start gap-3">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="text-[13px] text-ink leading-relaxed">{{ $point }}</span>
+            </li>
+        @endforeach
+    </ul>
 @endsection

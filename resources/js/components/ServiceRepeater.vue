@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { onboarding } from '../stores/onboarding';
 
 /**
  * Repeatable service rows for onboarding step 3.
@@ -26,6 +27,9 @@ const blank = () => ({
 });
 
 const rows = ref(props.initial.length ? props.initial.map((r) => ({ ...blank(), ...r })) : [blank()]);
+
+// Published for the preview island in the other column.
+watch(rows, (value) => { onboarding.services = value; }, { deep: true, immediate: true });
 
 function add() {
     rows.value.push(blank());

@@ -177,15 +177,40 @@
 @endsection
 
 @section('rail')
-    <h2 class="text-[15px] font-semibold text-head">Why we ask</h2>
-    <p class="text-[13px] text-sub leading-relaxed mt-3">
-        Your business name and URL appear on the booking page clients see. The
-        URL becomes your own address on StyleDesk, so pick something short and
-        recognisable.
-    </p>
-    <p class="text-[13px] text-sub leading-relaxed mt-3">
-        Nothing here is final — every field is editable later in Settings.
-    </p>
+    <h2 class="text-[15px] font-semibold text-head">Your workspace preview</h2>
+    <p class="text-[13px] text-sub mt-1.5 leading-relaxed">This is what StyleDesk creates when you continue.</p>
+
+    {{-- Mirrors the form as it is filled in. aria-hidden because every value
+         shown here also appears in the form itself — announcing it twice would
+         just make the page noisier to listen to. --}}
+    <div class="mt-5 rounded-card border border-line bg-white shadow-sm p-4" aria-hidden="true">
+        <div class="flex items-center gap-3">
+            <span id="pv-logo" class="h-10 w-10 rounded-lg bg-brand text-white grid place-items-center shrink-0 overflow-hidden">
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="currentColor"><path d="M6.5 21.5 L14 6 L18.5 6 L11 21.5 Z"/><path d="M14.5 21.5 L22 6 L26.5 6 L19 21.5 Z"/><rect x="4" y="24.6" width="24" height="3.6" rx="1.8"/></svg>
+            </span>
+            <div class="min-w-0">
+                <p id="pv-name" class="text-[14px] font-semibold text-head truncate">Your business</p>
+                <p id="pv-types" class="text-[12px] text-faint truncate">No type selected yet</p>
+            </div>
+        </div>
+        <div class="mt-4 pt-3.5 border-t border-line">
+            <p class="text-[11px] font-semibold text-faint uppercase tracking-wide">Workspace address</p>
+            <p id="pv-url" class="text-[12px] text-ink font-medium mt-1 break-all">….{{ config('tenancy.tenant_domain_suffix') }}</p>
+        </div>
+    </div>
+
+    <ul class="mt-8 space-y-4">
+        @foreach ([
+            'You become the Business Owner, with full access to everything in this workspace.',
+            'Your booking link is reserved from the business name and stays yours.',
+            'Nothing here is final — every field is editable later in Settings.',
+        ] as $point)
+            <li class="flex items-start gap-3">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="text-[13px] text-ink leading-relaxed">{{ $point }}</span>
+            </li>
+        @endforeach
+    </ul>
 @endsection
 
 @push('scripts')
@@ -247,6 +272,49 @@
         if (!preview.hidden && preview.getAttribute('src')) {
             remove.hidden = false;
         }
+
+        /* ---- Workspace preview -----------------------------------------
+           Mirrors the form into the rail. Plain DOM updates rather than a Vue
+           island: the values live in the form, so a component would need to
+           duplicate that state to render it. */
+        var suffix = @json(config('tenancy.tenant_domain_suffix'));
+        var pvName = document.getElementById('pv-name');
+        var pvTypes = document.getElementById('pv-types');
+        var pvUrl = document.getElementById('pv-url');
+        var pvLogo = document.getElementById('pv-logo');
+
+        function paintPreview() {
+            pvName.textContent = name.value.trim() || 'Your business';
+
+            var chosen = [...document.querySelectorAll('.styledesk_typechip__input:checked')]
+                .map(function (i) { return document.querySelector('label[for="' + i.id + '"] .truncate').textContent.trim(); });
+
+            pvTypes.textContent = chosen.length ? chosen.join(', ') : 'No type selected yet';
+
+            // Mirrors the server's own fallback: an empty slug becomes one
+            // derived from the name, so the preview does not promise an
+            // address different from the one that gets reserved.
+            var value = slug.value.trim() || name.value.trim().toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+            pvUrl.textContent = (value || '…') + '.' + suffix;
+        }
+
+        [name, slug].forEach(function (el) { el.addEventListener('input', paintPreview); });
+        document.querySelectorAll('.styledesk_typechip__input').forEach(function (el) {
+            el.addEventListener('change', paintPreview);
+        });
+
+        // Show the chosen logo in the preview tile too.
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+            pvLogo.innerHTML = file
+                ? '<img src="' + URL.createObjectURL(file) + '" alt="" class="h-full w-full object-cover">'
+                : pvLogo.dataset.fallback;
+        });
+        pvLogo.dataset.fallback = pvLogo.innerHTML;
+
+        paintPreview();
     });
 </script>
 @endpush
