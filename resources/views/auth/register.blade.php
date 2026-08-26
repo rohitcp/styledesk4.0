@@ -119,14 +119,14 @@
 
 @section('value-panel')
     <h2 class="text-[26px] xl:text-[29px] font-bold text-head tracking-tight leading-[1.25]">
-        Everything your business runs on, <span class="text-[#9a93c4]">in one place.</span>
+        Run the whole salon <span class="text-[#9a93c4]">from one screen.</span>
     </h2>
 
     <ul class="mt-8 space-y-5">
         @foreach ([
-            'Bookings, staff schedules and resources on one calendar.',
-            'Client history, notes and preferences that follow every visit.',
-            'Automatic reminders that cut no-shows without extra admin.',
+            'Let clients book themselves in, day or night, from one link.',
+            'See every appointment, staff schedule and client note on one calendar.',
+            'Automatic reminders and cancellation rules cut no-shows.',
         ] as $point)
             <li class="flex items-start gap-3.5">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="text-brand mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -134,6 +134,31 @@
             </li>
         @endforeach
     </ul>
+
+    {{--
+        PLACEHOLDER WORDMARKS — invented businesses, not real customers, and
+        the prototype flags them as such. Swap these for your own customers'
+        logos, and only with permission; do not ship invented names presented
+        as businesses that use StyleDesk.
+    --}}
+    <div class="mt-16">
+        <p class="text-[13px] text-sub">Built for salons, spas and studios</p>
+        <div class="mt-7 grid grid-cols-3 gap-x-6 gap-y-9 text-faint">
+            @foreach ([
+                ['Bella Beauty', 'text-[15px] font-bold tracking-tight text-center'],
+                ['Lumen', 'text-[15px] font-semibold tracking-[0.14em] uppercase text-center'],
+                ['Aster&nbsp;&amp;&nbsp;Ivy', 'text-[15px] font-bold tracking-tight text-center'],
+                ['The Cutting Room', 'text-[15px] font-medium tracking-tight text-center'],
+                ['Glasshouse', 'text-[15px] font-bold tracking-tight text-center'],
+                ['Verve', 'text-[15px] font-semibold tracking-[0.14em] uppercase text-center'],
+                ['Northside Barbers', 'text-[15px] font-medium tracking-tight text-center'],
+                ['Studio Ninety', 'text-[15px] font-bold tracking-tight text-center'],
+                ['Rosewood Spa', 'text-[15px] font-semibold tracking-tight text-center'],
+            ] as [$wordmark, $classes])
+                <span class="{{ $classes }}">{!! $wordmark !!}</span>
+            @endforeach
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
