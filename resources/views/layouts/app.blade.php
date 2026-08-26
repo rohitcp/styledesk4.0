@@ -63,7 +63,7 @@
     </script>
 
 </head>
-<body class="bg-[#fafbfc] text-ink text-[13px]">
+<body class="styledesk_shell bg-[#fafbfc] text-ink text-[13px]">
 
 {{--
     Application shell, ported from the prototype's dashboard.html: the

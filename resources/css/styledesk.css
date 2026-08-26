@@ -719,3 +719,42 @@ textarea.sd-input {
        layout with it. */
     resize: vertical;
 }
+
+/* ------------------------------------------------------------------
+   Application shell
+   ------------------------------------------------------------------
+   Holds the footer at the bottom of the window when the page is shorter
+   than the viewport.
+
+   Scoped to a class on the app layout's body rather than applied to every
+   body: the auth and onboarding layouts lay themselves out with their own
+   full-height grids, and turning their body into a flex column would be
+   changing a working layout to fix a different one.
+   ------------------------------------------------------------------ */
+
+.styledesk_shell {
+    display: flex;
+    flex-direction: column;
+    /* dvh, not vh: on a phone vh measures the viewport as though the
+       browser's chrome were hidden, so a vh-based shell leaves the footer
+       under the address bar until the page is scrolled. */
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/*
+   The content area takes the slack, so the page background belongs to the
+   content rather than to a gap beneath it.
+
+   A page may yield more than one top-level block — the dashboard yields its
+   getting-started panel before <main> — which is why the footer also pushes
+   itself down. Either rule alone would be enough for most pages; together
+   they cover the ones that are not shaped like the others.
+*/
+.styledesk_shell > main {
+    flex: 1 0 auto;
+}
+
+.styledesk_shell > footer {
+    margin-top: auto;
+}

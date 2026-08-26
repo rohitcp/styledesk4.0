@@ -125,6 +125,33 @@ class NavigationTest extends TestCase
         $this->assertSame(2, substr_count($content, 'aria-current="page"'));
     }
 
+    /**
+     * The footer must not float mid-page when the content is short.
+     *
+     * Asserted on the mechanism rather than on rendered geometry, which a
+     * server-side test cannot see: the shell class is what turns the body into
+     * a full-height column, and losing it during a class tidy-up is exactly
+     * the change that would go unnoticed until someone opened an empty list.
+     */
+    public function test_the_application_shell_holds_the_footer_to_the_bottom(): void
+    {
+        $content = $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/dashboard')
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('styledesk_shell', $content);
+
+        // The footer is the last block in the shell, so "push it down" has
+        // somewhere to push it to.
+        $footerAt = strrpos($content, '<footer');
+        $mainAt = strrpos($content, '<main');
+
+        $this->assertNotFalse($footerAt);
+        $this->assertNotFalse($mainAt);
+        $this->assertGreaterThan($mainAt, $footerAt, 'The footer must come after the content it sits below.');
+    }
+
     /** Everything between the drawer's opening tag and its closing nav. */
     private function drawerMarkup(string $html): string
     {
