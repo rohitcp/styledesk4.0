@@ -7,8 +7,12 @@ import { onboarding } from '../stores/onboarding';
  * other column through the shared store.
  */
 const props = defineProps({
-    currency: { type: String, default: 'USD' },
+    currencies: { type: Array, default: () => [] },
 });
+
+// The menu shows the primary currency only: it is what clients booking on the
+// primary market see, and repeating every price would make the rail unreadable.
+const primary = computed(() => props.currencies.find((c) => c.primary) ?? props.currencies[0] ?? null);
 
 const named = computed(() => onboarding.services.filter((s) => (s.name || '').trim() !== ''));
 
@@ -23,9 +27,13 @@ const summary = computed(() => {
 });
 
 function price(row) {
-    const value = parseFloat(row.price);
+    if (!primary.value) {
+        return '—';
+    }
 
-    return Number.isFinite(value) ? `${props.currency} ${value.toFixed(2)}` : '—';
+    const value = parseFloat(row.prices?.[primary.value.code]);
+
+    return Number.isFinite(value) ? `${primary.value.code} ${value.toFixed(2)}` : '—';
 }
 </script>
 

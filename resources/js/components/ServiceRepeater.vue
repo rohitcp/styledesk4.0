@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue';
 import CategoryPicker from './CategoryPicker.vue';
+import ColorPicker from './ColorPicker.vue';
 import { setCategories } from '../stores/categories';
 import { onboarding } from '../stores/onboarding';
 
@@ -14,7 +15,7 @@ import { onboarding } from '../stores/onboarding';
  */
 const props = defineProps({
     initial: { type: Array, default: () => [] },
-    currency: { type: String, default: 'USD' },
+    currencies: { type: Array, default: () => [] },
     categories: { type: Array, default: () => [] },
     canCreateCategory: { type: Boolean, default: false },
 });
@@ -26,7 +27,8 @@ const blank = () => ({
     name: '',
     service_category_id: null,
     duration_minutes: 30,
-    price: '',
+    // One entry per configured currency, so every field is bound from the start.
+    prices: Object.fromEntries(props.currencies.map((c) => [c.code, ''])),
     description: '',
     online_booking_enabled: true,
     taxable: true,
@@ -74,10 +76,25 @@ function remove(index) {
                     <input :id="`service-duration-${i}`" v-model="row.duration_minutes" :name="`services[${i}][duration_minutes]`"
                            type="number" min="1" max="1440" class="sd-input">
                 </div>
-                <div>
-                    <label :for="`service-price-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Price ({{ currency }})</label>
-                    <input :id="`service-price-${i}`" v-model="row.price" :name="`services[${i}][price]`"
-                           type="number" step="0.01" min="0" class="sd-input" placeholder="0.00">
+                <div class="sm:col-span-2">
+                    <p class="block text-[13px] font-medium text-ink mb-1.5">Pricing</p>
+
+                    <div class="grid sm:grid-cols-2 gap-x-4 gap-y-3">
+                        <div v-for="currency in currencies" :key="currency.code">
+                            <label :for="`service-${i}-price-${currency.code}`" class="block text-[12px] text-sub mb-1">
+                                {{ currency.code }} — {{ currency.label }}
+                                <span v-if="currency.primary"
+                                      class="ml-1 text-[10px] font-semibold uppercase tracking-wide text-brand">Primary</span>
+                            </label>
+                            <div class="relative">
+                                <span class="styledesk_input__prefix">{{ currency.symbol }}</span>
+                                <input :id="`service-${i}-price-${currency.code}`"
+                                       v-model="row.prices[currency.code]"
+                                       :name="`services[${i}][prices][${currency.code}]`"
+                                       type="number" step="0.01" min="0" class="sd-input styledesk_input--prefixed" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -102,11 +119,10 @@ function remove(index) {
                     <span class="text-[13px] text-ink">Taxable</span>
                 </label>
 
-                <label class="flex items-center gap-2.5 cursor-pointer">
+                <div class="flex items-center gap-3">
                     <span class="text-[13px] text-ink">Calendar colour</span>
-                    <input v-model="row.color" :name="`services[${i}][color]`"
-                           type="color" class="h-8 w-10 rounded border border-stroke bg-white p-0.5">
-                </label>
+                    <ColorPicker v-model="row.color" :name="`services[${i}][color]`" />
+                </div>
             </div>
 
             <div class="mt-3 flex justify-end">

@@ -237,3 +237,26 @@
 }
 
 .styledesk_timepicker__ok:hover { background: var(--sd-brand-dark); }
+
+/* ------------------------------------------------------------------
+   Input with a leading symbol (currency prices)
+   ------------------------------------------------------------------
+   A Tailwind padding utility cannot do this: prototype.css sets
+   `.sd-input { padding: 0 0.875rem }` and loads after Tailwind's utilities, so
+   `pl-7` loses and the currency symbol sits on top of the value. Declaring it
+   in this layer, which loads last, is what makes it stick.
+   ------------------------------------------------------------------ */
+
+.styledesk_input--prefixed {
+    padding-left: 2rem;
+}
+
+.styledesk_input__prefix {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: #6b7280;
+    pointer-events: none;
+}

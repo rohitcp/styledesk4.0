@@ -17,10 +17,10 @@
                     'name' => $s->name,
                     'service_category_id' => $s->service_category_id,
                     'duration_minutes' => $s->duration_minutes,
-                    'price' => $s->priceFormatted(),
+                    'prices' => collect($tenantCurrencies)->mapWithKeys(fn ($c) => [$c['code'] => $s->priceIn($c['code'])])->all(),
                     'description' => $s->description,
                 ])->all(),
-                'currency' => auth()->user()->tenant->currency,
+                'currencies' => $tenantCurrencies,
                 'categories' => $categories,
                 'canCreateCategory' => $canCreateCategory,
             ];
@@ -71,7 +71,7 @@
          between them. Hidden below lg, so it is never the only place a value
          appears. --}}
     <div class="mt-5" data-vue-component="ServicePreview"
-         data-props='@json(["currency" => auth()->user()->tenant->currency])'></div>
+         data-props='@json(["currencies" => $tenantCurrencies])'></div>
 
     <ul class="mt-8 space-y-4">
         @foreach ([

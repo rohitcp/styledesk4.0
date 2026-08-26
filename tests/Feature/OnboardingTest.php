@@ -610,23 +610,49 @@ class OnboardingTest extends TestCase
         $this->assertFalse($onboarding->services_completed, 'Skipping must stay distinguishable from completing.');
     }
 
-    public function test_services_are_stored_in_minor_units(): void
+    public function test_a_price_is_stored_per_currency_in_minor_units(): void
     {
         $user = $this->user();
         $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
         $user->tenant_id = $tenant->getTenantKey();
         $user->save();
+        $tenant->syncCurrencies(['USD', 'CAD']);
         TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'services']);
 
         $this->actingAs($user->fresh())
             ->post('http://styledesk.test/onboarding/services', [
                 'services' => [
-                    ['name' => 'Cut', 'duration_minutes' => 45, 'price' => '38.50'],
+                    ['name' => 'Cut', 'duration_minutes' => 45, 'prices' => ['USD' => '38.50', 'CAD' => '52.00']],
                 ],
             ])
             ->assertRedirect(route('onboarding.team'));
 
-        $this->assertSame(3850, Service::first()->price_minor);
+        $service = Service::first();
+
+        $this->assertSame(3850, $service->prices->firstWhere('currency_code', 'USD')->price_minor);
+        $this->assertSame(5200, $service->prices->firstWhere('currency_code', 'CAD')->price_minor);
+    }
+
+    public function test_a_price_in_a_currency_the_tenant_has_not_enabled_is_ignored(): void
+    {
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+        $tenant->syncCurrencies(['USD']);
+        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'services']);
+
+        $this->actingAs($user->fresh())
+            ->post('http://styledesk.test/onboarding/services', [
+                'services' => [
+                    ['name' => 'Cut', 'duration_minutes' => 45, 'prices' => ['USD' => '38.50', 'JPY' => '9999']],
+                ],
+            ])
+            ->assertRedirect(route('onboarding.team'));
+
+        $codes = Service::first()->prices->pluck('currency_code')->all();
+
+        $this->assertSame(['USD'], $codes, 'Only currencies the tenant enabled may be priced.');
     }
 
     public function test_the_owner_is_seeded_as_staff(): void

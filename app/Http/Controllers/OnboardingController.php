@@ -290,8 +290,21 @@ class OnboardingController extends Controller
 
     public function services(Request $request): View
     {
+        $tenant = $request->user()->tenant;
+
         return view('onboarding.services', [
-            'services' => $request->user()->tenant->services()->with('category')->get(),
+            'services' => $tenant->services()->with(['category', 'prices'])->get(),
+            /**
+             * One price field per configured currency, primary first. Read
+             * from the tenant rather than chosen here — the service screen must
+             * not be able to decide which currency is primary.
+             */
+            'tenantCurrencies' => $tenant->currencies->map(fn ($c) => [
+                'code' => $c->currency_code,
+                'label' => config('currencies.currencies.'.$c->currency_code.'.name', $c->currency_code),
+                'symbol' => config('currencies.currencies.'.$c->currency_code.'.symbol', ''),
+                'primary' => $c->currency_code === $tenant->currency_code,
+            ])->values()->all(),
             'categories' => ServiceCategory::assignable()->get(['id', 'name']),
             'canCreateCategory' => $request->user()->can('create', ServiceCategory::class),
             'progress' => $this->progress('services'),
@@ -320,7 +333,11 @@ class OnboardingController extends Controller
                 },
             ],
             'services.*.duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
-            'services.*.price' => ['nullable', 'numeric', 'min:0'],
+            'services.*.prices' => ['nullable', 'array'],
+            // Keys are validated against the tenant's own currencies, so a
+            // crafted form cannot price a service in a currency the business
+            // has not enabled.
+            'services.*.prices.*' => ['nullable', 'numeric', 'min:0'],
             'services.*.description' => ['nullable', 'string', 'max:2000'],
             'services.*.online_booking_enabled' => ['nullable'],
             'services.*.taxable' => ['nullable'],
@@ -332,18 +349,24 @@ class OnboardingController extends Controller
         DB::transaction(function () use ($tenant, $data) {
             $tenant->services()->delete();
 
+            $allowedCurrencies = $tenant->currencies->pluck('currency_code')->all();
+
             foreach ($data['services'] ?? [] as $row) {
-                Service::create([
+                $service = Service::create([
                     'name' => $row['name'],
                     'service_category_id' => $row['service_category_id'] ?? null,
                     'duration_minutes' => $row['duration_minutes'],
-                    // Minor units: round once here, never do float maths later.
-                    'price_minor' => (int) round(((float) ($row['price'] ?? 0)) * 100),
                     'description' => $row['description'] ?? null,
                     'online_booking_enabled' => (bool) ($row['online_booking_enabled'] ?? false),
                     'taxable' => (bool) ($row['taxable'] ?? false),
                     'color' => $row['color'] ?? null,
                 ]);
+
+                $service->syncPrices(
+                    collect($row['prices'] ?? [])
+                        ->only($allowedCurrencies)
+                        ->all()
+                );
             }
 
             $this->onboardingFor($tenant)->update([
