@@ -29,7 +29,39 @@ Route::get('/', function () {
 | Feature routes (dashboard, bookings, clients, services, staff) get added
 | to this group as each module is specified and built.
 */
-Route::middleware(['auth', 'tenant.user'])->group(function () {
+/*
+| Onboarding.
+|
+| Sits inside auth + tenant.user but outside the `onboarded` gate, which is
+| what stops it redirecting to itself. tenant.user lets a tenant-less user
+| through precisely so step 1 stays reachable before a tenant exists.
+*/
+Route::middleware(['auth', 'tenant.user', 'not-onboarded'])
+    ->prefix('onboarding')
+    ->name('onboarding.')
+    ->controller(App\Http\Controllers\OnboardingController::class)
+    ->group(function () {
+        Route::get('business', 'business')->name('business');
+        Route::post('business', 'storeBusiness')->name('business.store');
+
+        Route::get('location', 'location')->name('location');
+        Route::post('location', 'storeLocation')->name('location.store');
+
+        Route::get('services', 'services')->name('services');
+        Route::post('services', 'storeServices')->name('services.store');
+
+        Route::get('team', 'team')->name('team');
+        Route::post('team', 'storeTeam')->name('team.store');
+
+        Route::get('booking', 'booking')->name('booking');
+        Route::post('booking', 'storeBooking')->name('booking.store');
+
+        Route::get('complete', 'complete')->name('complete');
+
+        Route::post('skip/{step}', 'skip')->name('skip');
+    });
+
+Route::middleware(['auth', 'tenant.user', 'onboarded'])->group(function () {
     /**
      * Placeholder landing page, and the end-to-end check that the stack is
      * wired: it renders only if auth, tenant-from-user resolution, the Blade

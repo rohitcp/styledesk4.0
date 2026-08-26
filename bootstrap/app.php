@@ -28,6 +28,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.subdomain' => InitializeTenancyBySubdomain::class,
             'tenant.user' => \App\Http\Middleware\InitializeTenancyFromUser::class,
             'tenant.central-only' => PreventAccessFromCentralDomains::class,
+
+            // The two halves of the onboarding gate. Together they form a
+            // closed loop: an unfinished account cannot reach the app, and a
+            // finished one cannot re-enter the wizard by typing the URL.
+            'onboarded' => \App\Http\Middleware\EnsureOnboardingIsComplete::class,
+            'not-onboarded' => \App\Http\Middleware\RedirectIfOnboarded::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * Keeps half-set-up accounts out of the application.
+ *
+ * A user with no tenant has not finished step 1, so there is nothing for the
+ * app to show them — every tenant-scoped query would come back empty. They are
+ * sent to the step they left off at, which is read from the database rather
+ * than from the browser.
+ */
+class EnsureOnboardingIsComplete
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return $next($request);
+        }
+
+        if ($user->tenant_id === null) {
+            return redirect()->route('onboarding.business');
+        }
+
+        $onboarding = $user->tenant?->onboarding;
+
+        if ($onboarding !== null && ! $onboarding->isComplete()) {
+            return redirect()->route('onboarding.'.$onboarding->current_step);
+        }
+
+        return $next($request);
+    }
+}

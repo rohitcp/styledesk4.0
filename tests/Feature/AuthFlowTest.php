@@ -36,7 +36,7 @@ class AuthFlowTest extends TestCase
             ->assertSee($expected);
     }
 
-    public function test_a_user_can_register_and_land_on_the_dashboard(): void
+    public function test_a_new_user_is_registered_and_sent_into_onboarding(): void
     {
         $this->post('http://styledesk.test/register', [
             'first_name' => 'Rohit',
@@ -49,13 +49,15 @@ class AuthFlowTest extends TestCase
 
         $this->assertAuthenticated();
 
-        // A brand-new account has no business yet, so the dashboard must still
-        // render rather than blowing up on a null tenant. The account cluster
-        // is JS-rendered from this server-supplied boot payload.
+        // A brand-new account has no business yet, so the app is not reachable:
+        // every tenant-scoped query would come back empty. The onboarding gate
+        // sends them to step 1 instead.
         $this->get('http://styledesk.test/dashboard')
+            ->assertRedirect(route('onboarding.business'));
+
+        $this->get('http://styledesk.test/onboarding/business')
             ->assertOk()
-            ->assertSee('Rohit Philip')
-            ->assertSee('No business yet');
+            ->assertSee('Tell us about your business');
     }
 
     public function test_dashboard_shows_the_tenant_resolved_from_the_user(): void

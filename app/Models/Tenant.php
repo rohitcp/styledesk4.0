@@ -46,6 +46,12 @@ class Tenant extends BaseTenant
             'name',
             'slug',
             'status',
+            'business_phone',
+            'business_phone_country',
+            'business_email',
+            'website',
+            'logo_path',
+            'currency',
         ];
     }
 
@@ -58,6 +64,31 @@ class Tenant extends BaseTenant
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function onboarding(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(TenantOnboarding::class);
+    }
+
+    public function locations(): HasMany
+    {
+        return $this->hasMany(Location::class);
+    }
+
+    public function services(): HasMany
+    {
+        return $this->hasMany(Service::class);
+    }
+
+    public function staff(): HasMany
+    {
+        return $this->hasMany(Staff::class);
+    }
+
+    public function bookingSettings(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(BookingSettings::class);
     }
 
     /**
