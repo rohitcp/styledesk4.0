@@ -30,5 +30,12 @@ Route::get('/', function () {
 | to this group as each module is specified and built.
 */
 Route::middleware(['auth', 'tenant.user'])->group(function () {
-    //
+    /**
+     * Placeholder landing page, and the end-to-end check that the stack is
+     * wired: it renders only if auth, tenant-from-user resolution, the Blade
+     * layout, Vite and the Vue island mount are all working.
+     *
+     * Replace with the real dashboard once that module is specified.
+     */
+    Route::view('/dashboard', 'dashboard')->name('dashboard');
 });

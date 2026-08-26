@@ -29,6 +29,26 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        /**
+         * Fortify is used headless: it owns the auth logic, we own the views.
+         *
+         * config/fortify.php keeps 'views' => true, so Fortify registers the
+         * GET routes but resolves each page through these callbacks. Without
+         * them the route exists and then fails at render time with
+         * "Target [Laravel\Fortify\Contracts\RegisterViewResponse] is not
+         * instantiable" — a 500, not a 404, which is what makes it confusing.
+         *
+         * These are deliberately plain forms built from the styledesk_ CSS
+         * layer. They are placeholders for the prototype's login.html /
+         * signup.html designs, not a substitute for porting them.
+         */
+        Fortify::loginView(fn () => view('auth.login'));
+        Fortify::registerView(fn () => view('auth.register'));
+        Fortify::requestPasswordResetLinkView(fn () => view('auth.forgot-password'));
+        Fortify::resetPasswordView(fn (Request $request) => view('auth.reset-password', ['request' => $request]));
+        Fortify::confirmPasswordView(fn () => view('auth.confirm-password'));
+        Fortify::twoFactorChallengeView(fn () => view('auth.two-factor-challenge'));
+
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
