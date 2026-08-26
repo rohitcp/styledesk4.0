@@ -4,7 +4,7 @@
 
 @section('content')
   <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
-    <div class="max-w-[1180px]">
+    <div class="max-w-[760px]">
 
       @php
           $opts = config('business_profile');
@@ -69,9 +69,11 @@
         @csrf
         @method('PATCH')
 
-        <div class="grid gap-5 lg:grid-cols-2 items-start">
-
-          <div class="space-y-5">
+        {{-- One column. A form is read and filled top to bottom, so two
+             columns ask the eye to jump back up for the second half — and the
+             sections are not independent: Regional settings and Business
+             defaults only make sense after the identity above them. --}}
+        <div class="space-y-5">
 
             <section class="bg-white border border-line rounded-card p-5 space-y-4">
               <h2 class="text-[15px] font-semibold text-head">Business information</h2>
@@ -190,9 +192,6 @@
                 Manage locations →
               </a>
             </section>
-          </div>
-
-          <div class="space-y-5">
 
             <section class="bg-white border border-line rounded-card p-5 space-y-4">
               <h2 class="text-[15px] font-semibold text-head">Regional settings</h2>
@@ -258,7 +257,6 @@
                 </div>
               @endforeach
             </section>
-          </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-3 mt-6">
