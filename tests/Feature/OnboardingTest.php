@@ -18,6 +18,16 @@ class OnboardingTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Business types are reference data the business step renders from. Without
+     * them the chip loop has nothing to iterate and a broken chip template
+     * would sail past every render assertion.
+     */
+    private function seedBusinessTypes(): void
+    {
+        $this->seed(\Database\Seeders\BusinessTypeSeeder::class);
+    }
+
     private function user(): User
     {
         $user = User::create([
@@ -67,6 +77,8 @@ class OnboardingTest extends TestCase
         $user->save();
         TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'business']);
 
+        $this->seedBusinessTypes();
+
         $expected = [
             'business' => 'Tell us about your business',
             'location' => 'Where do you operate?',
@@ -81,6 +93,14 @@ class OnboardingTest extends TestCase
                 ->assertOk()
                 ->assertSee($heading);
         }
+
+        // The chips must actually render, not silently skip on empty data.
+        $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/onboarding/business')
+            ->assertSee('Hair Salon')
+            ->assertSee('Eyebrows &amp; Lashes', false);
+    
+
     }
 
     public function test_a_user_without_a_business_is_sent_to_step_one(): void

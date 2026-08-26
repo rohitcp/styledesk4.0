@@ -13,3 +13,77 @@
    Add app-only rules below. Do not redefine an sd-* component here — change
    it in the prototype stylesheet so both surfaces stay in sync.
    ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------
+   Business-type chips (onboarding step 1)
+   ------------------------------------------------------------------
+   The prototype builds these as role="checkbox" buttons driven by JS. Here
+   they wrap a real <input type="checkbox">, so the group posts natively,
+   works without JavaScript, and gets keyboard and screen-reader behaviour
+   from the browser rather than from ARIA attributes we would have to
+   maintain. The input is visually hidden, and these rules paint the checked
+   state from it — which is why they are plain CSS rather than Tailwind peer-*
+   utilities: those only reach siblings, not the nested box and icon.
+   ------------------------------------------------------------------ */
+
+.styledesk_typechip {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    height: 3rem;
+    padding: 0 0.875rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.styledesk_typechip:hover {
+    background: #f3f4f6;
+}
+
+.styledesk_typechip__box {
+    height: 1.125rem;
+    width: 1.125rem;
+    border-radius: 0.25rem;
+    border: 1px solid #d1d5db;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.styledesk_typechip__check {
+    opacity: 0;
+}
+
+.styledesk_typechip__icon {
+    color: #6b7280;
+}
+
+.styledesk_typechip__input:checked + .styledesk_typechip {
+    border-color: var(--sd-brand);
+    box-shadow: 0 0 0 1px var(--sd-brand);
+    font-weight: 500;
+}
+
+.styledesk_typechip__input:checked + .styledesk_typechip .styledesk_typechip__box {
+    background: var(--sd-brand);
+    border-color: var(--sd-brand);
+}
+
+.styledesk_typechip__input:checked + .styledesk_typechip .styledesk_typechip__check {
+    opacity: 1;
+}
+
+.styledesk_typechip__input:checked + .styledesk_typechip .styledesk_typechip__icon {
+    color: var(--sd-brand);
+}
+
+/* Focus must be visible on the chip, since the input itself is hidden. */
+.styledesk_typechip__input:focus-visible + .styledesk_typechip {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 2px;
+}

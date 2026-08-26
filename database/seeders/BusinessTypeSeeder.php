@@ -18,16 +18,29 @@ class BusinessTypeSeeder extends Seeder
 {
     public function run(): void
     {
+        // Name => icon key, matching the set drawn in the types-icon partial.
         $types = [
-            'Hair Salon', 'Barber Shop', 'Nail Salon', 'Spa', 'Massage',
-            'Med Spa', 'Esthetics', 'Eyebrows & Lashes', 'Makeup Studio',
-            'Tattoo Studio', 'Wellness', 'Fitness', 'Other',
+            'Hair Salon' => 'scissors',
+            'Barber Shop' => 'comb',
+            'Nail Salon' => 'polish',
+            'Spa' => 'leaf',
+            'Massage' => 'hand',
+            'Med Spa' => 'medical',
+            'Esthetics' => 'sparkle',
+            'Eyebrows & Lashes' => 'eye',
+            'Makeup Studio' => 'lipstick',
+            'Tattoo Studio' => 'pen',
+            'Wellness' => 'heart',
+            'Fitness' => 'dumbbell',
+            'Other' => 'dots',
         ];
 
-        foreach ($types as $i => $name) {
+        $i = 0;
+
+        foreach ($types as $name => $icon) {
             BusinessType::updateOrCreate(
                 ['slug' => Str::slug($name)],
-                ['name' => $name, 'sort_order' => $i, 'is_active' => true]
+                ['name' => $name, 'icon' => $icon, 'sort_order' => $i++, 'is_active' => true]
             );
         }
     }
