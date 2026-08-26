@@ -34,7 +34,18 @@ class TenancyServiceProvider extends ServiceProvider
              * Tenant provisioning work (seeding default services, business
              * hours, roles) hangs off this event instead.
              */
-            Events\TenantCreated::class => [],
+            Events\TenantCreated::class => [
+                /**
+                 * Copy the default service categories in as tenant-owned rows.
+                 *
+                 * Hung off the event rather than done inline in onboarding so
+                 * a tenant created any other way — a seeder, an import, a
+                 * console command — gets them too.
+                 */
+                function (Events\TenantCreated $event) {
+                    \App\Models\ServiceCategory::seedDefaultsFor($event->tenant);
+                },
+            ],
             Events\SavingTenant::class => [],
             Events\TenantSaved::class => [],
             Events\UpdatingTenant::class => [],
@@ -126,6 +137,7 @@ class TenancyServiceProvider extends ServiceProvider
         $tenancyMiddleware = [
             // Even higher priority than the initialization middleware
             Middleware\PreventAccessFromCentralDomains::class,
+
 
             Middleware\InitializeTenancyByDomain::class,
             Middleware\InitializeTenancyBySubdomain::class,

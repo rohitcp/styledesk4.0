@@ -8,6 +8,7 @@ use App\Models\BookingSettings;
 use App\Models\BusinessType;
 use App\Models\Location;
 use App\Models\Service;
+use App\Models\ServiceCategory;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
@@ -263,7 +264,9 @@ class OnboardingController extends Controller
     public function services(Request $request): View
     {
         return view('onboarding.services', [
-            'services' => $request->user()->tenant->services()->get(),
+            'services' => $request->user()->tenant->services()->with('category')->get(),
+            'categories' => ServiceCategory::assignable()->get(['id', 'name']),
+            'canCreateCategory' => $request->user()->can('create', ServiceCategory::class),
             'progress' => $this->progress('services'),
             'previousStep' => $this->previousStep('services'),
         ]);
@@ -276,7 +279,19 @@ class OnboardingController extends Controller
         $data = $request->validate([
             'services' => ['array'],
             'services.*.name' => ['required', 'string', 'max:255'],
-            'services.*.category' => ['nullable', 'string', 'max:255'],
+            /**
+             * Validated against the tenant-scoped model, not a bare exists
+             * rule: an id belonging to another tenant must fail here rather
+             * than link a service across the boundary.
+             */
+            'services.*.service_category_id' => [
+                'nullable', 'integer',
+                function (string $attribute, $value, \Closure $fail) {
+                    if ($value !== null && ! ServiceCategory::whereKey($value)->exists()) {
+                        $fail('That service category is not available.');
+                    }
+                },
+            ],
             'services.*.duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'services.*.price' => ['nullable', 'numeric', 'min:0'],
             'services.*.description' => ['nullable', 'string', 'max:2000'],
@@ -285,7 +300,7 @@ class OnboardingController extends Controller
             'services.*.color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
 
-        $data = InputCase::apply($data, ['services.*.name', 'services.*.category']);
+        $data = InputCase::apply($data, ['services.*.name']);
 
         DB::transaction(function () use ($tenant, $data) {
             $tenant->services()->delete();
@@ -293,7 +308,7 @@ class OnboardingController extends Controller
             foreach ($data['services'] ?? [] as $row) {
                 Service::create([
                     'name' => $row['name'],
-                    'category' => $row['category'] ?? null,
+                    'service_category_id' => $row['service_category_id'] ?? null,
                     'duration_minutes' => $row['duration_minutes'],
                     // Minor units: round once here, never do float maths later.
                     'price_minor' => (int) round(((float) ($row['price'] ?? 0)) * 100),

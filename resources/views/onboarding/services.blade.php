@@ -15,12 +15,14 @@
             $repeaterProps = [
                 'initial' => $services->map(fn ($s) => [
                     'name' => $s->name,
-                    'category' => $s->category,
+                    'service_category_id' => $s->service_category_id,
                     'duration_minutes' => $s->duration_minutes,
                     'price' => $s->priceFormatted(),
                     'description' => $s->description,
                 ])->all(),
                 'currency' => auth()->user()->tenant->currency,
+                'categories' => $categories,
+                'canCreateCategory' => $canCreateCategory,
             ];
         @endphp
 
@@ -45,6 +47,16 @@
                 I'll do this later
             </button>
         </form>
+
+        {{-- A link, not a form post: going back only re-reads an earlier step,
+             so it must not submit anything or move current_step. --}}
+        @if ($previousStep)
+            <a href="{{ route('onboarding.'.$previousStep) }}"
+               class="inline-flex items-center gap-1.5 h-11 px-4 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Back
+            </a>
+        @endif
     </div>
 @endsection
 

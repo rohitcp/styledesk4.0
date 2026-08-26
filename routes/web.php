@@ -50,6 +50,25 @@ Route::middleware('auth')->patch('email/verify/update', [App\Http\Controllers\Ve
     ->name('verification.email.update');
 
 /*
+| Service categories.
+|
+| Inside the authenticated, tenant-resolved group but outside the `onboarded`
+| gate, because the service step of onboarding needs them before setup is
+| finished. Authorisation is per-action in the controller.
+*/
+Route::middleware(['auth', 'verified', 'tenant.user'])
+    ->prefix('service-categories')
+    ->name('service-categories.')
+    ->controller(App\Http\Controllers\ServiceCategoryController::class)
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::post('reorder', 'reorder')->name('reorder');
+        Route::patch('{serviceCategory}', 'update')->name('update');
+        Route::delete('{serviceCategory}', 'destroy')->name('destroy');
+    });
+
+/*
 | Onboarding.
 |
 | Sits inside auth + tenant.user but outside the `onboarded` gate, which is

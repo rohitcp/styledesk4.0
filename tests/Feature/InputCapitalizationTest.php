@@ -129,14 +129,13 @@ class InputCapitalizationTest extends TestCase
 
         $this->actingAs($user->fresh())->post('http://styledesk.test/onboarding/services', [
             'services' => [
-                ['name' => "women's cut", 'category' => 'hair', 'duration_minutes' => 45, 'price' => '38.50'],
+                ['name' => "women's cut", 'duration_minutes' => 45, 'price' => '38.50'],
             ],
         ]);
 
         $service = Service::first();
 
         $this->assertSame("Women's cut", $service->name);
-        $this->assertSame('Hair', $service->category);
     }
 
     private function verifiedUser(): User

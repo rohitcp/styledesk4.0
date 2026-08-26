@@ -1,5 +1,7 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
+import CategoryPicker from './CategoryPicker.vue';
+import { setCategories } from '../stores/categories';
 import { onboarding } from '../stores/onboarding';
 
 /**
@@ -13,11 +15,16 @@ import { onboarding } from '../stores/onboarding';
 const props = defineProps({
     initial: { type: Array, default: () => [] },
     currency: { type: String, default: 'USD' },
+    categories: { type: Array, default: () => [] },
+    canCreateCategory: { type: Boolean, default: false },
 });
+
+// Seed the shared store once; every picker on the page reads from it.
+onMounted(() => setCategories(props.categories));
 
 const blank = () => ({
     name: '',
-    category: '',
+    service_category_id: null,
     duration_minutes: 30,
     price: '',
     description: '',
@@ -56,9 +63,11 @@ function remove(index) {
                            type="text" class="sd-input" data-capitalize placeholder="Women's Cut &amp; Finish">
                 </div>
                 <div>
-                    <label :for="`service-category-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Category</label>
-                    <input :id="`service-category-${i}`" v-model="row.category" :name="`services[${i}][category]`"
-                           type="text" class="sd-input" data-capitalize placeholder="Hair">
+                    <label class="block text-[13px] font-medium text-ink mb-1.5">Service category</label>
+                    <CategoryPicker v-model="row.service_category_id"
+                                    :name="`services[${i}][service_category_id]`"
+                                    :can-create="canCreateCategory"
+                                    :aria-label="`Service ${i + 1} category`" />
                 </div>
                 <div>
                     <label :for="`service-duration-${i}`" class="block text-[13px] font-medium text-ink mb-1.5">Duration (minutes)</label>

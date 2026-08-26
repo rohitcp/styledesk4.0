@@ -24,6 +24,27 @@ return Application::configure(basePath: dirname(__DIR__))
          * `tenant.central-only` guards routes that must never be reachable on
          * a tenant subdomain (billing, account deletion, the admin console).
          */
+        /**
+         * Tenancy must resolve after the user is authenticated but before
+         * route models are bound.
+         *
+         * Before Authenticate, $request->user() is null and the middleware
+         * passes through without initialising tenancy — every tenant-scoped
+         * create then fails because BelongsToTenant has no tenant to stamp.
+         * After SubstituteBindings, route models are resolved with no tenant
+         * scope, so {serviceCategory} binds another tenant's row.
+         *
+         * appendToPriorityList pins it between the two.
+         */
+        $middleware->appendToPriorityList(
+            // The priority list names the CONTRACT, not the Authenticate
+            // class. Passing the class matches nothing and silently appends to
+            // the end of the list — behind SubstituteBindings, which is the
+            // opposite of what is wanted.
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            \App\Http\Middleware\InitializeTenancyFromUser::class,
+        );
+
         $middleware->alias([
             'tenant.subdomain' => InitializeTenancyBySubdomain::class,
             'tenant.user' => \App\Http\Middleware\InitializeTenancyFromUser::class,
