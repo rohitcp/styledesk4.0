@@ -25,6 +25,23 @@ export default defineConfig({
             },
         }),
     ],
+    build: {
+        /**
+         * Keep previously built bundles on disk.
+         *
+         * Vite clears the output directory on every build, so each rebuild
+         * deletes the hashed files any already-open page is still pointing at.
+         * That page's JavaScript then 404s and nothing mounts — no Vue, no
+         * pickers, clicks that do nothing and not a single request reaching
+         * the server, which is indistinguishable from a broken feature.
+         *
+         * Old files are dead weight, cleared with `rm -rf public/build`, and
+         * that is a far better trade than a class of failure that looks like a
+         * bug in whatever you happened to be using at the time.
+         */
+        emptyOutDir: false,
+    },
+
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],
