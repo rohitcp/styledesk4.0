@@ -1,0 +1,253 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Location;
+use App\Models\Service;
+use App\Models\Staff;
+use App\Models\Tenant;
+use App\Models\TenantOnboarding;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+/**
+ * Acceptance criteria for the staff directory (§3).
+ */
+class StaffDirectoryTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Tenant $tenant;
+
+    private Location $location;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::create(['name' => 'Acme Salon', 'slug' => 'acme']);
+
+        TenantOnboarding::create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'current_step' => 'complete', 'completed_at' => now(),
+        ]);
+
+        $this->location = Location::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Riverside', 'address_line1' => '1 River St', 'city' => 'Austin',
+            'postal_code' => '78701', 'country' => 'US', 'timezone' => 'America/Chicago',
+            'is_primary' => true,
+        ]);
+    }
+
+    private function owner(): User
+    {
+        $user = User::create([
+            'first_name' => 'Nadia', 'last_name' => 'Khan',
+            'email' => 'owner@styledesk.test', 'password' => 'Str0ng!Pass',
+        ]);
+        $user->markEmailAsVerified();
+        $user->forceFill(['tenant_id' => $this->tenant->getTenantKey()])->save();
+        $this->tenant->forceFill(['owner_user_id' => $user->id])->save();
+
+        return $user->fresh();
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function staff(string $first, string $role, array $attributes = []): Staff
+    {
+        return Staff::withoutGlobalScopes()->create(array_merge([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'first_name' => $first, 'last_name' => 'Person',
+            'email' => mb_strtolower($first).'@acme.test',
+            'role' => $role,
+            'location_id' => $this->location->id,
+        ], $attributes));
+    }
+
+    private function names(string $query = ''): array
+    {
+        $content = $this->get('http://styledesk.test/settings/staff?'.$query)->getContent();
+
+        preg_match_all('/font-semibold text-head truncate">([^<]+)</', $content, $matches);
+
+        return array_map('trim', $matches[1]);
+    }
+
+    public function test_the_directory_lists_the_business_s_staff(): void
+    {
+        $this->actingAs($this->owner());
+
+        $this->staff('Amara', 'manager', ['job_title' => 'Salon Manager']);
+        $this->staff('Priya', 'service-provider', ['job_title' => 'Senior Colourist']);
+
+        $response = $this->get('http://styledesk.test/settings/staff');
+
+        $response->assertOk()
+            ->assertSee('Amara Person')
+            ->assertSee('Salon Manager')
+            ->assertSee('Manager')
+            ->assertSee('Riverside');
+    }
+
+    public function test_a_preferred_name_is_what_the_directory_shows(): void
+    {
+        $this->actingAs($this->owner());
+        $this->staff('Katherine', 'manager', ['preferred_name' => 'Kit']);
+
+        // The name someone asked to be called wins wherever a human reads it.
+        $this->assertSame(['Kit Person'], $this->names());
+    }
+
+    public function test_search_covers_name_email_phone_and_job_title(): void
+    {
+        $this->actingAs($this->owner());
+
+        $this->staff('Amara', 'manager', ['job_title' => 'Salon Manager', 'phone' => '+15125550001']);
+        $this->staff('Priya', 'service-provider', ['job_title' => 'Senior Colourist']);
+
+        $this->assertSame(['Amara Person'], $this->names('search=amara'));
+        $this->assertSame(['Priya Person'], $this->names('search=colourist'));
+        $this->assertSame(['Amara Person'], $this->names('search=5550001'));
+        $this->assertSame(['Priya Person'], $this->names('search=priya@acme.test'));
+        $this->assertSame([], $this->names('search=nobody'));
+    }
+
+    /**
+     * An ungrouped chain of orWhere in the search would turn every filter
+     * applied alongside it into a suggestion.
+     */
+    public function test_search_narrows_a_filter_rather_than_widening_it(): void
+    {
+        $this->actingAs($this->owner());
+
+        $this->staff('Amara', 'manager');
+        $this->staff('Priya', 'service-provider');
+
+        $this->assertSame([], $this->names('role=manager&search=priya'));
+        $this->assertSame(['Amara Person'], $this->names('role=manager&search=amara'));
+    }
+
+    public function test_the_directory_filters_by_role_location_provider_and_employment(): void
+    {
+        $this->actingAs($this->owner());
+
+        $this->staff('Amara', 'manager', ['provider_type' => 'manager-provider', 'employment_type' => 'full-time']);
+        $this->staff('Sam', 'front-desk', ['provider_type' => 'front-desk', 'employment_type' => 'part-time']);
+
+        $this->assertSame(['Amara Person'], $this->names('role=manager'));
+        $this->assertSame(['Sam Person'], $this->names('provider_type=front-desk'));
+        $this->assertSame(['Sam Person'], $this->names('employment_type=part-time'));
+        $this->assertSame(['Amara Person', 'Sam Person'], $this->names('location='.$this->location->id));
+    }
+
+    public function test_the_directory_filters_by_service(): void
+    {
+        $this->actingAs($this->owner());
+
+        $colour = Service::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(), 'name' => 'Balayage', 'duration_minutes' => 150,
+        ]);
+
+        $priya = $this->staff('Priya', 'service-provider');
+        $this->staff('Sam', 'front-desk');
+
+        $priya->services()->sync([$colour->id]);
+
+        $this->assertSame(['Priya Person'], $this->names('service='.$colour->id));
+    }
+
+    public function test_status_is_derived_from_the_record_rather_than_stored(): void
+    {
+        $this->actingAs($this->owner());
+
+        $active = $this->staff('Amara', 'manager');
+        $inactive = $this->staff('Sam', 'front-desk', ['is_active' => false]);
+        $invited = $this->staff('Priya', 'service-provider', ['invite_status' => 'sent']);
+        $archived = $this->staff('Jo', 'service-provider', ['archived_at' => now()]);
+
+        $this->assertSame('active', $active->status());
+        $this->assertSame('inactive', $inactive->status());
+        $this->assertSame('pending-invite', $invited->status());
+
+        // Archived outranks everything: the row is history, whatever else it
+        // still says about itself.
+        $this->assertSame('archived', $archived->status());
+
+        $this->assertSame(['Amara Person'], $this->names('status=active'));
+        $this->assertSame(['Priya Person'], $this->names('status=pending-invite'));
+    }
+
+    public function test_an_unknown_filter_value_is_ignored_rather_than_applied(): void
+    {
+        $this->actingAs($this->owner());
+        $this->staff('Amara', 'manager');
+
+        // A status the config does not define would otherwise filter the list
+        // down to nothing and look like an empty business.
+        $this->assertSame(['Amara Person'], $this->names('status=invented&sort=nonsense'));
+    }
+
+    public function test_sorting_changes_the_order(): void
+    {
+        $this->actingAs($this->owner());
+
+        $this->staff('Zara', 'manager');
+        $this->travel(1)->minute();
+        $this->staff('Amara', 'manager');
+
+        $this->assertSame(['Amara Person', 'Zara Person'], $this->names('sort=name'));
+        $this->assertSame(['Amara Person', 'Zara Person'], $this->names('sort=recent'));
+    }
+
+    // ---------------------------------------------------------- access
+
+    /**
+     * §1 makes both modules administrative, and §24 gives Service Provider no
+     * App Settings access at all. Their "staff directory — view basic
+     * information" is seeing colleagues while booking, not this screen.
+     */
+    public function test_a_service_provider_cannot_open_the_settings_directory(): void
+    {
+        $this->owner();
+
+        $user = User::create([
+            'first_name' => 'Priya', 'last_name' => 'Nair',
+            'email' => 'priya@acme.test', 'password' => 'Str0ng!Pass',
+        ]);
+        $user->markEmailAsVerified();
+        $user->forceFill(['tenant_id' => $this->tenant->getTenantKey()])->save();
+        $this->staff('Priya', 'service-provider', ['user_id' => $user->id, 'email' => 'priya@acme.test']);
+
+        $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/settings/staff')
+            ->assertRedirect(route('dashboard'));
+    }
+
+    public function test_another_business_s_staff_never_appear(): void
+    {
+        $this->actingAs($this->owner());
+        $this->staff('Amara', 'manager');
+
+        $rival = Tenant::create(['name' => 'Rival Spa', 'slug' => 'rival']);
+        Staff::withoutGlobalScopes()->create([
+            'tenant_id' => $rival->getTenantKey(),
+            'first_name' => 'Rival', 'last_name' => 'Person',
+            'email' => 'rival@rival.test', 'role' => 'manager',
+        ]);
+
+        $this->assertSame(['Amara Person'], $this->names());
+    }
+
+    public function test_the_settings_card_opens_the_directory(): void
+    {
+        $this->actingAs($this->owner());
+
+        $this->get('http://styledesk.test/settings')
+            ->assertOk()
+            ->assertSee(route('settings.staff.index'), false)
+            // No longer "Coming soon": the card is a live link now.
+            ->assertSee('Staff Members');
+    }
+}

@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,6 +23,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        /**
+         * Stamp the last login, for the staff directory's "Last login" column.
+         *
+         * On the event rather than in a controller: Fortify, a passkey, a
+         * remembered session and a future SSO all arrive at Login, and only
+         * one of them goes through a form this application owns.
+         */
+        Event::listen(Login::class, function (Login $event) {
+            $event->user->forceFill(['last_login_at' => now()])->saveQuietly();
+        });
+
         /**
          * Verification email wording, per the specification.
          *

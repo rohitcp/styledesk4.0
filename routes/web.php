@@ -6,6 +6,7 @@ use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
+use App\Http\Controllers\Settings\StaffController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
 use App\Http\Controllers\VerificationEmailController;
@@ -165,6 +166,17 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
     ->name('settings.')
     ->group(function () {
         Route::get('/', AppSettingsController::class)->name('index');
+
+        /*
+        | Staff members — the directory, per §3.
+        |
+        | Authorisation is per-action through StaffPolicy rather than a
+        | blanket role check: a service provider may open the directory to see
+        | their own record, and the policy is what makes "see their own" and
+        | "see everyone" different answers to the same route.
+        */
+        Route::get('staff', [StaffController::class, 'index'])
+            ->name('staff.index');
 
         /*
         | Business — company-level information.

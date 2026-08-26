@@ -118,6 +118,8 @@ return [
                     'name' => 'Staff Members',
                     'description' => 'Team members, locations, working hours, service access and employment status.',
                     'icon' => 'users',
+                    'route' => 'settings.staff.index',
+                    'status' => 'active',
                     'keywords' => ['team', 'employee', 'stylist', 'therapist', 'provider', 'staff', 'hours', 'availability'],
                     // Counts are resolved at render time by the controller;
                     // the config says which to show, not what they are.
