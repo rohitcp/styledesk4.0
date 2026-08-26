@@ -41,24 +41,50 @@ class AcceptTeamInvitation
 
             $serviceIds = $invitation->services()->pluck('services.id');
 
-            $staff = Staff::withoutGlobalScopes()->updateOrCreate(
+            /**
+             * Complete the staff record the invitation was created for, if
+             * there is one.
+             *
+             * §15 is explicit that accepting must not produce a duplicate. The
+             * link is the staff_id on the invitation rather than a match on
+             * email, because the address is exactly what changes between being
+             * invited and accepting — someone invited at a personal address
+             * who signs up with their work one would otherwise arrive as a
+             * second person with the same name.
+             */
+            $existing = $invitation->staff_id
+                ? Staff::withoutGlobalScopes()->find($invitation->staff_id)
+                : null;
+
+            $staff = $existing ?? Staff::withoutGlobalScopes()->firstOrNew(
                 ['tenant_id' => $invitation->tenant_id, 'user_id' => $user->id],
-                [
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                    'email' => $user->email,
-                    'role' => $invitation->role,
-                    'job_title' => $invitation->job_title,
-                    'location_id' => $invitation->location_id,
-                    /**
-                     * Being assigned services is what makes someone bookable,
-                     * whatever their role — a manager who also cuts hair is
-                     * ordinary. The role only decides the default for someone
-                     * who was assigned none.
-                     */
-                    'provides_services' => $serviceIds->isNotEmpty() || $invitation->role === 'service-provider',
-                ]
             );
+
+            $staff->fill([
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'role' => $invitation->role,
+                'job_title' => $invitation->job_title,
+                'location_id' => $invitation->location_id,
+                /**
+                 * Being assigned services is what makes someone bookable,
+                 * whatever their role — a manager who also cuts hair is
+                 * ordinary. The role only decides the default for someone
+                 * who was assigned none.
+                 */
+                'provides_services' => $serviceIds->isNotEmpty() || $invitation->role === 'service-provider',
+
+                // The person is in: the record stops being a pending
+                // invitation and becomes a member of the team.
+                'invite_status' => 'accepted',
+                'membership_status' => 'active',
+                'is_active' => true,
+            ]);
+
+            $staff->tenant_id = $invitation->tenant_id;
+            $staff->user_id = $user->id;
+            $staff->save();
 
             $staff->services()->sync($serviceIds->all());
 

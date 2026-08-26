@@ -4,14 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Staff\CreateStaffMember;
 use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\Role;
 use App\Models\Service;
 use App\Models\Staff;
+use App\Support\RoleGuard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * The staff directory, §3.
@@ -55,6 +62,150 @@ class StaffController extends Controller
             'activeCount' => $staff->filter(fn (Staff $m) => $m->status() === 'active')->count(),
             'pendingCount' => $staff->filter(fn (Staff $m) => $m->status() === 'pending-invite')->count(),
         ]);
+    }
+
+    public function create(Request $request): View
+    {
+        $this->authorize('create', Staff::class);
+
+        return view('settings.staff.create', $this->formData($request));
+    }
+
+    public function store(Request $request, CreateStaffMember $creator): RedirectResponse
+    {
+        $this->authorize('create', Staff::class);
+
+        $tenant = $request->user()->tenant;
+        $data = $this->validated($request);
+
+        /**
+         * §32: nobody hands out authority they do not hold.
+         *
+         * Checked here as well as in the form, because the form only decides
+         * which options are drawn and this is a POST body.
+         */
+        $role = Role::query()->find($data['role_id']);
+
+        if ($role === null || ! RoleGuard::canAssignRole($request->user(), $role)) {
+            throw ValidationException::withMessages([
+                'role_id' => 'You cannot assign that role.',
+            ]);
+        }
+
+        if ($request->hasFile('avatar')) {
+            $data['avatar_path'] = $request->file('avatar')->store('staff', 'brand');
+        }
+
+        try {
+            $staff = $creator->create($tenant, $request->user(), $data);
+        } catch (Throwable $e) {
+            Log::error('Staff member could not be created.', [
+                'tenant_id' => $tenant->getTenantKey(),
+                'user_id' => $request->user()->id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return back()->withInput()->with('toast', [
+                'type' => 'danger',
+                'message' => "We couldn't add that staff member right now. Please try again.",
+            ]);
+        }
+
+        $message = $staff->invite_status === 'sent'
+            ? $staff->displayName().' was added and an invitation is on its way to '.$staff->email.'.'
+            : $staff->displayName().' was added to your team.';
+
+        return redirect()
+            ->route('settings.staff.index')
+            ->with('toast', ['type' => 'success', 'message' => $message]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validated(Request $request): array
+    {
+        $data = $request->validate([
+            'first_name' => ['required', 'string', 'max:100'],
+            'middle_name' => ['nullable', 'string', 'max:100'],
+            'last_name' => ['required', 'string', 'max:100'],
+            'preferred_name' => ['nullable', 'string', 'max:100'],
+            'pronouns' => ['nullable', 'string', 'max:40'],
+            'job_title' => ['nullable', 'string', 'max:100'],
+            'employee_ref' => ['nullable', 'string', 'max:40'],
+            'bio' => ['nullable', 'string', 'max:2000'],
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
+
+            /**
+             * Unique within the business, not globally.
+             *
+             * The same person can work for two salons on the platform, so a
+             * global unique would stop the second one adding them at all.
+             */
+            'email' => [
+                'required', 'email', 'max:255',
+                Rule::unique('staff', 'email')->where('tenant_id', $request->user()->tenant_id),
+            ],
+            'work_email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:32'],
+            'phone_type' => ['nullable', Rule::in(array_keys(config('staff.phone_types')))],
+            'secondary_phone' => ['nullable', 'string', 'max:32'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'emergency_contact_name' => ['nullable', 'string', 'max:120'],
+            'emergency_contact_phone' => ['nullable', 'string', 'max:32'],
+            'emergency_contact_relationship' => ['nullable', 'string', 'max:60'],
+
+            'role_id' => ['required', Rule::exists('roles', 'id')->where('tenant_id', $request->user()->tenant_id)],
+            'location_id' => [
+                'nullable',
+                Rule::exists('locations', 'id')->where('tenant_id', $request->user()->tenant_id),
+            ],
+            'employment_type' => ['nullable', Rule::in(array_keys(config('staff.employment_types')))],
+            'provider_type' => ['nullable', Rule::in(array_keys(config('staff.provider_types')))],
+            'specialities' => ['nullable', 'array'],
+            'specialities.*' => [Rule::in(array_keys(config('staff.specialities')))],
+            'service_ids' => ['nullable', 'array'],
+            'service_ids.*' => [
+                Rule::exists('services', 'id')->where('tenant_id', $request->user()->tenant_id),
+            ],
+
+            'account_status' => ['required', Rule::in(['active', 'inactive'])],
+            'login_enabled' => ['nullable', 'boolean'],
+            'send_invitation' => ['nullable', 'boolean'],
+            'invitation_message' => ['nullable', 'string', 'max:500'],
+        ], [
+            'first_name.required' => 'First name is required.',
+            'last_name.required' => 'Last name is required.',
+            'email.required' => 'Primary email is required.',
+            'email.email' => 'Enter a valid email address.',
+            'email.unique' => 'Someone on your team already uses that email address.',
+            'work_email.email' => 'Enter a valid email address.',
+            'role_id.required' => 'Choose a role for this person.',
+            'avatar.max' => 'The profile image must be 2 MB or smaller.',
+        ]);
+
+        $data['login_enabled'] = $request->boolean('login_enabled');
+        $data['send_invitation'] = $request->boolean('send_invitation');
+
+        return $data;
+    }
+
+    /**
+     * Options both the create form and, later, the edit form need.
+     *
+     * @return array<string, mixed>
+     */
+    private function formData(Request $request): array
+    {
+        return [
+            // Only roles this user is allowed to hand out are offered, so the
+            // form cannot draw a choice the server will refuse.
+            'roles' => Role::query()->orderBy('display_order')->get()
+                ->filter(fn (Role $role) => RoleGuard::canAssignRole($request->user(), $role))
+                ->values(),
+            'locations' => Location::query()->orderByDesc('is_primary')->get(['id', 'name']),
+            'services' => Service::query()->orderBy('name')->get(['id', 'name']),
+        ];
     }
 
     /**

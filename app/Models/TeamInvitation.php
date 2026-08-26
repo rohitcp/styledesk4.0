@@ -89,6 +89,15 @@ class TeamInvitation extends Model
         return $this->belongsToMany(Service::class, 'service_team_invitation');
     }
 
+    /**
+     * The staff record this invitation completes, if it was created from the
+     * staff screen. Null for an invitation sent straight from onboarding.
+     */
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class);
+    }
+
     public function deliveries(): HasMany
     {
         return $this->hasMany(TeamInvitationDelivery::class);

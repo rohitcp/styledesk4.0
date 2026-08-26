@@ -175,8 +175,14 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
         | their own record, and the policy is what makes "see their own" and
         | "see everyone" different answers to the same route.
         */
-        Route::get('staff', [StaffController::class, 'index'])
-            ->name('staff.index');
+        Route::controller(StaffController::class)
+            ->prefix('staff')
+            ->name('staff.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+            });
 
         /*
         | Business — company-level information.

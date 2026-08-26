@@ -28,13 +28,10 @@
           </a>
 
           @can('create', App\Models\Staff::class)
-            {{-- Adding staff is the next stage; the button is present but
-                 disabled rather than absent, so the page does not imply the
-                 directory is all there will ever be. --}}
-            <button type="button" disabled title="Adding staff is coming next"
-                    class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand text-white text-[13px] font-semibold opacity-45 cursor-not-allowed">
+            <a href="{{ route('settings.staff.create') }}"
+               class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
               Add staff member
-            </button>
+            </a>
           @endcan
         </div>
       </div>
