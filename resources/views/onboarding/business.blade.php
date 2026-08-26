@@ -92,6 +92,7 @@
                     'languages' => $languages,
                     'selectedCountries' => $selectedCountries,
                     'selectedCurrencies' => $selectedCurrencies,
+                    'selectedLanguages' => $selectedLanguages,
                     'selectedLanguage' => old('default_language', $tenant?->default_language ?? config('currencies.default_language')),
                 ];
             @endphp
@@ -99,7 +100,9 @@
             <div data-vue-component="OperatingMarkets" data-props='@json($marketProps)'></div>
 
             @error('country_codes')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
-            @error('currency_codes')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+            @error('currency_code')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+            @error('secondary_currency_codes.*')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+            @error('secondary_language_codes.*')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
             @error('default_language')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
 
             <div class="grid sm:grid-cols-2 gap-x-5 gap-y-5">

@@ -207,10 +207,10 @@ class OnboardingTest extends TestCase
                 'slug' => 'bella',
                 'business_phone' => '555 0100',
             'country_codes' => ['US'],
-            'currency_codes' => ['USD'],
+            'currency_code' => 'USD',
             'default_language' => 'en',
                 'country_codes' => ['US'],
-                'currency_codes' => ['USD'],
+                'currency_code' => 'USD',
                 'default_language' => 'en',
                 'business_email' => 'hello@bella.test',
                 'business_type_ids' => [$type->id],
@@ -246,10 +246,10 @@ class OnboardingTest extends TestCase
                 'name' => 'bella beauty studio',
                 'business_phone' => '555 0100',
             'country_codes' => ['US'],
-            'currency_codes' => ['USD'],
+            'currency_code' => 'USD',
             'default_language' => 'en',
                 'country_codes' => ['US'],
-                'currency_codes' => ['USD'],
+                'currency_code' => 'USD',
                 'default_language' => 'en',
                 'business_type_ids' => [$type->id],
             ])
@@ -272,10 +272,10 @@ class OnboardingTest extends TestCase
                 'name' => 'BELLA MedSpa',
                 'business_phone' => '555 0100',
             'country_codes' => ['US'],
-            'currency_codes' => ['USD'],
+            'currency_code' => 'USD',
             'default_language' => 'en',
                 'country_codes' => ['US'],
-                'currency_codes' => ['USD'],
+                'currency_code' => 'USD',
                 'default_language' => 'en',
                 'business_type_ids' => [$type->id],
             ]);
@@ -305,7 +305,7 @@ class OnboardingTest extends TestCase
             'name' => 'Bella Beauty Studio',
             'business_phone' => '555 0100',
             'country_codes' => ['US'],
-            'currency_codes' => ['USD'],
+            'currency_code' => 'USD',
             'default_language' => 'en',
             'business_type_ids' => [$type->id],
         ])->assertRedirect(route('onboarding.location'));
@@ -361,7 +361,7 @@ class OnboardingTest extends TestCase
                 'business_phone' => '555 0100',
                 'business_type_ids' => [$type->id],
                 'country_codes' => ['IN'],
-                'currency_codes' => ['INR'],
+                'currency_code' => 'INR',
                 'default_language' => 'ar',
             ])
             ->assertRedirect(route('onboarding.location'));
@@ -384,7 +384,8 @@ class OnboardingTest extends TestCase
                 'business_phone' => '555 0100',
                 'business_type_ids' => [$type->id],
                 'country_codes' => ['IN', 'AE', 'GB'],
-                'currency_codes' => ['INR', 'AED'],
+                'currency_code' => 'INR',
+                'secondary_currency_codes' => ['AED'],
                 'default_language' => 'ar',
             ])
             ->assertRedirect(route('onboarding.location'));
@@ -398,6 +399,64 @@ class OnboardingTest extends TestCase
         // what every later screen filters and prices on.
         $this->assertSame('IN', $tenant->country_code);
         $this->assertSame('INR', $tenant->currency_code);
+    }
+
+    public function test_secondary_currencies_and_languages_are_stored_after_the_primary(): void
+    {
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $user = $this->user();
+
+        $this->actingAs($user)
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Cross Border Salon',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+                'country_codes' => ['US'],
+                'currency_code' => 'USD',
+                'secondary_currency_codes' => ['CAD', 'EUR'],
+                'default_language' => 'en',
+                'secondary_language_codes' => ['es', 'fr'],
+            ])
+            ->assertRedirect(route('onboarding.location'));
+
+        $tenant = $user->fresh()->tenant;
+
+        $this->assertSame(['USD', 'CAD', 'EUR'], $tenant->currencies->pluck('currency_code')->all());
+        $this->assertSame(['en', 'es', 'fr'], $tenant->languages->pluck('language_code')->all());
+
+        // The mirrored columns are the primary, and they are what the rest of
+        // the app reads.
+        $this->assertSame('USD', $tenant->currency_code);
+        $this->assertSame('en', $tenant->default_language);
+    }
+
+    public function test_a_secondary_may_not_repeat_the_primary(): void
+    {
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Acme',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+                'country_codes' => ['US'],
+                'currency_code' => 'USD',
+                'secondary_currency_codes' => ['USD'],
+                'default_language' => 'en',
+                'secondary_language_codes' => ['en'],
+            ])
+            ->assertSessionHasErrors(['secondary_currency_codes.0', 'secondary_language_codes.0']);
+    }
+
+    public function test_a_repeated_secondary_is_stored_once(): void
+    {
+        // Belt and braces behind the validation: even if a stale form posts a
+        // duplicate, the stored list must not contain it twice.
+        $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
+
+        $tenant->syncCurrencies(['USD', 'CAD', 'CAD', 'USD']);
+
+        $this->assertSame(['USD', 'CAD'], $tenant->fresh()->currencies->pluck('currency_code')->all());
     }
 
     public function test_reordering_changes_which_country_is_primary(): void
@@ -435,10 +494,10 @@ class OnboardingTest extends TestCase
                 'business_phone' => '555 0100',
                 'business_type_ids' => [$type->id],
                 'country_codes' => [],
-                'currency_codes' => [],
+                'currency_code' => '',
                 'default_language' => 'en',
             ])
-            ->assertSessionHasErrors(['country_codes', 'currency_codes']);
+            ->assertSessionHasErrors(['country_codes', 'currency_code']);
     }
 
     public function test_country_currency_and_language_are_required(): void
@@ -451,7 +510,7 @@ class OnboardingTest extends TestCase
                 'business_phone' => '555 0100',
                 'business_type_ids' => [$type->id],
             ])
-            ->assertSessionHasErrors(['country_codes', 'currency_codes', 'default_language']);
+            ->assertSessionHasErrors(['country_codes', 'currency_code', 'default_language']);
     }
 
     public function test_only_supported_languages_are_accepted(): void
@@ -464,7 +523,7 @@ class OnboardingTest extends TestCase
                 'business_phone' => '555 0100',
                 'business_type_ids' => [$type->id],
                 'country_codes' => ['US'],
-                'currency_codes' => ['USD'],
+                'currency_code' => 'USD',
                 'default_language' => 'zz',
             ])
             ->assertSessionHasErrors('default_language');
@@ -508,10 +567,10 @@ class OnboardingTest extends TestCase
                 'name' => 'Bella Beauty Studio',
                 'business_phone' => '555 0100',
             'country_codes' => ['US'],
-            'currency_codes' => ['USD'],
+            'currency_code' => 'USD',
             'default_language' => 'en',
                 'country_codes' => ['US'],
-                'currency_codes' => ['USD'],
+                'currency_code' => 'USD',
                 'default_language' => 'en',
             ])
             ->assertSessionHasErrors('business_type_ids');
@@ -528,10 +587,10 @@ class OnboardingTest extends TestCase
                 'name' => 'Bella Beauty Studio',
                 'business_phone' => '555 0100',
             'country_codes' => ['US'],
-            'currency_codes' => ['USD'],
+            'currency_code' => 'USD',
             'default_language' => 'en',
                 'country_codes' => ['US'],
-                'currency_codes' => ['USD'],
+                'currency_code' => 'USD',
                 'default_language' => 'en',
                 'business_type_ids' => [$type->id],
             ])
@@ -551,10 +610,10 @@ class OnboardingTest extends TestCase
                 'name' => 'Bella Beauty Studio',
                 'business_phone' => '555 0100',
             'country_codes' => ['US'],
-            'currency_codes' => ['USD'],
+            'currency_code' => 'USD',
             'default_language' => 'en',
                 'country_codes' => ['US'],
-                'currency_codes' => ['USD'],
+                'currency_code' => 'USD',
                 'default_language' => 'en',
                 'business_type_ids' => [$type->id],
             ])

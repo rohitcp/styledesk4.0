@@ -330,3 +330,19 @@
 }
 
 .styledesk_addlink:hover { text-decoration: underline; }
+
+/* ------------------------------------------------------------------
+   Selected chips
+   ------------------------------------------------------------------
+   Equal-width chips that fill the row, however wide the field is. A fixed
+   three columns was right while these fields were full width; at half width it
+   squashed "INR — Indian Rupee" down to "I..". auto-fill with a minimum keeps
+   every chip the same width and readable, fitting three across when there is
+   room and two when there is not.
+   ------------------------------------------------------------------ */
+
+.styledesk_chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.375rem;
+}

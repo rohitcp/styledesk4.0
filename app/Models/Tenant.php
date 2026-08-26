@@ -156,6 +156,36 @@ class Tenant extends BaseTenant
         $this->forceFill(['currency_code' => $codes[0]])->save();
     }
 
+    public function languages(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TenantLanguage::class)->orderBy('position');
+    }
+
+    /**
+     * Replace the supported languages, first entry primary.
+     *
+     * @param  array<int, string>  $codes
+     */
+    public function syncLanguages(array $codes): void
+    {
+        $codes = array_values(array_unique(array_filter($codes)));
+
+        if ($codes === []) {
+            return;
+        }
+
+        $this->languages()->whereNotIn('language_code', $codes)->delete();
+
+        foreach ($codes as $position => $code) {
+            TenantLanguage::withoutGlobalScopes()->updateOrCreate(
+                ['tenant_id' => $this->getTenantKey(), 'language_code' => $code],
+                ['position' => $position]
+            );
+        }
+
+        $this->forceFill(['default_language' => $codes[0]])->save();
+    }
+
     /**
      * The operating country, with a fallback.
      *

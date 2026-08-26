@@ -83,7 +83,7 @@ class InputCapitalizationTest extends TestCase
             'name' => 'bella beauty studio',
             'business_phone' => '555 0100',
             'country_codes' => ['US'],
-            'currency_codes' => ['USD'],
+            'currency_code' => 'USD',
             'default_language' => 'en',
             'business_type_ids' => [$type->id],
         ]);
@@ -102,7 +102,7 @@ class InputCapitalizationTest extends TestCase
             'name' => 'bella beauty studio',
             'business_phone' => '555 0100',
             'country_codes' => ['US'],
-            'currency_codes' => ['USD'],
+            'currency_code' => 'USD',
             'default_language' => 'en',
             'business_type_ids' => [$type->id],
         ]);

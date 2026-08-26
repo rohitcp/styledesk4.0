@@ -21,13 +21,32 @@ const props = defineProps({
     languages: { type: Object, default: () => ({}) },
     selectedCountries: { type: Array, default: () => [] },
     selectedCurrencies: { type: Array, default: () => [] },
+    selectedLanguages: { type: Array, default: () => [] },
     selectedLanguage: { type: String, default: 'en' },
 });
 
 const countries = ref(props.selectedCountries.length ? [...props.selectedCountries] : ['US']);
-const currencies = ref(props.selectedCurrencies.length ? [...props.selectedCurrencies] : ['USD']);
-// Held as an array so the same component can back it; only the first is used.
-const language = ref([props.selectedLanguage]);
+/**
+ * Primary and secondary are held apart, matching the fields.
+ *
+ * The stored list is one ordered set with the primary first; splitting it here
+ * and re-joining on submit keeps that single source of truth while letting the
+ * form say plainly which value is the default.
+ */
+const primaryCurrency = ref([props.selectedCurrencies[0] ?? 'USD']);
+const secondaryCurrencies = ref(props.selectedCurrencies.slice(1));
+
+const primaryLanguage = ref([props.selectedLanguages[0] ?? props.selectedLanguage ?? 'en']);
+const secondaryLanguages = ref(props.selectedLanguages.slice(1));
+
+// Promoting a value out of the secondaries must not leave it in both lists.
+watch(primaryCurrency, ([code]) => {
+    secondaryCurrencies.value = secondaryCurrencies.value.filter((c) => c !== code);
+});
+
+watch(primaryLanguage, ([code]) => {
+    secondaryLanguages.value = secondaryLanguages.value.filter((c) => c !== code);
+});
 
 // Whether the user has taken the currency list over. Once they have, the
 // country stops rewriting it — a business may well price in something other
@@ -36,7 +55,7 @@ const language = ref([props.selectedLanguage]);
 const currencyTouched = ref(false);
 const hint = ref('Suggested from your primary country — change it if you price differently.');
 
-watch(currencies, () => { currencyTouched.value = true; }, { deep: true });
+watch(primaryCurrency, () => { currencyTouched.value = true; }, { deep: true });
 
 function onPrimaryCountry(code) {
     // Announced for anything outside Vue that follows the country — today the
@@ -45,13 +64,20 @@ function onPrimaryCountry(code) {
 
     const suggested = props.countryCurrencies[code];
 
-    if (!suggested || currencyTouched.value || currencies.value[0] === suggested) {
+    if (!suggested || currencyTouched.value || primaryCurrency.value[0] === suggested) {
         return;
     }
 
-    // Promote rather than replace: a business operating in two countries
-    // usually wants both currencies, not the second one discarded.
-    currencies.value = [suggested, ...currencies.value.filter((c) => c !== suggested)];
+    // The old primary is kept as a secondary rather than discarded: a business
+    // operating in two countries usually trades in both.
+    const previous = primaryCurrency.value[0];
+
+    primaryCurrency.value = [suggested];
+
+    if (previous && previous !== suggested && !secondaryCurrencies.value.includes(previous)) {
+        secondaryCurrencies.value = [previous, ...secondaryCurrencies.value];
+    }
+
     currencyTouched.value = false;
     hint.value = 'Set from your primary country — change it if you price differently.';
 }
@@ -79,36 +105,63 @@ function onPrimaryCountry(code) {
 
         <!-- Each on its own row: the chips wrap as more are selected, and a
              half-width field turns three selections into three stacked lines. -->
-        <div>
+        <div class="grid sm:grid-cols-2 gap-x-5 gap-y-5">
             <div>
                 <label class="block text-[13px] font-medium text-ink mb-1.5">
-                    Currency <span class="text-danger" aria-hidden="true">*</span>
-                    <span class="font-normal text-faint ml-1">Select one or more</span>
+                    Primary currency <span class="text-danger" aria-hidden="true">*</span>
                 </label>
 
-                <MultiSelect v-model="currencies" :options="props.currencies" name="currency_codes"
-                             aria-label="Currencies"
-                             placeholder="Search or select currencies"
-                             search-placeholder="Search currency…"
-                             hint="The primary currency is what your services are priced in." />
+                <MultiSelect v-model="primaryCurrency" :options="props.currencies" name="currency_code" single
+                             aria-label="Primary currency"
+                             placeholder="Select a currency"
+                             search-placeholder="Search currency…" />
 
                 <p class="mt-1.5 text-[12px] text-sub">{{ hint }}</p>
             </div>
-        </div>
 
-        <div>
             <div>
                 <label class="block text-[13px] font-medium text-ink mb-1.5">
-                    Default language <span class="text-danger" aria-hidden="true">*</span>
+                    Secondary currencies <span class="font-normal text-faint ml-1">Optional</span>
                 </label>
 
-                <MultiSelect v-model="language" :options="languages" name="default_language" single
-                             aria-label="Default language"
+                <MultiSelect v-model="secondaryCurrencies" :options="props.currencies"
+                             name="secondary_currency_codes" :exclude="primaryCurrency" :show-primary="false"
+                             aria-label="Secondary currencies"
+                             placeholder="Select currencies…"
+                             search-placeholder="Search currency…" />
+
+                <p class="mt-1.5 text-[12px] text-sub">Additional currencies you price services in.</p>
+            </div>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-x-5 gap-y-5">
+            <div>
+                <label class="block text-[13px] font-medium text-ink mb-1.5">
+                    Primary language <span class="text-danger" aria-hidden="true">*</span>
+                </label>
+
+                <MultiSelect v-model="primaryLanguage" :options="languages" name="default_language" single
+                             aria-label="Primary language"
                              placeholder="Select a language"
                              search-placeholder="Search language…" />
 
                 <p class="mt-1.5 text-[12px] text-sub">Used for the app, booking page, emails and receipts.</p>
             </div>
+
+            <div>
+                <label class="block text-[13px] font-medium text-ink mb-1.5">
+                    Secondary languages <span class="font-normal text-faint ml-1">Optional</span>
+                </label>
+
+                <MultiSelect v-model="secondaryLanguages" :options="languages"
+                             name="secondary_language_codes" :exclude="primaryLanguage" :show-primary="false"
+                             aria-label="Secondary languages"
+                             placeholder="Select languages…"
+                             search-placeholder="Search language…" />
+
+                <p class="mt-1.5 text-[12px] text-sub">Other languages your clients can be served in.</p>
+            </div>
         </div>
+
     </div>
 </template>

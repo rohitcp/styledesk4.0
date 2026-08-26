@@ -76,6 +76,7 @@ class OnboardingController extends Controller
             'languages' => config('currencies.languages'),
             'selectedCountries' => $request->user()->tenant?->countries->pluck('country_code')->all() ?? [],
             'selectedCurrencies' => $request->user()->tenant?->currencies->pluck('currency_code')->all() ?? [],
+            'selectedLanguages' => $request->user()->tenant?->languages->pluck('language_code')->all() ?? [],
             'progress' => $this->progress('business'),
             'previousStep' => $this->previousStep('business'),
         ]);
@@ -102,9 +103,24 @@ class OnboardingController extends Controller
             // so an empty array is refused as clearly as a missing field.
             'country_codes' => ['required', 'array', 'min:1'],
             'country_codes.*' => [Rule::in(array_keys(config('locations.countries')))],
-            'currency_codes' => ['required', 'array', 'min:1'],
-            'currency_codes.*' => [Rule::in(array_keys(config('currencies.currencies')))],
+            /**
+             * Primary and secondary are separate fields, then composed into
+             * one ordered list. Validating them apart is what lets "the
+             * primary is required" and "a secondary may not repeat it" both be
+             * stated plainly.
+             */
+            'currency_code' => ['required', Rule::in(array_keys(config('currencies.currencies')))],
+            'secondary_currency_codes' => ['nullable', 'array'],
+            'secondary_currency_codes.*' => [
+                Rule::in(array_keys(config('currencies.currencies'))),
+                'different:currency_code',
+            ],
             'default_language' => ['required', 'string', Rule::in(array_keys(config('currencies.languages')))],
+            'secondary_language_codes' => ['nullable', 'array'],
+            'secondary_language_codes.*' => [
+                Rule::in(array_keys(config('currencies.languages'))),
+                'different:default_language',
+            ],
             'business_phone' => ['required', 'string', 'max:32'],
             'business_phone_country' => ['nullable', 'string', 'size:2'],
             'business_email' => ['nullable', 'email', 'max:255'],
@@ -168,7 +184,18 @@ class OnboardingController extends Controller
             // Both write their own mirrored primary, so country_code and
             // currency_code are set here rather than in $attributes.
             $tenant->syncCountries($data['country_codes']);
-            $tenant->syncCurrencies($data['currency_codes']);
+
+            // Primary first, then the rest. array_unique guards the case where
+            // a stale form posts the primary among the secondaries.
+            $tenant->syncCurrencies(array_merge(
+                [$data['currency_code']],
+                $data['secondary_currency_codes'] ?? []
+            ));
+
+            $tenant->syncLanguages(array_merge(
+                [$data['default_language']],
+                $data['secondary_language_codes'] ?? []
+            ));
 
             $this->onboardingFor($tenant)->update([
                 'business_completed' => true,

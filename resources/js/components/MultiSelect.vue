@@ -26,6 +26,21 @@ const props = defineProps({
      * only the selection rule differs.
      */
     single: { type: Boolean, default: false },
+    /**
+     * Values to hide from the list — the primary, when this is the matching
+     * secondary field. Filtering the options is what makes "the primary must
+     * not appear as a secondary" true by construction rather than by a
+     * validation message after the fact.
+     */
+    exclude: { type: Array, default: () => [] },
+    /**
+     * Whether the first entry is meaningfully "the primary".
+     *
+     * False on a secondary field, where the first chip is simply the first
+     * secondary — badging it Primary would claim the opposite of what the
+     * field means.
+     */
+    showPrimary: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update:modelValue', 'primary-changed']);
@@ -36,7 +51,11 @@ const query = ref('');
 const root = ref(null);
 const searchBox = ref(null);
 
-const entries = computed(() => Object.entries(props.options).map(([code, name]) => ({ code, name })));
+const entries = computed(() =>
+    Object.entries(props.options)
+        .filter(([code]) => !props.exclude.includes(code))
+        .map(([code, name]) => ({ code, name }))
+);
 
 const matches = computed(() => {
     const q = query.value.trim().toLowerCase();
@@ -146,13 +165,13 @@ onBeforeUnmount(() => {
                  wrapping flex: chips sized to their own text give ragged rows
                  that shift every time a selection changes, and "United Arab
                  Emirates" next to "Spain" reads as two different controls. -->
-            <span v-else class="styledesk_timepicker__value grid grid-cols-3 gap-1.5">
-                <span v-if="!selected.length" class="text-faint col-span-3">{{ placeholder }}</span>
+            <span v-else class="styledesk_timepicker__value styledesk_chips">
+                <span v-if="!selected.length" class="text-faint" style="grid-column: 1 / -1">{{ placeholder }}</span>
 
                 <span v-for="code in selected" :key="code"
                       class="flex items-center gap-1 h-7 min-w-0 pl-2.5 pr-1 rounded-md bg-sel text-ink text-[13px]">
                     <span class="truncate" :title="nameOf(code)">{{ nameOf(code) }}</span>
-                    <span v-if="code === primary"
+                    <span v-if="showPrimary && code === primary"
                           class="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-brand">Primary</span>
                     <span role="button" tabindex="0" aria-label="Remove"
                           class="ml-auto h-5 w-5 grid place-items-center shrink-0 rounded text-faint hover:text-danger hover:bg-hover"
@@ -186,7 +205,7 @@ onBeforeUnmount(() => {
                         </svg>
                     </span>
                     <span class="flex-1 text-left">{{ country.name }}</span>
-                    <span v-if="!single && isSelected(country.code) && country.code !== primary"
+                    <span v-if="!single && showPrimary && isSelected(country.code) && country.code !== primary"
                           role="button" tabindex="0" class="text-[11px] font-semibold text-link"
                           @click.stop="makePrimary(country.code)" @keydown.enter.stop="makePrimary(country.code)">
                         Make primary
