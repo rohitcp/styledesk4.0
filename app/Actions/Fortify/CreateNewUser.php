@@ -28,6 +28,11 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        // Normalized before validation so the unique check and the stored row
+        // agree; without it the same inbox can register twice under different
+        // casing and the unique index will not stop it.
+        $input['email'] = mb_strtolower(trim((string) ($input['email'] ?? '')));
+
         Validator::make($input, [
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
@@ -42,6 +47,8 @@ class CreateNewUser implements CreatesNewUsers
             'terms' => ['accepted'],
         ], [
             'terms.accepted' => 'You must accept the Terms of Service and Privacy Policy.',
+            // The sign-up view keys its "Log in instead" panel off this wording.
+            'email.unique' => 'An account already exists with this email address.',
         ])->validate();
 
         return User::create([

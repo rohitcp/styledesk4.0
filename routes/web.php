@@ -30,13 +30,21 @@ Route::get('/', function () {
 | to this group as each module is specified and built.
 */
 /*
+| Correcting a mistyped sign-up address. Sits behind auth but deliberately
+| outside the `verified` gate — the whole point is that this user cannot
+| verify yet.
+*/
+Route::middleware('auth')->patch('email/verify/update', [App\Http\Controllers\VerificationEmailController::class, 'update'])
+    ->name('verification.email.update');
+
+/*
 | Onboarding.
 |
 | Sits inside auth + tenant.user but outside the `onboarded` gate, which is
 | what stops it redirecting to itself. tenant.user lets a tenant-less user
 | through precisely so step 1 stays reachable before a tenant exists.
 */
-Route::middleware(['auth', 'tenant.user', 'not-onboarded'])
+Route::middleware(['auth', 'verified', 'tenant.user', 'not-onboarded'])
     ->prefix('onboarding')
     ->name('onboarding.')
     ->controller(App\Http\Controllers\OnboardingController::class)
@@ -61,7 +69,7 @@ Route::middleware(['auth', 'tenant.user', 'not-onboarded'])
         Route::post('skip/{step}', 'skip')->name('skip');
     });
 
-Route::middleware(['auth', 'tenant.user', 'onboarded'])->group(function () {
+Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(function () {
     /**
      * Placeholder landing page, and the end-to-end check that the stack is
      * wired: it renders only if auth, tenant-from-user resolution, the Blade

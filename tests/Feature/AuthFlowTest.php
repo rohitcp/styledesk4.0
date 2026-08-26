@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -23,7 +25,7 @@ class AuthFlowTest extends TestCase
     {
         return [
             'login' => ['/login', 'Log in to StyleDesk'],
-            'register' => ['/register', 'Create your StyleDesk account'],
+            'signup' => ['/signup', 'Create your StyleDesk account'],
             'forgot password' => ['/forgot-password', 'Reset your password'],
         ];
     }
@@ -38,26 +40,28 @@ class AuthFlowTest extends TestCase
 
     public function test_a_new_user_is_registered_and_sent_into_onboarding(): void
     {
-        $this->post('http://styledesk.test/register', [
+        $this->post('http://styledesk.test/signup', [
             'first_name' => 'Rohit',
             'last_name' => 'Philip',
             'email' => 'rohit@styledesk.test',
-            'password' => 'password1234',
-            'password_confirmation' => 'password1234',
+            'password' => 'Str0ng!Pass',
+            'password_confirmation' => 'Str0ng!Pass',
             'terms' => '1',
         ])->assertRedirect('/dashboard');
 
         $this->assertAuthenticated();
 
-        // A brand-new account has no business yet, so the app is not reachable:
-        // every tenant-scoped query would come back empty. The onboarding gate
-        // sends them to step 1 instead.
+        // Email verification comes before anything else: an unverified account
+        // cannot reach the app or the wizard.
         $this->get('http://styledesk.test/dashboard')
-            ->assertRedirect(route('onboarding.business'));
+            ->assertRedirect(route('verification.notice'));
 
         $this->get('http://styledesk.test/onboarding/business')
+            ->assertRedirect(route('verification.notice'));
+
+        $this->get('http://styledesk.test/email/verify')
             ->assertOk()
-            ->assertSee('Tell us about your business');
+            ->assertSee('Check your email');
     }
 
     public function test_dashboard_shows_the_tenant_resolved_from_the_user(): void
@@ -68,8 +72,9 @@ class AuthFlowTest extends TestCase
             'first_name' => 'Rohit',
             'last_name' => 'Philip',
             'email' => 'r@styledesk.test',
-            'password' => 'password1234',
+            'password' => 'Str0ng!Pass',
         ]);
+        $user->markEmailAsVerified();
         $user->tenant_id = $tenant->id;
         $user->save();
 
@@ -84,12 +89,12 @@ class AuthFlowTest extends TestCase
     {
         // The prototype makes this explicit rather than implied by pressing
         // the button, so an unticked box must fail rather than silently pass.
-        $this->post('http://styledesk.test/register', [
+        $this->post('http://styledesk.test/signup', [
             'first_name' => 'Rohit',
             'last_name' => 'Philip',
             'email' => 'noterms@styledesk.test',
-            'password' => 'password1234',
-            'password_confirmation' => 'password1234',
+            'password' => 'Str0ng!Pass',
+            'password_confirmation' => 'Str0ng!Pass',
         ])->assertSessionHasErrors('terms');
 
         $this->assertGuest();

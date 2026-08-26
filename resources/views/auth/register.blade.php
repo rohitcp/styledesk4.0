@@ -5,6 +5,23 @@
 @section('subheading', 'Set up your business and start managing bookings, clients, staff, and services.')
 
 @section('form')
+    {{-- Duplicate address. Shown instead of creating a second account, with a
+         way straight to the thing the user probably wanted. This only ever
+         appears for an address the visitor just typed, so it reveals nothing
+         they did not already supply. --}}
+    @if ($errors->has('email') && str_contains($errors->first('email'), 'already'))
+        <div class="mt-7 rounded-lg border border-danger bg-red-50/50 p-3.5" role="alert">
+            <p class="flex items-start gap-2 text-[13px] text-danger font-medium">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="mt-px shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v6M12 16.5v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                An account already exists with this email address.
+            </p>
+            <a href="{{ route('login') }}"
+               class="inline-flex items-center h-8 px-3 mt-2.5 ml-[23px] rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+                Log in instead
+            </a>
+        </div>
+    @endif
+
     <form id="signup" method="POST" action="{{ route('register.store') }}" class="mt-8 space-y-5">
         @csrf
 

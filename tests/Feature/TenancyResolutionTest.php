@@ -37,6 +37,7 @@ class TenancyResolutionTest extends TestCase
         $tenant = $this->tenant();
 
         $user = User::create(['first_name' => 'Rohit', 'last_name' => 'Philip', 'email' => 'r@styledesk.test', 'password' => 'secret123']);
+        $user->markEmailAsVerified();
         $user->tenant_id = $tenant->id;
         $user->save();
 

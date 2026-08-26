@@ -19,12 +19,20 @@ class OnboardingTest extends TestCase
 
     private function user(): User
     {
-        return User::create([
+        $user = User::create([
             'first_name' => 'Rohit',
             'last_name' => 'Philip',
             'email' => 'r@styledesk.test',
-            'password' => 'password1234',
+            'password' => 'Str0ng!Pass',
         ]);
+
+        // Set outside create(): email_verified_at is deliberately not
+        // mass-assignable, so passing it to create() is silently dropped.
+        // Verification is part of the minimum setup, so onboarding is
+        // unreachable without it.
+        $user->markEmailAsVerified();
+
+        return $user->fresh();
     }
 
     private function onboardedUser(): User

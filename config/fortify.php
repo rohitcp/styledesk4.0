@@ -114,6 +114,22 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Route Paths
+    |--------------------------------------------------------------------------
+    |
+    | The spec calls the entry page /signup, not Fortify's default /register.
+    | Overriding the path here keeps the route name (`register`) intact, so
+    | every route('register') reference and Fortify's own redirects keep
+    | working while the URL matches the specification.
+    |
+    */
+
+    'paths' => [
+        'register' => '/signup',
+    ],
+
     'limiters' => [
         'login' => 'login',
         'two-factor' => 'two-factor',
@@ -164,7 +180,7 @@ return [
     'features' => [
         Features::registration(),
         Features::resetPasswords(),
-        // Features::emailVerification(),
+        Features::emailVerification(),
         Features::updateProfileInformation(),
         Features::updatePasswords(),
         Features::twoFactorAuthentication([
