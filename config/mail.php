@@ -110,6 +110,18 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Support Address
+    |--------------------------------------------------------------------------
+    |
+    | Printed as the fallback contact in transactional emails. Separate from
+    | the "from" address, which is a no-reply sender nobody should write to.
+    |
+    */
+
+    'support_address' => env('MAIL_SUPPORT_ADDRESS', 'support@styledesk.app'),
+
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),

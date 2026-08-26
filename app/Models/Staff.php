@@ -34,6 +34,18 @@ class Staff extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * The one location this person works at, or null for all of them.
+     *
+     * Copied from the invitation on acceptance rather than read through it,
+     * because an invitation can be deleted and a staff member's location must
+     * outlive it.
+     */
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
+
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class, 'service_staff');

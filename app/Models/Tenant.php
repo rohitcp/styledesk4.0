@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Stancl\Tenancy\Database\Concerns\HasDomains;
 use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 
@@ -88,7 +91,7 @@ class Tenant extends BaseTenant
         return $this->hasMany(User::class);
     }
 
-    public function countries(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function countries(): HasMany
     {
         return $this->hasMany(TenantCountry::class)->orderBy('position');
     }
@@ -122,7 +125,7 @@ class Tenant extends BaseTenant
         $this->forceFill(['country_code' => $codes[0]])->save();
     }
 
-    public function currencies(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function currencies(): HasMany
     {
         return $this->hasMany(TenantCurrency::class)->orderBy('position');
     }
@@ -156,7 +159,7 @@ class Tenant extends BaseTenant
         $this->forceFill(['currency_code' => $codes[0]])->save();
     }
 
-    public function languages(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function languages(): HasMany
     {
         return $this->hasMany(TenantLanguage::class)->orderBy('position');
     }
@@ -205,12 +208,12 @@ class Tenant extends BaseTenant
         return config('currencies.currencies.'.$this->currency_code.'.symbol', (string) $this->currency_code);
     }
 
-    public function businessTypes(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function businessTypes(): BelongsToMany
     {
         return $this->belongsToMany(BusinessType::class);
     }
 
-    public function owner(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_user_id');
     }
@@ -230,7 +233,7 @@ class Tenant extends BaseTenant
         return max(0, (int) now()->startOfDay()->diffInDays($this->trial_ends_at->startOfDay(), false));
     }
 
-    public function onboarding(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function onboarding(): HasOne
     {
         return $this->hasOne(TenantOnboarding::class);
     }
@@ -245,12 +248,17 @@ class Tenant extends BaseTenant
         return $this->hasMany(Service::class);
     }
 
+    public function teamInvitations(): HasMany
+    {
+        return $this->hasMany(TeamInvitation::class);
+    }
+
     public function staff(): HasMany
     {
         return $this->hasMany(Staff::class);
     }
 
-    public function bookingSettings(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function bookingSettings(): HasOne
     {
         return $this->hasOne(BookingSettings::class);
     }

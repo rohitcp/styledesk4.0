@@ -30,6 +30,18 @@ class EnsureOnboardingIsComplete
             return redirect()->route('onboarding.business');
         }
 
+        /**
+         * Setup belongs to the owner.
+         *
+         * A colleague who accepted an invitation mid-setup has a tenant that
+         * is not finished, but the wizard edits the business's addresses,
+         * hours and services — pushing them into it would hand a new
+         * receptionist the business's configuration on their first visit.
+         */
+        if ($user->isNotTenantOwner()) {
+            return $next($request);
+        }
+
         $onboarding = $user->tenant?->onboarding;
 
         // Minimum setup, not full completion: services, team and booking are

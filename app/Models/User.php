@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -68,6 +68,22 @@ class User extends Authenticatable implements MustVerifyEmail
             ->where('tenant_id', $this->tenant_id)
             ->where('user_id', $this->id)
             ->value('role');
+    }
+
+    /**
+     * Whether this user is definitely somebody else's colleague.
+     *
+     * Phrased as a negative on purpose. `hasRole('owner')` answers "is the
+     * owner recorded as you", which is false both for a receptionist and for
+     * a tenant whose owner_user_id was never set — and those two must not be
+     * treated the same by the onboarding gates. This only returns true when
+     * there is an owner on record and it is somebody else.
+     */
+    public function isNotTenantOwner(): bool
+    {
+        $ownerId = $this->tenant?->owner_user_id;
+
+        return $ownerId !== null && $ownerId !== $this->id;
     }
 
     public function hasRole(string ...$roles): bool

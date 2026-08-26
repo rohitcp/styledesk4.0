@@ -18,7 +18,16 @@ class RedirectIfOnboarded
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $onboarding = $request->user()?->tenant?->onboarding;
+        $user = $request->user();
+
+        // Only the owner ever runs setup, so anyone else who reaches a wizard
+        // URL — usually a new member following a stale link — is sent to the
+        // app rather than into someone else's configuration.
+        if ($user?->isNotTenantOwner()) {
+            return redirect()->route('dashboard');
+        }
+
+        $onboarding = $user?->tenant?->onboarding;
 
         if ($onboarding !== null && $onboarding->isComplete()) {
             return redirect()->route('dashboard');

@@ -1,5 +1,13 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GettingStartedController;
+use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\ServiceCategoryController;
+use App\Http\Controllers\TeamInvitationController;
+use App\Http\Controllers\TeamInviteSignupController;
+use App\Http\Controllers\VerificationEmailController;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -37,7 +45,7 @@ Route::get('/', function () {
 | resolve the same tenant, so a business can share whichever address it
 | prefers. Deliberately outside auth: clients booking are not StyleDesk users.
 */
-Route::middleware(['tenant.route'])->get('book/{tenant}', function (App\Models\Tenant $tenant) {
+Route::middleware(['tenant.route'])->get('book/{tenant}', function (Tenant $tenant) {
     return 'Public booking site for '.$tenant->name.' ('.$tenant->getTenantKey().')';
 })->name('booking.path');
 
@@ -46,8 +54,48 @@ Route::middleware(['tenant.route'])->get('book/{tenant}', function (App\Models\T
 | outside the `verified` gate — the whole point is that this user cannot
 | verify yet.
 */
-Route::middleware('auth')->patch('email/verify/update', [App\Http\Controllers\VerificationEmailController::class, 'update'])
+Route::middleware('auth')->patch('email/verify/update', [VerificationEmailController::class, 'update'])
     ->name('verification.email.update');
+
+/*
+| Team invitations — the invited person's side.
+|
+| Outside auth and outside every tenancy middleware, deliberately: the visitor
+| has no account and no tenant to resolve from, and the token is the only thing
+| that says who they are and which business invited them. The tenant is read
+| off the invitation, never off the request, which is what stops a modified URL
+| reaching another business.
+|
+| Throttled because these routes are reachable by anyone with a link: without
+| it the show route is an oracle for guessing tokens at network speed.
+*/
+Route::middleware('throttle:20,1')
+    ->prefix('invite/team')
+    ->name('team-invite.')
+    ->controller(TeamInviteSignupController::class)
+    ->group(function () {
+        Route::get('{token}', 'show')->name('show');
+        Route::post('{token}/register', 'register')->name('register');
+        Route::post('{token}/login', 'login')->name('login');
+        Route::post('{token}/accept', 'accept')->middleware('auth')->name('accept');
+    });
+
+/*
+| Team invitations — the inviting business's side.
+|
+| Inside auth + tenant.user but outside the `onboarded` gate, because step 4 of
+| onboarding sends invitations before setup is finished. Authorisation is
+| per-action through TeamInvitationPolicy.
+*/
+Route::middleware(['auth', 'verified', 'tenant.user'])
+    ->prefix('team/invitations')
+    ->name('team-invitations.')
+    ->controller(TeamInvitationController::class)
+    ->group(function () {
+        Route::post('/', 'store')->name('store');
+        Route::post('{invitation}/resend', 'resend')->name('resend');
+        Route::delete('{invitation}', 'revoke')->name('revoke');
+    });
 
 /*
 | Service categories.
@@ -59,7 +107,7 @@ Route::middleware('auth')->patch('email/verify/update', [App\Http\Controllers\Ve
 Route::middleware(['auth', 'verified', 'tenant.user'])
     ->prefix('service-categories')
     ->name('service-categories.')
-    ->controller(App\Http\Controllers\ServiceCategoryController::class)
+    ->controller(ServiceCategoryController::class)
     ->group(function () {
         Route::get('/', 'index')->name('index');
         Route::post('/', 'store')->name('store');
@@ -78,7 +126,7 @@ Route::middleware(['auth', 'verified', 'tenant.user'])
 Route::middleware(['auth', 'verified', 'tenant.user', 'not-onboarded'])
     ->prefix('onboarding')
     ->name('onboarding.')
-    ->controller(App\Http\Controllers\OnboardingController::class)
+    ->controller(OnboardingController::class)
     ->group(function () {
         Route::get('business', 'business')->name('business');
         Route::post('business', 'storeBusiness')->name('business.store');
@@ -110,8 +158,8 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
      *
      * Replace with the real dashboard once that module is specified.
      */
-    Route::get('/dashboard', App\Http\Controllers\DashboardController::class)->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
-    Route::delete('getting-started', [App\Http\Controllers\GettingStartedController::class, 'destroy'])
+    Route::delete('getting-started', [GettingStartedController::class, 'destroy'])
         ->name('getting-started.dismiss');
 });
