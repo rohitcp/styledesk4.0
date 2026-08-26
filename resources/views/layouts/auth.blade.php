@@ -50,7 +50,12 @@
                 <span class="text-[18px] font-bold tracking-tight">StyleDesk</span>
             </a>
 
-            <h1 class="text-[28px] sm:text-[32px] font-bold text-head tracking-tight leading-[1.15]">@yield('heading')</h1>
+            {{-- Size is overridable because the headings differ in length:
+                 "Log in to StyleDesk" fits on one line at 32px in this 420px
+                 column, "Create your StyleDesk account" needs 462px and wraps.
+                 Pages with a long heading opt down rather than every heading
+                 shrinking to suit the longest. --}}
+            <h1 class="@yield('heading-class', 'text-[28px] sm:text-[32px]') font-bold text-head tracking-tight leading-[1.15]">@yield('heading')</h1>
             <p class="text-[15px] text-sub mt-3 leading-relaxed">@yield('subheading')</p>
 
             {{-- Server-side validation and status, in the prototype's alert styling. --}}

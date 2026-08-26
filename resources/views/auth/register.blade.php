@@ -2,6 +2,10 @@
 
 @section('title', 'Create your account')
 @section('heading', 'Create your StyleDesk account')
+{{-- Fits on one line: 402px of the 420px column at 28px, against 462px at 32px.
+     The base size still wraps on a narrow phone, which is correct — forcing one
+     line there would overflow the viewport instead. --}}
+@section('heading-class', 'text-[26px] sm:text-[28px]')
 @section('subheading', 'Set up your business and start managing bookings, clients, staff, and services.')
 
 @section('form')
