@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppSettingsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
@@ -148,6 +149,21 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'not-onboarded'])
         Route::post('logo', 'uploadLogo')->name('logo.upload');
 
         Route::post('skip/{step}', 'skip')->name('skip');
+    });
+
+/*
+| App Settings.
+|
+| An administrative module: Owner and Administrator only, enforced here rather
+| than by hiding the nav icon. Every future settings route belongs in this
+| group, so the permission comes with the address instead of having to be
+| remembered per controller.
+*/
+Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-settings'])
+    ->prefix('settings')
+    ->name('settings.')
+    ->group(function () {
+        Route::get('/', AppSettingsController::class)->name('index');
     });
 
 Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(function () {

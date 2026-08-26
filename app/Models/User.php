@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Middleware\EnsureCanManageSettings;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -84,6 +85,19 @@ class User extends Authenticatable implements MustVerifyEmail
         $ownerId = $this->tenant?->owner_user_id;
 
         return $ownerId !== null && $ownerId !== $this->id;
+    }
+
+    /**
+     * Whether this user may open App Settings.
+     *
+     * One method rather than a role list repeated in the middleware, the nav
+     * and the tests: those three drifting apart is exactly how a nav item
+     * ends up hidden from someone the backend still lets in, or shown to
+     * someone it does not.
+     */
+    public function canManageSettings(): bool
+    {
+        return $this->hasRole(...EnsureCanManageSettings::ROLES);
     }
 
     public function hasRole(string ...$roles): bool

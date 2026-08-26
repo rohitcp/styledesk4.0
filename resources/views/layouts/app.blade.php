@@ -198,9 +198,16 @@
           <x-icon name="circle-question" size="18" />
         </a>
 
-        <a href="#" data-pending-route="app-settings.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="App settings" aria-label="App settings">
-          <x-icon name="gear" size="18" />
-        </a>
+        {{-- Hidden from anyone who cannot open it. The route enforces the
+             same rule, so this is tidiness rather than the control: a manager
+             who guesses the URL is redirected, not shown a 403. --}}
+        @if (auth()->user()?->canManageSettings())
+          <a href="{{ route('settings.index') }}"
+             class="sd-navicon sd-tip hidden sm:grid @if (request()->routeIs('settings.*')) is-active @endif"
+             data-tip="App settings" aria-label="App settings">
+            <x-icon name="gear" size="18" />
+          </a>
+        @endif
         <div data-account-menu></div>
 
       </div>

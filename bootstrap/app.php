@@ -1,5 +1,11 @@
 <?php
 
+use App\Http\Middleware\EnsureCanManageSettings;
+use App\Http\Middleware\EnsureOnboardingIsComplete;
+use App\Http\Middleware\InitializeTenancyFromRoute;
+use App\Http\Middleware\InitializeTenancyFromUser;
+use App\Http\Middleware\RedirectIfOnboarded;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -41,21 +47,25 @@ return Application::configure(basePath: dirname(__DIR__))
             // class. Passing the class matches nothing and silently appends to
             // the end of the list — behind SubstituteBindings, which is the
             // opposite of what is wanted.
-            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
-            \App\Http\Middleware\InitializeTenancyFromUser::class,
+            AuthenticatesRequests::class,
+            InitializeTenancyFromUser::class,
         );
 
         $middleware->alias([
             'tenant.subdomain' => InitializeTenancyBySubdomain::class,
-            'tenant.user' => \App\Http\Middleware\InitializeTenancyFromUser::class,
+            'tenant.user' => InitializeTenancyFromUser::class,
             'tenant.central-only' => PreventAccessFromCentralDomains::class,
-            'tenant.route' => \App\Http\Middleware\InitializeTenancyFromRoute::class,
+            'tenant.route' => InitializeTenancyFromRoute::class,
 
             // The two halves of the onboarding gate. Together they form a
             // closed loop: an unfinished account cannot reach the app, and a
             // finished one cannot re-enter the wizard by typing the URL.
-            'onboarded' => \App\Http\Middleware\EnsureOnboardingIsComplete::class,
-            'not-onboarded' => \App\Http\Middleware\RedirectIfOnboarded::class,
+            // App Settings is Owner/Administrator only, enforced on the route
+            // rather than by hiding the nav icon.
+            'can-manage-settings' => EnsureCanManageSettings::class,
+
+            'onboarded' => EnsureOnboardingIsComplete::class,
+            'not-onboarded' => RedirectIfOnboarded::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

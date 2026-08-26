@@ -378,3 +378,79 @@
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: 0.375rem;
 }
+
+/* ------------------------------------------------------------------
+   App Settings directory
+   ------------------------------------------------------------------
+   Cards for the settings landing page. Written here rather than as
+   utilities because the hover, the disabled variant and the icon tile are
+   one component with three states, and spelling that out inline on every
+   card is where the states start to drift apart.
+   ------------------------------------------------------------------ */
+
+.styledesk_settinggrid {
+    display: grid;
+    /* Two or three across on a desktop, one on a phone. The cards carry a
+       full sentence of description, so they need real width to stay on two
+       lines — a four-across grid turns every one of them into a column of
+       broken words. */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.styledesk_settingcard {
+    display: flex;
+    gap: 0.875rem;
+    padding: 1rem;
+    border: 1px solid var(--sd-line, #e5e7eb);
+    border-radius: 10px;
+    background: #fff;
+    text-decoration: none;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+a.styledesk_settingcard:hover {
+    border-color: var(--sd-brand, #3d348b);
+    box-shadow: 0 2px 10px rgb(15 15 16 / 8%);
+}
+
+a.styledesk_settingcard:focus-visible {
+    outline: 2px solid var(--sd-brand, #3d348b);
+    outline-offset: 2px;
+}
+
+/* Not built yet. Muted rather than hidden: the section still tells you the
+   setting is coming, and nothing about it invites a click. */
+.styledesk_settingcard--soon {
+    background: #fafbfc;
+}
+
+.styledesk_settingcard--soon .styledesk_settingcard__icon,
+.styledesk_settingcard--soon .text-head {
+    opacity: 0.72;
+}
+
+.styledesk_settingcard__icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    height: 2.25rem;
+    width: 2.25rem;
+    border-radius: 8px;
+    background: var(--sd-sel, #eeecf7);
+    color: var(--sd-brand, #3d348b);
+}
+
+.styledesk_badge {
+    display: inline-flex;
+    align-items: center;
+    height: 1.25rem;
+    padding: 0 0.4rem;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.styledesk_badge--active { background: #dcfce7; color: #166534; }
+.styledesk_badge--setup  { background: #fef3c7; color: #92400e; }
+.styledesk_badge--soon   { background: #f1f2f4; color: #6b7280; }
