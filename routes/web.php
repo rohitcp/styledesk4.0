@@ -78,6 +78,8 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'not-onboarded'])
 
         Route::get('complete', 'complete')->name('complete');
 
+        Route::post('logo', 'uploadLogo')->name('logo.upload');
+
         Route::post('skip/{step}', 'skip')->name('skip');
     });
 

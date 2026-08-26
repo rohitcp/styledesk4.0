@@ -50,7 +50,7 @@
         <div class="flex items-center gap-3 px-4 py-3.5 border-b border-line">
             <span class="h-10 w-10 rounded-lg bg-brand text-white grid place-items-center shrink-0 overflow-hidden">
                 @if ($tenant->logo_path)
-                    <img src="{{ Storage::disk('public')->url($tenant->logo_path) }}" alt="" class="h-full w-full object-cover">
+                    <img src="{{ Storage::disk('brand')->url($tenant->logo_path) }}" alt="" class="h-full w-full object-cover">
                 @else
                     <svg width="20" height="20" viewBox="0 0 32 32" fill="currentColor"><path d="M6.5 21.5 L14 6 L18.5 6 L11 21.5 Z"/><path d="M14.5 21.5 L22 6 L26.5 6 L19 21.5 Z"/><rect x="4" y="24.6" width="24" height="3.6" rx="1.8"/></svg>
                 @endif

@@ -11,9 +11,11 @@ use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -101,7 +103,7 @@ class OnboardingController extends Controller
         ]);
 
         $attributes = [
-            'name' => $data['name'],
+            'name' => $this->capitalizeName($data['name']),
             'slug' => $this->resolveSlug($data['slug'] ?? null, $data['name'], $tenantId),
             'business_phone' => $data['business_phone'] ?? null,
             'business_phone_country' => $data['business_phone_country'] ?? null,
@@ -110,7 +112,11 @@ class OnboardingController extends Controller
         ];
 
         if ($request->hasFile('logo')) {
-            $attributes['logo_path'] = $request->file('logo')->store('logos', 'public');
+            // No-JavaScript path: the file rides along with the form.
+            $attributes['logo_path'] = $request->file('logo')->store('logos', 'brand');
+        } elseif ($uploaded = $request->session()->pull('onboarding.logo_path')) {
+            // Already uploaded asynchronously by the progress-bar flow.
+            $attributes['logo_path'] = $uploaded;
         }
 
         DB::transaction(function () use ($user, $tenantId, $attributes, $data) {
@@ -149,6 +155,32 @@ class OnboardingController extends Controller
         });
 
         return redirect()->route('onboarding.location');
+    }
+
+    /**
+     * Asynchronous logo upload, so the progress row shows real progress.
+     *
+     * The prototype fakes this with FileReader events and says so; a real
+     * upload is the only way the percentage means anything. It also has to
+     * work before the tenant exists — this is step 1 — so the stored path is
+     * parked in the session and picked up when the business is saved.
+     */
+    public function uploadLogo(Request $request): JsonResponse
+    {
+        $request->validate([
+            'logo' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
+        ], [
+            'logo.max' => 'The logo must be 2 MB or smaller.',
+        ]);
+
+        $path = $request->file('logo')->store('logos', 'brand');
+
+        $request->session()->put('onboarding.logo_path', $path);
+
+        return response()->json([
+            'path' => $path,
+            'url' => Storage::disk('brand')->url($path),
+        ]);
     }
 
     // ---------------------------------------------------------------- step 2
@@ -497,6 +529,23 @@ class OnboardingController extends Controller
         }
 
         return $slug;
+    }
+
+    /**
+     * Capitalises the first letter of each word in the business name.
+     *
+     * Only the leading letter of a word, and only when it is lower case:
+     * Str::title() would also lower-case the rest, turning "BELLA" into
+     * "Bella" and "MedSpa" into "Medspa", overriding capitalisation the owner
+     * chose deliberately.
+     */
+    private function capitalizeName(string $name): string
+    {
+        return preg_replace_callback(
+            '/(?<![\p{L}\p{N}])\p{Ll}/u',
+            fn (array $m) => mb_strtoupper($m[0]),
+            trim($name)
+        ) ?? trim($name);
     }
 
     private function joinWebsite(?string $scheme, ?string $host): ?string

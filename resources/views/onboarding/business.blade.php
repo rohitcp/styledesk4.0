@@ -146,7 +146,7 @@
             <div class="flex flex-wrap items-center gap-4 mt-4">
                 <span id="logo-frame" class="h-16 w-16 rounded-card border border-line bg-hover grid place-items-center text-faint shrink-0 overflow-hidden">
                     @if ($tenant?->logo_path)
-                        <img id="logo-preview" src="{{ Storage::disk('public')->url($tenant->logo_path) }}" alt="" class="h-full w-full object-cover">
+                        <img id="logo-preview" src="{{ Storage::disk('brand')->url($tenant->logo_path) }}" alt="" class="h-full w-full object-cover">
                     @else
                         <img id="logo-preview" src="" alt="" hidden class="h-full w-full object-cover">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
@@ -165,6 +165,35 @@
                     <p id="logo-name" class="mt-1.5 text-[12px] text-faint" role="status" aria-live="polite"></p>
                 </div>
             </div>
+
+            {{-- Upload progress. The prototype drives this from FileReader
+                 events and notes that the Laravel build should feed it from a
+                 real upload instead — which is what happens here, so the
+                 percentage reflects bytes actually sent. --}}
+            <div id="logo-progress" hidden class="mt-4 rounded-lg border border-line bg-white p-3">
+                <div class="flex items-center gap-3">
+                    <span class="h-9 w-9 rounded-md bg-hover grid place-items-center text-sub shrink-0" aria-hidden="true">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="10" r="1.8" stroke="currentColor" stroke-width="1.7"/><path d="M4 17l4.5-4 4 3.2L16 13l4 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-[13px] font-medium text-ink truncate" data-upload-name>&nbsp;</p>
+                        <p class="text-[12px] text-faint" data-upload-meta>&nbsp;</p>
+                    </div>
+                    <span class="text-[12px] font-medium text-sub shrink-0" data-upload-pct>0%</span>
+                    <button type="button" data-upload-cancel
+                            class="h-7 w-7 grid place-items-center rounded-md text-faint hover:bg-hover hover:text-danger shrink-0 transition-colors"
+                            aria-label="Cancel upload">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+                <div class="sd-progress mt-2.5" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Upload progress">
+                    <span data-upload-bar style="width:0%"></span>
+                </div>
+            </div>
+
+            {{-- Set once the async upload succeeds. Without JavaScript this
+                 stays empty and the file input posts with the form instead. --}}
+            <input type="hidden" name="logo_uploaded" id="logo-uploaded" value="">
         </section>
     </form>
 
@@ -226,6 +255,22 @@
 
         slug.addEventListener('input', function () { touched = true; });
 
+        /* Capitalise the first letter of each word, matching the server rule.
+           Only a leading lower-case letter is touched, so deliberate
+           capitalisation like "MedSpa" survives. The caret is restored because
+           rewriting .value otherwise jumps it to the end mid-word. */
+        name.addEventListener('input', function () {
+            var caret = name.selectionStart;
+            var next = name.value.replace(/(^|[^\p{L}\p{N}])(\p{Ll})/gu, function (_, before, letter) {
+                return before + letter.toUpperCase();
+            });
+
+            if (next !== name.value) {
+                name.value = next;
+                name.setSelectionRange(caret, caret);
+            }
+        });
+
         name.addEventListener('input', function () {
             if (touched) return;
 
@@ -255,6 +300,9 @@
 
         function clearLogo() {
             input.value = '';
+            if (document.getElementById('logo-uploaded')) {
+                document.getElementById('logo-uploaded').value = '';
+            }
             preview.hidden = true;
             preview.removeAttribute('src');
             if (placeholder) placeholder.hidden = false;
@@ -262,12 +310,113 @@
             fileName.textContent = '';
         }
 
+        var progress = document.getElementById('logo-progress');
+        var pgName = progress.querySelector('[data-upload-name]');
+        var pgMeta = progress.querySelector('[data-upload-meta]');
+        var pgPct = progress.querySelector('[data-upload-pct]');
+        var pgBar = progress.querySelector('[data-upload-bar]');
+        var pgTrack = progress.querySelector('.sd-progress');
+        var pgCancel = progress.querySelector('[data-upload-cancel]');
+        var uploaded = document.getElementById('logo-uploaded');
+        var request = null;
+
+        function setPercent(value) {
+            var pct = Math.max(0, Math.min(100, Math.round(value)));
+            pgBar.style.width = pct + '%';
+            pgPct.textContent = pct + '%';
+            pgTrack.setAttribute('aria-valuenow', String(pct));
+        }
+
+        function humanSize(bytes) {
+            return bytes < 1024 * 1024
+                ? Math.round(bytes / 1024) + ' KB'
+                : (bytes / 1024 / 1024).toFixed(1) + ' MB';
+        }
+
+        function endUpload() {
+            request = null;
+            progress.hidden = true;
+        }
+
+        function upload(file) {
+            var data = new FormData();
+            data.append('logo', file);
+            data.append('_token', document.querySelector('meta[name=csrf-token]').content);
+
+            request = new XMLHttpRequest();
+            request.open('POST', @json(route('onboarding.logo.upload')));
+            request.setRequestHeader('Accept', 'application/json');
+
+            request.upload.addEventListener('progress', function (e) {
+                if (e.lengthComputable) setPercent((e.loaded / e.total) * 100);
+            });
+
+            request.addEventListener('load', function () {
+                if (request.status >= 200 && request.status < 300) {
+                    var body = JSON.parse(request.responseText);
+                    uploaded.value = body.path;
+
+                    // The file has already been sent; leaving it on the input
+                    // would upload the same bytes a second time on submit.
+                    input.value = '';
+                    setPercent(100);
+                    endUpload();
+                    return;
+                }
+
+                var message = 'Upload failed. Please try again.';
+
+                try {
+                    var errors = JSON.parse(request.responseText).errors;
+                    if (errors && errors.logo) message = errors.logo[0];
+                } catch (e) { /* keep the generic message */ }
+
+                pgMeta.textContent = message;
+                pgMeta.classList.add('text-danger');
+                setPercent(0);
+                request = null;
+                clearLogo();
+            });
+
+            request.addEventListener('error', function () {
+                pgMeta.textContent = 'Upload failed. Please check your connection.';
+                pgMeta.classList.add('text-danger');
+                request = null;
+            });
+
+            request.send(data);
+        }
+
         input.addEventListener('change', function () {
             var file = input.files && input.files[0];
-            file ? showLogo(file) : clearLogo();
+
+            if (!file) {
+                clearLogo();
+                return;
+            }
+
+            showLogo(file);
+
+            pgName.textContent = file.name;
+            pgMeta.textContent = humanSize(file.size);
+            pgMeta.classList.remove('text-danger');
+            setPercent(0);
+            progress.hidden = false;
+
+            upload(file);
         });
 
-        remove.addEventListener('click', clearLogo);
+        pgCancel.addEventListener('click', function () {
+            if (request) request.abort();
+            endUpload();
+            clearLogo();
+        });
+
+        remove.addEventListener('click', function () {
+            if (request) request.abort();
+            endUpload();
+            clearLogo();
+        });
 
         if (!preview.hidden && preview.getAttribute('src')) {
             remove.hidden = false;

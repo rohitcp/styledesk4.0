@@ -9,6 +9,8 @@ use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -142,6 +144,103 @@ class OnboardingTest extends TestCase
         $this->assertSame(14, $tenant->trialDaysRemaining());
         $this->assertSame($user->id, $tenant->owner_user_id);
         $this->assertSame(['Hair Salon'], $tenant->businessTypes->pluck('name')->all());
+    }
+
+    public function test_the_business_name_is_capitalised(): void
+    {
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $user = $this->user();
+
+        $this->actingAs($user)
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'bella beauty studio',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+            ])
+            ->assertRedirect(route('onboarding.location'));
+
+        $this->assertSame('Bella Beauty Studio', $user->fresh()->tenant->name);
+    }
+
+    public function test_capitalisation_leaves_deliberate_casing_alone(): void
+    {
+        // Str::title() would turn these into "Bella Beauty" and "Medspa",
+        // overriding capitalisation the owner chose.
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $user = $this->user();
+
+        $this->actingAs($user)
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'BELLA MedSpa',
+                'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+            ]);
+
+        $this->assertSame('BELLA MedSpa', $user->fresh()->tenant->name);
+    }
+
+    public function test_a_logo_can_be_uploaded_before_the_tenant_exists(): void
+    {
+        Storage::fake('brand');
+
+        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $user = $this->user();
+
+        // Step 1 runs before any tenant exists, so the upload endpoint parks
+        // the path in the session for the business save to pick up.
+        $response = $this->actingAs($user)
+            ->post('http://styledesk.test/onboarding/logo', [
+                'logo' => UploadedFile::fake()->image('logo.png', 200, 200),
+            ])
+            ->assertOk();
+
+        $path = $response->json('path');
+        Storage::disk('brand')->assertExists($path);
+
+        $this->post('http://styledesk.test/onboarding/business', [
+            'name' => 'Bella Beauty Studio',
+            'business_phone' => '555 0100',
+            'business_type_ids' => [$type->id],
+        ])->assertRedirect(route('onboarding.location'));
+
+        $this->assertSame($path, $user->fresh()->tenant->logo_path);
+    }
+
+    public function test_the_logo_is_stored_outside_tenant_suffixed_storage(): void
+    {
+        // Regression: the 'public' disk is tenant-suffixed, so once tenancy is
+        // initialized an upload lands in storage/tenant<id>/... while
+        // Storage::url() still points at the central /storage symlink. The
+        // file uploads fine and then 404s, which no assertion on the response
+        // alone would catch.
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'business']);
+
+        $path = $this->actingAs($user->fresh())
+            ->post('http://styledesk.test/onboarding/logo', [
+                'logo' => UploadedFile::fake()->image('logo.png', 200, 200),
+            ])
+            ->assertOk()
+            ->json('path');
+
+        $root = config('filesystems.disks.brand.root');
+
+        $this->assertStringNotContainsString('tenant', $root, 'Brand assets must not live under a tenant-suffixed root.');
+        $this->assertFileExists($root.'/'.$path);
+    }
+
+    public function test_an_oversized_logo_is_rejected(): void
+    {
+        Storage::fake('brand');
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/logo', [
+                'logo' => UploadedFile::fake()->create('huge.png', 3000, 'image/png'),
+            ])
+            ->assertSessionHasErrors('logo');
     }
 
     public function test_business_type_is_required(): void

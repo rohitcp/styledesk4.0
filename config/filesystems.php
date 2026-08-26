@@ -38,6 +38,27 @@ return [
             'report' => false,
         ],
 
+        /**
+         * Brand assets (logos), deliberately NOT tenant-suffixed.
+         *
+         * The 'public' disk is listed in tenancy.filesystem.disks, so once
+         * tenancy initializes its root moves to storage/tenant<id>/app/public
+         * while Storage::url() still points at the central /storage symlink —
+         * the file uploads fine and then 404s.
+         *
+         * It also cannot be tenant-scoped in the first place: the logo is
+         * uploaded during onboarding step 1, before a tenant exists to scope
+         * it to. Filenames are random 40-character hashes, so a central
+         * directory is not enumerable.
+         */
+        'brand' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public/brand'),
+            'url' => env('APP_URL').'/storage/brand',
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
