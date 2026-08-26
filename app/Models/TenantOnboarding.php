@@ -28,10 +28,12 @@ class TenantOnboarding extends Model
         return [
             'business_completed' => 'boolean',
             'location_completed' => 'boolean',
+            'hours_completed' => 'boolean',
             'services_completed' => 'boolean',
             'team_completed' => 'boolean',
             'booking_completed' => 'boolean',
             'completed_at' => 'datetime',
+            'getting_started_dismissed_at' => 'datetime',
         ];
     }
 

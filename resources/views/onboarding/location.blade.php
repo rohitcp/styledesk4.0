@@ -79,7 +79,13 @@
         {{-- One row per weekday. A row per day rather than a JSON blob because
              availability gets queried when working out bookable slots. --}}
         <fieldset class="pt-2">
-            <legend class="text-[13px] font-medium text-ink mb-2.5">Opening hours</legend>
+            <div class="flex flex-wrap items-center gap-3 mb-2.5">
+                <legend class="text-[13px] font-medium text-ink">Opening hours</legend>
+                <button type="button" id="copy-monday"
+                        class="ml-auto h-8 px-3 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[12px] font-semibold transition-colors">
+                    Copy Monday to Tuesday–Friday
+                </button>
+            </div>
             <div class="rounded-card border border-line divide-y divide-line">
                 @foreach (['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as $day => $label)
                     @php
@@ -116,3 +122,34 @@
         The timezone matters most — reminders go out against it.
     </p>
 @endsection
+
+@push('scripts')
+<script>
+    /* Copy Monday's hours across the working week (section 11). Purely a
+       convenience over the same inputs the form already posts — nothing is
+       stored differently as a result. */
+    document.addEventListener('DOMContentLoaded', function () {
+        var button = document.getElementById('copy-monday');
+
+        if (!button) return;
+
+        button.addEventListener('click', function () {
+            var source = {
+                open: document.querySelector('[name="hours[1][is_open]"]'),
+                from: document.querySelector('[name="hours[1][opens_at]"]'),
+                to: document.querySelector('[name="hours[1][closes_at]"]'),
+            };
+
+            [2, 3, 4, 5].forEach(function (day) {
+                var open = document.querySelector('[name="hours[' + day + '][is_open]"]');
+                var from = document.querySelector('[name="hours[' + day + '][opens_at]"]');
+                var to = document.querySelector('[name="hours[' + day + '][closes_at]"]');
+
+                if (open) open.checked = source.open.checked;
+                if (from) from.value = source.from.value;
+                if (to) to.value = source.to.value;
+            });
+        });
+    });
+</script>
+@endpush

@@ -17,6 +17,27 @@
                 </span>
             </div>
 
+            {{-- Section 14. Asked explicitly so an owner who also takes
+                 bookings does not have to add themselves a second time as an
+                 employee. --}}
+            <fieldset class="mt-4 pt-4 border-t border-line">
+                <legend class="text-[13px] font-medium text-ink mb-2">Do you provide services to clients?</legend>
+                @php
+                    $providesServices = old('provides_services', $staff->firstWhere('user_id', $owner->id)?->provides_services ?? true);
+                @endphp
+                <div class="flex items-center gap-5">
+                    <label class="flex items-center gap-2.5 cursor-pointer">
+                        <input type="radio" name="provides_services" value="1" class="sd-check" @checked((bool) $providesServices)>
+                        <span class="text-[13px] text-ink">Yes</span>
+                    </label>
+                    <label class="flex items-center gap-2.5 cursor-pointer">
+                        <input type="radio" name="provides_services" value="0" class="sd-check" @checked(! $providesServices)>
+                        <span class="text-[13px] text-ink">No</span>
+                    </label>
+                </div>
+                @error('provides_services')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+            </fieldset>
+
             @if ($services->isNotEmpty())
                 <fieldset class="mt-4 pt-4 border-t border-line">
                     <legend class="text-[13px] font-medium text-ink mb-2">Services you provide</legend>

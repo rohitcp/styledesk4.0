@@ -53,7 +53,14 @@
       </a>
 
       <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
-        <span class="truncate">Your trial ends in <b class="font-semibold">14 days</b></span>
+        @php $sdTrialDays = tenancy()->initialized ? tenant()->trialDaysRemaining() : null; @endphp
+        <span class="truncate">
+            @if ($sdTrialDays !== null)
+                {{ $sdTrialDays }} {{ Str::plural('day', $sdTrialDays) }} remaining in your free trial
+            @else
+                Your trial ends soon
+            @endif
+        </span>
         <a href="#" class="sd-pill-dark">Subscribe now</a>
       </div>
 

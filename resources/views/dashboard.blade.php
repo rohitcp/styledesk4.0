@@ -3,6 +3,46 @@
 @section('title', 'Dashboard')
 
 @section('content')
+
+    {{-- Section 17: getting started. Sits above the page so it is the first
+         thing a new owner sees, and disappears on its own once everything is
+         done — a checklist that stays after completion is just clutter. --}}
+    @if ($showChecklist)
+        <div class="w-full px-4 sm:px-5 lg:px-6 pt-5">
+            <section class="bg-white border border-line rounded-card p-5 sm:p-6">
+                <div class="flex flex-wrap items-start gap-4">
+                    <div class="min-w-0">
+                        <h2 class="text-[15px] font-semibold text-head">Getting started</h2>
+                        <p class="text-[13px] text-sub mt-1">A few things left to set up. You can come back to these any time.</p>
+                    </div>
+
+                    @if ($canDismissChecklist)
+                        <form method="POST" action="{{ route('getting-started.dismiss') }}" class="ml-auto">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="h-8 px-3 rounded-md text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+                                Dismiss
+                            </button>
+                        </form>
+                    @endif
+                </div>
+
+                <ul class="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+                    @foreach ($checklist as $item)
+                        <li class="flex items-start gap-2.5">
+                            @if ($item['done'])
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-success mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <span class="text-[13px] text-sub line-through">{{ $item['label'] }}</span>
+                            @else
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-faint mt-0.5 shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/></svg>
+                                <span class="text-[13px] text-ink">{{ $item['label'] }}</span>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        </div>
+    @endif
   <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
     <div class="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_352px] xl:grid-cols-[minmax(0,1fr)_384px] items-start">
 

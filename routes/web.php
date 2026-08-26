@@ -89,5 +89,8 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
      *
      * Replace with the real dashboard once that module is specified.
      */
-    Route::view('/dashboard', 'dashboard')->name('dashboard');
+    Route::get('/dashboard', App\Http\Controllers\DashboardController::class)->name('dashboard');
+
+    Route::delete('getting-started', [App\Http\Controllers\GettingStartedController::class, 'destroy'])
+        ->name('getting-started.dismiss');
 });

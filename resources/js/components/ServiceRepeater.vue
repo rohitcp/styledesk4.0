@@ -14,7 +14,16 @@ const props = defineProps({
     currency: { type: String, default: 'USD' },
 });
 
-const blank = () => ({ name: '', category: '', duration_minutes: 30, price: '', description: '' });
+const blank = () => ({
+    name: '',
+    category: '',
+    duration_minutes: 30,
+    price: '',
+    description: '',
+    online_booking_enabled: true,
+    taxable: true,
+    color: '#3d348b',
+});
 
 const rows = ref(props.initial.length ? props.initial.map((r) => ({ ...blank(), ...r })) : [blank()]);
 
@@ -65,6 +74,26 @@ function remove(index) {
                 </label>
                 <textarea :id="`service-description-${i}`" v-model="row.description" :name="`services[${i}][description]`"
                           rows="2" class="sd-input h-auto py-2"></textarea>
+            </div>
+
+            <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                    <input v-model="row.online_booking_enabled" :name="`services[${i}][online_booking_enabled]`"
+                           type="checkbox" value="1" class="sd-check">
+                    <span class="text-[13px] text-ink">Bookable online</span>
+                </label>
+
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                    <input v-model="row.taxable" :name="`services[${i}][taxable]`"
+                           type="checkbox" value="1" class="sd-check">
+                    <span class="text-[13px] text-ink">Taxable</span>
+                </label>
+
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                    <span class="text-[13px] text-ink">Calendar colour</span>
+                    <input v-model="row.color" :name="`services[${i}][color]`"
+                           type="color" class="h-8 w-10 rounded border border-stroke bg-white p-0.5">
+                </label>
             </div>
 
             <div class="mt-3 flex justify-end">

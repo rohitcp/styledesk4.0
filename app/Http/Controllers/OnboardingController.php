@@ -31,8 +31,18 @@ use Illuminate\View\View;
  */
 class OnboardingController extends Controller
 {
-    /** Ordered step ids. The last one is a confirmation screen, not a form. */
-    private const STEPS = ['business', 'location', 'services', 'team', 'booking', 'complete'];
+    /**
+     * Ordered step ids for the progress indicator.
+     *
+     * 'account' is shown and always complete: creating the account and
+     * verifying the address is what got the user here, and the spec's
+     * indicator names it. It is not a route, so it is excluded when working
+     * out where to send someone next.
+     */
+    private const STEPS = ['account', 'business', 'location', 'services', 'team', 'booking', 'complete'];
+
+    /** The steps that are actually routes in the wizard. */
+    private const FORM_STEPS = ['business', 'location', 'services', 'team', 'booking', 'complete'];
 
     /**
      * Subdomains that must never become a tenant slug: they either already
@@ -40,6 +50,9 @@ class OnboardingController extends Controller
      */
     /** Trial length in days, per spec section 18. */
     private const TRIAL_DAYS = 14;
+
+    /** Section 13. Roles are permissions; job title is what clients see. */
+    public const ROLES = ['owner', 'administrator', 'manager', 'front-desk', 'service-provider'];
 
     private const RESERVED_SLUGS = [
         'www', 'app', 'admin', 'api', 'mail', 'billing', 'status',
@@ -192,6 +205,10 @@ class OnboardingController extends Controller
 
             $this->onboardingFor($tenant)->update([
                 'location_completed' => true,
+                // Hours are captured on the same screen, so they complete
+                // together; they stay separate flags because the setup
+                // checklist reports them as separate items.
+                'hours_completed' => true,
                 'current_step' => 'services',
             ]);
         });
@@ -220,6 +237,9 @@ class OnboardingController extends Controller
             'services.*.duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'services.*.price' => ['nullable', 'numeric', 'min:0'],
             'services.*.description' => ['nullable', 'string', 'max:2000'],
+            'services.*.online_booking_enabled' => ['nullable'],
+            'services.*.taxable' => ['nullable'],
+            'services.*.color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
 
         DB::transaction(function () use ($tenant, $data) {
@@ -233,6 +253,9 @@ class OnboardingController extends Controller
                     // Minor units: round once here, never do float maths later.
                     'price_minor' => (int) round(((float) ($row['price'] ?? 0)) * 100),
                     'description' => $row['description'] ?? null,
+                    'online_booking_enabled' => (bool) ($row['online_booking_enabled'] ?? false),
+                    'taxable' => (bool) ($row['taxable'] ?? false),
+                    'color' => $row['color'] ?? null,
                 ]);
             }
 
@@ -265,6 +288,7 @@ class OnboardingController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
+            'provides_services' => ['required', 'boolean'],
             'owner_services' => ['array'],
             'owner_services.*' => ['integer', 'exists:services,id'],
             'members' => ['array'],
@@ -272,7 +296,8 @@ class OnboardingController extends Controller
             'members.*.last_name' => ['required', 'string', 'max:100'],
             'members.*.email' => ['nullable', 'email', 'max:255'],
             'members.*.phone' => ['nullable', 'string', 'max:32'],
-            'members.*.role' => ['nullable', 'string', 'max:40'],
+            'members.*.role' => ['nullable', Rule::in(self::ROLES)],
+            'members.*.job_title' => ['nullable', 'string', 'max:100'],
         ]);
 
         DB::transaction(function () use ($tenant, $user, $data) {
@@ -286,9 +311,13 @@ class OnboardingController extends Controller
                     'last_name' => $user->last_name,
                     'email' => $user->email,
                     'role' => 'owner',
+                    'provides_services' => $data['provides_services'],
                 ]
             );
-            $owner->services()->sync($data['owner_services'] ?? []);
+
+            // Only a provider has services. Answering "no" clears any earlier
+            // selection rather than leaving orphaned rows behind.
+            $owner->services()->sync($data['provides_services'] ? ($data['owner_services'] ?? []) : []);
 
             $tenant->staff()->whereNull('user_id')->delete();
 
@@ -298,7 +327,8 @@ class OnboardingController extends Controller
                     'last_name' => $row['last_name'],
                     'email' => $row['email'] ?? null,
                     'phone' => $row['phone'] ?? null,
-                    'role' => $row['role'] ?? 'staff',
+                    'role' => $row['role'] ?? 'service-provider',
+                    'job_title' => $row['job_title'] ?? null,
                 ]);
             }
 
@@ -377,6 +407,21 @@ class OnboardingController extends Controller
         return view('onboarding.complete', [
             'tenant' => $tenant,
             'progress' => $this->progress('complete'),
+            /**
+             * Section 16. Skipped items are reported differently from done
+             * ones — telling someone "Services ✓" when they pressed "I'll do
+             * this later" is simply untrue, and hides work they still owe.
+             */
+            'checklist' => [
+                ['label' => 'Account created', 'done' => true],
+                ['label' => 'Email verified', 'done' => $request->user()->hasVerifiedEmail()],
+                ['label' => 'Business created', 'done' => $onboarding->business_completed],
+                ['label' => 'Location created', 'done' => $onboarding->location_completed],
+                ['label' => 'Business hours configured', 'done' => $onboarding->hours_completed],
+                ['label' => 'Services configured', 'done' => $onboarding->services_completed],
+                ['label' => 'Team configured', 'done' => $onboarding->team_completed],
+                ['label' => 'Online booking configured', 'done' => $onboarding->booking_completed],
+            ],
         ]);
     }
 
@@ -390,7 +435,7 @@ class OnboardingController extends Controller
     {
         abort_unless(in_array($step, ['services', 'team', 'booking'], true), 404);
 
-        $next = self::STEPS[array_search($step, self::STEPS, true) + 1];
+        $next = self::FORM_STEPS[array_search($step, self::FORM_STEPS, true) + 1];
 
         $this->onboardingFor($request->user()->tenant)->update(['current_step' => $next]);
 
@@ -421,7 +466,10 @@ class OnboardingController extends Controller
             'id' => $step,
             'label' => Str::headline($step),
             'current' => $step === $current,
-            'done' => $onboarding !== null && $i < $currentIndex && $onboarding->hasCompleted($step),
+            // 'account' has no flag of its own: reaching the wizard at all
+            // means it is done.
+            'done' => $step === 'account'
+                || ($onboarding !== null && $i < $currentIndex && $onboarding->hasCompleted($step)),
         ])->all();
     }
 

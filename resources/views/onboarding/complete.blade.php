@@ -1,8 +1,8 @@
 @extends('layouts.onboarding')
 
 @section('title', 'All set')
-@section('heading', 'You are all set')
-@section('subheading', 'Your workspace is ready. Everything you entered is editable in Settings.')
+@section('heading', 'Your StyleDesk is ready')
+@section('subheading', "Your business has been created successfully. You're ready to start managing clients, services, appointments, and your team.")
 
 @section('form')
     <div class="sd-alert sd-alert--success mt-6" role="status">
@@ -17,10 +17,27 @@
         </div>
     </div>
 
+    <ul class="mt-8 space-y-2.5">
+        @foreach ($checklist as $item)
+            <li class="flex items-start gap-2.5">
+                @if ($item['done'])
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-success mt-0.5 shrink-0" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="text-[13px] text-ink">{{ $item['label'] }}</span>
+                @else
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-faint mt-0.5 shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/></svg>
+                    <span class="text-[13px] text-sub">
+                        {{ \Illuminate\Support\Str::before($item['label'], ' ') }} —
+                        <span class="text-faint">Setup later</span>
+                    </span>
+                @endif
+            </li>
+        @endforeach
+    </ul>
+
     <div class="mt-8">
         <a href="{{ route('dashboard') }}"
            class="inline-flex items-center justify-center h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
-            Go to dashboard
+            Go to StyleDesk
         </a>
     </div>
 @endsection

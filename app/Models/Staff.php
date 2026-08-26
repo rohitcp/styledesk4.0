@@ -23,7 +23,10 @@ class Staff extends Model
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'provides_services' => 'boolean',
+        ];
     }
 
     public function user(): BelongsTo

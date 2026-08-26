@@ -243,13 +243,40 @@ class OnboardingTest extends TestCase
         TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'team']);
 
         $this->actingAs($user->fresh())
-            ->post('http://styledesk.test/onboarding/team', [])
+            ->post('http://styledesk.test/onboarding/team', ['provides_services' => '1'])
             ->assertRedirect(route('onboarding.booking'));
 
         $owner = Staff::where('user_id', $user->id)->first();
 
         $this->assertNotNull($owner, 'The team step pre-populates the owner, so they must exist as staff.');
         $this->assertSame('owner', $owner->role);
+        $this->assertTrue($owner->provides_services);
+    }
+
+    public function test_an_owner_who_does_not_provide_services_gets_none_assigned(): void
+    {
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'team']);
+
+        tenancy()->initialize($tenant);
+        $service = Service::create(['name' => 'Cut', 'duration_minutes' => 30]);
+        tenancy()->end();
+
+        // Answering "no" must clear any selection rather than leaving orphans.
+        $this->actingAs($user->fresh())
+            ->post('http://styledesk.test/onboarding/team', [
+                'provides_services' => '0',
+                'owner_services' => [$service->id],
+            ])
+            ->assertRedirect(route('onboarding.booking'));
+
+        $owner = Staff::where('user_id', $user->id)->first();
+
+        $this->assertFalse($owner->provides_services);
+        $this->assertSame(0, $owner->services()->count());
     }
 
     public function test_a_finished_account_cannot_re_enter_the_wizard(): void
@@ -265,6 +292,59 @@ class OnboardingTest extends TestCase
             ->get('http://styledesk.test/dashboard')
             ->assertOk()
             ->assertSee('Acme Salon');
+    }
+
+    public function test_the_dashboard_offers_a_getting_started_checklist(): void
+    {
+        $user = $this->onboardedUser();
+
+        $this->actingAs($user)
+            ->get('http://styledesk.test/dashboard')
+            ->assertOk()
+            // Not 'Getting started': the announcement banner already carries
+            // "Getting started with StyleDesk", so that would pass either way.
+            ->assertSee('Add your first service')
+            ->assertSee('Configure appointment reminders');
+    }
+
+    public function test_the_owner_can_dismiss_the_checklist(): void
+    {
+        $user = $this->onboardedUser();
+        $user->tenant->update(['owner_user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->delete('http://styledesk.test/getting-started')
+            ->assertRedirect();
+
+        $this->assertNotNull($user->tenant->onboarding->fresh()->getting_started_dismissed_at);
+
+        $this->actingAs($user)
+            ->get('http://styledesk.test/dashboard')
+            ->assertOk()
+            ->assertDontSee('Add your first service');
+    }
+
+    public function test_a_non_owner_cannot_dismiss_the_checklist(): void
+    {
+        // It is the owner's setup list; one staff member hiding it for the
+        // whole business would be surprising.
+        $owner = $this->onboardedUser();
+
+        $staff = User::create([
+            'first_name' => 'Sam',
+            'last_name' => 'Doe',
+            'email' => 'sam@styledesk.test',
+            'password' => 'Str0ng!Pass',
+        ]);
+        $staff->markEmailAsVerified();
+        $staff->tenant_id = $owner->tenant_id;
+        $staff->save();
+
+        $owner->tenant->update(['owner_user_id' => $owner->id]);
+
+        $this->actingAs($staff->fresh())
+            ->delete('http://styledesk.test/getting-started')
+            ->assertForbidden();
     }
 
     public function test_progress_survives_a_cleared_browser(): void

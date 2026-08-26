@@ -19,7 +19,11 @@ class Service extends Model
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'online_booking_enabled' => 'boolean',
+            'taxable' => 'boolean',
+        ];
     }
 
     public function staff(): BelongsToMany
