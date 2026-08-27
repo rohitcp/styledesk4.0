@@ -34,6 +34,16 @@ class AppSettingsController extends Controller
         $groups = collect(config('app_settings.groups'))
             ->map(fn (array $group) => [
                 ...$group,
+                /**
+                 * Headings and card copy resolve through translation keys.
+                 *
+                 * The config keeps its English literals as the last-resort
+                 * fallback, so a module added without a translation still
+                 * renders its own name — never `modules.foo.name`, which is
+                 * the one thing a settings page must not print.
+                 */
+                'name' => self::text('modules.groups.'.self::slug($group['name']).'.name', $group['name']),
+                'description' => self::text('modules.groups.'.self::slug($group['name']).'.description', $group['description']),
                 'modules' => collect($group['modules'])->map(function (array $module) use ($statuses, $counts) {
                     /**
                      * Status defaults to coming-soon.
@@ -48,6 +58,8 @@ class AppSettingsController extends Controller
 
                     return [
                         ...$module,
+                        'name' => self::text('modules.modules.'.$module['key'].'.name', $module['name']),
+                        'description' => self::text('modules.modules.'.$module['key'].'.description', $module['description']),
                         /**
                          * The card's live figures, resolved here rather than
                          * in the view: a Blade template counting rows is a
@@ -59,7 +71,7 @@ class AppSettingsController extends Controller
                             ->values()
                             ->all(),
                         'status' => $status,
-                        'status_label' => $statuses[$status]['label'],
+                        'status_label' => self::text('modules.statuses.'.$status, $statuses[$status]['label']),
                         'status_class' => $statuses[$status]['class'],
                         'url' => isset($module['route']) ? route($module['route']) : null,
                         /**
@@ -75,7 +87,20 @@ class AppSettingsController extends Controller
                          * here rather than assembled in JavaScript — the client
                          * should not have to know that keywords exist.
                          */
+                        /**
+                         * Everything the search box matches on, flattened
+                         * once here rather than assembled in JavaScript — the
+                         * client should not have to know that keywords exist.
+                         *
+                         * Built from the translated name and description, not
+                         * the config literals: a Spanish reader searching
+                         * "ubicaciones" is searching for what is on their
+                         * screen. The English is kept alongside so a
+                         * bilingual team can find a card either way.
+                         */
                         'haystack' => mb_strtolower(implode(' ', [
+                            self::text('modules.modules.'.$module['key'].'.name', $module['name']),
+                            self::text('modules.modules.'.$module['key'].'.description', $module['description']),
                             $module['name'],
                             $module['description'],
                             implode(' ', $module['keywords'] ?? []),
@@ -87,6 +112,31 @@ class AppSettingsController extends Controller
             ->all();
 
         return view('settings.index', ['groups' => $groups]);
+    }
+
+    /**
+     * A translation, or the literal the config already carried.
+     *
+     * Locale::get() would humanise a missing key into "Name", which is right
+     * for a label with nowhere else to turn and wrong here — the config holds
+     * the real English, so that is the better fallback.
+     */
+    private static function text(string $key, string $fallback): string
+    {
+        return trans()->has($key) ? __($key) : $fallback;
+    }
+
+    /**
+     * A group heading as a translation key segment.
+     *
+     * Derived from the English name rather than stored, because groups have
+     * no key of their own in the config. Deriving it keeps the two in step:
+     * renaming a group without adding its translation falls back to the new
+     * name rather than to a stale one.
+     */
+    private static function slug(string $name): string
+    {
+        return Str::of($name)->lower()->replaceMatches('/[^a-z0-9]+/', '_')->trim('_')->toString();
     }
 
     /**
@@ -123,13 +173,27 @@ class AppSettingsController extends Controller
             ->upcoming()
             ->count();
 
+        /**
+         * Pluralised by the translation file, not by Str::plural().
+         *
+         * That helper only knows English, so it would have produced
+         * "2 ubicación activas" — a rule applied to a language it was never
+         * written for. Laravel's choice syntax lets each language state its
+         * own plural, and the whole phrase is one string so word order can
+         * differ too.
+         */
+        $count = fn (string $key, int $value) => [
+            'value' => $value,
+            'label' => trans_choice('modules.counts.'.$key, $value, ['count' => $value]),
+        ];
+
         return [
-            'active_staff' => ['value' => $activeStaff, 'label' => Str::plural('active member', $activeStaff)],
-            'pending_invites' => ['value' => $pendingInvites, 'label' => Str::plural('pending invite', $pendingInvites)],
-            'roles' => ['value' => $roles, 'label' => Str::plural('role', $roles)],
-            'active_locations' => ['value' => $activeLocations, 'label' => Str::plural('active location', $activeLocations)],
-            'upcoming_closures' => ['value' => $upcomingClosures, 'label' => Str::plural('upcoming closure', $upcomingClosures)],
-            'enabled_languages' => ['value' => $enabledLanguages, 'label' => Str::plural('language', $enabledLanguages)],
+            'active_staff' => $count('active_staff', $activeStaff),
+            'pending_invites' => $count('pending_invites', $pendingInvites),
+            'roles' => $count('roles', $roles),
+            'active_locations' => $count('active_locations', $activeLocations),
+            'upcoming_closures' => $count('upcoming_closures', $upcomingClosures),
+            'enabled_languages' => $count('enabled_languages', $enabledLanguages),
         ];
     }
 }

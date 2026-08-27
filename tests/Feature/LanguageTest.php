@@ -349,6 +349,100 @@ class LanguageTest extends TestCase
         $this->assertSame('Save', Locale::get('common.save', [], 'en'));
     }
 
+    // ------------------------------------------------- the settings cards
+
+    /**
+     * Every card, not just the page around it.
+     *
+     * The module names and descriptions lived in config/app_settings.php as
+     * English literals, so the heading translated and the thirty-six cards
+     * beneath it did not — a page half in each language, which reads as a
+     * fault rather than as partial coverage.
+     */
+    public function test_the_settings_cards_are_translated(): void
+    {
+        $this->enableSpanish();
+
+        $owner = $this->owner();
+        $owner->forceFill(['locale' => 'es'])->save();
+
+        $this->actingAs($owner->fresh())
+            ->get(route('settings.index'))
+            ->assertOk()
+            // Card names.
+            ->assertSee('Ubicaciones')
+            ->assertSee('Identidad de marca')
+            ->assertSee('Roles y permisos')
+            // A description.
+            ->assertSee('Sucursales, direcciones, responsables')
+            // A group heading and its description.
+            ->assertSee('Reservas y operaciones')
+            ->assertSee('Lo que tus clientes ven, rellenan y compran.')
+            // A status badge.
+            ->assertSee('Próximamente')
+            ->assertDontSee('Coming soon');
+    }
+
+    public function test_the_settings_cards_stay_english_by_default(): void
+    {
+        $this->actingAs($this->owner())
+            ->get(route('settings.index'))
+            ->assertOk()
+            ->assertSee('Locations')
+            ->assertSee('Branding')
+            ->assertSee('Business Setup')
+            ->assertSee('Coming soon')
+            ->assertDontSee('Ubicaciones');
+    }
+
+    /**
+     * Counts are pluralised by the language, not by Str::plural().
+     *
+     * That helper only knows English and would have produced "2 ubicación
+     * activas" — an English rule applied to a language it was never written
+     * for. The figure itself is not in the phrase: the card prints it in bold
+     * beside the words, and including it rendered "1 1 active location".
+     */
+    public function test_a_card_count_is_pluralised_in_the_chosen_language(): void
+    {
+        $this->assertSame('ubicación activa', trans_choice('modules.counts.active_locations', 1, [], 'es'));
+        $this->assertSame('ubicaciones activas', trans_choice('modules.counts.active_locations', 2, [], 'es'));
+        $this->assertSame('active location', trans_choice('modules.counts.active_locations', 1, [], 'en'));
+        $this->assertSame('active locations', trans_choice('modules.counts.active_locations', 2, [], 'en'));
+    }
+
+    /**
+     * A module without a translation still shows its own name.
+     *
+     * The config keeps its English literals as the last-resort fallback, so
+     * adding a module and forgetting its translation is an untranslated card
+     * rather than "modules.modules.foo.name" printed on the page.
+     */
+    public function test_an_untranslated_module_falls_back_to_its_config_name(): void
+    {
+        config()->set('app_settings.groups', [[
+            'name' => 'Nowhere', 'description' => 'A group with no translation.',
+            'modules' => [[
+                'key' => 'no-translation-for-this',
+                'name' => 'Untranslated Module',
+                'description' => 'It has no key.',
+                'icon' => 'gear',
+            ]],
+        ]]);
+
+        $this->enableSpanish();
+
+        $owner = $this->owner();
+        $owner->forceFill(['locale' => 'es'])->save();
+
+        $this->actingAs($owner->fresh())
+            ->get(route('settings.index'))
+            ->assertOk()
+            ->assertSee('Untranslated Module')
+            ->assertSee('Nowhere')
+            ->assertDontSee('modules.modules', false);
+    }
+
     // ---------------------------------------------------------- the module
 
     public function test_the_app_settings_card_links_to_the_module(): void
