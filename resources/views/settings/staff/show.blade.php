@@ -4,7 +4,7 @@
 
 @section('content')
   <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
-    <div class="max-w-[1180px]">
+    <div class="max-w-[860px]">
 
       @php
           $opts = config('staff');
@@ -117,83 +117,84 @@
         </div>
       </div>
 
-      {{-- ===================== Detail ===================== --}}
-      <div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
+      {{-- ===================== Detail =====================
+           One column. These are label/value facts read top to bottom, not
+           two independent tracks — side by side the eye has to choose a
+           column, then jump back up for the other, for content that has a
+           natural order. --}}
+      <div class="mt-5 space-y-5">
 
-        <div class="space-y-5">
-          <section class="bg-white border border-line rounded-card p-5">
-            <h2 class="text-[15px] font-semibold text-head">About</h2>
-            <x-settings.facts :facts="[
-                'Legal name' => trim($staff->first_name.' '.$staff->middle_name.' '.$staff->last_name),
-                'Preferred name' => $staff->preferred_name,
-                'Pronouns' => $opts['pronouns'][$staff->pronouns] ?? $staff->pronouns,
-                'Staff ID' => $staff->employee_ref,
-                'Bio' => $staff->bio,
-            ]" />
-          </section>
+        <section class="bg-white border border-line rounded-card p-5">
+          <h2 class="text-[15px] font-semibold text-head">About</h2>
+          <x-settings.facts :facts="[
+              'Legal name' => trim($staff->first_name.' '.$staff->middle_name.' '.$staff->last_name),
+              'Preferred name' => $staff->preferred_name,
+              'Pronouns' => $opts['pronouns'][$staff->pronouns] ?? $staff->pronouns,
+              'Staff ID' => $staff->employee_ref,
+              'Bio' => $staff->bio,
+          ]" />
+        </section>
 
-          <section class="bg-white border border-line rounded-card p-5">
-            <h2 class="text-[15px] font-semibold text-head">Contact</h2>
-            <x-settings.facts :facts="[
-                'Primary email' => $staff->email,
-                'Work email' => $staff->work_email,
-                'Primary phone' => $staff->phone ? $staff->phone.($staff->phone_type ? ' ('.($opts['phone_types'][$staff->phone_type] ?? $staff->phone_type).')' : '') : null,
-                'Secondary phone' => $staff->secondary_phone,
-                'Address' => $staff->address,
-                'Emergency contact' => $staff->emergency_contact_name
-                    ? trim($staff->emergency_contact_name.' — '.$staff->emergency_contact_phone.' '.($staff->emergency_contact_relationship ? '('.$staff->emergency_contact_relationship.')' : ''))
-                    : null,
-            ]" />
-          </section>
+        <section class="bg-white border border-line rounded-card p-5">
+          <h2 class="text-[15px] font-semibold text-head">Contact</h2>
+          <x-settings.facts :facts="[
+              'Primary email' => $staff->email,
+              'Work email' => $staff->work_email,
+              'Primary phone' => $staff->phone ? $staff->phone.($staff->phone_type ? ' ('.($opts['phone_types'][$staff->phone_type] ?? $staff->phone_type).')' : '') : null,
+              'Secondary phone' => $staff->secondary_phone,
+              'Address' => $staff->address,
+              'Emergency contact' => $staff->emergency_contact_name
+                  ? trim($staff->emergency_contact_name.' — '.$staff->emergency_contact_phone.' '.($staff->emergency_contact_relationship ? '('.$staff->emergency_contact_relationship.')' : ''))
+                  : null,
+          ]" />
+        </section>
 
-          <section class="bg-white border border-line rounded-card p-5">
-            <h2 class="text-[15px] font-semibold text-head">Employment</h2>
-            <x-settings.facts :facts="[
-                'Employment type' => $opts['employment_types'][$staff->employment_type] ?? null,
-                'Provider type' => $opts['provider_types'][$staff->provider_type] ?? null,
-                'Specialities' => $specialities->isNotEmpty() ? $specialities->join(', ') : null,
-                'Added' => $staff->created_at?->format('j F Y'),
-            ]" />
-          </section>
-        </div>
+        <section class="bg-white border border-line rounded-card p-5">
+          <h2 class="text-[15px] font-semibold text-head">Role &amp; access</h2>
+          <x-settings.facts :facts="[
+              'Role' => $staff->roleRecord?->name,
+              'Primary location' => $staff->location?->name ?? 'All locations',
+              'Staff login' => $staff->login_enabled ? 'Enabled' : 'Disabled',
+              'Account' => $staff->user ? $staff->user->email : null,
+              'Last login' => $staff->user?->last_login_at?->diffForHumans() ?? 'Never',
+          ]" />
+        </section>
 
-        <div class="space-y-5">
-          <section class="bg-white border border-line rounded-card p-5">
-            <div class="flex items-center gap-3">
-              <h2 class="text-[15px] font-semibold text-head">Services</h2>
-              <span class="ml-auto text-[12px] text-sub">{{ $staff->services->count() }} assigned</span>
+        <section class="bg-white border border-line rounded-card p-5">
+          <div class="flex items-center gap-3">
+            <h2 class="text-[15px] font-semibold text-head">Services</h2>
+            <span class="ml-auto text-[12px] text-sub">{{ $staff->services->count() }} assigned</span>
+          </div>
+
+          @if ($staff->services->isEmpty())
+            <p class="mt-3 text-[13px] text-sub">
+              No services assigned, so {{ $staff->displayName() }} cannot be booked by name.
+              @can('update', $staff)
+                <a href="{{ route('settings.staff.edit', $staff) }}" class="text-link font-medium hover:underline">Assign services</a>.
+              @endcan
+            </p>
+          @else
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              @foreach ($staff->services as $service)
+                <span class="styledesk_badge styledesk_badge--soon">{{ $service->name }}</span>
+              @endforeach
             </div>
+          @endif
+        </section>
 
-            @if ($staff->services->isEmpty())
-              <p class="mt-3 text-[13px] text-sub">
-                No services assigned, so {{ $staff->displayName() }} cannot be booked by name.
-                @can('update', $staff)
-                  <a href="{{ route('settings.staff.edit', $staff) }}" class="text-link font-medium hover:underline">Assign services</a>.
-                @endcan
-              </p>
-            @else
-              <div class="mt-3 flex flex-wrap gap-1.5">
-                @foreach ($staff->services as $service)
-                  <span class="styledesk_badge styledesk_badge--soon">{{ $service->name }}</span>
-                @endforeach
-              </div>
-            @endif
-          </section>
+        <section class="bg-white border border-line rounded-card p-5">
+          <h2 class="text-[15px] font-semibold text-head">Employment</h2>
+          <x-settings.facts :facts="[
+              'Employment type' => $opts['employment_types'][$staff->employment_type] ?? null,
+              'Provider type' => $opts['provider_types'][$staff->provider_type] ?? null,
+              'Specialities' => $specialities->isNotEmpty() ? $specialities->join(', ') : null,
+              'Added' => $staff->created_at?->format('j F Y'),
+          ]" />
+        </section>
 
+        @if ($invitation)
           <section class="bg-white border border-line rounded-card p-5">
-            <h2 class="text-[15px] font-semibold text-head">Role &amp; access</h2>
-            <x-settings.facts :facts="[
-                'Role' => $staff->roleRecord?->name,
-                'Primary location' => $staff->location?->name ?? 'All locations',
-                'Staff login' => $staff->login_enabled ? 'Enabled' : 'Disabled',
-                'Account' => $staff->user ? $staff->user->email : null,
-                'Last login' => $staff->user?->last_login_at?->diffForHumans() ?? 'Never',
-            ]" />
-          </section>
-
-          @if ($invitation)
-            <section class="bg-white border border-line rounded-card p-5">
-              <h2 class="text-[15px] font-semibold text-head">Invitation</h2>
+            <h2 class="text-[15px] font-semibold text-head">Invitation</h2>
               <x-settings.facts :facts="[
                   'Sent to' => $invitation->email,
                   {{-- outcomeLabel, not statusLabel: the latter answers the
@@ -206,12 +207,12 @@
                   // An expiry that has already been overtaken by acceptance is
                   // a date that no longer means anything.
                   'Expires' => $invitation->accepted_at ? null : $invitation->expires_at?->format('j F Y'),
-              ]" />
-            </section>
-          @endif
+            ]" />
+          </section>
+        @endif
 
-          <section class="bg-white border border-line rounded-card p-5">
-            <h2 class="text-[15px] font-semibold text-head">Activity</h2>
+        <section class="bg-white border border-line rounded-card p-5">
+          <h2 class="text-[15px] font-semibold text-head">Activity</h2>
             <p class="text-[13px] text-sub mt-1">Administrative changes to this record.</p>
 
             @if ($history->isEmpty())
@@ -233,9 +234,10 @@
                 @endforeach
               </ol>
             @endif
-          </section>
-        </div>
+        </section>
+
       </div>
+
     </div>
   </main>
 @endsection
