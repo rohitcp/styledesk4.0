@@ -147,7 +147,7 @@
                     <span class="flex items-center gap-2.5">
                       <span class="sd-avatar sd-avatar--sm shrink-0" aria-hidden="true">{{ $member->initials() }}</span>
                       <span class="min-w-0">
-                        <span class="block font-semibold text-head truncate">{{ $member->displayName() }}</span>
+                        <span class="block font-semibold text-head truncate">{{ $member->directoryName() }}</span>
                         @if ($member->job_title)
                           <span class="block text-[12px] text-sub truncate">{{ $member->job_title }}</span>
                         @endif
@@ -269,13 +269,40 @@
           pop.hidden = !opening;
           button.setAttribute('aria-expanded', opening ? 'true' : 'false');
           menu.classList.toggle('is-open', opening);
+
+          if (opening) place(button, pop);
         });
       });
+
+      /* The panel is fixed, so it is positioned against the button rather
+         than by the layout. Right edges aligned, because the menu sits at the
+         end of a row and a left-aligned panel would hang off the page. */
+      function place(button, pop) {
+        var rect = button.getBoundingClientRect();
+
+        pop.style.visibility = 'hidden';
+        var height = pop.offsetHeight;
+        var width = pop.offsetWidth;
+        pop.style.visibility = '';
+
+        /* Flip above when there is not room below, so the last rows of a
+           long table do not open a menu into the fold. */
+        var below = window.innerHeight - rect.bottom;
+        var top = below < height + 12 ? rect.top - height - 4 : rect.bottom + 4;
+
+        pop.style.top = Math.max(8, top) + 'px';
+        pop.style.left = Math.max(8, rect.right - width) + 'px';
+      }
 
       document.addEventListener('click', function () { closeAll(null); });
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') closeAll(null);
       });
+
+      /* A fixed panel cannot follow the thing it is anchored to, so any
+         scroll closes it rather than leaving it floating over the page. */
+      window.addEventListener('scroll', function () { closeAll(null); }, true);
+      window.addEventListener('resize', function () { closeAll(null); });
     }());
 
     /* Delete, behind a confirmation that names who is being removed. */

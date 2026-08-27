@@ -171,6 +171,27 @@ class Staff extends Model
         return trim(($this->preferred_name ?: $this->first_name).' '.$this->last_name);
     }
 
+    /**
+     * How the directory names someone: legal name, then what they go by.
+     *
+     * "Katherine Wu (Kit)" rather than displayName()'s "Kit Wu". A directory
+     * is scanned by people looking for a record, and the name on the record
+     * is the one they were hired under — so that leads, with the preferred
+     * name beside it rather than in place of it.
+     */
+    public function directoryName(): string
+    {
+        $legal = trim($this->first_name.' '.$this->last_name);
+
+        // Nothing to add when the two are the same, or the row would read
+        // "Kit Wu (Kit)".
+        if ($this->preferred_name === null || $this->preferred_name === $this->first_name) {
+            return $legal;
+        }
+
+        return $legal.' ('.$this->preferred_name.')';
+    }
+
     public function initials(): string
     {
         return mb_strtoupper(mb_substr($this->first_name ?: '?', 0, 1).mb_substr($this->last_name ?: '', 0, 1));

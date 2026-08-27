@@ -797,12 +797,14 @@ textarea.sd-input {
 }
 
 .styledesk_rowmenu__pop {
-    position: absolute;
-    top: calc(100% + 4px);
-    /* Anchored to the right: the menu lives at the end of a row, and a
-       left-anchored panel would hang off the table. */
-    right: 0;
-    z-index: 40;
+    /* Fixed, not absolute.
+       The table scrolls sideways, and a scroll container clips anything
+       absolutely positioned inside it — so the menu on the last column was
+       cut off at the table's edge. Fixed takes it out of that container
+       entirely; the script places it against the button and closes it on
+       scroll, since a fixed panel cannot follow one. */
+    position: fixed;
+    z-index: 60;
     min-width: 11rem;
     padding: 0.25rem;
     border: 1px solid #e5e7eb;

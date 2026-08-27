@@ -91,13 +91,59 @@ class StaffDirectoryTest extends TestCase
             ->assertSee('Riverside');
     }
 
-    public function test_a_preferred_name_is_what_the_directory_shows(): void
+    /**
+     * The directory names someone by the record, with what they go by beside
+     * it: a directory is scanned by people looking for a record, and the name
+     * on the record is the one they were hired under.
+     */
+    public function test_the_directory_shows_the_legal_name_then_the_preferred_one(): void
     {
         $this->actingAs($this->owner());
         $this->staff('Katherine', 'manager', ['preferred_name' => 'Kit']);
 
-        // The name someone asked to be called wins wherever a human reads it.
+        $this->assertSame(['Katherine Person (Kit)'], $this->names());
+    }
+
+    public function test_a_preferred_name_matching_the_first_name_is_not_repeated(): void
+    {
+        $this->actingAs($this->owner());
+
+        // Otherwise the row reads "Kit Person (Kit)".
+        $this->staff('Kit', 'manager', ['preferred_name' => 'Kit']);
+
         $this->assertSame(['Kit Person'], $this->names());
+    }
+
+    public function test_the_profile_still_leads_with_what_they_go_by(): void
+    {
+        $this->actingAs($this->owner());
+        $staff = $this->staff('Katherine', 'manager', ['preferred_name' => 'Kit']);
+
+        // The directory is a list to search; the profile is a person to
+        // address, so the two lead with different halves on purpose.
+        $this->get('http://styledesk.test/settings/staff/'.$staff->id)
+            ->assertOk()
+            ->assertSee('Kit Person');
+    }
+
+    /**
+     * The row menu is fixed rather than absolute.
+     *
+     * The table scrolls sideways and a scroll container clips anything
+     * absolutely positioned inside it, so the menu on the last column was cut
+     * off at the table's edge.
+     */
+    public function test_the_row_menu_escapes_the_scrolling_table(): void
+    {
+        $this->actingAs($this->owner());
+        $this->staff('Amara', 'manager');
+
+        $content = $this->get('http://styledesk.test/settings/staff')->getContent();
+
+        $this->assertStringContainsString('data-rowmenu-pop', $content);
+        // Positioned by script against the button, and closed on scroll,
+        // because a fixed panel cannot follow what it is anchored to.
+        $this->assertStringContainsString("addEventListener('scroll'", $content);
     }
 
     public function test_search_covers_name_email_phone_and_job_title(): void
