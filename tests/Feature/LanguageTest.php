@@ -974,6 +974,75 @@ class LanguageTest extends TestCase
             ]);
     }
 
+    // ----------------------------------------------------- the clients module
+
+    public function test_the_client_settings_screen_is_translated(): void
+    {
+        $this->actingAs($this->spanishOwner())
+            ->get(route('settings.clients.show'))
+            ->assertOk()
+            ->assertSee('Fichas de cliente')
+            ->assertSee('Campos de la ficha')
+            ->assertSee('Preferencias y etiquetas')
+            ->assertSee('Privacidad y consentimiento')
+            ->assertDontSee('Client records')
+            ->assertDontSee('Profile fields');
+    }
+
+    /**
+     * The catalogue values, not just the labels around them.
+     *
+     * Field names, statuses, panels and duplicate rules all live in
+     * config/clients.php, so a page whose headings translated and whose
+     * fifteen field names did not would be half in each language.
+     */
+    public function test_client_option_values_are_translated(): void
+    {
+        $content = $this->actingAs($this->spanishOwner())
+            ->get(route('settings.clients.show'))
+            ->assertOk()
+            // Field names, rendered as plain text in the field table.
+            ->assertSee('Número de móvil')
+            ->assertSee('Fecha de nacimiento')
+            ->assertSee('Foto de perfil')
+            // Checkbox sets.
+            ->assertSee('Próximas citas')
+            ->assertSee('El mismo número de móvil')
+            ->assertSee('Punto de venta')
+            ->assertDontSee('Mobile number')
+            ->assertDontSee('Date of birth')
+            ->getContent();
+
+        // Dropdown options reach the page inside a data-props attribute,
+        // where json_encode escapes every non-ASCII character, so they are
+        // decoded rather than matched as text.
+        $props = collect(self::islandProps($content));
+
+        $marketing = $props->firstWhere('name', 'default_marketing');
+        $this->assertContains('Preguntar al cliente', array_values($marketing['options']));
+
+        $format = $props->firstWhere('name', 'name_format');
+        $this->assertContains('Nombre e inicial del apellido', array_values($format['options']));
+    }
+
+    public function test_client_settings_messages_are_translated(): void
+    {
+        $owner = $this->spanishOwner();
+
+        $this->actingAs($owner)
+            ->patch(route('settings.clients.update'), [
+                'default_status' => 'active',
+                'default_communication' => 'email',
+                'default_marketing' => 'ask',
+                'name_format' => 'first_last',
+            ])
+            ->assertSessionHas('toast.message', 'Configuración de clientes actualizada correctamente.');
+
+        $this->actingAs($owner)
+            ->post(route('settings.clients.preferences.store'), ['label' => 'Cuero cabelludo sensible'])
+            ->assertSessionHas('toast.message', 'Preferencia añadida.');
+    }
+
     // ---------------------------------------------------------- the module
 
     public function test_the_app_settings_card_links_to_the_module(): void

@@ -46,6 +46,7 @@
 
       @php
           $cfg = config('clients');
+          $opt = App\Support\ClientOptions::class;
           $locationOptions = ['' => __('clients.defaults.none')] + $locations->pluck('name', 'id')->all();
           $staffOptions = ['' => __('clients.defaults.none')]
               + $staff->mapWithKeys(fn ($m) => [$m->id => $m->displayName()])->all();
@@ -67,11 +68,11 @@
 
             <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
               <x-combo name="default_status" :label="__('clients.defaults.status')" required
-                       :options="$cfg['default_statuses']"
+                       :options="$opt::defaultStatuses()"
                        :selected="old('default_status', $settings->default_status)" />
 
               <x-combo name="default_communication" :label="__('clients.defaults.communication')" required
-                       :options="$cfg['communication_methods']"
+                       :options="$opt::communicationMethods()"
                        :selected="old('default_communication', $settings->default_communication)" />
 
               <x-combo name="default_location_id" :label="__('clients.defaults.location')"
@@ -86,7 +87,7 @@
 
               <div class="sm:col-span-2">
                 <x-combo name="default_marketing" :label="__('clients.defaults.marketing')" required
-                         :options="$cfg['marketing_defaults']"
+                         :options="$opt::marketingDefaults()"
                          :selected="old('default_marketing', $settings->default_marketing)" />
               </div>
             </div>
@@ -148,7 +149,7 @@
           {{-- ------------------------------------------ name format --}}
           <div class="pt-4 border-t border-line">
             <x-combo name="name_format" :label="__('clients.name_format')" required
-                     :options="$cfg['name_formats']"
+                     :options="$opt::nameFormats()"
                      :selected="old('name_format', $settings->name_format)"
                      :hint="__('clients.name_format_hint')" />
 
@@ -222,7 +223,7 @@
           @include('settings.clients._checkset', [
               'name' => 'booking_panels',
               'legend' => __('clients.booking_panels'),
-              'options' => $cfg['booking_panels'],
+              'options' => $opt::bookingPanels(),
               'selected' => old('booking_panels', $settings->booking_panels ?? []),
           ])
 
@@ -230,7 +231,7 @@
             @include('settings.clients._checkset', [
                 'name' => 'history_panels',
                 'legend' => __('clients.history_panels'),
-                'options' => $cfg['history_panels'],
+                'options' => $opt::historyPanels(),
                 'selected' => old('history_panels', $settings->history_panels ?? []),
             ])
           </div>
@@ -239,9 +240,9 @@
             @include('settings.clients._checkset', [
                 'name' => 'creation_sources',
                 'legend' => __('clients.creation'),
-                'options' => collect($cfg['creation_sources'])->map(fn ($s) => $s['label'])->all(),
+                'options' => $opt::creationSources(),
                 'selected' => old('creation_sources', $settings->creation_sources ?? []),
-                'unavailable' => collect($cfg['creation_sources'])->reject(fn ($s) => $s['available'])->keys()->all(),
+                'unavailable' => $opt::unavailableSources(),
             ])
           </div>
         </section>
@@ -256,7 +257,7 @@
           @include('settings.clients._checkset', [
               'name' => 'duplicate_rules',
               'legend' => __('clients.duplicates.rules'),
-              'options' => $cfg['duplicate_rules'],
+              'options' => $opt::duplicateRules(),
               'selected' => old('duplicate_rules', $settings->duplicate_rules ?? []),
               'columns' => 1,
           ])
@@ -282,7 +283,7 @@
             @include('settings.clients._checkset', [
                 'name' => 'search_fields',
                 'legend' => __('clients.search'),
-                'options' => $cfg['search_fields'],
+                'options' => $opt::searchFields(),
                 'selected' => old('search_fields', $settings->search_fields ?? []),
                 'columns' => 3,
             ])
@@ -302,7 +303,7 @@
               @foreach (['comm_email' => 'Email', 'comm_sms' => 'SMS', 'comm_phone' => 'Phone'] as $switch => $label)
                 @include('settings.clients._toggle', [
                     'name' => $switch,
-                    'label' => $cfg['communication_methods'][str_replace('comm_', '', $switch)] ?? $label,
+                    'label' => $opt::communicationMethods()[str_replace('comm_', '', $switch)] ?? $label,
                     'checked' => (bool) old($switch, $settings->{$switch}),
                 ])
               @endforeach
@@ -314,12 +315,12 @@
             <div class="grid sm:grid-cols-2 gap-x-4 gap-y-2">
               @include('settings.clients._toggle', [
                   'name' => 'comm_marketing_email',
-                  'label' => $cfg['communication_methods']['email'],
+                  'label' => $opt::communicationMethods()['email'],
                   'checked' => (bool) old('comm_marketing_email', $settings->comm_marketing_email),
               ])
               @include('settings.clients._toggle', [
                   'name' => 'comm_marketing_sms',
-                  'label' => $cfg['communication_methods']['sms'],
+                  'label' => $opt::communicationMethods()['sms'],
                   'checked' => (bool) old('comm_marketing_sms', $settings->comm_marketing_sms),
               ])
             </div>

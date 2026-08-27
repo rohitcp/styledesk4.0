@@ -127,8 +127,8 @@
 
       <div class="w-[150px]">
         <select name="color" class="sd-input" aria-label="{{ __('clients.tags.colour') }}">
-          @foreach (config('clients.tag_colors') as $key => $hex)
-            <option value="{{ $key }}">{{ ucfirst($key) }}</option>
+          @foreach (App\Support\ClientOptions::tagColors() as $key => $colorLabel)
+            <option value="{{ $key }}">{{ $colorLabel }}</option>
           @endforeach
         </select>
       </div>

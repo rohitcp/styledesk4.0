@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\ClientOptions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
@@ -172,10 +173,14 @@ class ClientSettings extends Model
      */
     public function orderedFields(): array
     {
+        $labels = ClientOptions::fields();
+
         return collect(config('clients.fields'))
             ->map(fn (array $catalogue, string $key) => [
                 'key' => $key,
-                'label' => $catalogue['label'],
+                // Translated, so the field list reads in the same language as
+                // the page it sits on.
+                'label' => $labels[$key] ?? $catalogue['label'],
                 ...$this->field($key),
             ])
             ->sortBy('order')
