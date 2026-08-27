@@ -8,6 +8,7 @@ use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\Settings\BrandingController;
 use App\Http\Controllers\Settings\BusinessHoursController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
+use App\Http\Controllers\Settings\ClientSettingsController;
 use App\Http\Controllers\Settings\CurrencyController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
@@ -321,6 +322,35 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 Route::get('/', 'show')->name('show');
                 Route::get('edit', 'edit')->name('edit');
                 Route::patch('/', 'update')->name('update');
+            });
+
+        /*
+        | Clients — global configuration for client records.
+        |
+        | Not the Clients module: this decides what a client record looks like
+        | and how it behaves, while the profiles, history and day-to-day work
+        | belong to the module that reads these. Owner/Administrator only, per
+        | §18 — day-to-day permission over client records is a different
+        | question and stays with Roles & Permissions.
+        |
+        | The preference and tag lists get their own routes because §4 and §5
+        | ask for adding, editing, deactivating and reordering them, none of
+        | which belongs in a form that saves forty other switches.
+        */
+        Route::controller(ClientSettingsController::class)
+            ->prefix('clients')
+            ->name('clients.')
+            ->group(function () {
+                Route::get('/', 'show')->name('show');
+                Route::patch('/', 'update')->name('update');
+
+                Route::post('preferences', 'storePreference')->name('preferences.store');
+                Route::patch('preferences/order', 'reorderPreferences')->name('preferences.reorder');
+                Route::patch('preferences/{preference}', 'togglePreference')->name('preferences.toggle');
+
+                Route::post('tags', 'storeTag')->name('tags.store');
+                Route::patch('tags/{tag}', 'updateTag')->name('tags.update');
+                Route::patch('tags/{tag}/toggle', 'toggleTag')->name('tags.toggle');
             });
 
         /*

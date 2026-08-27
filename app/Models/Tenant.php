@@ -108,6 +108,18 @@ class Tenant extends BaseTenant
         ];
     }
 
+    /** The structured preferences staff can assign to this business's clients. */
+    public function clientPreferences(): HasMany
+    {
+        return $this->hasMany(ClientPreference::class);
+    }
+
+    /** The labels this business classifies its clients with. */
+    public function clientTags(): HasMany
+    {
+        return $this->hasMany(ClientTag::class);
+    }
+
     /**
      * Users belonging to this tenant.
      *

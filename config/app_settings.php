@@ -167,7 +167,9 @@ return [
                     'name' => 'Clients',
                     'description' => 'Client defaults, preferences and how client records are configured.',
                     'icon' => 'address-book',
-                    'keywords' => ['customer', 'contact', 'guest', 'record'],
+                    'route' => 'settings.clients.show',
+                    'status' => 'active',
+                    'keywords' => ['customer', 'contact', 'guest', 'record', 'tags', 'preferences', 'consent'],
                 ],
                 [
                     'key' => 'client-booking',
