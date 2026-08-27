@@ -529,6 +529,71 @@ class OnboardingTest extends TestCase
             ->assertSessionHasErrors('default_language');
     }
 
+    /**
+     * The onboarding hours contract, pinned because the editor is shared.
+     *
+     * Location settings mounts the same BusinessHours island in split-period
+     * mode, where a row posts hours[day][index][field]. Onboarding posts the
+     * flat hours[day][field] its controller reads, and nothing else asserted
+     * that — so a change made for one screen could have silently stopped the
+     * other from storing a single opening time.
+     */
+    public function test_the_location_step_stores_flat_hours(): void
+    {
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Nadia Hair Studio', 'slug' => 'nadia', 'country_code' => 'US']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'location']);
+
+        $this->actingAs($user->fresh())
+            ->post('http://styledesk.test/onboarding/location', [
+                'name' => 'Main Location',
+                'address_line1' => '1 River Street',
+                'city' => 'Austin',
+                'postal_code' => '78701',
+                'timezone' => 'America/Chicago',
+                'hours' => [
+                    0 => ['opens_at' => '09:00', 'closes_at' => '17:00'],
+                    1 => ['is_open' => '1', 'opens_at' => '09:00', 'closes_at' => '18:00'],
+                ],
+            ])->assertRedirect(route('onboarding.services'));
+
+        $hours = $tenant->locations()->first()->hours;
+
+        $monday = $hours->firstWhere('day_of_week', 1);
+        $this->assertTrue($monday->is_open);
+        $this->assertSame('09:00', $monday->timeValue('opens_at'));
+        $this->assertSame('18:00', $monday->timeValue('closes_at'));
+
+        // Sunday was submitted with times but no toggle, so it is closed.
+        $this->assertFalse($hours->firstWhere('day_of_week', 0)->is_open);
+    }
+
+    /**
+     * Onboarding asks the simplest version of the question.
+     *
+     * Split periods belong to Location settings; turning them on here would
+     * put "Add another period" in front of someone who has not yet finished
+     * telling us where their business is.
+     */
+    public function test_the_onboarding_hours_editor_is_not_in_split_mode(): void
+    {
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Nadia Hair Studio', 'slug' => 'nadia', 'country_code' => 'US']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'location']);
+
+        $content = $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/onboarding/location')
+            ->assertOk()
+            ->assertSee('data-vue-component="BusinessHours"', false)
+            ->getContent();
+
+        $this->assertStringNotContainsString('splitPeriods', $content);
+    }
+
     public function test_the_location_step_uses_the_country_from_the_business_step(): void
     {
         // The country must not be re-asked or accepted from the request: the

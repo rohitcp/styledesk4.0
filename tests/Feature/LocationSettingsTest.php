@@ -345,6 +345,50 @@ class LocationSettingsTest extends TestCase
         $this->assertCount(0, $location->fresh()->hours);
     }
 
+    /**
+     * The hours editor is the onboarding one, not a lookalike.
+     *
+     * Asserted rather than trusted to a comment: two hours editors that look
+     * alike drift, and a picker fixed in one place and not the other becomes
+     * a business whose hours behave differently depending on which screen
+     * they were typed into.
+     */
+    public function test_the_edit_screen_mounts_the_shared_hours_island(): void
+    {
+        $location = $this->location();
+
+        $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.edit', $location))
+            ->assertOk()
+            ->assertSee('data-vue-component="BusinessHours"', false)
+            // Split periods are what §5 needs and onboarding does not.
+            ->assertSee('splitPeriods', false);
+    }
+
+    /**
+     * Saved hours reach the island rather than the form starting blank.
+     */
+    public function test_the_edit_screen_hands_the_island_the_stored_week(): void
+    {
+        $location = $this->location();
+
+        $location->hours()->createMany([
+            ['day_of_week' => 1, 'sort_order' => 0, 'is_open' => true, 'opens_at' => '09:00', 'closes_at' => '13:00'],
+            ['day_of_week' => 1, 'sort_order' => 1, 'is_open' => true, 'opens_at' => '14:00', 'closes_at' => '19:00'],
+        ]);
+
+        $content = $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.edit', $location))
+            ->assertOk()
+            ->getContent();
+
+        // The props are JSON in an attribute, so the times are what to look
+        // for rather than any particular markup around them.
+        $this->assertStringContainsString('09:00', $content);
+        $this->assertStringContainsString('14:00', $content);
+        $this->assertStringContainsString('19:00', $content);
+    }
+
     // ---------------------------------------------------------- validation
 
     public static function requiredFields(): array

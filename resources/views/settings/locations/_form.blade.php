@@ -32,15 +32,6 @@
     ]);
 
     /**
-     * The hours the form renders, as old input if there is any.
-     *
-     * A failed submit must not silently reset the week to what is stored:
-     * someone who split Tuesday and mistyped an email would lose the split
-     * and not necessarily notice.
-     */
-    $submittedHours = old('hours');
-
-    /**
      * What a new branch starts as, before anyone chooses.
      *
      * A blank required time zone on the Add screen is a field nobody can
@@ -298,116 +289,74 @@
 </section>
 
 {{-- ----------------------------------------------- 5. location hours --}}
-<section class="bg-white border border-line rounded-card p-5 space-y-4" data-hours>
-  <div class="flex flex-wrap items-start gap-3">
-    <div class="min-w-0 flex-1">
-      <h2 class="text-[15px] font-semibold text-head">Location hours</h2>
-      <p class="text-[13px] text-sub mt-1">
-        When this branch is open, in its own time zone. Add a second period to a day that closes in
-        the middle — for lunch, for instance.
-      </p>
-    </div>
+@php
+    /**
+     * The same island onboarding step 2 uses, in split-period mode.
+     *
+     * Not a second hours editor that looks like it. The two screens ask the
+     * same question, and two implementations drift — a picker fixed in one
+     * place and not the other becomes a business whose hours behave
+     * differently depending on which screen they were typed into.
+     *
+     * `splitPeriods` is what §5 needs and onboarding does not: with it on the
+     * rows post hours[day][index][field], which is what syncHours() reads.
+     */
+    $submittedHours = old('hours');
 
-    {{-- Copies the first open weekday down the rest of them. Named for what
-         it does rather than "Copy hours", which would leave the user guessing
-         which day it copies from and where it copies to. --}}
-    <button type="button" data-copy-weekdays
-            class="shrink-0 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-      Apply Monday's hours to weekdays
-    </button>
-  </div>
+    $hoursInitial = collect(config('locations.weekdays'))->map(function ($label, $day) use ($submittedHours, $hoursByDay) {
+        /**
+         * Old input wins, then what is stored.
+         *
+         * A failed submit must not silently reset the week: someone who split
+         * Tuesday and mistyped an email would lose the split and not
+         * necessarily notice.
+         */
+        if (is_array($submittedHours)) {
+            $day_ = $submittedHours[$day] ?? [];
 
-  @error('hours')<p class="text-[12px] text-danger">{{ $message }}</p>@enderror
+            return [
+                'is_open' => (bool) ($day_['is_open'] ?? false),
+                'periods' => collect($day_)->except('is_open')->map(fn ($period) => [
+                    'opens_at' => $period['opens_at'] ?? '',
+                    'closes_at' => $period['closes_at'] ?? '',
+                ])->values()->all(),
+            ];
+        }
 
-  <div class="divide-y divide-line">
-    @foreach ($weekdays as $day => $dayLabel)
-      @php
-          /**
-           * Old input wins, then what is stored, then the default week.
-           *
-           * Old input arrives as arrays of strings from the request; stored
-           * hours arrive as models. Both are flattened to the same shape here
-           * so the markup below does not have to know which it got.
-           */
-          if (is_array($submittedHours)) {
-              $submittedDay = $submittedHours[$day] ?? [];
-              $dayIsOpen = (bool) ($submittedDay['is_open'] ?? false);
-              $periods = collect($submittedDay)
-                  ->except('is_open')
-                  ->map(fn ($period) => [
-                      'opens_at' => $period['opens_at'] ?? '',
-                      'closes_at' => $period['closes_at'] ?? '',
-                  ])
-                  ->values();
-          } else {
-              $stored = $hoursByDay[$day]['periods'] ?? collect();
-              $dayIsOpen = $stored->isNotEmpty();
-              $periods = $stored->map(fn ($period) => [
-                  'opens_at' => $period->timeValue('opens_at') ?? '',
-                  'closes_at' => $period->timeValue('closes_at') ?? '',
-              ])->values();
-          }
+        $stored = $hoursByDay[$day]['periods'] ?? collect();
 
-          // A closed day still renders one blank period, so switching it on
-          // does not require also adding a row before any time can be typed.
-          if ($periods->isEmpty()) {
-              $periods = collect([['opens_at' => '09:00', 'closes_at' => '17:00']]);
-          }
-      @endphp
+        return [
+            'is_open' => $stored->isNotEmpty(),
+            'periods' => $stored->map(fn ($period) => [
+                'opens_at' => $period->timeValue('opens_at'),
+                'closes_at' => $period->timeValue('closes_at'),
+            ])->values()->all(),
+        ];
+    })->values()->all();
 
-      <div class="py-3" data-day="{{ $day }}">
-        <div class="flex flex-wrap items-start gap-3">
-          <label class="flex items-center gap-2.5 cursor-pointer w-[150px] shrink-0 pt-2">
-            <input type="checkbox" name="hours[{{ $day }}][is_open]" value="1" class="sd-check"
-                   data-day-toggle @checked($dayIsOpen)>
-            <span class="text-[13px] font-medium text-ink">{{ $dayLabel }}</span>
-          </label>
+    /**
+     * Validation messages gathered per day.
+     *
+     * Validation keys are concrete — hours.1.0.closes_at — so a day's messages
+     * are collected by prefix rather than looked up by a wildcard, which
+     * matches nothing.
+     */
+    $hoursErrors = [];
 
-          <div class="min-w-0 flex-1 space-y-2" data-periods @if (! $dayIsOpen) hidden @endif>
-            @foreach ($periods as $index => $period)
-              <div class="flex flex-wrap items-center gap-2" data-period>
-                <input type="time" class="sd-input styledesk_hours__time"
-                       name="hours[{{ $day }}][{{ $index }}][opens_at]"
-                       value="{{ $period['opens_at'] }}" aria-label="{{ $dayLabel }} opening time">
-                <span class="text-[13px] text-sub">to</span>
-                <input type="time" class="sd-input styledesk_hours__time"
-                       name="hours[{{ $day }}][{{ $index }}][closes_at]"
-                       value="{{ $period['closes_at'] }}" aria-label="{{ $dayLabel }} closing time">
+    foreach ($errors->messages() as $key => $messages) {
+        if (str_starts_with($key, 'hours.')) {
+            $hoursErrors[(int) explode('.', $key)[1]] ??= $messages[0];
+        }
+    }
 
-                {{-- Only from the second period onwards. Removing the only
-                     period is what the day's own toggle is for, and two
-                     controls for one outcome is a choice nobody wants. --}}
-                <button type="button" data-remove-period
-                        class="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-stroke bg-white hover:bg-hover text-sub transition-colors"
-                        aria-label="Remove this period from {{ $dayLabel }}"
-                        @if ($index === 0) hidden @endif>
-                  <x-icon name="trash-can" size="14" />
-                </button>
-              </div>
-            @endforeach
+    $hoursProps = [
+        'initial' => $hoursInitial,
+        'splitPeriods' => true,
+        'days' => array_values(config('locations.weekdays')),
+        'title' => 'Location hours',
+        'description' => "When this branch is open, in its own time zone. Add a second period to a day that closes in the middle.",
+        'errors' => (object) $hoursErrors,
+    ];
+@endphp
 
-            <button type="button" data-add-period
-                    class="text-[13px] font-medium text-link hover:underline">
-              + Add another period
-            </button>
-
-            @php
-                // Validation keys are concrete — hours.1.0.closes_at — so the
-                // day's messages are gathered by prefix rather than looked up
-                // by a wildcard, which matches nothing.
-                $dayErrors = collect($errors->messages())
-                    ->filter(fn ($messages, $key) => str_starts_with($key, 'hours.'.$day.'.'))
-                    ->flatten()
-                    ->unique();
-            @endphp
-            @foreach ($dayErrors as $dayError)
-              <p class="text-[12px] text-danger">{{ $dayError }}</p>
-            @endforeach
-          </div>
-
-          <p class="text-[13px] text-faint pt-2" data-closed-label @if ($dayIsOpen) hidden @endif>Closed</p>
-        </div>
-      </div>
-    @endforeach
-  </div>
-</section>
+<div data-vue-component="BusinessHours" data-props='@json($hoursProps)'></div>
