@@ -126,7 +126,7 @@ class StaffController extends Controller
 
         if ($role === null || ! RoleGuard::canAssignRole($request->user(), $role)) {
             throw ValidationException::withMessages([
-                'role_id' => 'You cannot assign that role.',
+                'role_id' => __('staff.validation.role_not_yours'),
             ]);
         }
 
@@ -154,13 +154,19 @@ class StaffController extends Controller
 
             return back()->withInput()->with('toast', [
                 'type' => 'danger',
-                'message' => "We couldn't add that staff member right now. Please try again.",
+                'message' => __('staff.add_failed'),
             ]);
         }
 
+        /**
+         * Whole sentences per language, not a name with English glued to it.
+         *
+         * Spanish does not put the person's name or the address where English
+         * does, and string addition cannot express that.
+         */
         $message = $staff->invite_status === 'sent'
-            ? $staff->displayName().' was added and an invitation is on its way to '.$staff->email.'.'
-            : $staff->displayName().' was added to your team.';
+            ? __('staff.created_invited_to', ['name' => $staff->displayName(), 'email' => $staff->email])
+            : __('staff.created', ['name' => $staff->displayName()]);
 
         return redirect()
             ->route('settings.staff.index')
@@ -210,7 +216,7 @@ class StaffController extends Controller
         $role = Role::query()->find($data['role_id']);
 
         if ($role === null || ! RoleGuard::canAssignRole($request->user(), $role)) {
-            throw ValidationException::withMessages(['role_id' => 'You cannot assign that role.']);
+            throw ValidationException::withMessages(['role_id' => __('staff.validation.role_not_yours')]);
         }
 
         /**
@@ -222,7 +228,7 @@ class StaffController extends Controller
          */
         if ($staff->user_id === $request->user()->id && $staff->role_id !== $role->id) {
             throw ValidationException::withMessages([
-                'role_id' => 'You cannot change your own role. Ask another administrator.',
+                'role_id' => __('staff.validation.own_role'),
             ]);
         }
 
@@ -280,7 +286,7 @@ class StaffController extends Controller
 
             return back()->withInput()->with('toast', [
                 'type' => 'danger',
-                'message' => "We couldn't save those changes right now. Please try again.",
+                'message' => __('staff.save_failed'),
             ]);
         }
 
@@ -291,7 +297,7 @@ class StaffController extends Controller
 
         return redirect()
             ->route('settings.staff.show', $staff)
-            ->with('toast', ['type' => 'success', 'message' => $staff->displayName().'\'s details were updated.']);
+            ->with('toast', ['type' => 'success', 'message' => __('staff.saved_person', ['name' => $staff->displayName()])]);
     }
 
     public function destroy(Request $request, Staff $staff): RedirectResponse
@@ -318,7 +324,7 @@ class StaffController extends Controller
 
         return redirect()
             ->route('settings.staff.index')
-            ->with('toast', ['type' => 'success', 'message' => $name.' was removed from your team.']);
+            ->with('toast', ['type' => 'success', 'message' => __('staff.deleted', ['name' => $name])]);
     }
 
     /**
@@ -335,8 +341,8 @@ class StaffController extends Controller
         $request->validate([
             'image' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
         ], [
-            'image.max' => 'The profile image must be 2 MB or smaller.',
-            'image.mimes' => 'Use a JPG, PNG or WEBP image.',
+            'image.max' => __('staff.validation.avatar_max'),
+            'image.mimes' => __('staff.validation.avatar_mimes'),
         ]);
 
         $path = $request->file('image')->store('staff', 'brand');
@@ -411,14 +417,14 @@ class StaffController extends Controller
             'send_invitation' => ['nullable', 'boolean'],
             'invitation_message' => ['nullable', 'string', 'max:500'],
         ], [
-            'first_name.required' => 'First name is required.',
-            'last_name.required' => 'Last name is required.',
-            'email.required' => 'Primary email is required.',
-            'email.email' => 'Enter a valid email address.',
-            'email.unique' => 'Someone on your team already uses that email address.',
-            'work_email.email' => 'Enter a valid email address.',
-            'role_id.required' => 'Choose a role for this person.',
-            'avatar.max' => 'The profile image must be 2 MB or smaller.',
+            'first_name.required' => __('staff.validation.first_name_required'),
+            'last_name.required' => __('staff.validation.last_name_required'),
+            'email.required' => __('staff.validation.email_required'),
+            'email.email' => __('staff.validation.email_invalid'),
+            'email.unique' => __('staff.validation.email_taken'),
+            'work_email.email' => __('staff.validation.email_invalid'),
+            'role_id.required' => __('staff.validation.role_required'),
+            'avatar.max' => __('staff.validation.avatar_max'),
         ]);
 
         $data['login_enabled'] = $request->boolean('login_enabled');

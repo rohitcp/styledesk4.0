@@ -11,13 +11,13 @@
           $avatarUrl = $staff->avatar_path ? Storage::disk('brand')->url($staff->avatar_path) : null;
 
           $specialities = collect($staff->specialities ?? [])
-              ->map(fn ($s) => $opts['specialities'][$s] ?? $s);
+              ->map(fn ($s) => App\Support\StaffOptions::label('specialities', $s) ?? $s);
       @endphp
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
-        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">App settings</a>
+        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
         <span class="mx-1.5 text-faint">/</span>
-        <a href="{{ route('settings.staff.index') }}" class="hover:text-ink transition-colors">Staff members</a>
+        <a href="{{ route('settings.staff.index') }}" class="hover:text-ink transition-colors">{{ __('staff.title') }}</a>
         <span class="mx-1.5 text-faint">/</span>
         <span class="text-ink">{{ $staff->displayName() }}</span>
       </nav>
@@ -65,10 +65,10 @@
             <p class="mt-2.5 flex flex-wrap items-center gap-1.5">
               <span class="styledesk_badge {{ $staff->statusClass() }}">{{ $staff->statusLabel() }}</span>
               @if ($staff->provides_services)
-                <span class="styledesk_badge styledesk_badge--soon">Bookable</span>
+                <span class="styledesk_badge styledesk_badge--soon">{{ __('staff.profile.bookable') }}</span>
               @endif
               @if (! $staff->login_enabled)
-                <span class="styledesk_badge styledesk_badge--soon">No login</span>
+                <span class="styledesk_badge styledesk_badge--soon">{{ __('staff.profile.no_login') }}</span>
               @endif
             </p>
           </div>
@@ -77,13 +77,13 @@
             <a href="{{ route('settings.staff.index') }}"
                class="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Back
+              {{ __('common.back') }}
             </a>
 
             @can('update', $staff)
               <a href="{{ route('settings.staff.edit', $staff) }}"
                  class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-                Edit
+                {{ __('common.edit') }}
               </a>
             @endcan
           </div>
@@ -91,10 +91,10 @@
 
         @php
             $headline = [
-                ['icon' => 'envelope', 'label' => 'Email', 'value' => $staff->email, 'href' => $staff->email ? 'mailto:'.$staff->email : null],
-                ['icon' => 'address-book', 'label' => 'Phone', 'value' => $staff->phone, 'href' => $staff->phone ? 'tel:'.$staff->phone : null],
-                ['icon' => 'location-dot', 'label' => 'Location', 'value' => $staff->location?->name ?? 'All locations'],
-                ['icon' => 'clock', 'label' => 'Last login', 'value' => $staff->user?->last_login_at?->diffForHumans() ?? 'Never'],
+                ['icon' => 'envelope', 'label' => __('staff.profile.summary_email'), 'value' => $staff->email, 'href' => $staff->email ? 'mailto:'.$staff->email : null],
+                ['icon' => 'address-book', 'label' => __('staff.profile.summary_phone'), 'value' => $staff->phone, 'href' => $staff->phone ? 'tel:'.$staff->phone : null],
+                ['icon' => 'location-dot', 'label' => __('staff.profile.summary_location'), 'value' => $staff->location?->name ?? 'All locations'],
+                ['icon' => 'clock', 'label' => __('staff.profile.last_login'), 'value' => $staff->user?->last_login_at?->diffForHumans() ?? 'Never'],
             ];
         @endphp
 
@@ -126,44 +126,46 @@
       <div class="mt-5 space-y-5">
 
         <section class="bg-white border border-line rounded-card p-5">
-          <h2 class="text-[15px] font-semibold text-head">About</h2>
+          <h2 class="text-[15px] font-semibold text-head">{{ __('staff.profile.about') }}</h2>
           <x-settings.facts :facts="[
-              'Legal name' => trim($staff->first_name.' '.$staff->middle_name.' '.$staff->last_name),
-              'Preferred name' => $staff->preferred_name,
-              'Pronouns' => $opts['pronouns'][$staff->pronouns] ?? $staff->pronouns,
-              'Staff ID' => $staff->employee_ref,
+              __('staff.profile.legal_name') => trim($staff->first_name.' '.$staff->middle_name.' '.$staff->last_name),
+              __('staff.profile.preferred_name') => $staff->preferred_name,
+              __('staff.profile.pronouns') => App\Support\StaffOptions::label('pronouns', $staff->pronouns) ?? $staff->pronouns,
+              __('staff.profile.employee_ref') => $staff->employee_ref,
               'Bio' => $staff->bio,
           ]" />
         </section>
 
         <section class="bg-white border border-line rounded-card p-5">
-          <h2 class="text-[15px] font-semibold text-head">Contact</h2>
+          <h2 class="text-[15px] font-semibold text-head">{{ __('staff.profile.contact') }}</h2>
           <x-settings.facts :facts="[
-              'Primary email' => $staff->email,
-              'Work email' => $staff->work_email,
-              'Primary phone' => $staff->phone ? $staff->phone.($staff->phone_type ? ' ('.($opts['phone_types'][$staff->phone_type] ?? $staff->phone_type).')' : '') : null,
-              'Secondary phone' => $staff->secondary_phone,
-              'Address' => $staff->address,
-              'Emergency contact' => $staff->emergency_contact_name
+              __('staff.profile.email') => $staff->email,
+              __('staff.profile.work_email') => $staff->work_email,
+              __('staff.profile.phone') => $staff->phone
+                  ? $staff->phone.($staff->phone_type ? ' ('.(App\Support\StaffOptions::label('phoneTypes', $staff->phone_type) ?? $staff->phone_type).')' : '')
+                  : null,
+              __('staff.profile.secondary_phone') => $staff->secondary_phone,
+              __('staff.profile.address') => $staff->address,
+              __('staff.profile.emergency_contact') => $staff->emergency_contact_name
                   ? trim($staff->emergency_contact_name.' — '.$staff->emergency_contact_phone.' '.($staff->emergency_contact_relationship ? '('.$staff->emergency_contact_relationship.')' : ''))
                   : null,
           ]" />
         </section>
 
         <section class="bg-white border border-line rounded-card p-5">
-          <h2 class="text-[15px] font-semibold text-head">Role &amp; access</h2>
+          <h2 class="text-[15px] font-semibold text-head">{{ __('staff.profile.access') }}</h2>
           <x-settings.facts :facts="[
-              'Role' => $staff->roleRecord?->name,
-              'Primary location' => $staff->location?->name ?? 'All locations',
-              'Staff login' => $staff->login_enabled ? 'Enabled' : 'Disabled',
-              'Account' => $staff->user ? $staff->user->email : null,
-              'Last login' => $staff->user?->last_login_at?->diffForHumans() ?? 'Never',
+              __('staff.profile.role') => $staff->roleRecord?->label(),
+              __('staff.profile.location') => $staff->location?->name ?? __('staff.all_locations'),
+              __('staff.profile.login') => $staff->login_enabled ? __('business.enabled') : __('business.disabled'),
+              __('staff.profile.account') => $staff->user ? $staff->user->email : null,
+              __('staff.profile.last_login') => $staff->user?->last_login_at?->diffForHumans() ?? __('staff.never'),
           ]" />
         </section>
 
         <section class="bg-white border border-line rounded-card p-5">
           <div class="flex items-center gap-3">
-            <h2 class="text-[15px] font-semibold text-head">Services</h2>
+            <h2 class="text-[15px] font-semibold text-head">{{ __('staff.profile.services') }}</h2>
             <span class="ml-auto text-[12px] text-sub">{{ $staff->services->count() }} assigned</span>
           </div>
 
@@ -171,7 +173,7 @@
             <p class="mt-3 text-[13px] text-sub">
               No services assigned, so {{ $staff->displayName() }} cannot be booked by name.
               @can('update', $staff)
-                <a href="{{ route('settings.staff.edit', $staff) }}" class="text-link font-medium hover:underline">Assign services</a>.
+                <a href="{{ route('settings.staff.edit', $staff) }}" class="text-link font-medium hover:underline">{{ __('staff.profile.assign_services') }}</a>.
               @endcan
             </p>
           @else
@@ -184,20 +186,20 @@
         </section>
 
         <section class="bg-white border border-line rounded-card p-5">
-          <h2 class="text-[15px] font-semibold text-head">Employment</h2>
+          <h2 class="text-[15px] font-semibold text-head">{{ __('staff.profile.employment') }}</h2>
           <x-settings.facts :facts="[
-              'Employment type' => $opts['employment_types'][$staff->employment_type] ?? null,
-              'Provider type' => $opts['provider_types'][$staff->provider_type] ?? null,
-              'Specialities' => $specialities->isNotEmpty() ? $specialities->join(', ') : null,
-              'Added' => $staff->created_at?->format('j F Y'),
+              __('staff.profile.employment_type') => App\Support\StaffOptions::label('employmentTypes', $staff->employment_type),
+              __('staff.profile.provider_type') => App\Support\StaffOptions::label('providerTypes', $staff->provider_type),
+              __('staff.profile.specialities') => $specialities->isNotEmpty() ? $specialities->join(', ') : null,
+              __('staff.profile.added') => $staff->created_at?->isoFormat('D MMMM Y'),
           ]" />
         </section>
 
         @if ($invitation)
           <section class="bg-white border border-line rounded-card p-5">
-            <h2 class="text-[15px] font-semibold text-head">Invitation</h2>
+            <h2 class="text-[15px] font-semibold text-head">{{ __('staff.profile.invitation') }}</h2>
               @php
-                $invitationFacts = ['Sent to' => $invitation->email];
+                $invitationFacts = [__('staff.profile.sent_to') => $invitation->email];
 
                 // The outcome and when it happened are one fact, so they
                 // share a line rather than a status row and a date row
@@ -225,11 +227,11 @@
         @endif
 
         <section class="bg-white border border-line rounded-card p-5">
-          <h2 class="text-[15px] font-semibold text-head">Activity</h2>
-            <p class="text-[13px] text-sub mt-1">Administrative changes to this record.</p>
+          <h2 class="text-[15px] font-semibold text-head">{{ __('staff.profile.activity') }}</h2>
+            <p class="text-[13px] text-sub mt-1">{{ __('staff.profile.activity_hint') }}</p>
 
             @if ($history->isEmpty())
-              <p class="mt-3 text-[13px] text-faint">Nothing recorded yet.</p>
+              <p class="mt-3 text-[13px] text-faint">{{ __('staff.profile.activity_empty') }}</p>
             @else
               {{-- A history is a sequence, so it is drawn as one rather than
                    as label/value pairs where the date is the label. --}}

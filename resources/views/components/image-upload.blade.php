@@ -26,7 +26,7 @@
 
 <div {{ $attributes }} data-image-upload data-endpoint="{{ $endpoint }}" data-field="{{ $name }}">
     <span class="block text-[13px] font-medium text-ink mb-1.5">
-        {{ $label }}@if ($optional) <span class="text-faint font-normal">(optional)</span>@endif
+        {{ $label }}@if ($optional) <span class="text-faint font-normal">{{ __('common.optional') }}</span>@endif
     </span>
 
     <div class="flex items-center gap-3">
@@ -44,12 +44,12 @@
 
         <label for="{{ $uploadId }}"
                class="inline-flex items-center h-9 px-3.5 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold cursor-pointer transition-colors">
-            Choose image
+            {{ __('common.upload.choose') }}
         </label>
 
         <button type="button" data-upload-remove hidden
                 class="h-9 px-3 rounded-md text-sub hover:text-danger hover:bg-hover text-[13px] font-semibold transition-colors">
-            Remove
+            {{ __('common.remove') }}
         </button>
 
         <span class="min-w-0 flex-1 text-[12px] text-sub truncate" data-upload-name></span>
@@ -131,7 +131,7 @@
                        authority; this only saves someone watching a 40 MB file
                        upload before being told it was never allowed. */
                     if (file.size > 2 * 1024 * 1024) {
-                        fail('That image is larger than 2 MB.');
+                        fail(@json(__('common.upload.too_large')));
                         return;
                     }
 
@@ -177,7 +177,7 @@
                             return;
                         }
 
-                        fail(body.message || 'That image could not be uploaded. Please try again.');
+                        fail(body.message || @json(__('common.upload.failed')));
                     });
 
                     request.addEventListener('error', function () {

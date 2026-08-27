@@ -88,6 +88,29 @@ class Role extends Model
         return $this->permissionMap()[$permission] ?? null;
     }
 
+    /**
+     * The role's name in the reader's language.
+     *
+     * Only the system roles translate. A role a business created and named
+     * itself keeps its own words, exactly as a service name or a client note
+     * does — isSystem() is what tells the two apart, so a custom role called
+     * "Owner" would still be shown as the business wrote it.
+     */
+    public function label(): string
+    {
+        $key = 'roles.'.$this->key.'.name';
+
+        return $this->isSystem() && trans()->has($key) ? __($key) : $this->name;
+    }
+
+    /** The description, under the same rule as label(). */
+    public function describe(): ?string
+    {
+        $key = 'roles.'.$this->key.'.description';
+
+        return $this->isSystem() && trans()->has($key) ? __($key) : $this->description;
+    }
+
     public function isSystem(): bool
     {
         return $this->is_system || in_array($this->key, self::SYSTEM_KEYS, true);

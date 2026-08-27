@@ -34,4 +34,10 @@ return [
     'coming_soon' => 'Próximamente',
     'setup_required' => 'Configuración pendiente',
     'view_only' => 'Solo lectura',
+
+    'upload' => [
+        'choose' => 'Elegir imagen',
+        'too_large' => 'Esa imagen supera los 2 MB.',
+        'failed' => 'No se ha podido subir esa imagen. Inténtalo de nuevo.',
+    ],
 ];

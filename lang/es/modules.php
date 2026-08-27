@@ -74,7 +74,7 @@ return [
             'description' => 'Sillones, salas, cabinas de tratamiento y masaje, equipos y otros elementos reservables.',
         ],
         'staff' => [
-            'name' => 'Personal',
+            'name' => 'Miembros del personal',
             'description' => 'Miembros del equipo, ubicaciones, horarios, acceso a servicios y situación laboral.',
         ],
         'calendar-scheduling' => [

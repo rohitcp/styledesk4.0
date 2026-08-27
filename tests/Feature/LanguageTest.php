@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Location;
 use App\Models\LocationClosure;
+use App\Models\Role;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
@@ -870,6 +871,107 @@ class LanguageTest extends TestCase
         $this->assertSame('Fails', __('branding.grades.fails', [], 'en'));
         // Unchanged in both: a conformance level, not a word.
         $this->assertSame('AA', __('branding.grades.aa', [], 'es'));
+    }
+
+    // ------------------------------------------------------ the staff module
+
+    public function test_the_staff_directory_is_translated(): void
+    {
+        $owner = $this->spanishOwner();
+
+        Staff::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'first_name' => 'Amara', 'last_name' => 'Osei',
+            'email' => 'amara@nadia.test', 'role' => 'manager',
+            'job_title' => 'Salon Manager',
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('settings.staff.index'))
+            ->assertOk()
+            ->assertSee('Miembros del personal')
+            ->assertSee('Añadir miembro del personal')
+            ->assertSee('Último acceso')
+            ->assertSee('Nunca')
+            ->assertDontSee('Staff members')
+            ->assertDontSee('Last login')
+            // What the business typed is untouched.
+            ->assertSee('Salon Manager');
+    }
+
+    public function test_the_add_staff_form_is_translated(): void
+    {
+        $this->actingAs($this->spanishOwner())
+            ->get(route('settings.staff.create'))
+            ->assertOk()
+            ->assertSee('Añadir miembro del personal')
+            ->assertSee('Información básica')
+            ->assertSee('Rol y contratación')
+            ->assertSee('Estado de la cuenta')
+            // Specialities are rendered as checkboxes, so they are plain text.
+            ->assertSee('Colorista')
+            ->assertSee('Maquillador')
+            ->assertDontSee('Basic information')
+            ->assertDontSee('Account status');
+    }
+
+    /**
+     * Dropdown values, not just their labels.
+     */
+    public function test_staff_dropdown_values_are_translated(): void
+    {
+        $content = $this->actingAs($this->spanishOwner())
+            ->get(route('settings.staff.create'))
+            ->assertOk()
+            ->getContent();
+
+        $props = collect(self::islandProps($content));
+
+        $employment = $props->firstWhere('name', 'employment_type');
+        $this->assertContains('Empleado a tiempo completo', array_values($employment['options']));
+
+        $provider = $props->firstWhere('name', 'provider_type');
+        $this->assertContains('Recepción', array_values($provider['options']));
+    }
+
+    /**
+     * System roles are StyleDesk's own vocabulary, so they translate.
+     *
+     * A role a business created and named itself keeps its own words, exactly
+     * as a service name or a client note does.
+     */
+    public function test_system_roles_translate_but_custom_roles_keep_their_name(): void
+    {
+        $owner = $this->spanishOwner();
+
+        $custom = Role::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'key' => 'front-of-house',
+            'name' => 'Front of House',
+            'description' => 'A role this business invented.',
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('settings.roles.index'))
+            ->assertOk()
+            ->assertSee('Recepción')
+            ->assertSee('Prestador de servicios')
+            // Named by the business, so left exactly as written.
+            ->assertSee('Front of House');
+
+        $this->assertSame('Front of House', $custom->label());
+    }
+
+    public function test_staff_messages_are_translated(): void
+    {
+        $owner = $this->spanishOwner();
+
+        $this->actingAs($owner)
+            ->post(route('settings.staff.store'), ['account_status' => 'active'])
+            ->assertSessionHasErrors([
+                'first_name' => 'El nombre es obligatorio.',
+                'email' => 'El correo principal es obligatorio.',
+            ]);
     }
 
     // ---------------------------------------------------------- the module

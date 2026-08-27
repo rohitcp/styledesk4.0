@@ -36,4 +36,14 @@ return [
     'coming_soon' => 'Coming soon',
     'setup_required' => 'Setup required',
     'view_only' => 'View only',
+
+    /*
+     * The shared image uploader. Used by the staff avatar today and by any
+     * future image field, so its words live here rather than in a module.
+     */
+    'upload' => [
+        'choose' => 'Choose image',
+        'too_large' => 'That image is larger than 2 MB.',
+        'failed' => 'That image could not be uploaded. Please try again.',
+    ],
 ];

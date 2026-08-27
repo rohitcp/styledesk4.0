@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $role->name)
+@section('title', $role->label())
 
 @section('content')
   <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
@@ -11,12 +11,12 @@
         <span class="mx-1.5 text-faint">/</span>
         <a href="{{ route('settings.roles.index') }}" class="hover:text-ink transition-colors">Roles &amp; permissions</a>
         <span class="mx-1.5 text-faint">/</span>
-        <span class="text-ink">{{ $role->name }}</span>
+        <span class="text-ink">{{ $role->label() }}</span>
       </nav>
 
       <div class="mt-3 flex flex-wrap items-start gap-4">
         <div class="min-w-0 flex-1">
-          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">{{ $role->name }}</h1>
+          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">{{ $role->label() }}</h1>
 
           <p class="mt-2 flex flex-wrap items-center gap-1.5">
             <span class="styledesk_badge {{ $role->isSystem() ? 'styledesk_badge--soon' : 'styledesk_badge--active' }}">
@@ -29,7 +29,7 @@
             @endif
           </p>
 
-          <p class="text-[14px] text-sub mt-2.5 max-w-[640px] leading-relaxed">{{ $role->description }}</p>
+          <p class="text-[14px] text-sub mt-2.5 max-w-[640px] leading-relaxed">{{ $role->describe() }}</p>
 
           <p class="text-[13px] text-sub mt-2">
             <span class="font-semibold text-ink">{{ $grantedTotal }}</span> of {{ $permissionTotal }} permissions

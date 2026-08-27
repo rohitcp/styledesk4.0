@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\StaffOptions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -166,9 +167,17 @@ class Staff extends Model
         return $this->is_active ? 'active' : 'inactive';
     }
 
+    /**
+     * The status in the reader's language.
+     *
+     * The config still decides which statuses exist and what colour each
+     * badge is; only the wording comes from the language file, with the
+     * config's own label as the fallback.
+     */
     public function statusLabel(): string
     {
-        return config('staff.statuses.'.$this->status().'.label', 'Unknown');
+        return StaffOptions::statusLabel($this->status())
+            ?? config('staff.statuses.'.$this->status().'.label', 'Unknown');
     }
 
     public function statusClass(): string
@@ -194,7 +203,19 @@ class Staff extends Model
     public function roleName(): string
     {
         if ($this->roleRecord) {
-            return $this->roleRecord->name;
+            return $this->roleRecord->label();
+        }
+
+        /**
+         * The fallback path, for a staff row whose role_id was never linked.
+         * Translated the same way, so a directory does not show one person's
+         * role in Spanish and the next one's in English purely because of a
+         * missing foreign key.
+         */
+        $key = 'roles.'.$this->role.'.name';
+
+        if (trans()->has($key)) {
+            return __($key);
         }
 
         return config('role_defaults.'.$this->role.'.name')

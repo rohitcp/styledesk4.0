@@ -53,14 +53,14 @@
 
             <span class="min-w-0 flex-1">
               <span class="flex flex-wrap items-center gap-2">
-                <span class="text-[14px] font-semibold text-head">{{ $role->name }}</span>
+                <span class="text-[14px] font-semibold text-head">{{ $role->label() }}</span>
 
                 <span class="styledesk_badge {{ $role->isSystem() ? 'styledesk_badge--soon' : 'styledesk_badge--active' }}">
                   {{ $role->isSystem() ? 'System role' : 'Custom role' }}
                 </span>
               </span>
 
-              <span class="block text-[13px] text-sub mt-1 leading-relaxed">{{ $role->description }}</span>
+              <span class="block text-[13px] text-sub mt-1 leading-relaxed">{{ $role->describe() }}</span>
 
               <span class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[12px] text-sub">
                 <span>
