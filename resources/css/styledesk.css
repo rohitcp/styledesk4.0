@@ -838,3 +838,111 @@ textarea.sd-input {
     margin: 0.25rem 0.375rem;
     background: #e5e7eb;
 }
+
+/* ------------------------------------------------------------------
+   Profile header
+   ------------------------------------------------------------------
+   The band at the top of a person's record. Its job is to answer "who is
+   this and how do I reach them" without the reader going hunting through
+   the cards below, which is what the first version made them do.
+   ------------------------------------------------------------------ */
+
+.styledesk_profile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    border: 1px solid var(--sd-line, #e5e7eb);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.styledesk_profile__avatar {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    height: 4.5rem;
+    width: 4.5rem;
+    border-radius: 14px;
+    border: 1px solid var(--sd-line, #e5e7eb);
+    background: var(--sd-sel, #eeecf7);
+    color: var(--sd-brand, #3d348b);
+    font-size: 22px;
+    font-weight: 600;
+    overflow: hidden;
+}
+
+.styledesk_profile__avatar img {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+}
+
+/* The reach-me strip: the four things someone opens this page for, side by
+   side rather than four rows apart in two different cards. */
+.styledesk_profile__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.75rem 1.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--sd-line, #e5e7eb);
+}
+
+.styledesk_profile__fact {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.styledesk_profile__fact svg { color: #9ca3af; flex-shrink: 0; margin-top: 2px; }
+
+.styledesk_profile__fact dt { font-size: 11px; color: #9ca3af; }
+.styledesk_profile__fact dd { font-size: 13px; color: #0f0f10; }
+
+/* ------------------------------------------------------------------
+   Activity timeline
+   ------------------------------------------------------------------
+   A history reads as a sequence, so it is drawn as one. The rail is a
+   border on the list rather than a pseudo-element per row, so it cannot
+   fall out of step with the dots.
+   ------------------------------------------------------------------ */
+
+.styledesk_timeline {
+    position: relative;
+    margin: 0.25rem 0 0 0.4rem;
+    padding-left: 1.125rem;
+    border-left: 2px solid var(--sd-line, #e5e7eb);
+}
+
+.styledesk_timeline__item {
+    position: relative;
+    padding: 0 0 1rem 0;
+}
+
+.styledesk_timeline__item:last-child { padding-bottom: 0; }
+
+.styledesk_timeline__item::before {
+    content: '';
+    position: absolute;
+    /* Half the dot plus the rail's own width, so it sits centred on the line
+       rather than beside it. */
+    left: calc(-1.125rem - 5px);
+    top: 5px;
+    height: 8px;
+    width: 8px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 0 2px var(--sd-brand, #3d348b);
+}
+
+.styledesk_timeline__action {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f0f10;
+    text-transform: capitalize;
+}
+
+.styledesk_timeline__meta { font-size: 12px; color: #6b7280; }

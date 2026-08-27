@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\Role;
 use App\Models\Service;
 use App\Models\Staff;
+use App\Models\TeamInvitation;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
@@ -187,6 +188,81 @@ class StaffProfileTest extends TestCase
             ->assertOk()
             ->assertSee('created')
             ->assertSee('Nadia Khan');
+    }
+
+    /**
+     * Optional fields that are unset are summarised, not given a row each.
+     *
+     * The first version drew an em-dash per empty field, so a record with six
+     * blanks spent six rows saying nothing while looking exactly as important
+     * as the bio beside it.
+     */
+    public function test_unset_fields_are_summarised_rather_than_listed(): void
+    {
+        $owner = $this->owner();
+
+        $amara = $this->member('manager', ['job_title' => 'Salon Manager']);
+
+        $response = $this->actingAs($owner)->get('http://styledesk.test/settings/staff/'.$amara->id);
+
+        $response->assertOk()
+            ->assertSee('Not set:')
+            ->assertSee('Pronouns')
+            ->assertSee('Staff ID');
+
+        // The label is present in the summary; the empty-value dash is not.
+        $this->assertStringNotContainsString('—</span>', $response->getContent());
+    }
+
+    /**
+     * The invitation card describes the invitation, not the person.
+     *
+     * statusLabel() answers the team list's question and says "Active" for an
+     * accepted invitation, which on this card reads as one still open.
+     */
+    public function test_an_accepted_invitation_reads_as_accepted(): void
+    {
+        $owner = $this->owner();
+        $amara = $this->member('manager');
+
+        $invitation = TeamInvitation::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'staff_id' => $amara->id,
+            'email' => 'amara@acme.test',
+            'first_name' => 'Amara', 'last_name' => 'Osei',
+            'role' => 'manager',
+            'token_hash' => str_repeat('a', 64),
+            'status' => TeamInvitation::STATUS_ACCEPTED,
+            'sent_at' => now()->subDay(),
+            'accepted_at' => now(),
+            'expires_at' => now()->addDays(6),
+        ]);
+
+        $this->assertSame('Accepted', $invitation->outcomeLabel());
+
+        $this->actingAs($owner)
+            ->get('http://styledesk.test/settings/staff/'.$amara->id)
+            ->assertOk()
+            ->assertSee('Accepted');
+    }
+
+    public function test_the_header_carries_the_contact_details(): void
+    {
+        $owner = $this->owner();
+        $amara = $this->member('manager', ['phone' => '+15125550001']);
+
+        $content = $this->actingAs($owner)
+            ->get('http://styledesk.test/settings/staff/'.$amara->id)
+            ->getContent();
+
+        // Scoped to the header's own strip rather than a fixed slice of
+        // characters, which moves whenever the markup above it changes.
+        $start = strpos($content, 'styledesk_profile__facts');
+        $header = substr($content, $start, strpos($content, '</dl>', $start) - $start);
+
+        $this->assertStringContainsString('mailto:amara@acme.test', $header);
+        $this->assertStringContainsString('tel:+15125550001', $header);
+        $this->assertStringContainsString('Riverside', $header);
     }
 
     public function test_another_business_s_staff_profile_is_not_reachable(): void

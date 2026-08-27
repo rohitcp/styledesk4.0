@@ -193,6 +193,25 @@ class TeamInvitation extends Model
         };
     }
 
+    /**
+     * What became of the invitation, as opposed to what the person now is.
+     *
+     * statusLabel() answers the team list's question — "is this colleague
+     * active" — and says "Active" for an accepted invitation. On an invitation
+     * card that is the wrong subject: the invitation was accepted, the person
+     * is active, and showing the second where the first belongs reads as the
+     * invitation still being open.
+     */
+    public function outcomeLabel(): string
+    {
+        return match ($this->effectiveStatus()) {
+            self::STATUS_ACCEPTED => 'Accepted',
+            self::STATUS_EXPIRED => 'Expired',
+            self::STATUS_REVOKED => 'Revoked',
+            default => 'Awaiting acceptance',
+        };
+    }
+
     public function getNameAttribute(): string
     {
         return trim($this->first_name.' '.$this->last_name);
