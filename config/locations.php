@@ -389,4 +389,22 @@ return [
         6 => 'Saturday',
     ],
 
+    /*
+     * What kind of exception a date carries.
+     *
+     * The spec's seven kinds, plus whether each one is normally a closure.
+     * `closes` is the default the form starts on, not a rule: a business that
+     * stays open on a public holiday with shorter hours is ordinary, and the
+     * form lets them say so.
+     */
+    'closure_types' => [
+        'public_holiday' => ['label' => 'Public holiday', 'closes' => true],
+        'closure' => ['label' => 'Location closure', 'closes' => true],
+        'special_hours' => ['label' => 'Special opening hours', 'closes' => false],
+        'training' => ['label' => 'Staff training day', 'closes' => true],
+        'maintenance' => ['label' => 'Maintenance closure', 'closes' => true],
+        'private_event' => ['label' => 'Private event', 'closes' => true],
+        'emergency' => ['label' => 'Emergency closure', 'closes' => true],
+    ],
+
 ];

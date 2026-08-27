@@ -377,9 +377,19 @@ class LocationController extends Controller
      *
      * @param  array<int, array<int, array<string, mixed>>>  $hours
      */
-    private function syncHours(Location $location, array $hours): void
+    private function syncHours(Location $location, array $hours, ?string $effectiveFrom = null): void
     {
-        $location->hours()->delete();
+        $effectiveFrom ??= $location->currentScheduleDate() ?? Location::EPOCH;
+
+        /**
+         * Deleted through scheduleHours(), not hours().
+         *
+         * hours() picks the current schedule with a correlated subquery over
+         * location_hours, and MySQL refuses to delete from a table its own
+         * subquery reads (error 1093). Naming the schedule is also more
+         * honest about what is being replaced.
+         */
+        $location->scheduleHours($effectiveFrom)->delete();
 
         $rows = [];
 
@@ -409,6 +419,7 @@ class LocationController extends Controller
 
                 $rows[] = [
                     'location_id' => $location->id,
+                    'effective_from' => $effectiveFrom,
                     'day_of_week' => $day,
                     'sort_order' => $order++,
                     'is_open' => true,

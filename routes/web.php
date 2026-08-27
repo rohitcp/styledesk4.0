@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ServiceCategoryController;
+use App\Http\Controllers\Settings\BusinessHoursController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
 use App\Http\Controllers\Settings\LocationController;
 use App\Http\Controllers\Settings\RolePermissionController;
@@ -236,6 +237,33 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 // because it is its own decision, guarded by its own policy
                 // method rather than by whoever may edit a phone number.
                 Route::patch('{location}/status', 'setStatus')->name('status');
+            });
+
+        /*
+        | Business hours — the weekly pattern, and the dates that override it.
+        |
+        | Separate from Locations on purpose. Editing one branch's week is part
+        | of editing that branch; this is where the business sees every branch
+        | at once, plans a schedule change ahead of time, and keeps the holiday
+        | calendar. Both write through the same action.
+        |
+        | Closures hang off a location in the URL rather than standing alone,
+        | so the branch is authorised before the entry is reached and a closure
+        | id from another branch cannot be swapped in.
+        */
+        Route::controller(BusinessHoursController::class)
+            ->prefix('business-hours')
+            ->name('hours.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+
+                Route::get('{location}', 'edit')->name('edit');
+                Route::patch('{location}', 'update')->name('update');
+                Route::delete('{location}/schedule', 'destroySchedule')->name('schedule.destroy');
+
+                Route::post('{location}/closures', 'storeClosure')->name('closures.store');
+                Route::patch('{location}/closures/{closure}', 'updateClosure')->name('closures.update');
+                Route::delete('{location}/closures/{closure}', 'destroyClosure')->name('closures.destroy');
             });
 
         /*

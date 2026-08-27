@@ -34,6 +34,15 @@ const props = defineProps({
      */
     splitPeriods: { type: Boolean, default: false },
 
+    /**
+     * 12-hour or 24-hour times, from the business's own setting.
+     *
+     * Passed in rather than read here: the preference lives on the tenant and
+     * the server already knows it, so a component that guessed would be a
+     * second answer to a question that has one.
+     */
+    use12Hours: { type: Boolean, default: true },
+
     title: { type: String, default: 'Business hours' },
     description: {
         type: String,
@@ -180,6 +189,7 @@ onMounted(() => nextTick(announce));
                          class="flex items-center gap-2">
                         <div class="w-[124px]">
                             <TimePicker v-model="period.opensAt" :name="fieldName(day, index, 'opens_at')"
+                                        :use12-hours="use12Hours"
                                         :aria-label="`${row.label} opening time`" />
                         </div>
 
@@ -187,6 +197,7 @@ onMounted(() => nextTick(announce));
 
                         <div class="w-[124px]">
                             <TimePicker v-model="period.closesAt" :name="fieldName(day, index, 'closes_at')"
+                                        :use12-hours="use12Hours"
                                         :aria-label="`${row.label} closing time`" />
                         </div>
 

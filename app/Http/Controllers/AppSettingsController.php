@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\LocationClosure;
 use App\Models\Role;
 use App\Models\TeamInvitation;
 use App\Support\Icon;
@@ -114,11 +115,17 @@ class AppSettingsController extends Controller
 
         $activeLocations = $tenant->locations()->active()->count();
 
+        $upcomingClosures = LocationClosure::query()
+            ->whereIn('location_id', $tenant->locations()->select('id'))
+            ->upcoming()
+            ->count();
+
         return [
             'active_staff' => ['value' => $activeStaff, 'label' => Str::plural('active member', $activeStaff)],
             'pending_invites' => ['value' => $pendingInvites, 'label' => Str::plural('pending invite', $pendingInvites)],
             'roles' => ['value' => $roles, 'label' => Str::plural('role', $roles)],
             'active_locations' => ['value' => $activeLocations, 'label' => Str::plural('active location', $activeLocations)],
+            'upcoming_closures' => ['value' => $upcomingClosures, 'label' => Str::plural('upcoming closure', $upcomingClosures)],
         ];
     }
 }

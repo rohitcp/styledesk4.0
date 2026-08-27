@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection as SupportCollection;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
 /**
@@ -22,6 +23,15 @@ class Location extends Model
     public const STATUS_ACTIVE = 'active';
 
     public const STATUS_INACTIVE = 'inactive';
+
+    /**
+     * The effective date rows carry when a business never set one.
+     *
+     * Mirrors the migration's own epoch. Named here too because the model is
+     * where callers look for it, and two copies of a magic date that disagree
+     * would silently split one schedule into two.
+     */
+    public const EPOCH = '2000-01-01';
 
     protected $guarded = [];
 
@@ -46,7 +56,18 @@ class Location extends Model
     // ---------------------------------------------------------- relations
 
     /**
-     * Opening hours, ordered as they are read.
+     * The opening hours in force today, ordered as they are read.
+     *
+     * Scoped to the current schedule rather than every row: once a business
+     * enters next month's hours the table holds two weeks at once, and a
+     * relation returning both would show a location open twice on Monday.
+     *
+     * The schedule is picked by a correlated subquery, not by reading
+     * $this->id. Eager loading calls this on a bare instance with no id, so a
+     * constraint built from the instance would quietly resolve to "no
+     * location" and hand every row back the epoch schedule — the current
+     * hours would look right on a page that loaded one location and wrong on
+     * the page that lists them all.
      *
      * Split days mean several rows per weekday, so the order is part of the
      * data rather than an incidental artefact of insertion: 2–7pm appearing
@@ -54,7 +75,71 @@ class Location extends Model
      */
     public function hours(): HasMany
     {
-        return $this->hasMany(LocationHour::class)->orderBy('day_of_week')->orderBy('sort_order');
+        return $this->hasMany(LocationHour::class)
+            ->whereRaw(
+                'location_hours.effective_from = ('
+                .' select max(current_schedule.effective_from) from location_hours as current_schedule'
+                .' where current_schedule.location_id = location_hours.location_id'
+                .' and current_schedule.effective_from <= ?)',
+                [now()->toDateString()]
+            )
+            ->orderBy('day_of_week')->orderBy('sort_order');
+    }
+
+    /** Every row, across every schedule. Used when rewriting or comparing. */
+    public function allHours(): HasMany
+    {
+        return $this->hasMany(LocationHour::class)
+            ->orderBy('effective_from')->orderBy('day_of_week')->orderBy('sort_order');
+    }
+
+    /** One named schedule, current or future. */
+    public function scheduleHours(?string $effectiveFrom): HasMany
+    {
+        return $this->hasMany(LocationHour::class)
+            ->where('effective_from', $effectiveFrom ?? self::EPOCH)
+            ->orderBy('day_of_week')->orderBy('sort_order');
+    }
+
+    public function closures(): HasMany
+    {
+        return $this->hasMany(LocationClosure::class)->orderBy('starts_on');
+    }
+
+    /**
+     * The effective date of the schedule in force on a day.
+     *
+     * The latest one that has already started. A schedule dated next month is
+     * deliberately not it — that is the whole point of entering it early.
+     */
+    public function currentScheduleDate(): ?string
+    {
+        $date = LocationHour::query()
+            ->where('location_id', $this->id)
+            ->whereDate('effective_from', '<=', now()->toDateString())
+            ->max('effective_from');
+
+        return $date === null ? null : mb_substr((string) $date, 0, 10);
+    }
+
+    /**
+     * Schedules dated in the future, earliest first.
+     *
+     * Surfaced rather than left silent: a business that entered next month's
+     * hours and then forgot is one that will be surprised on the first of the
+     * month, and the screen should say so before then.
+     *
+     * @return SupportCollection<int, string>
+     */
+    public function futureScheduleDates(): SupportCollection
+    {
+        return LocationHour::query()
+            ->where('location_id', $this->id)
+            ->whereDate('effective_from', '>', now()->toDateString())
+            ->distinct()
+            ->orderBy('effective_from')
+            ->pluck('effective_from')
+            ->map(fn ($date) => mb_substr((string) $date, 0, 10));
     }
 
     public function manager(): BelongsTo

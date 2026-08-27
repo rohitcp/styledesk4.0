@@ -352,6 +352,8 @@
     $hoursProps = [
         'initial' => $hoursInitial,
         'splitPeriods' => true,
+        // The business's own 12/24-hour choice, so every screen agrees.
+        'use12Hours' => App\Support\TimeFormat::use12Hours(),
         'days' => array_values(config('locations.weekdays')),
         'title' => 'Location hours',
         'description' => "When this branch is open, in its own time zone. Add a second period to a day that closes in the middle.",

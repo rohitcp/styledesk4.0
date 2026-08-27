@@ -67,7 +67,10 @@ return [
                     'name' => 'Business Hours',
                     'description' => 'Opening and closing times, split shifts, holidays and temporary closures.',
                     'icon' => 'clock',
-                    'keywords' => ['opening', 'closing', 'schedule', 'holiday', 'shift', 'closure'],
+                    'route' => 'settings.hours.index',
+                    'status' => 'active',
+                    'counts' => ['upcoming_closures'],
+                    'keywords' => ['opening', 'closing', 'schedule', 'holiday', 'shift', 'closure', 'timetable', 'special hours'],
                 ],
                 [
                     'key' => 'branding',

@@ -1037,3 +1037,65 @@ textarea.sd-input {
 
 /* Pushes the footer to the bottom of a stretched card. */
 .styledesk_locationcard__spacer { flex: 1 1 auto; }
+
+/* -----------------------------------------------------------------------
+   Centred modal, for a short form raised over the page.
+
+   Not .styledesk_drawer: that one is the navigation panel — 19rem wide and
+   sliding in from the left edge — which is the right shape for a menu and
+   the wrong one for a form with paired date and time fields.
+
+   Scrolls inside itself rather than growing the page behind it, so a long
+   form on a short screen never leaves its own Save button out of reach.
+   ----------------------------------------------------------------------- */
+.styledesk_modal {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.styledesk_modal__scrim {
+    position: fixed;
+    inset: 0;
+    background: rgb(15 15 16 / 45%);
+}
+
+.styledesk_modal__panel {
+    position: relative;
+    width: min(34rem, 100%);
+    /* Clear of the top edge on a desktop, flush to the padding on a phone. */
+    margin: min(6vh, 3.5rem) 0 2rem;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 12px 48px rgb(15 15 16 / 24%);
+}
+
+.styledesk_modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.styledesk_modal__close {
+    display: grid;
+    place-items: center;
+    height: 2rem;
+    width: 2rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.styledesk_modal__close:hover { background: #f3f4f6; color: #0f0f10; }
+
+.styledesk_modal__body { padding: 1.25rem; }

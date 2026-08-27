@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\TimeFormat;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * One opening period on one weekday at one location.
@@ -56,15 +56,19 @@ class LocationHour extends Model
         return $raw === null ? null : mb_substr((string) $raw, 0, 5);
     }
 
-    /** "9:00 AM – 6:00 PM", or null on a closed period. */
+    /**
+     * "9:00 AM – 6:00 PM", or "09:00 – 18:00", or null on a closed period.
+     *
+     * Which of the first two is TimeFormat's decision, not this model's — the
+     * business chose it once in Business settings and every screen has to
+     * agree with that choice.
+     */
     public function rangeLabel(): ?string
     {
-        if (! $this->is_open || $this->opens_at === null || $this->closes_at === null) {
+        if (! $this->is_open) {
             return null;
         }
 
-        $format = fn (string $time) => Carbon::createFromFormat('H:i', mb_substr($time, 0, 5))->format('g:i A');
-
-        return $format((string) $this->opens_at).' – '.$format((string) $this->closes_at);
+        return TimeFormat::range($this->timeValue('opens_at'), $this->timeValue('closes_at'));
     }
 }
