@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Location;
+use App\Models\LocationClosure;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
@@ -694,6 +695,109 @@ class LanguageTest extends TestCase
                 'phone' => '+1 512 555 0100', 'email' => 'riverside@nadia.test',
             ])
             ->assertSessionHas('toast.message', 'Ubicación creada correctamente.');
+    }
+
+    // ----------------------------------------------- the business hours module
+
+    private function spanishLocation(): Location
+    {
+        return Location::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Riverside', 'address_line1' => '1 River Street',
+            'city' => 'Austin', 'state' => 'Texas', 'postal_code' => '78701',
+            'country' => 'US', 'timezone' => 'America/Chicago',
+            'phone' => '+1 512 555 0100', 'email' => 'riverside@nadia.test',
+            'is_primary' => true,
+        ]);
+    }
+
+    public function test_the_business_hours_overview_is_translated(): void
+    {
+        $owner = $this->spanishOwner();
+        $location = $this->spanishLocation();
+
+        LocationClosure::create([
+            'location_id' => $location->id, 'type' => 'maintenance', 'name' => 'Reforma',
+            'starts_on' => now()->subDay()->toDateString(),
+            'ends_on' => now()->addDays(3)->toDateString(),
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('settings.hours.index'))
+            ->assertOk()
+            ->assertSee('Horario comercial')
+            ->assertSee('Próximamente')
+            ->assertSee('En curso')
+            ->assertSee('Cierre por mantenimiento')
+            ->assertSee('Miércoles')
+            ->assertDontSee('Coming up')
+            ->assertDontSee('In progress');
+    }
+
+    public function test_the_business_hours_editor_is_translated(): void
+    {
+        $owner = $this->spanishOwner();
+        $location = $this->spanishLocation();
+
+        $this->actingAs($owner)
+            ->get(route('settings.hours.edit', $location))
+            ->assertOk()
+            ->assertSee('Cuándo empieza este horario')
+            ->assertSee('Festivos, cierres y horarios especiales')
+            ->assertSee('Añadir una fecha')
+            // Exception types, in the dropdown itself.
+            ->assertSee('Cierre por mantenimiento')
+            ->assertSee('Horario especial')
+            ->assertDontSee('When these hours start')
+            ->assertDontSee('Public holiday');
+    }
+
+    public function test_business_hours_messages_are_translated(): void
+    {
+        $owner = $this->spanishOwner();
+        $location = $this->spanishLocation();
+
+        $this->actingAs($owner)
+            ->patch(route('settings.hours.update', $location), [
+                'hours' => [1 => ['is_open' => '1', ['opens_at' => '09:00', 'closes_at' => '17:00']]],
+            ])
+            ->assertSessionHas('toast.message', 'Horario comercial guardado correctamente.');
+
+        $this->actingAs($owner)
+            ->post(route('settings.hours.closures.store', $location), [
+                'type' => 'public_holiday', 'starts_on' => '2026-12-25', 'is_closed_all_day' => '1',
+            ])
+            ->assertSessionHasErrors([
+                'name' => 'Ponle un nombre, para que el equipo sepa de qué se trata.',
+            ]);
+    }
+
+    /**
+     * The "also applied" sentence is two whole sentences joined, not one
+     * assembled from parts, so each language keeps its own word order.
+     */
+    public function test_the_applied_to_others_message_is_translated(): void
+    {
+        $owner = $this->spanishOwner();
+        $location = $this->spanishLocation();
+
+        $other = Location::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Eastside', 'address_line1' => '2 East Street',
+            'city' => 'Austin', 'state' => 'Texas', 'postal_code' => '78702',
+            'country' => 'US', 'timezone' => 'America/Chicago',
+            'phone' => '+1 512 555 0177', 'email' => 'east@nadia.test',
+        ]);
+
+        $this->actingAs($owner)
+            ->patch(route('settings.hours.update', $location), [
+                'hours' => [1 => ['is_open' => '1', ['opens_at' => '09:00', 'closes_at' => '17:00']]],
+                'apply_to' => [$other->id],
+            ])
+            ->assertSessionHas(
+                'toast.message',
+                'Horario comercial guardado correctamente. También aplicado a 1 ubicación más.'
+            );
     }
 
     // ---------------------------------------------------------- the module

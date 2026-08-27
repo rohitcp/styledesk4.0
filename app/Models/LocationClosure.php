@@ -75,9 +75,20 @@ class LocationClosure extends Model
 
     // ------------------------------------------------------------ display
 
+    /**
+     * The type in the reader's language.
+     *
+     * The config still decides which types exist — validation reads that same
+     * list — and falls back to its own English label, so a type added later
+     * reads as itself rather than as a key.
+     */
     public function typeLabel(): string
     {
-        return config('locations.closure_types.'.$this->type.'.label', ucfirst(str_replace('_', ' ', (string) $this->type)));
+        $key = 'hours.types.'.$this->type;
+
+        return trans()->has($key)
+            ? __($key)
+            : config('locations.closure_types.'.$this->type.'.label', ucfirst(str_replace('_', ' ', (string) $this->type)));
     }
 
     public function isSingleDay(): bool
@@ -119,7 +130,7 @@ class LocationClosure extends Model
     public function hoursLabel(): string
     {
         if ($this->is_closed_all_day || $this->opens_at === null || $this->closes_at === null) {
-            return 'Closed all day';
+            return __('hours.exceptions.closed_all_day');
         }
 
         return TimeFormat::range($this->timeValue('opens_at'), $this->timeValue('closes_at'));

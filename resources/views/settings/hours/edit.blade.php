@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Hours — '.$location->name)
+@section('title', __('hours.title').' — '.$location->name)
 
 @section('content')
   <main class="w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
@@ -11,9 +11,9 @@
     <div class="max-w-[760px]">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
-        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">App settings</a>
+        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
         <span class="mx-1.5 text-faint">/</span>
-        <a href="{{ route('settings.hours.index') }}" class="hover:text-ink transition-colors">Business hours</a>
+        <a href="{{ route('settings.hours.index') }}" class="hover:text-ink transition-colors">{{ __('hours.title') }}</a>
         <span class="mx-1.5 text-faint">/</span>
         <span class="text-ink">{{ $location->name }}</span>
       </nav>
@@ -22,22 +22,23 @@
         <div class="min-w-0 flex-1">
           <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">{{ $location->name }}</h1>
           <p class="text-[14px] text-sub mt-2 leading-relaxed">
-            Times are in this location's own time zone,
-            {{ config('locations.timezones.'.$location->timezone, $location->timezone) }}
-            <span class="text-faint">({{ $location->timezone }})</span>.
+            {{ __('hours.timezone_note', [
+                'name' => config('locations.timezones.'.$location->timezone, $location->timezone),
+                'identifier' => $location->timezone,
+            ]) }}
           </p>
         </div>
 
         <a href="{{ route('settings.hours.index') }}"
            class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Back
+          {{ __('common.back') }}
         </a>
       </div>
 
       @if ($errors->any())
         <div class="sd-alert sd-alert--danger mt-5" role="alert">
-          <p class="min-w-0">Please correct the highlighted fields and try again.</p>
+          <p class="min-w-0">{{ __('hours.correct_fields') }}</p>
         </div>
       @endif
 
@@ -48,18 +49,16 @@
           <div class="flex flex-wrap items-start gap-2.5">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="shrink-0 mt-px" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5.5M12 8v.4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
             <p class="min-w-0 flex-1">
-              You are editing hours that start on
-              <strong>{{ \Illuminate\Support\Carbon::parse($schedule)->format('j F Y') }}</strong>.
-              Today's hours are unchanged.
-              <a href="{{ route('settings.hours.edit', $location) }}" class="text-link hover:underline font-medium">Edit today's hours instead</a>
+              {{ __('hours.future.editing', ['date' => \Illuminate\Support\Carbon::parse($schedule)->isoFormat('D MMMM Y')]) }}
+              <a href="{{ route('settings.hours.edit', $location) }}" class="text-link hover:underline font-medium">{{ __('hours.future.edit_today') }}</a>
             </p>
 
             <form method="POST" action="{{ route('settings.hours.schedule.destroy', $location) }}"
-                  onsubmit="return confirm('Discard these upcoming hours? The current hours will keep applying.');">
+                  onsubmit="return confirm(@js(__('hours.future.discard_confirm')));">
               @csrf
               @method('DELETE')
               <input type="hidden" name="schedule" value="{{ $schedule }}">
-              <button type="submit" class="text-[13px] font-semibold text-danger hover:underline">Discard</button>
+              <button type="submit" class="text-[13px] font-semibold text-danger hover:underline">{{ __('hours.future.discard') }}</button>
             </form>
           </div>
         </div>
@@ -68,11 +67,9 @@
           <div class="flex items-start gap-2.5">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="shrink-0 mt-px" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5.5M12 8v.4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
             <p class="min-w-0">
-              A different set of hours starts on
-              <strong>{{ \Illuminate\Support\Carbon::parse($futureSchedules->first())->format('j F Y') }}</strong>.
-              Changes here apply until then.
+              {{ __('hours.future.pending', ['date' => \Illuminate\Support\Carbon::parse($futureSchedules->first())->isoFormat('D MMMM Y')]) }}
               <a href="{{ route('settings.hours.edit', ['location' => $location, 'schedule' => $futureSchedules->first()]) }}"
-                 class="text-link hover:underline font-medium">Edit those instead</a>
+                 class="text-link hover:underline font-medium">{{ __('hours.future.edit_those') }}</a>
             </p>
           </div>
         </div>
@@ -146,16 +143,15 @@
         {{-- ------------------------------------------ effective date --}}
         <section class="bg-white border border-line rounded-card p-5 space-y-4">
           <div>
-            <h2 class="text-[15px] font-semibold text-head">When these hours start</h2>
+            <h2 class="text-[15px] font-semibold text-head">{{ __('hours.effective.title') }}</h2>
             <p class="text-[13px] text-sub mt-0.5">
-              Leave blank to change the hours in force now. Choose a date to plan a change ahead of time —
-              the current hours keep applying until then.
+              {{ __('hours.effective.hint') }}
             </p>
           </div>
 
           <div class="sm:max-w-[280px]">
             <label for="effective_from" class="block text-[13px] font-medium text-ink mb-1.5">
-              Effective from <span class="text-faint font-normal">(optional)</span>
+              {{ __('hours.effective.label') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
             </label>
             <input id="effective_from" name="effective_from" type="date" class="sd-input"
                    min="{{ now()->addDay()->toDateString() }}"
@@ -168,10 +164,9 @@
         @if ($otherLocations->isNotEmpty())
           <section class="bg-white border border-line rounded-card p-5 space-y-4">
             <div>
-              <h2 class="text-[15px] font-semibold text-head">Apply to other locations</h2>
+              <h2 class="text-[15px] font-semibold text-head">{{ __('hours.apply.title') }}</h2>
               <p class="text-[13px] text-sub mt-0.5">
-                Copies this week to the branches you tick. Each keeps its own copy afterwards, so you can
-                still change one without changing the rest.
+                {{ __('hours.apply.hint') }}
               </p>
             </div>
 
@@ -191,7 +186,7 @@
                  destructive to whatever those branches held, and the person
                  ticking the box should know that before they save. --}}
             <p class="text-[12px] text-sub">
-              This replaces the ticked locations' hours for the same period.
+              {{ __('hours.apply.warning') }}
             </p>
           </section>
         @endif
@@ -199,11 +194,11 @@
         <div class="flex flex-wrap items-center gap-3">
           <button type="submit" id="hoursSave"
                   class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
-            Save hours
+            {{ __('hours.save') }}
           </button>
           <a href="{{ route('settings.hours.index') }}"
              class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-            Cancel
+            {{ __('common.cancel') }}
           </a>
         </div>
       </form>
@@ -212,22 +207,22 @@
       <section class="mt-8 bg-white border border-line rounded-card overflow-hidden">
         <div class="px-5 py-4 border-b border-line flex flex-wrap items-start gap-3">
           <div class="min-w-0 flex-1">
-            <h2 class="text-[15px] font-semibold text-head">Holidays, closures &amp; special hours</h2>
+            <h2 class="text-[15px] font-semibold text-head">{{ __('hours.exceptions.title') }}</h2>
             <p class="text-[13px] text-sub mt-0.5">
-              Dates that override the weekly hours above.
+              {{ __('hours.exceptions.hint') }}
             </p>
           </div>
 
           <button type="button" data-closure-add
                   class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
             <x-icon name="plus" size="13" />
-            Add date
+            {{ __('hours.exceptions.add') }}
           </button>
         </div>
 
         @if ($closures->isEmpty())
           <p class="px-5 py-8 text-center text-[13px] text-sub">
-            Nothing scheduled. Add a public holiday, a closure or a day with different hours.
+            {{ __('hours.exceptions.empty') }}
           </p>
         @else
           <ul class="divide-y divide-line">
@@ -236,7 +231,7 @@
                 <span class="w-[130px] shrink-0">
                   <span class="block text-[13px] font-medium text-head">{{ $closure->dateLabel() }}</span>
                   @if ($closure->isInProgress())
-                    <span class="styledesk_badge styledesk_badge--setup mt-1">In progress</span>
+                    <span class="styledesk_badge styledesk_badge--setup mt-1">{{ __('hours.upcoming.in_progress') }}</span>
                   @endif
                 </span>
 
@@ -265,14 +260,14 @@
                               'notes' => $closure->notes,
                               'action' => route('settings.hours.closures.update', [$location, $closure]),
                           ]) }}">
-                    Edit
+                    {{ __('common.edit') }}
                   </button>
 
                   <button type="button" class="text-[13px] font-medium text-danger hover:underline"
                           data-closure-delete
                           data-name="{{ $closure->name }}"
                           data-action="{{ route('settings.hours.closures.destroy', [$location, $closure]) }}">
-                    Delete
+                    {{ __('common.delete') }}
                   </button>
                 </span>
               </li>
@@ -288,8 +283,8 @@
 
         <div class="styledesk_modal__panel" role="dialog" aria-modal="true" aria-labelledby="closureTitle">
           <div class="styledesk_modal__head">
-            <h2 id="closureTitle" class="text-[15px] font-semibold text-head">Add a date</h2>
-            <button type="button" class="styledesk_modal__close" data-closure-close aria-label="Close">
+            <h2 id="closureTitle" class="text-[15px] font-semibold text-head">{{ __('hours.exceptions.add_title') }}</h2>
+            <button type="button" class="styledesk_modal__close" data-closure-close aria-label="{{ __('common.close') }}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             </button>
           </div>
@@ -301,10 +296,10 @@
 
             <div>
               <label for="closure_type" class="block text-[13px] font-medium text-ink mb-1.5">
-                What is it <span class="text-danger">*</span>
+                {{ __('hours.exceptions.type') }} <span class="text-danger">*</span>
               </label>
               <select id="closure_type" name="type" class="sd-input" data-closure-type>
-                @foreach (config('locations.closure_types') as $value => $meta)
+                @foreach (App\Support\ClosureTypes::all() as $value => $meta)
                   <option value="{{ $value }}" data-closes="{{ $meta['closes'] ? '1' : '0' }}"
                           @selected(old('type') === $value)>{{ $meta['label'] }}</option>
                 @endforeach
@@ -314,17 +309,17 @@
 
             <div>
               <label for="closure_name" class="block text-[13px] font-medium text-ink mb-1.5">
-                Name <span class="text-danger">*</span>
+                {{ __('hours.exceptions.name') }} <span class="text-danger">*</span>
               </label>
               <input id="closure_name" name="name" type="text" class="sd-input" data-capitalize
-                     placeholder="Christmas Day" value="{{ old('name') }}">
+                     placeholder="{{ __('hours.exceptions.name_placeholder') }}" value="{{ old('name') }}">
               @error('name')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
             </div>
 
             <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
               <div>
                 <label for="closure_starts_on" class="block text-[13px] font-medium text-ink mb-1.5">
-                  From <span class="text-danger">*</span>
+                  {{ __('hours.exceptions.from') }} <span class="text-danger">*</span>
                 </label>
                 <input id="closure_starts_on" name="starts_on" type="date" class="sd-input"
                        value="{{ old('starts_on') }}" data-closure-start>
@@ -333,11 +328,11 @@
 
               <div>
                 <label for="closure_ends_on" class="block text-[13px] font-medium text-ink mb-1.5">
-                  To <span class="text-faint font-normal">(optional)</span>
+                  {{ __('hours.exceptions.to') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
                 </label>
                 <input id="closure_ends_on" name="ends_on" type="date" class="sd-input"
                        value="{{ old('ends_on') }}" data-closure-end>
-                <p class="mt-1.5 text-[12px] text-sub">Leave blank for a single day.</p>
+                <p class="mt-1.5 text-[12px] text-sub">{{ __('hours.exceptions.to_hint') }}</p>
                 @error('ends_on')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
               </div>
             </div>
@@ -347,19 +342,19 @@
                 <input type="checkbox" name="is_closed_all_day" value="1" class="sd-check mt-0.5"
                        data-closure-closed @checked(old('is_closed_all_day', true))>
                 <span class="min-w-0">
-                  <span class="block text-[13px] font-medium text-ink">Closed all day</span>
-                  <span class="block text-[12px] text-sub">Turn this off to open with different hours instead.</span>
+                  <span class="block text-[13px] font-medium text-ink">{{ __('hours.exceptions.closed_all_day') }}</span>
+                  <span class="block text-[12px] text-sub">{{ __('hours.exceptions.closed_all_day_hint') }}</span>
                 </span>
               </label>
 
               <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4 pl-[26px]" data-closure-times hidden>
                 <div>
-                  <label for="closure_opens_at" class="block text-[13px] font-medium text-ink mb-1.5">Opens</label>
+                  <label for="closure_opens_at" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('hours.exceptions.opens') }}</label>
                   <input id="closure_opens_at" name="opens_at" type="time" class="sd-input" value="{{ old('opens_at') }}">
                   @error('opens_at')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                  <label for="closure_closes_at" class="block text-[13px] font-medium text-ink mb-1.5">Closes</label>
+                  <label for="closure_closes_at" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('hours.exceptions.closes') }}</label>
                   <input id="closure_closes_at" name="closes_at" type="time" class="sd-input" value="{{ old('closes_at') }}">
                   @error('closes_at')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
                 </div>
@@ -368,21 +363,21 @@
 
             <div>
               <label for="closure_notes" class="block text-[13px] font-medium text-ink mb-1.5">
-                Internal note <span class="text-faint font-normal">(optional)</span>
+                {{ __('hours.exceptions.notes') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
               </label>
               <textarea id="closure_notes" name="notes" rows="2" class="sd-input"
-                        placeholder="Only your team sees this.">{{ old('notes') }}</textarea>
+                        placeholder="{{ __('hours.exceptions.notes_placeholder') }}">{{ old('notes') }}</textarea>
               @error('notes')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
             </div>
 
             <div class="flex flex-wrap items-center gap-3 pt-2">
               <button type="submit"
                       class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-                Save date
+                {{ __('hours.exceptions.save') }}
               </button>
               <button type="button" data-closure-close
                       class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-                Cancel
+                {{ __('common.cancel') }}
               </button>
             </div>
           </form>
@@ -431,7 +426,7 @@
 
       function open(values) {
         if (values) {
-          title.textContent = 'Edit this date';
+          title.textContent = @json(__('hours.exceptions.edit_title'));
           form.action = values.action;
           method.value = 'PATCH';
 
@@ -447,7 +442,7 @@
           form.querySelector('#closure_closes_at').value = values.closes_at || '';
           form.querySelector('#closure_notes').value = values.notes || '';
         } else {
-          title.textContent = 'Add a date';
+          title.textContent = @json(__('hours.exceptions.add_title'));
           form.action = storeAction;
           method.value = 'POST';
           form.reset();
@@ -492,7 +487,12 @@
 
       document.querySelectorAll('[data-closure-delete]').forEach(function (button) {
         button.addEventListener('click', function () {
-          if (!window.confirm('Remove “' + button.getAttribute('data-name') + '” from the calendar?')) return;
+          /* Built server-side per language: Spanish does not put the name
+             where English does, and string addition cannot express that. */
+          var confirmText = @json(__('hours.exceptions.delete_confirm', ['name' => '__NAME__']))
+            .replace('__NAME__', button.getAttribute('data-name'));
+
+          if (!window.confirm(confirmText)) return;
 
           deleteForm.action = button.getAttribute('data-action');
           deleteForm.submit();
@@ -514,7 +514,7 @@
         if (saving) { e.preventDefault(); return; }
         saving = true;
         save.disabled = true;
-        save.textContent = 'Saving…';
+        save.textContent = @json(__('common.saving'));
       });
     }());
   </script>

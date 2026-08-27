@@ -15,7 +15,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -147,7 +146,7 @@ class BusinessHoursController extends Controller
 
         if ($schedule === '' || $schedule <= now()->toDateString()) {
             throw ValidationException::withMessages([
-                'schedule' => 'Only a schedule that has not started yet can be discarded.',
+                'schedule' => __('hours.validation.schedule_not_future'),
             ]);
         }
 
@@ -155,7 +154,7 @@ class BusinessHoursController extends Controller
 
         return redirect()
             ->route('settings.hours.edit', $location)
-            ->with('toast', ['type' => 'success', 'message' => 'Upcoming hours discarded.']);
+            ->with('toast', ['type' => 'success', 'message' => __('hours.schedule_discarded')]);
     }
 
     // ----------------------------------------------------------- exceptions
@@ -166,7 +165,7 @@ class BusinessHoursController extends Controller
 
         $location->closures()->create($this->validatedClosure($request, $location, null));
 
-        return back()->with('toast', ['type' => 'success', 'message' => 'Added to the calendar.']);
+        return back()->with('toast', ['type' => 'success', 'message' => __('hours.exceptions.added')]);
     }
 
     public function updateClosure(Request $request, Location $location, LocationClosure $closure): RedirectResponse
@@ -176,7 +175,7 @@ class BusinessHoursController extends Controller
 
         $closure->update($this->validatedClosure($request, $location, $closure));
 
-        return back()->with('toast', ['type' => 'success', 'message' => 'Calendar entry updated.']);
+        return back()->with('toast', ['type' => 'success', 'message' => __('hours.exceptions.updated')]);
     }
 
     public function destroyClosure(Request $request, Location $location, LocationClosure $closure): RedirectResponse
@@ -186,7 +185,7 @@ class BusinessHoursController extends Controller
 
         $closure->delete();
 
-        return back()->with('toast', ['type' => 'success', 'message' => 'Removed from the calendar.']);
+        return back()->with('toast', ['type' => 'success', 'message' => __('hours.exceptions.removed')]);
     }
 
     // -------------------------------------------------------------- helpers
@@ -232,7 +231,7 @@ class BusinessHoursController extends Controller
         }
 
         return $request->validate($rules, [
-            'effective_from.after' => 'A future schedule must start on a later date. Leave this blank to change today’s hours.',
+            'effective_from.after' => __('hours.validation.effective_after'),
         ]);
     }
 
@@ -269,12 +268,12 @@ class BusinessHoursController extends Controller
             'closes_at' => ['nullable', 'date_format:H:i', 'required_if:is_closed_all_day,0', 'after:opens_at'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ], [
-            'name.required' => 'Give this a name, so the team knows what it is.',
-            'starts_on.required' => 'Choose a date.',
-            'ends_on.after_or_equal' => 'The end date cannot be before the start date.',
-            'opens_at.required_if' => 'Enter the opening time, or mark the day as closed.',
-            'closes_at.required_if' => 'Enter the closing time, or mark the day as closed.',
-            'closes_at.after' => 'Closing time must be after the opening time.',
+            'name.required' => __('hours.validation.name_required'),
+            'starts_on.required' => __('hours.validation.date_required'),
+            'ends_on.after_or_equal' => __('hours.validation.end_before_start'),
+            'opens_at.required_if' => __('hours.validation.opens_required'),
+            'closes_at.required_if' => __('hours.validation.closes_required'),
+            'closes_at.after' => __('hours.validation.closes_after_opens'),
         ]);
 
         $closed = (bool) ($data['is_closed_all_day'] ?? false);
@@ -325,7 +324,7 @@ class BusinessHoursController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'starts_on' => '“'.$clash->name.'” already covers '.$clash->dateLabel().'. Edit that entry instead, or choose different dates.',
+            'starts_on' => __('hours.validation.clash', ['name' => $clash->name, 'dates' => $clash->dateLabel()]),
         ]);
     }
 
@@ -385,16 +384,21 @@ class BusinessHoursController extends Controller
          * just did.
          */
         $when = $effectiveFrom
-            ? 'Hours saved, starting '.Carbon::parse($effectiveFrom)->format('j F Y')
-            : 'Business hours saved successfully';
+            ? __('hours.saved_from', ['date' => Carbon::parse($effectiveFrom)->isoFormat('D MMMM Y')])
+            : __('hours.saved');
 
         if ($others === 0) {
-            return $when.'.';
+            return $when;
         }
 
-        // Says how many, because "applied to other locations" leaves the user
-        // to go and count which ones actually changed.
-        return $when.'. Also applied to '.$others.' other '.Str::plural('location', $others).'.';
+        /**
+         * Two whole sentences, joined — not a sentence assembled from parts.
+         *
+         * Says how many, because "applied to other locations" leaves the user
+         * to go and count which ones actually changed. Each language states
+         * its own plural and its own word order.
+         */
+        return $when.' '.trans_choice('hours.also_applied', $others, ['count' => $others]);
     }
 
     /**
