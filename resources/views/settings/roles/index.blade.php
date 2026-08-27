@@ -3,7 +3,10 @@
 @section('title', 'Roles & permissions')
 
 @section('content')
-  <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
+  {{-- pb-[200px]: the role list ends on a card, and a card flush against
+       the footer reads as the page having been cut off rather than finished.
+       The gap is what says the list is complete. --}}
+  <main class="w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
     <div class="max-w-[900px]">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
