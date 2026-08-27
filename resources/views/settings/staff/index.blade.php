@@ -190,7 +190,7 @@
 
                         @can('update', $member)
                           <a href="{{ route('settings.staff.edit', $member) }}" class="styledesk_rowmenu__item" role="menuitem">
-                            <x-icon name="sliders" size="14" /> Edit
+                            <x-icon name="pen-to-square" size="14" /> Edit
                           </a>
                         @endcan
 
@@ -210,7 +210,7 @@
                                   data-delete-staff
                                   data-name="{{ $member->displayName() }}"
                                   data-action="{{ route('settings.staff.destroy', $member) }}">
-                            <x-icon name="calendar-xmark" size="14" /> Delete
+                            <x-icon name="trash-can" size="14" /> Delete
                           </button>
                         @endcan
                       </span>
