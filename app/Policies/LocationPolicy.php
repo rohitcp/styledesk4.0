@@ -79,6 +79,33 @@ class LocationPolicy
         return ! $location->isInUse() && ! $this->isOnlyLocation($location);
     }
 
+    /**
+     * Retiring a branch, which is a different act from editing one.
+     *
+     * §12 makes deactivation the answer for a location with history, so it
+     * gets its own permission check rather than riding on `update`: a role
+     * that may correct a phone number is not necessarily one that may take a
+     * branch out of service.
+     *
+     * The primary location is refused. Other modules read that field to
+     * answer "where does this business operate from", and an inactive answer
+     * to that question is worse than no answer — make another branch primary
+     * first.
+     */
+    public function deactivate(User $user, Location $location): bool
+    {
+        if (! $this->update($user, $location) || ! $location->isActive()) {
+            return false;
+        }
+
+        return ! $location->is_primary;
+    }
+
+    public function activate(User $user, Location $location): bool
+    {
+        return $this->update($user, $location) && ! $location->isActive();
+    }
+
     public function assignStaff(User $user, Location $location): bool
     {
         return $this->sameTenant($user, $location) && $user->hasPermission('locations.assign_staff');

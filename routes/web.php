@@ -231,6 +231,11 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 Route::get('{location}', 'show')->name('show');
                 Route::get('{location}/edit', 'edit')->name('edit');
                 Route::patch('{location}', 'update')->name('update');
+
+                // Retiring or reinstating a branch, per §12. Its own address
+                // because it is its own decision, guarded by its own policy
+                // method rather than by whoever may edit a phone number.
+                Route::patch('{location}/status', 'setStatus')->name('status');
             });
 
         /*

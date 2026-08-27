@@ -155,6 +155,33 @@ class LocationController extends Controller
             ->with('toast', ['type' => 'success', 'message' => 'Location saved successfully.']);
     }
 
+    /**
+     * Take a branch out of service, or bring it back.
+     *
+     * One action rather than two endpoints, because it is one decision with
+     * two directions and the policy already knows which is available. Not
+     * folded into update(): retiring a branch is an act somebody chose from a
+     * menu, and it should not be reachable by posting the edit form with one
+     * field changed.
+     */
+    public function setStatus(Request $request, Location $location): RedirectResponse
+    {
+        $activating = $request->input('status') === Location::STATUS_ACTIVE;
+
+        $this->authorize($activating ? 'activate' : 'deactivate', $location);
+
+        $location->forceFill([
+            'status' => $activating ? Location::STATUS_ACTIVE : Location::STATUS_INACTIVE,
+        ])->save();
+
+        return back()->with('toast', [
+            'type' => 'success',
+            'message' => $activating
+                ? $location->name.' is active again.'
+                : $location->name.' is now inactive. It takes no new bookings; its history is unchanged.',
+        ]);
+    }
+
     // ------------------------------------------------------------ helpers
 
     /**

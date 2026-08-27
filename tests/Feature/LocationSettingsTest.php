@@ -450,6 +450,131 @@ class LocationSettingsTest extends TestCase
         $this->assertSame([$assistant->id], $fresh->assistantManagers->pluck('id')->all());
     }
 
+    // ------------------------------------------------------ status changes
+
+    public function test_a_location_can_be_deactivated_from_the_list(): void
+    {
+        $this->location();
+        $branch = $this->location(['name' => 'Eastside Spa', 'is_primary' => false]);
+
+        $this->actingAs($this->member('owner'))
+            ->patch(route('settings.locations.status', $branch), ['status' => 'inactive'])
+            ->assertSessionHas('toast.type', 'success');
+
+        $this->assertSame('inactive', $branch->fresh()->status);
+
+        // §12: everything the branch was holding survives.
+        $this->assertDatabaseHas('locations', ['id' => $branch->id, 'name' => 'Eastside Spa']);
+    }
+
+    public function test_an_inactive_location_can_be_reactivated(): void
+    {
+        $this->location();
+        $branch = $this->location(['name' => 'Eastside Spa', 'is_primary' => false, 'status' => 'inactive']);
+
+        $this->actingAs($this->member('owner'))
+            ->patch(route('settings.locations.status', $branch), ['status' => 'active']);
+
+        $this->assertSame('active', $branch->fresh()->status);
+    }
+
+    /**
+     * The primary branch cannot be retired out from under the business.
+     *
+     * Other modules read is_primary to answer "where does this business
+     * operate from", and an inactive answer to that is worse than none.
+     */
+    public function test_the_primary_location_cannot_be_deactivated(): void
+    {
+        $primary = $this->location();
+
+        $this->actingAs($this->member('owner'))
+            ->patch(route('settings.locations.status', $primary), ['status' => 'inactive'])
+            ->assertForbidden();
+
+        $this->assertSame('active', $primary->fresh()->status);
+    }
+
+    public function test_the_card_menu_withholds_deactivate_from_the_primary_location(): void
+    {
+        $this->location(['name' => 'Head Office']);
+        $this->location(['name' => 'Eastside Spa', 'is_primary' => false]);
+
+        $response = $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.index'))
+            ->assertOk();
+
+        // Offered once, for the branch that is not primary.
+        $this->assertSame(1, substr_count($response->getContent(), 'Deactivate location'));
+    }
+
+    // ------------------------------------------------------------ the grid
+
+    public function test_each_card_links_to_its_location(): void
+    {
+        $branch = $this->location(['name' => 'Eastside Spa']);
+
+        $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.index'))
+            ->assertOk()
+            ->assertSee('styledesk_locationgrid', false)
+            ->assertSee(route('settings.locations.show', $branch), false);
+    }
+
+    /**
+     * The card is a summary, not a settings screen.
+     *
+     * Services, staff, resources, booking rules and holiday hours belong to
+     * the page behind the card. A test rather than a comment, because the
+     * temptation to add "just one more figure" to a card is what turns a
+     * summary back into a table.
+     */
+    public function test_the_card_leaves_detailed_settings_to_the_location_page(): void
+    {
+        $this->location();
+
+        $content = $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.index'))
+            ->getContent();
+
+        /**
+         * The grid, not the whole page.
+         *
+         * The app's global nav lists Services and Resources on every screen,
+         * so an assertion against the entire response answers a question
+         * about the chrome rather than about the cards.
+         */
+        $start = mb_strpos($content, 'styledesk_locationgrid');
+        $grid = mb_substr($content, $start, mb_strpos($content, 'locationStatusForm') - $start);
+
+        foreach (['Services', 'staff', 'Resources', 'Booking', 'Holiday'] as $detail) {
+            $this->assertStringNotContainsString($detail, $grid);
+        }
+    }
+
+    public function test_an_empty_account_is_offered_a_first_location(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.index'))
+            ->assertOk()
+            ->assertSee('No locations yet.')
+            ->assertSee('Add your first location');
+    }
+
+    /**
+     * A search that finds nothing is not the same as having nothing.
+     */
+    public function test_a_fruitless_search_is_not_offered_a_first_location(): void
+    {
+        $this->location();
+
+        $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.index', ['search' => 'nowhere']))
+            ->assertOk()
+            ->assertSee('No locations match your search.')
+            ->assertDontSee('Add your first location');
+    }
+
     // ---------------------------------------------------------- the module
 
     public function test_the_app_settings_card_links_to_the_module(): void
