@@ -31,7 +31,12 @@
 
 <dl class="mt-1">
     @foreach ($filled as $label => $value)
-        <div class="py-2.5 border-b border-line last:border-0">
+        {{-- The final row keeps its rule only when a "not set" line follows,
+             so a card never ends on a divider with nothing beneath it. --}}
+        <div @class([
+            'py-2.5 border-b border-line',
+            'last:border-0' => ! $empty,
+        ])>
             <dt class="text-[12px] text-sub">{{ $label }}</dt>
             <dd class="mt-0.5 text-[14px] text-head">
                 @if ($value instanceof Closure)
@@ -44,7 +49,10 @@
     @endforeach
 
     @if ($empty)
-        <div class="pt-3 @if ($filled) mt-1 border-t border-line @endif">
+        {{-- No border of its own. The last fact above already draws one, and
+             a second rule a few pixels below it reads as a doubled divider
+             rather than as a separator. --}}
+        <div class="pt-3">
             <p class="text-[12px] text-faint">Not set: {{ implode(', ', $empty) }}</p>
         </div>
     @endif

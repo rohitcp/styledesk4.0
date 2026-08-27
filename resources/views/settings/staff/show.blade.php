@@ -196,26 +196,31 @@
         @if ($invitation)
           <section class="bg-white border border-line rounded-card p-5">
             <h2 class="text-[15px] font-semibold text-head">Invitation</h2>
-              <x-settings.facts :facts="[
-                  'Sent to' => $invitation->email,
-                  {{-- outcomeLabel, not statusLabel: the latter answers the
-                       team list's question about the person and says 'Active'
-                       for an accepted invitation, which on this card reads as
-                       the invitation still being open. --}}
-                  // The outcome and when it happened are one fact, so they
-                  // share a line rather than a status row and a date row
-                  // saying the same thing twice.
-                  //
-                  // No double quotes in here: the whole array is the value of
-                  // a :facts=&quot;...&quot; attribute, and a quote inside it
-                  // closes the attribute early and dumps the expression onto
-                  // the page as text.
-                  'Status' => trim($invitation->outcomeLabel().' '.($invitation->accepted_at?->diffForHumans() ?? '')),
-                  'Sent' => $invitation->sent_at?->diffForHumans(),
-                  // An expiry already overtaken by acceptance is a date that
-                  // no longer means anything.
-                  'Expires' => $invitation->accepted_at ? null : $invitation->expires_at?->format('j F Y'),
-            ]" />
+              @php
+                $invitationFacts = ['Sent to' => $invitation->email];
+
+                // The outcome and when it happened are one fact, so they
+                // share a line rather than a status row and a date row
+                // saying the same thing twice.
+                $invitationFacts['Status'] = trim(
+                    $invitation->outcomeLabel().' '.($invitation->accepted_at?->diffForHumans() ?? '')
+                );
+
+                $invitationFacts['Sent'] = $invitation->sent_at?->diffForHumans();
+
+                /**
+                 * Omitted entirely once accepted, rather than passed as null.
+                 *
+                 * A null value is reported as "Not set", which claims someone
+                 * failed to fill in an expiry — when in fact acceptance has
+                 * made the date meaningless and it is deliberately withheld.
+                 */
+                if ($invitation->accepted_at === null) {
+                    $invitationFacts['Expires'] = $invitation->expires_at?->format('j F Y');
+                }
+            @endphp
+
+            <x-settings.facts :facts="$invitationFacts" />
           </section>
         @endif
 

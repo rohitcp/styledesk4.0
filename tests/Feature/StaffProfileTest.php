@@ -248,6 +248,71 @@ class StaffProfileTest extends TestCase
             ->assertSee('Accepted');
     }
 
+    /**
+     * Two rules a few pixels apart read as a doubled divider, not a
+     * separator: the last fact drew its own bottom border and the "not set"
+     * line added a top one.
+     */
+    public function test_the_not_set_line_is_separated_by_a_single_rule(): void
+    {
+        $owner = $this->owner();
+        $amara = $this->member('manager', ['job_title' => 'Salon Manager']);
+
+        $content = $this->actingAs($owner)
+            ->get('http://styledesk.test/settings/staff/'.$amara->id)
+            ->getContent();
+
+        $about = substr($content, strpos($content, '>About<'), 1800);
+
+        $this->assertStringContainsString('Not set:', $about);
+        // The summary line carries no border of its own.
+        $this->assertStringNotContainsString('border-t border-line', $about);
+    }
+
+    /**
+     * A field withheld on purpose is not a field somebody forgot.
+     *
+     * The expiry stops meaning anything once an invitation is accepted, so it
+     * is omitted rather than passed as null — which the facts list would
+     * report as "Not set: Expires", blaming an administrator for a decision
+     * the page made.
+     */
+    public function test_an_accepted_invitation_does_not_report_a_missing_expiry(): void
+    {
+        $owner = $this->owner();
+        $amara = $this->member('manager');
+
+        $invitation = TeamInvitation::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'staff_id' => $amara->id,
+            'email' => 'amara@acme.test',
+            'first_name' => 'Amara', 'last_name' => 'Osei',
+            'role' => 'manager',
+            'token_hash' => str_repeat('b', 64),
+            'status' => TeamInvitation::STATUS_ACCEPTED,
+            'sent_at' => now()->subDay(),
+            'accepted_at' => now()->subHours(3),
+            'expires_at' => now()->addDays(6),
+        ]);
+
+        $content = $this->actingAs($owner)
+            ->get('http://styledesk.test/settings/staff/'.$amara->id)
+            ->getContent();
+
+        $card = substr($content, strpos($content, '>Invitation<'), 1400);
+
+        $this->assertStringContainsString('Accepted 3 hours ago', $card);
+        $this->assertStringNotContainsString('Not set', $card);
+        $this->assertStringNotContainsString('Expires', $card);
+
+        // A pending one still shows when it runs out.
+        $invitation->forceFill(['status' => TeamInvitation::STATUS_PENDING, 'accepted_at' => null])->save();
+
+        $this->actingAs($owner)
+            ->get('http://styledesk.test/settings/staff/'.$amara->id)
+            ->assertSee('Expires');
+    }
+
     public function test_the_header_carries_the_contact_details(): void
     {
         $owner = $this->owner();
