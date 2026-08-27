@@ -848,14 +848,23 @@ textarea.sd-input {
    ------------------------------------------------------------------ */
 
 .styledesk_profile {
+    /* A column of two bands, not one row: the identity band and the contact
+       strip beneath it. As a row, the strip lived inside the text column and
+       its divider began wherever the avatar ended, stopping short of both
+       card edges. */
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 1.25rem;
+    flex-direction: column;
     padding: 1.25rem;
     border: 1px solid var(--sd-line, #e5e7eb);
     border-radius: 12px;
     background: #fff;
+}
+
+.styledesk_profile__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1.25rem;
 }
 
 .styledesk_profile__avatar {
@@ -885,8 +894,12 @@ textarea.sd-input {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 0.75rem 1.5rem;
-    margin-top: 1rem;
-    padding-top: 1rem;
+    /* Pulled out to the card's edges and padded back in, so the rule above
+       it runs the full width while the content stays aligned with the band
+       above. Matching the card's own 1.25rem padding is what keeps the two
+       in step. */
+    margin: 1rem -1.25rem 0;
+    padding: 1rem 1.25rem 0;
     border-top: 1px solid var(--sd-line, #e5e7eb);
 }
 

@@ -23,98 +23,99 @@
       </nav>
 
       {{-- ===================== Header =====================
-           Who this is and how to reach them, together. The first version put
-           the email and phone in a card below the fold, so the two questions
-           this page is opened to answer were the two it answered last. --}}
+           Two bands stacked: who this is, then how to reach them. The strip
+           is a sibling of the identity row rather than a child of its text
+           column, which is what lets its divider run the full width of the
+           card instead of starting where the avatar ends. --}}
       <div class="styledesk_profile mt-3">
-        <span class="styledesk_profile__avatar" aria-hidden="true">
-          @if ($avatarUrl)
-            <img src="{{ $avatarUrl }}" alt="">
-          @else
-            {{ $staff->initials() }}
-          @endif
-        </span>
 
-        <div class="min-w-0 flex-1">
-          <div class="flex flex-wrap items-start gap-x-4 gap-y-2">
-            <div class="min-w-0 flex-1">
-              <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight leading-tight">
-                {{ $staff->displayName() }}
-              </h1>
+        <div class="styledesk_profile__top">
+          <span class="styledesk_profile__avatar" aria-hidden="true">
+            @if ($avatarUrl)
+              <img src="{{ $avatarUrl }}" alt="">
+            @else
+              {{ $staff->initials() }}
+            @endif
+          </span>
 
-              <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-sub">
-                @if ($staff->job_title)<span>{{ $staff->job_title }}</span>@endif
-                @if ($staff->job_title && $staff->roleRecord)<span class="text-faint">&middot;</span>@endif
-                @if ($staff->roleRecord)<span>{{ $staff->roleRecord->name }}</span>@endif
-                {{-- Only when it actually differs. Someone whose preferred
-                     name matches their first name would otherwise see their
-                     own name twice on one line. --}}
-                @php $legalName = trim($staff->first_name.' '.$staff->last_name); @endphp
-                @if ($legalName !== $staff->displayName())
-                  <span class="text-faint">&middot;</span>
-                  <span class="text-faint">{{ $legalName }}</span>
-                @endif
-                @if ($staff->pronouns)
-                  <span class="text-faint">&middot;</span>
-                  <span>{{ $opts['pronouns'][$staff->pronouns] ?? $staff->pronouns }}</span>
-                @endif
-              </p>
+          <div class="min-w-0 flex-1">
+            <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight leading-tight">
+              {{ $staff->displayName() }}
+            </h1>
 
-              <p class="mt-2.5 flex flex-wrap items-center gap-1.5">
-                <span class="styledesk_badge {{ $staff->statusClass() }}">{{ $staff->statusLabel() }}</span>
-                @if ($staff->provides_services)
-                  <span class="styledesk_badge styledesk_badge--soon">Bookable</span>
-                @endif
-                @if (! $staff->login_enabled)
-                  <span class="styledesk_badge styledesk_badge--soon">No login</span>
-                @endif
-              </p>
-            </div>
+            <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-sub">
+              @if ($staff->job_title)<span>{{ $staff->job_title }}</span>@endif
+              @if ($staff->job_title && $staff->roleRecord)<span class="text-faint">&middot;</span>@endif
+              @if ($staff->roleRecord)<span>{{ $staff->roleRecord->name }}</span>@endif
 
-            <div class="shrink-0 flex items-center gap-2">
-              <a href="{{ route('settings.staff.index') }}"
-                 class="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Back
-              </a>
+              {{-- Only when it differs, or someone whose preferred name is
+                   their first name reads their own name twice. --}}
+              @php $legalName = trim($staff->first_name.' '.$staff->last_name); @endphp
+              @if ($legalName !== $staff->displayName())
+                <span class="text-faint">&middot;</span>
+                <span class="text-faint">{{ $legalName }}</span>
+              @endif
 
-              @can('update', $staff)
-                <a href="{{ route('settings.staff.edit', $staff) }}"
-                   class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-                  Edit
-                </a>
-              @endcan
-            </div>
+              @if ($staff->pronouns)
+                <span class="text-faint">&middot;</span>
+                <span>{{ $opts['pronouns'][$staff->pronouns] ?? $staff->pronouns }}</span>
+              @endif
+            </p>
+
+            <p class="mt-2.5 flex flex-wrap items-center gap-1.5">
+              <span class="styledesk_badge {{ $staff->statusClass() }}">{{ $staff->statusLabel() }}</span>
+              @if ($staff->provides_services)
+                <span class="styledesk_badge styledesk_badge--soon">Bookable</span>
+              @endif
+              @if (! $staff->login_enabled)
+                <span class="styledesk_badge styledesk_badge--soon">No login</span>
+              @endif
+            </p>
           </div>
 
-          @php
-              $headline = [
-                  ['icon' => 'envelope', 'label' => 'Email', 'value' => $staff->email, 'href' => $staff->email ? 'mailto:'.$staff->email : null],
-                  ['icon' => 'address-book', 'label' => 'Phone', 'value' => $staff->phone, 'href' => $staff->phone ? 'tel:'.$staff->phone : null],
-                  ['icon' => 'location-dot', 'label' => 'Location', 'value' => $staff->location?->name ?? 'All locations'],
-                  ['icon' => 'clock', 'label' => 'Last login', 'value' => $staff->user?->last_login_at?->diffForHumans() ?? 'Never'],
-              ];
-          @endphp
+          <div class="shrink-0 flex items-center gap-2">
+            <a href="{{ route('settings.staff.index') }}"
+               class="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Back
+            </a>
 
-          <dl class="styledesk_profile__facts">
-            @foreach ($headline as $fact)
-              @continue (! filled($fact['value']))
-              <div class="styledesk_profile__fact">
-                <x-icon :name="$fact['icon']" size="14" />
-                <div class="min-w-0">
-                  <dt>{{ $fact['label'] }}</dt>
-                  <dd class="truncate">
-                    @if (! empty($fact['href']))
-                      <a href="{{ $fact['href'] }}" class="text-link hover:underline">{{ $fact['value'] }}</a>
-                    @else
-                      {{ $fact['value'] }}
-                    @endif
-                  </dd>
-                </div>
-              </div>
-            @endforeach
-          </dl>
+            @can('update', $staff)
+              <a href="{{ route('settings.staff.edit', $staff) }}"
+                 class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+                Edit
+              </a>
+            @endcan
+          </div>
         </div>
+
+        @php
+            $headline = [
+                ['icon' => 'envelope', 'label' => 'Email', 'value' => $staff->email, 'href' => $staff->email ? 'mailto:'.$staff->email : null],
+                ['icon' => 'address-book', 'label' => 'Phone', 'value' => $staff->phone, 'href' => $staff->phone ? 'tel:'.$staff->phone : null],
+                ['icon' => 'location-dot', 'label' => 'Location', 'value' => $staff->location?->name ?? 'All locations'],
+                ['icon' => 'clock', 'label' => 'Last login', 'value' => $staff->user?->last_login_at?->diffForHumans() ?? 'Never'],
+            ];
+        @endphp
+
+        <dl class="styledesk_profile__facts">
+          @foreach ($headline as $fact)
+            @continue (! filled($fact['value']))
+            <div class="styledesk_profile__fact">
+              <x-icon :name="$fact['icon']" size="14" />
+              <div class="min-w-0">
+                <dt>{{ $fact['label'] }}</dt>
+                <dd class="truncate">
+                  @if (! empty($fact['href']))
+                    <a href="{{ $fact['href'] }}" class="text-link hover:underline">{{ $fact['value'] }}</a>
+                  @else
+                    {{ $fact['value'] }}
+                  @endif
+                </dd>
+              </div>
+            </div>
+          @endforeach
+        </dl>
       </div>
 
       {{-- ===================== Detail =====================
@@ -201,11 +202,18 @@
                        team list's question about the person and says 'Active'
                        for an accepted invitation, which on this card reads as
                        the invitation still being open. --}}
-                  'Status' => $invitation->outcomeLabel(),
+                  // The outcome and when it happened are one fact, so they
+                  // share a line rather than a status row and a date row
+                  // saying the same thing twice.
+                  //
+                  // No double quotes in here: the whole array is the value of
+                  // a :facts=&quot;...&quot; attribute, and a quote inside it
+                  // closes the attribute early and dumps the expression onto
+                  // the page as text.
+                  'Status' => trim($invitation->outcomeLabel().' '.($invitation->accepted_at?->diffForHumans() ?? '')),
                   'Sent' => $invitation->sent_at?->diffForHumans(),
-                  'Accepted' => $invitation->accepted_at?->diffForHumans(),
-                  // An expiry that has already been overtaken by acceptance is
-                  // a date that no longer means anything.
+                  // An expiry already overtaken by acceptance is a date that
+                  // no longer means anything.
                   'Expires' => $invitation->accepted_at ? null : $invitation->expires_at?->format('j F Y'),
             ]" />
           </section>

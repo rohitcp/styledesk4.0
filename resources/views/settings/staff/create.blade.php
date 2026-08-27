@@ -65,15 +65,16 @@
 
       /* The invitation options only mean anything with a login, so they are
          hidden rather than left to be filled in and silently ignored. */
+      /* The invitation block only exists when adding someone, so both are
+         checked before either is used. */
       var login = document.getElementById('login_enabled');
       var block = document.querySelector('[data-invite-block]');
 
-      function syncInvite() {
-        block.hidden = !login.checked;
+      if (login && block) {
+        var syncInvite = function () { block.hidden = !login.checked; };
+        login.addEventListener('change', syncInvite);
+        syncInvite();
       }
-
-      login.addEventListener('change', syncInvite);
-      syncInvite();
 
       /* One submission. Creating a staff member sends an email, and a double
          click would send two. */

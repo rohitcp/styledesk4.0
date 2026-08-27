@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendTeamInvitationEmail;
 use App\Models\AuditLog;
 use App\Models\Location;
 use App\Models\Role;
@@ -12,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -357,6 +359,51 @@ class StaffProfileTest extends TestCase
                 'role_id' => $this->roleId('manager'), 'account_status' => 'active',
             ])
             ->assertRedirect(route('settings.staff.show', $amara));
+    }
+
+    /**
+     * Sending an invitation is an act, not a detail of the record.
+     *
+     * On the edit screen the checkbox did nothing — update() never reads
+     * send_invitation — which is worse than absent: a control that looks like
+     * it will do something and does not.
+     */
+    public function test_the_edit_form_does_not_offer_to_send_an_invitation(): void
+    {
+        $owner = $this->owner();
+        $amara = $this->member('manager');
+
+        $edit = $this->actingAs($owner)->get('http://styledesk.test/settings/staff/'.$amara->id.'/edit');
+
+        $edit->assertOk()
+            ->assertDontSee('Send the invitation now')
+            ->assertDontSee('name="send_invitation"', false)
+            ->assertDontSee('name="invitation_message"', false)
+            // Allow staff login stays: it is a real field on the record.
+            ->assertSee('Allow staff login');
+
+        // And adding someone still offers it.
+        $this->actingAs($owner)->get('http://styledesk.test/settings/staff/create')
+            ->assertOk()
+            ->assertSee('Send the invitation now');
+    }
+
+    public function test_editing_never_sends_an_invitation(): void
+    {
+        Queue::fake();
+
+        $owner = $this->owner();
+        $amara = $this->member('manager');
+
+        // Even posted directly, the field is not part of an update.
+        $this->actingAs($owner)->patch('http://styledesk.test/settings/staff/'.$amara->id, [
+            'first_name' => 'Amara', 'last_name' => 'Osei', 'email' => 'amara@acme.test',
+            'role_id' => $this->roleId('manager'), 'account_status' => 'active',
+            'login_enabled' => '1', 'send_invitation' => '1',
+        ])->assertRedirect(route('settings.staff.show', $amara));
+
+        Queue::assertNotPushed(SendTeamInvitationEmail::class);
+        $this->assertSame('not-sent', $amara->fresh()->invite_status);
     }
 
     // ----------------------------------------------------------- delete

@@ -235,8 +235,17 @@
               </span>
             </label>
 
-            {{-- Nested under login, because an invitation without a login is
+            {{-- Creating only.
+                 Sending an invitation is an act, not a detail of the record,
+                 so it belongs to adding someone rather than to saving their
+                 details. On the edit screen the checkbox did nothing at all —
+                 update() never reads send_invitation — which is worse than
+                 absent: a control that looks like it will do something and
+                 does not.
+
+                 Nested under login, because an invitation without a login is
                  an email inviting someone to an account they cannot have. --}}
+            @if (! $staff)
             <div data-invite-block class="pl-[26px] space-y-3">
               <label class="flex items-start gap-2.5 cursor-pointer">
                 <input id="send_invitation" name="send_invitation" type="checkbox" value="1" class="sd-check mt-0.5"
@@ -255,6 +264,7 @@
                           placeholder="Looking forward to having you on the team.">{{ $staffValue('invitation_message') }}</textarea>
               </div>
             </div>
+            @endif
           </div>
         </section>
 
