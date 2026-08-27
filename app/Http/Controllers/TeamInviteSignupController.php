@@ -11,10 +11,10 @@ use App\Models\TeamInvitation;
 use App\Models\User;
 use App\Support\InputCase;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Symfony\Component\HttpFoundation\Response;
 
 /**
  * The page an invited colleague lands on.
@@ -159,13 +159,31 @@ class TeamInviteSignupController extends Controller
         return TeamInvitation::withoutGlobalScopes()->forToken($token)->first();
     }
 
+    /**
+     * The invitation behind this token, or a redirect to the page that
+     * explains why there isn't one.
+     *
+     * Deliberately not abort(410). The status code was accurate — the link was
+     * real and is finished — but it reached the person as an error page
+     * reading "Error 410 / This resource has been permanently removed", which
+     * says nothing about invitations and looks like the product broke. The
+     * spec is explicit that an unusable invitation gets an explanation rather
+     * than a raw code.
+     *
+     * The GET screen already renders that explanation, so the POST routes send
+     * people to it rather than growing a second copy of the same wording. It
+     * is reached most often by submitting a form that was opened before the
+     * invitation was accepted somewhere else — a second tab, another device,
+     * or simply the back button.
+     */
     private function findAcceptable(string $token): TeamInvitation
     {
         $invitation = $this->find($token);
 
         if ($invitation === null || ! $invitation->isAcceptable()) {
-            // 410 rather than 404: the link was real, it is simply finished.
-            abort(Response::HTTP_GONE, 'This invitation is no longer valid.');
+            throw new HttpResponseException(
+                redirect()->route('team-invite.show', $token)
+            );
         }
 
         return $invitation;

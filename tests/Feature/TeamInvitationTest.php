@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Team\AcceptTeamInvitation;
 use App\Jobs\SendTeamInvitationEmail;
 use App\Mail\TeamInvitationMail;
 use App\Models\Location;
@@ -325,10 +326,11 @@ class TeamInvitationTest extends TestCase
             ->assertOk()
             ->assertSee('no longer available', false);
 
+        // Sent to the page that explains itself, never to a raw status code.
         $this->post('http://styledesk.test/invite/team/'.$token.'/register', [
             'first_name' => 'Amelia', 'last_name' => 'Hart',
             'password' => 'Str0ng!Pass', 'password_confirmation' => 'Str0ng!Pass', 'terms' => '1',
-        ])->assertGone();
+        ])->assertRedirect(route('team-invite.show', $token));
     }
 
     // ------------------------------------------------------- new user flow
@@ -540,7 +542,7 @@ class TeamInvitationTest extends TestCase
         $this->post('http://styledesk.test/invite/team/'.$token.'/register', [
             'first_name' => 'Amelia', 'last_name' => 'Hart',
             'password' => 'Str0ng!Pass', 'password_confirmation' => 'Str0ng!Pass', 'terms' => '1',
-        ])->assertGone();
+        ])->assertRedirect(route('team-invite.show', $token));
 
         $this->assertDatabaseMissing('users', ['email' => 'amelia@example.com']);
     }
@@ -554,7 +556,68 @@ class TeamInvitationTest extends TestCase
             'password' => 'Str0ng!Pass', 'password_confirmation' => 'Str0ng!Pass', 'terms' => '1',
         ])->assertRedirect(route('dashboard'));
 
-        $this->post('http://styledesk.test/invite/team/'.$token.'/accept')->assertGone();
+        $this->post('http://styledesk.test/invite/team/'.$token.'/accept')
+            ->assertRedirect(route('team-invite.show', $token));
+    }
+
+    /**
+     * Submitting a form opened before the invitation was used elsewhere.
+     *
+     * The most likely route to a finished invitation: a second tab, another
+     * device, or the back button. It used to answer "Error 410 / This resource
+     * has been permanently removed", which says nothing about invitations and
+     * reads as the product breaking.
+     */
+    public function test_a_finished_invitation_explains_itself_rather_than_erroring(): void
+    {
+        [, $invitation, $token] = $this->inviteAmelia();
+
+        $joiner = User::create([
+            'first_name' => 'Amelia', 'last_name' => 'Hart',
+            'email' => 'amelia@example.com', 'password' => 'Str0ng!Pass',
+        ]);
+        $joiner->markEmailAsVerified();
+
+        app(AcceptTeamInvitation::class)->accept($invitation, $joiner);
+
+        $this->signOut();
+
+        // register and login are reachable by a visitor with no account.
+        foreach (['register', 'login'] as $action) {
+            $response = $this->post('http://styledesk.test/invite/team/'.$token.'/'.$action, [
+                'first_name' => 'Amelia', 'last_name' => 'Hart',
+                'password' => 'Str0ng!Pass', 'password_confirmation' => 'Str0ng!Pass', 'terms' => '1',
+            ]);
+
+            $this->assertNotSame(410, $response->getStatusCode(), "[{$action}] still answers with a raw status code.");
+            $response->assertRedirect(route('team-invite.show', $token));
+        }
+
+        // accept sits behind auth, so it is tried as the person who already
+        // accepted — the exact case of a stale second tab.
+        $response = $this->actingAs($joiner->fresh())
+            ->post('http://styledesk.test/invite/team/'.$token.'/accept');
+
+        $this->assertNotSame(410, $response->getStatusCode());
+        $response->assertRedirect(route('team-invite.show', $token));
+
+        $this->signOut();
+
+        /**
+         * And the page it lands on explains itself in words.
+         *
+         * Deliberately the general wording rather than "already accepted":
+         * acceptance rotates the token, so the old link resolves to no row at
+         * all and the page genuinely cannot tell an accepted invitation from a
+         * revoked or invented one. Saying which would tell an unauthenticated
+         * visitor something about a business they have no relationship with.
+         */
+        $this->get('http://styledesk.test/invite/team/'.$token)
+            ->assertOk()
+            ->assertSee('This invitation is no longer available.')
+            ->assertSee('Go to sign in')
+            ->assertDontSee('410')
+            ->assertDontSee('permanently removed');
     }
 
     // --------------------------------------------------- tenant isolation
