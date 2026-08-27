@@ -7,29 +7,27 @@
 
     <title>@yield('title') — StyleDesk</title>
 
-    {{--
-        Brand bootstrap, before the body paints. Reading the palette later
-        would show every visitor StyleDesk purple before the tenant's own
-        colours arrived. A paint fix, not a copy of the store.
-    --}}
-    <script>
-        (function () {
-            try {
-                var raw = window.localStorage.getItem('styledesk.branding.v1');
-                if (!raw) return;
-                var c = (JSON.parse(raw) || {}).colors || {};
-                var map = { brand: '--sd-brand', brandDark: '--sd-brand-dark',
-                            banner: '--sd-banner', link: '--sd-link',
-                            accent: '--sd-accent', button: '--sd-btn',
-                            buttonInk: '--sd-btn-ink', secondary: '--sd-secondary' };
-                Object.keys(map).forEach(function (k) {
-                    if (c[k]) document.documentElement.style.setProperty(map[k], c[k]);
-                });
-            } catch (e) { /* a broken palette must never stop the page rendering */ }
-        }());
-    </script>
-
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{--
+        The business's palette, rendered by the server before first paint.
+
+        It was read from localStorage here, which made the brand a property of
+        one browser: a colleague opening the same app saw StyleDesk purple, and
+        an email or a booking page — neither of which runs this script — could
+        never be branded at all. The palette belongs to the business, so the
+        server is what states it.
+
+        Placed after the bundle, not before it. prototype.css declares the
+        same :root properties as StyleDesk's own defaults, and at equal
+        specificity the later rule wins — in front of it, every tenant's
+        palette was silently overwritten by the house purple.
+    --}}
+    <style>{!! App\Support\BrandPalette::forTenant(auth()->user()?->tenant)->css() !!}</style>
+
+    @if ($faviconUrl = App\Support\Branding::faviconUrl(auth()->user()?->tenant))
+        <link rel="icon" href="{{ $faviconUrl }}">
+    @endif
 
     {{--
         Stale-asset guard.

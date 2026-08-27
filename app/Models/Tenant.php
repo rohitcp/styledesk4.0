@@ -97,6 +97,14 @@ class Tenant extends BaseTenant
             'facebook_url',
             'tiktok_url',
             'google_business_url',
+
+            // Branding. Same rule as above — the palette is read on every
+            // render, so it must be columns rather than JSON keys, and it is
+            // only columns if it is listed here.
+            'favicon_path',
+            'brand_primary',
+            'brand_secondary',
+            'brand_accent',
         ];
     }
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ServiceCategoryController;
+use App\Http\Controllers\Settings\BrandingController;
 use App\Http\Controllers\Settings\BusinessHoursController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
 use App\Http\Controllers\Settings\LocationController;
@@ -264,6 +265,26 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 Route::post('{location}/closures', 'storeClosure')->name('closures.store');
                 Route::patch('{location}/closures/{closure}', 'updateClosure')->name('closures.update');
                 Route::delete('{location}/closures/{closure}', 'destroyClosure')->name('closures.destroy');
+            });
+
+        /*
+        | Branding — the business's identity wherever a client sees it.
+        |
+        | Uploads are their own POST endpoints rather than fields on the form:
+        | the file is stored when it is chosen, so the preview beside the field
+        | is the real asset and a logo that will not upload says so before the
+        | whole form is submitted.
+        */
+        Route::controller(BrandingController::class)
+            ->prefix('branding')
+            ->name('branding.')
+            ->group(function () {
+                Route::get('/', 'show')->name('show');
+                Route::patch('/', 'update')->name('update');
+                Route::delete('/', 'reset')->name('reset');
+
+                Route::post('logo', 'uploadLogo')->name('logo.upload');
+                Route::post('favicon', 'uploadFavicon')->name('favicon.upload');
             });
 
         /*

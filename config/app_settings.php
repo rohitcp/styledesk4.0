@@ -77,7 +77,9 @@ return [
                     'name' => 'Branding',
                     'description' => 'Logo, favicon and brand colours across the app, emails and receipts.',
                     'icon' => 'palette',
-                    'keywords' => ['logo', 'colour', 'color', 'theme', 'favicon', 'brand'],
+                    'route' => 'settings.branding.show',
+                    'status' => 'active',
+                    'keywords' => ['logo', 'colour', 'color', 'theme', 'favicon', 'brand', 'palette', 'identity'],
                 ],
                 [
                     'key' => 'languages',

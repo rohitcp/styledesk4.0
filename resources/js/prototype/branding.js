@@ -522,16 +522,19 @@ var SDBR = (function () {
     luminance: luminance, mix: mix, esc: esc
   };
 
-  /* Apply on load. The <head> bootstrap has already painted the colours
-     to avoid a flash; this re-applies from the merged record so a field
-     the bootstrap does not know about still lands. */
-  if (typeof document !== 'undefined') {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function () { apply(); });
-    } else {
-      apply();
-    }
-  }
+  /* No longer applied on load.
+
+     This used to paint the palette onto documentElement from localStorage,
+     which was right while StyleDesk was a prototype with no server. It is
+     wrong now: Branding stores the palette against the business, the layout
+     renders it as a :root rule, and an inline style on the root element beats
+     a stylesheet rule at any specificity. So this quietly reinstated whatever
+     the last browser had cached — a business that saved teal kept seeing
+     purple, and had no way to tell why.
+
+     The helpers below stay exported: the colour maths is sound and the
+     settings screen's own preview is welcome to call paint() on its panel.
+     What is removed is this module deciding what the whole app looks like. */
 
   return api;
 }());
