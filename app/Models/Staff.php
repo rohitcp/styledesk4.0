@@ -61,12 +61,28 @@ class Staff extends Model
     protected static function booted(): void
     {
         static::saving(function (self $staff) {
-            if ($staff->role_id !== null || $staff->role === null || $staff->tenant_id === null) {
+            if ($staff->role_id !== null || $staff->role === null) {
+                return;
+            }
+
+            /**
+             * The tenant may not be on the model yet.
+             *
+             * BelongsToTenant stamps tenant_id on `creating`, which Eloquent
+             * fires *after* `saving` — so a row created without an explicit
+             * tenant_id (onboarding seeds the owner that way) reached here
+             * with a null tenant, this hook gave up, and the owner ended up
+             * with a role name and no permissions at all. Falling back to the
+             * tenant in scope is what the stamp is about to do anyway.
+             */
+            $tenantId = $staff->tenant_id ?? (tenancy()->initialized ? tenant('id') : null);
+
+            if ($tenantId === null) {
                 return;
             }
 
             $staff->role_id = Role::withoutGlobalScopes()
-                ->where('tenant_id', $staff->tenant_id)
+                ->where('tenant_id', $tenantId)
                 ->where('key', $staff->role)
                 ->value('id');
         });
@@ -166,6 +182,25 @@ class Staff extends Model
      * A preferred name is the one they asked to be called, so it wins over
      * the legal first name wherever a human will read it.
      */
+    /**
+     * The role to show, from the linked record or the name on the row.
+     *
+     * Two sources because there are two ways to be right: role_id is the one
+     * permissions resolve through, and `role` is the string every existing
+     * caller writes. A row with the second and not the first is a defect, but
+     * showing a dash for it hides the defect behind what looks like a person
+     * with no role.
+     */
+    public function roleName(): string
+    {
+        if ($this->roleRecord) {
+            return $this->roleRecord->name;
+        }
+
+        return config('role_defaults.'.$this->role.'.name')
+            ?? ucfirst(str_replace('-', ' ', (string) $this->role));
+    }
+
     public function displayName(): string
     {
         return trim(($this->preferred_name ?: $this->first_name).' '.$this->last_name);

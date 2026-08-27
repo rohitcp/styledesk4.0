@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -35,6 +36,9 @@ use Throwable;
  */
 class StaffController extends Controller
 {
+    /** Rows before the directory splits into pages. */
+    private const PER_PAGE = 25;
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Staff::class);
@@ -59,12 +63,40 @@ class StaffController extends Controller
             $staff = $staff->filter(fn (Staff $member) => $member->status() === $filters['status'])->values();
         }
 
+        /**
+         * Paginated from the collection, not from the query.
+         *
+         * Status is derived, so the filter above runs in PHP — and a SQL
+         * LIMIT applied before it would return a page of 25 rows that becomes
+         * 9 after filtering, with a total that counts the unfiltered set. The
+         * whole directory is loaded and then sliced, which is honest at the
+         * scale a salon's staff list actually reaches. It would need
+         * revisiting somewhere in the thousands, which is not a staff list.
+         */
+        $page = LengthAwarePaginator::resolveCurrentPage();
+
+        $paginated = new LengthAwarePaginator(
+            $staff->forPage($page, self::PER_PAGE),
+            $staff->count(),
+            self::PER_PAGE,
+            $page,
+            [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                // Without this, following a page link drops the search and
+                // every filter, and page two of a filtered list is the whole
+                // directory again.
+                'query' => $request->query(),
+            ]
+        );
+
         return view('settings.staff.index', [
-            'staff' => $staff,
+            'staff' => $paginated,
             'filters' => $filters,
             'roles' => Role::query()->orderBy('display_order')->get(),
             'locations' => Location::query()->orderByDesc('is_primary')->get(['id', 'name']),
             'services' => Service::query()->orderBy('name')->get(['id', 'name']),
+            // Counted over everything that matched, not over the page being
+            // looked at: "6 active members" must not become "3" on page two.
             'activeCount' => $staff->filter(fn (Staff $m) => $m->status() === 'active')->count(),
             'pendingCount' => $staff->filter(fn (Staff $m) => $m->status() === 'pending-invite')->count(),
         ]);

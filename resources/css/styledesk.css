@@ -835,12 +835,6 @@ textarea.sd-input {
 .styledesk_rowmenu__item--danger { color: #b91c1c; }
 .styledesk_rowmenu__item--danger:hover { background: #fef2f2; }
 
-.styledesk_rowmenu__rule {
-    height: 1px;
-    margin: 0.25rem 0.375rem;
-    background: #e5e7eb;
-}
-
 /* ------------------------------------------------------------------
    Profile header
    ------------------------------------------------------------------

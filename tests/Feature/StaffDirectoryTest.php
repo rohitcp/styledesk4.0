@@ -247,6 +247,140 @@ class StaffDirectoryTest extends TestCase
         $this->assertSame(['Amara Person', 'Zara Person'], $this->names('sort=recent'));
     }
 
+    /**
+     * The owner is seeded without an explicit tenant_id, and BelongsToTenant
+     * stamps that on `creating` — which fires after `saving`. The hook that
+     * resolves role_id therefore saw a null tenant and gave up, leaving the
+     * owner with a role name, no role record, and no permissions.
+     */
+    public function test_a_staff_row_created_without_an_explicit_tenant_still_gets_its_role(): void
+    {
+        $owner = $this->owner();
+
+        tenancy()->initialize($this->tenant);
+
+        // Exactly how onboarding seeds the business owner.
+        $staff = Staff::create([
+            'user_id' => $owner->id,
+            'first_name' => 'Nadia', 'last_name' => 'Khan',
+            'email' => 'nadia@acme.test', 'role' => 'owner',
+        ]);
+
+        tenancy()->end();
+
+        $this->assertNotNull($staff->role_id, 'The role link was never made.');
+        $this->assertSame('owner', $staff->roleRecord->key);
+        $this->assertSame('Owner', $staff->roleName());
+    }
+
+    public function test_the_directory_never_shows_a_dash_for_a_named_role(): void
+    {
+        $this->actingAs($this->owner());
+
+        $amara = $this->member ?? null;
+        $staff = $this->staff('Amara', 'manager');
+
+        // Simulate the broken state: a role name with no link.
+        $staff->forceFill(['role_id' => null])->save();
+
+        $content = $this->get('http://styledesk.test/settings/staff')->getContent();
+
+        // A dash would read as "this person has no role" when what happened
+        // is that a link was never made.
+        $this->assertStringContainsString('Manager', $content);
+    }
+
+    // ------------------------------------------------------ pagination
+
+    public function test_the_directory_pages_after_twenty_five(): void
+    {
+        $this->actingAs($this->owner());
+
+        for ($i = 1; $i <= 27; $i++) {
+            $this->staff('Person'.str_pad((string) $i, 2, '0', STR_PAD_LEFT), 'manager', [
+                'email' => 'person'.$i.'@acme.test',
+            ]);
+        }
+
+        $first = $this->get('http://styledesk.test/settings/staff');
+
+        $first->assertOk()
+            ->assertSee('Showing')
+            ->assertSee('25')
+            ->assertSee('27')
+            // The page link exists, so there is a way to the rest.
+            ->assertSee('page=2', false);
+
+        $this->assertCount(25, $this->namesFrom($first->getContent()));
+
+        $second = $this->get('http://styledesk.test/settings/staff?page=2');
+
+        $second->assertOk()->assertSee('26');
+        $this->assertCount(2, $this->namesFrom($second->getContent()));
+    }
+
+    public function test_a_directory_that_fits_on_one_page_shows_no_pager(): void
+    {
+        $this->actingAs($this->owner());
+        $this->staff('Amara', 'manager');
+
+        // A pager under a list that fits is furniture describing nothing.
+        $this->get('http://styledesk.test/settings/staff')
+            ->assertOk()
+            ->assertDontSee('Showing');
+    }
+
+    /**
+     * Page two of a filtered list must still be filtered. Without the query
+     * carried onto the links, following one returns the whole directory.
+     */
+    public function test_paging_keeps_the_search_and_filters(): void
+    {
+        $this->actingAs($this->owner());
+
+        for ($i = 1; $i <= 26; $i++) {
+            $this->staff('Keeper'.str_pad((string) $i, 2, '0', STR_PAD_LEFT), 'manager', ['email' => 'keep'.$i.'@acme.test']);
+        }
+
+        $this->staff('Excluded', 'front-desk', ['email' => 'nope@acme.test']);
+
+        $response = $this->get('http://styledesk.test/settings/staff?role=manager');
+
+        $response->assertOk()->assertSee('Showing');
+        $this->assertStringContainsString('role=manager', $response->getContent());
+
+        $page2 = $this->get('http://styledesk.test/settings/staff?role=manager&page=2');
+        $names = $this->namesFrom($page2->getContent());
+
+        $this->assertCount(1, $names);
+        $this->assertStringNotContainsString('Excluded', implode(' ', $names));
+    }
+
+    /**
+     * The header counts describe everything that matched, not the page being
+     * looked at — "27 active members" must not become "2" on page two.
+     */
+    public function test_the_counts_describe_the_whole_result_not_the_page(): void
+    {
+        $this->actingAs($this->owner());
+
+        for ($i = 1; $i <= 27; $i++) {
+            $this->staff('Person'.$i, 'manager', ['email' => 'p'.$i.'@acme.test']);
+        }
+
+        $this->get('http://styledesk.test/settings/staff?page=2')
+            ->assertOk()
+            ->assertSee('27 active members');
+    }
+
+    /** @return array<int, string> */
+    private function namesFrom(string $content): array
+    {
+        preg_match_all('/font-semibold text-head truncate">([^<]+)</', $content, $matches);
+
+        return array_map('trim', $matches[1]);
+    }
+
     // ---------------------------------------------------------- access
 
     /**

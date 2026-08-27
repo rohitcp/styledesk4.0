@@ -154,7 +154,11 @@
                       </span>
                     </span>
                   </td>
-                  <td class="px-4 py-3 text-ink">{{ $member->roleRecord?->name ?? '—' }}</td>
+                  {{-- Falls back to the role the row names when no Role
+                       record is linked. A dash there would say "this person
+                       has no role", when what happened is that a link was
+                       never made. --}}
+                  <td class="px-4 py-3 text-ink">{{ $member->roleName() }}</td>
                   <td class="px-4 py-3 text-ink">{{ $member->location?->name ?? 'All locations' }}</td>
                   <td class="px-4 py-3">
                     <span class="block text-ink truncate">{{ $member->email ?? '—' }}</span>
@@ -196,7 +200,11 @@
                              rather than offering a button that will be
                              refused. --}}
                         @can('delete', $member)
-                          <span class="styledesk_rowmenu__rule" role="separator"></span>
+                          {{-- No separator before Delete. Three items is a
+                               short enough list to read at a glance, and a
+                               rule through the middle of it implies a grouping
+                               that is not there. Delete stays distinguishable
+                               by being the only red one. --}}
                           <button type="button" class="styledesk_rowmenu__item styledesk_rowmenu__item--danger"
                                   role="menuitem"
                                   data-delete-staff
@@ -213,6 +221,17 @@
             </tbody>
           </table>
         </div>
+
+        {{-- Only once there is more than one page. A pager under a list that
+             fits on one screen is furniture describing nothing. --}}
+        @if ($staff->hasPages())
+          {{-- Laravel's own pager, which already prints "Showing 1 to 25 of
+               28 results" and drops to prev/next on a phone. A hand-written
+               count beside it said the same thing twice. --}}
+          <div class="mt-4">
+            {{ $staff->onEachSide(1)->links() }}
+          </div>
+        @endif
       @endif
 
       {{-- One delete form for the table, not one per row: a form per row is
