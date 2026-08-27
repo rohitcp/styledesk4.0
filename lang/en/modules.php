@@ -218,6 +218,7 @@ return [
         'roles' => '{1} role|[2,*] roles',
         'active_locations' => '{1} active location|[2,*] active locations',
         'upcoming_closures' => '{1} upcoming closure|[2,*] upcoming closures',
+        'enabled_currencies' => '{1} currency|[2,*] currencies',
         'enabled_languages' => '{1} language|[2,*] languages',
     ],
 ];

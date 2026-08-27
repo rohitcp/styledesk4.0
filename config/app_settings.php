@@ -87,12 +87,7 @@ return [
                     'description' => 'Set the primary application language and choose the additional languages available to your team.',
                     'icon' => 'language',
                     'route' => 'settings.languages.show',
-                    /**
-                     * Built, and honestly labelled while it is two languages
-                     * and a partly translated interface. 'active' would claim
-                     * the whole app speaks Spanish, which it does not yet.
-                     */
-                    'status' => 'coming-soon',
+                    'status' => 'active',
                     'counts' => ['enabled_languages'],
                     'keywords' => ['locale', 'translation', 'english', 'spanish', 'español', 'language'],
                 ],
@@ -101,7 +96,10 @@ return [
                     'name' => 'Currency',
                     'description' => 'Your primary currency and the secondary currencies you price in.',
                     'icon' => 'coins',
-                    'keywords' => ['money', 'price', 'usd', 'gbp', 'eur', 'exchange'],
+                    'route' => 'settings.currency.show',
+                    'status' => 'active',
+                    'counts' => ['enabled_currencies'],
+                    'keywords' => ['money', 'price', 'usd', 'gbp', 'eur', 'exchange', 'moneda', 'symbol'],
                 ],
             ],
         ],

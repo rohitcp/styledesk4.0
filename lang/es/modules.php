@@ -196,6 +196,7 @@ return [
         'roles' => '{1} rol|[2,*] roles',
         'active_locations' => '{1} ubicación activa|[2,*] ubicaciones activas',
         'upcoming_closures' => '{1} cierre próximo|[2,*] cierres próximos',
+        'enabled_currencies' => '{1} moneda|[2,*] monedas',
         'enabled_languages' => '{1} idioma|[2,*] idiomas',
     ],
 ];

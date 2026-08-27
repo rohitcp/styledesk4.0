@@ -8,6 +8,7 @@ use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\Settings\BrandingController;
 use App\Http\Controllers\Settings\BusinessHoursController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
+use App\Http\Controllers\Settings\CurrencyController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
 use App\Http\Controllers\Settings\RolePermissionController;
@@ -299,6 +300,23 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
         Route::controller(LanguageController::class)
             ->prefix('languages')
             ->name('languages.')
+            ->group(function () {
+                Route::get('/', 'show')->name('show');
+                Route::get('edit', 'edit')->name('edit');
+                Route::patch('/', 'update')->name('update');
+            });
+
+        /*
+        | Currency — what the business prices in.
+        |
+        | The same shape as Languages, and for the same reason: one primary
+        | that everything defaults to, plus the additional ones the business
+        | supports. Unlike a language, this is not a personal choice — a price
+        | belongs to the business, so there is no per-user equivalent.
+        */
+        Route::controller(CurrencyController::class)
+            ->prefix('currency')
+            ->name('currency.')
             ->group(function () {
                 Route::get('/', 'show')->name('show');
                 Route::get('edit', 'edit')->name('edit');
