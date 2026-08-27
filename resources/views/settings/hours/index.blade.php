@@ -128,7 +128,7 @@
               @endif
 
               <dl class="px-5 py-1">
-                @foreach (config('locations.weekdays') as $day => $label)
+                @foreach (App\Support\LocationOptions::weekdays() as $day => $label)
                   @php
                       $periods = $byDay->get($day, collect());
                       $isToday = $day === now($location->timezone ?: config('app.timezone'))->dayOfWeek;

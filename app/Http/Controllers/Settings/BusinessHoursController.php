@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\LocationClosure;
 use App\Rules\NonOverlappingPeriods;
+use App\Support\LocationOptions;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -226,7 +227,7 @@ class BusinessHoursController extends Controller
         // Overlap is a relationship between two periods, so it is checked per
         // day rather than per period: 9–1 and 12–5 are each valid times and
         // only together are they wrong.
-        foreach (config('locations.weekdays') as $day => $label) {
+        foreach (LocationOptions::weekdays() as $day => $label) {
             $rules['hours.'.$day] = ['array', new NonOverlappingPeriods($label)];
         }
 
@@ -411,7 +412,7 @@ class BusinessHoursController extends Controller
 
         $days = [];
 
-        foreach (config('locations.weekdays') as $day => $label) {
+        foreach (LocationOptions::weekdays() as $day => $label) {
             $days[$day] = [
                 'label' => $label,
                 'periods' => $byDay->get($day, collect())->where('is_open', true)->values(),

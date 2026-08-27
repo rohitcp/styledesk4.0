@@ -26,7 +26,7 @@
       }
       saving = true;
       save.disabled = true;
-      save.textContent = @json($saveLabel);
+      save.textContent = @json(__('common.saving'));
     });
   }());
 </script>

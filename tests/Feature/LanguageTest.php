@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Location;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
@@ -550,6 +551,149 @@ class LanguageTest extends TestCase
             ->assertDontSee('Hair Salon')
             // What the business typed is untouched.
             ->assertSee('Curly hair specialists');
+    }
+
+    // -------------------------------------------------- the locations module
+
+    private function spanishOwner(): User
+    {
+        $this->enableSpanish();
+
+        $owner = $this->owner();
+        $owner->forceFill(['locale' => 'es'])->save();
+
+        return $owner->fresh();
+    }
+
+    public function test_the_add_location_form_is_translated(): void
+    {
+        $this->actingAs($this->spanishOwner())
+            ->get(route('settings.locations.create'))
+            ->assertOk()
+            ->assertSee('Añadir ubicación')
+            ->assertSee('Información de la ubicación')
+            ->assertSee('Nombre de la ubicación')
+            ->assertSee('Datos de contacto')
+            ->assertSee('Responsable de la ubicación')
+            ->assertDontSee('Location information')
+            ->assertDontSee('Contact details');
+    }
+
+    /**
+     * Dropdown values, not just their labels.
+     *
+     * A form whose labels are Spanish and whose options are English is the
+     * same half-translated screen, one level in.
+     */
+    public function test_location_dropdown_values_are_translated(): void
+    {
+        $content = $this->actingAs($this->spanishOwner())
+            ->get(route('settings.locations.create'))
+            ->assertOk()
+            // Statuses are plain markup, so they are readable as they stand.
+            ->assertSee('Activa')
+            ->assertSee('Inactiva')
+            ->getContent();
+
+        /**
+         * The islands' options are decoded rather than matched as text.
+         *
+         * They reach the page inside a data-props attribute, and json_encode
+         * escapes every non-ASCII character — "Peluquería" is literally
+         * "Peluquer\u00eda" in the HTML. Asserting on the escape would be
+         * asserting on the encoding rather than on the words.
+         */
+        $props = self::islandProps($content);
+
+        $types = collect($props)->firstWhere('name', 'type');
+        $this->assertContains('Peluquería', array_values($types['options']));
+        $this->assertContains('Barbería', array_values($types['options']));
+
+        $hours = collect($props)->first(fn (array $p) => isset($p['days']));
+        $this->assertContains('Miércoles', $hours['days']);
+    }
+
+    /**
+     * Every set of island props on a page, decoded.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function islandProps(string $html): array
+    {
+        preg_match_all("/data-props='([^']*)'/", $html, $matches);
+
+        return collect($matches[1])
+            ->map(fn (string $json) => json_decode(html_entity_decode($json, ENT_QUOTES), true))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The island's own controls come from the server.
+     *
+     * A Vue component carrying its own copy of every string would be a second
+     * place to translate and a second place to forget.
+     */
+    public function test_the_hours_editor_controls_are_translated(): void
+    {
+        $content = $this->actingAs($this->spanishOwner())
+            ->get(route('settings.locations.create'))
+            ->assertOk()
+            ->getContent();
+
+        $props = collect(self::islandProps($content))->first(fn (array $p) => isset($p['labels']));
+
+        $this->assertSame('Copiar el lunes a mar–vie', $props['labels']['copy_monday']);
+        $this->assertSame('Abierto', $props['labels']['open']);
+        $this->assertSame('Cerrado todo el día', $props['labels']['closed_all_day']);
+        $this->assertSame('a', $props['labels']['to']);
+    }
+
+    public function test_the_locations_list_is_translated(): void
+    {
+        $owner = $this->spanishOwner();
+
+        Location::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Riverside', 'address_line1' => '1 River Street',
+            'city' => 'Austin', 'state' => 'Texas', 'postal_code' => '78701',
+            'country' => 'US', 'timezone' => 'America/Chicago',
+            'phone' => '+1 512 555 0100', 'email' => 'riverside@nadia.test',
+            'is_primary' => true,
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('settings.locations.index'))
+            ->assertOk()
+            ->assertSee('Ubicaciones')
+            ->assertSee('ubicación activa')
+            ->assertSee('Responsable de la ubicación')
+            // What the business typed stays as typed.
+            ->assertSee('Riverside');
+    }
+
+    public function test_location_validation_messages_are_translated(): void
+    {
+        $this->actingAs($this->spanishOwner())
+            ->post(route('settings.locations.store'), ['status' => 'active'])
+            ->assertSessionHasErrors([
+                'name' => 'El nombre de la ubicación es obligatorio.',
+                'city' => 'La ciudad es obligatoria.',
+            ]);
+    }
+
+    public function test_the_location_saved_toast_is_translated(): void
+    {
+        $this->actingAs($this->spanishOwner())
+            ->post(route('settings.locations.store'), [
+                'name' => 'Riverside', 'status' => 'active',
+                'address_line1' => '1 River Street', 'city' => 'Austin',
+                'state' => 'Texas', 'postal_code' => '78701',
+                'country' => 'US', 'timezone' => 'America/Chicago',
+                'phone' => '+1 512 555 0100', 'email' => 'riverside@nadia.test',
+            ])
+            ->assertSessionHas('toast.message', 'Ubicación creada correctamente.');
     }
 
     // ---------------------------------------------------------- the module

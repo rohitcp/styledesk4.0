@@ -50,6 +50,29 @@ const props = defineProps({
     },
 
     /**
+     * The component's own controls, in the reader's language.
+     *
+     * Passed in rather than looked up here: the server already knows which
+     * language the page is in, and an island carrying its own copy of every
+     * string would be a second place to translate and a second place to
+     * forget. The English defaults keep the component usable on its own.
+     */
+    labels: {
+        type: Object,
+        default: () => ({
+            copy_monday: 'Copy Monday to Tue–Fri',
+            open: 'Open',
+            closed: 'Closed',
+            closed_all_day: 'Closed all day',
+            add_period: '+ Add another period',
+            to: 'to',
+            remove_period: 'Remove this period from :day',
+            opening_time: ':day opening time',
+            closing_time: ':day closing time',
+        }),
+    },
+
+    /**
      * Validation messages, keyed by day number.
      *
      * Passed in rather than looked up, because the server is what validated
@@ -99,6 +122,11 @@ const rows = reactive(
  * The index is only in the name when split periods are on, so onboarding
  * keeps posting exactly what its controller has always read.
  */
+/** Fills :day in a label, so a language can place it where it belongs. */
+function withDay(template, day) {
+    return String(template || '').replace(':day', day);
+}
+
 function fieldName(day, index, field) {
     return props.splitPeriods
         ? `hours[${day}][${index}][${field}]`
@@ -163,7 +191,7 @@ onMounted(() => nextTick(announce));
 
             <button type="button" @click="copyMondayToWeek"
                     class="ml-auto h-9 px-3.5 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold shrink-0 transition-colors">
-                Copy Monday to Tue–Fri
+                {{ labels.copy_monday }}
             </button>
         </div>
 
@@ -177,7 +205,7 @@ onMounted(() => nextTick(announce));
                     <input v-model="row.isOpen" type="checkbox" :name="`hours[${day}][is_open]`"
                            value="1" class="sd-switch">
                     <span class="text-[13px]" :class="row.isOpen ? 'text-ink' : 'text-faint'">
-                        {{ row.isOpen ? 'Open' : 'Closed' }}
+                        {{ row.isOpen ? labels.open : labels.closed }}
                     </span>
                 </label>
 
@@ -190,15 +218,15 @@ onMounted(() => nextTick(announce));
                         <div class="w-[124px]">
                             <TimePicker v-model="period.opensAt" :name="fieldName(day, index, 'opens_at')"
                                         :use12-hours="use12Hours"
-                                        :aria-label="`${row.label} opening time`" />
+                                        :aria-label="withDay(labels.opening_time, row.label)" />
                         </div>
 
-                        <span class="text-[13px] text-faint">to</span>
+                        <span class="text-[13px] text-faint">{{ labels.to }}</span>
 
                         <div class="w-[124px]">
                             <TimePicker v-model="period.closesAt" :name="fieldName(day, index, 'closes_at')"
                                         :use12-hours="use12Hours"
-                                        :aria-label="`${row.label} closing time`" />
+                                        :aria-label="withDay(labels.closing_time, row.label)" />
                         </div>
 
                         <!-- Only from the second period onwards. Removing the
@@ -208,7 +236,7 @@ onMounted(() => nextTick(announce));
                              from shifting sideways on the first row. -->
                         <button v-if="splitPeriods && index > 0" type="button"
                                 class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-md border border-stroke bg-white hover:bg-hover text-sub transition-colors"
-                                :aria-label="`Remove this period from ${row.label}`"
+                                :aria-label="withDay(labels.remove_period, row.label)"
                                 @click="removePeriod(day, index)">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                 <path d="M5 7h14M10 7V5.5h4V7M8 7l.7 12h6.6L16 7" stroke="currentColor"
@@ -221,11 +249,11 @@ onMounted(() => nextTick(announce));
 
                     <button v-if="splitPeriods" type="button" @click="addPeriod(day)"
                             class="text-[13px] font-medium text-link hover:underline">
-                        + Add another period
+                        {{ labels.add_period }}
                     </button>
                 </div>
 
-                <span v-else class="ml-auto text-[13px] text-faint">Closed all day</span>
+                <span v-else class="ml-auto text-[13px] text-faint">{{ labels.closed_all_day }}</span>
 
                 <p v-if="errors[day]" class="w-full text-[12px] text-danger">{{ errors[day] }}</p>
             </div>

@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\LocationHour;
 use App\Models\Staff;
 use App\Support\InputCase;
+use App\Support\LocationOptions;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -122,7 +123,7 @@ class LocationController extends Controller
 
         return redirect()
             ->route('settings.locations.show', $location)
-            ->with('toast', ['type' => 'success', 'message' => 'Location created successfully.']);
+            ->with('toast', ['type' => 'success', 'message' => __('locations.created')]);
     }
 
     public function update(Request $request, Location $location): RedirectResponse
@@ -152,7 +153,7 @@ class LocationController extends Controller
 
         return redirect()
             ->route('settings.locations.show', $location)
-            ->with('toast', ['type' => 'success', 'message' => 'Location saved successfully.']);
+            ->with('toast', ['type' => 'success', 'message' => __('locations.saved')]);
     }
 
     /**
@@ -177,8 +178,8 @@ class LocationController extends Controller
         return back()->with('toast', [
             'type' => 'success',
             'message' => $activating
-                ? $location->name.' is active again.'
-                : $location->name.' is now inactive. It takes no new bookings; its history is unchanged.',
+                ? __('locations.made_active', ['name' => $location->name])
+                : __('locations.made_inactive', ['name' => $location->name]),
         ]);
     }
 
@@ -262,26 +263,26 @@ class LocationController extends Controller
              */
             'hours.*.*.closes_at' => ['nullable', 'date_format:H:i', 'after:hours.*.*.opens_at'],
         ], [
-            'name.required' => 'Location name is required.',
-            'code.unique' => 'Another location already uses this code.',
-            'status.required' => 'Choose whether this location is active.',
-            'address_line1.required' => 'Address line 1 is required.',
-            'city.required' => 'City is required.',
-            'state.required' => 'State or province is required.',
-            'postal_code.required' => 'ZIP or postal code is required.',
-            'country.required' => 'Choose a country.',
-            'country.in' => 'Choose a country from the list.',
-            'timezone.required' => 'Choose a time zone.',
-            'timezone.timezone' => 'Choose a time zone from the list.',
-            'phone.required' => 'Main phone number is required.',
-            'email.required' => 'Location email is required.',
-            'email.email' => 'Enter a valid email address.',
-            'booking_email.email' => 'Enter a valid email address.',
-            'support_email.email' => 'Enter a valid email address.',
-            'website.url' => 'Enter a valid website URL, including https://',
-            'hours.*.*.closes_at.after' => 'Closing time must be after the opening time.',
-            'manager_staff_id.exists' => 'Choose one of your own staff members.',
-            'assistant_manager_ids.*.exists' => 'Choose one of your own staff members.',
+            'name.required' => __('locations.validation.name_required'),
+            'code.unique' => __('locations.validation.code_unique'),
+            'status.required' => __('locations.validation.status_required'),
+            'address_line1.required' => __('locations.validation.address_required'),
+            'city.required' => __('locations.validation.city_required'),
+            'state.required' => __('locations.validation.state_required'),
+            'postal_code.required' => __('locations.validation.postal_required'),
+            'country.required' => __('locations.validation.country_required'),
+            'country.in' => __('locations.validation.country_in'),
+            'timezone.required' => __('locations.validation.timezone_required'),
+            'timezone.timezone' => __('locations.validation.timezone_in'),
+            'phone.required' => __('locations.validation.phone_required'),
+            'email.required' => __('locations.validation.email_required'),
+            'email.email' => __('locations.validation.email_invalid'),
+            'booking_email.email' => __('locations.validation.email_invalid'),
+            'support_email.email' => __('locations.validation.email_invalid'),
+            'website.url' => __('locations.validation.url_invalid'),
+            'hours.*.*.closes_at.after' => __('locations.validation.closes_after_opens'),
+            'manager_staff_id.exists' => __('locations.validation.staff_invalid'),
+            'assistant_manager_ids.*.exists' => __('locations.validation.staff_invalid'),
         ]);
 
         // The project capitalisation rule. Emails, URLs and the code are
@@ -451,7 +452,7 @@ class LocationController extends Controller
 
         $days = [];
 
-        foreach (config('locations.weekdays') as $day => $label) {
+        foreach (LocationOptions::weekdays() as $day => $label) {
             $days[$day] = [
                 'label' => $label,
                 'periods' => $byDay->get($day, collect())->where('is_open', true)->values(),
@@ -477,10 +478,10 @@ class LocationController extends Controller
 
         return [
             'staffOptions' => $this->assignableStaff($tenant->getTenantKey(), $location),
-            'types' => config('locations.types'),
+            'types' => LocationOptions::types(),
             'countries' => config('locations.countries'),
             'timezones' => config('locations.timezones'),
-            'weekdays' => config('locations.weekdays'),
+            'weekdays' => LocationOptions::weekdays(),
             'hoursByDay' => $location ? $this->hoursByDay($location) : $this->defaultHours(),
             'assistantIds' => $location?->assistantManagers->pluck('id')->all() ?? [],
         ];
@@ -563,7 +564,7 @@ class LocationController extends Controller
         // for a failure that was not the user's doing.
         return back()->withInput()->with('toast', [
             'type' => 'danger',
-            'message' => "We couldn't save your changes. Please review the information and try again.",
+            'message' => __('locations.save_failed'),
         ]);
     }
 }

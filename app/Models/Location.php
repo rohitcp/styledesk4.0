@@ -200,9 +200,21 @@ class Location extends Model
         return $this->status === self::STATUS_ACTIVE;
     }
 
+    /**
+     * Status, type and weekday names come from the language files.
+     *
+     * The config still decides which values exist — validation reads the same
+     * list — so a rule and a label cannot come to disagree about what a
+     * location may be. It falls back to the config's own English label, so a
+     * status added later reads as itself rather than as a key.
+     */
     public function statusLabel(): string
     {
-        return config('locations.statuses.'.$this->status.'.label', ucfirst((string) $this->status));
+        $key = 'locations.statuses.'.$this->status;
+
+        return trans()->has($key)
+            ? __($key)
+            : config('locations.statuses.'.$this->status.'.label', ucfirst((string) $this->status));
     }
 
     public function statusClass(): string
@@ -212,7 +224,13 @@ class Location extends Model
 
     public function typeLabel(): ?string
     {
-        return $this->type ? config('locations.types.'.$this->type, $this->type) : null;
+        if (! $this->type) {
+            return null;
+        }
+
+        $key = 'locations.types.'.$this->type;
+
+        return trans()->has($key) ? __($key) : config('locations.types.'.$this->type, $this->type);
     }
 
     public function countryName(): ?string
@@ -271,7 +289,7 @@ class Location extends Model
         $periods = $this->hoursForToday();
 
         if ($periods->isEmpty()) {
-            return 'Closed today';
+            return __('locations.closed_today');
         }
 
         return $periods->map(fn (LocationHour $hour) => $hour->rangeLabel())->join(', ');

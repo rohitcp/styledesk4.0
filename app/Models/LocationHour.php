@@ -39,7 +39,11 @@ class LocationHour extends Model
 
     public function dayLabel(): string
     {
-        return config('locations.weekdays.'.$this->day_of_week, 'Day '.$this->day_of_week);
+        $key = 'locations.weekdays.'.$this->day_of_week;
+
+        return trans()->has($key)
+            ? __($key)
+            : config('locations.weekdays.'.$this->day_of_week, 'Day '.$this->day_of_week);
     }
 
     /**

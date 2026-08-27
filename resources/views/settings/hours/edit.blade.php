@@ -131,12 +131,13 @@
                 'initial' => $hoursInitial,
                 'splitPeriods' => true,
                 'use12Hours' => App\Support\TimeFormat::use12Hours(),
-                'days' => array_values(config('locations.weekdays')),
+                'days' => array_values(App\Support\LocationOptions::weekdays()),
                 // Word for word what the Location edit form says, so the
                 // card reads the same wherever it is opened from.
-                'title' => 'Location hours',
-                'description' => 'When this branch is open, in its own time zone. Add a second period to a day that closes in the middle.',
+                'title' => __('locations.hours_card'),
+                'description' => __('locations.hours_card_hint'),
                 'errors' => (object) $hoursErrors,
+                'labels' => __('locations.hours_editor'),
             ];
         @endphp
 

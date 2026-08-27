@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Locations')
+@section('title', __('locations.title'))
 
 @section('content')
   {{-- pb-[200px]: the grid ends on a card, and a card flush against the footer
@@ -9,31 +9,29 @@
     <div class="max-w-[1180px]">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
-        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">App settings</a>
+        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
         <span class="mx-1.5 text-faint">/</span>
-        <span class="text-ink">Locations</span>
+        <span class="text-ink">{{ __('locations.title') }}</span>
       </nav>
 
       <div class="mt-3 flex flex-wrap items-start gap-4">
         <div class="min-w-0 flex-1">
-          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">Locations</h1>
+          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">{{ __('locations.title') }}</h1>
           @php
               /**
-               * Built here rather than with an inline directive.
-               *
-               * Blade only recognises a directive when the character before
-               * the @ is not a word character, so "inactive" followed by the
-               * closing directive left it uncompiled and printed on the page.
+               * Pluralised by the language file rather than Str::plural(),
+               * which only knows English and would have produced
+               * "2 ubicación activas".
                */
-              $summary = $activeCount.' active '.Str::plural('location', $activeCount);
+              $summary = trans_choice('locations.summary', $activeCount, ['count' => $activeCount]);
 
               if ($totalCount > $activeCount) {
-                  $summary .= ', '.($totalCount - $activeCount).' inactive';
+                  $summary .= ', '.__('locations.summary_inactive', ['count' => $totalCount - $activeCount]);
               }
           @endphp
 
           <p class="text-[14px] text-sub mt-2 max-w-[640px] leading-relaxed">
-            {{ $summary }}. Open a location for its manager, hours, services, staff and booking settings.
+            {{ $summary }}. {{ __('locations.intro') }}
           </p>
         </div>
 
@@ -41,14 +39,14 @@
           <a href="{{ route('settings.index') }}"
              class="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Back
+            {{ __('common.back') }}
           </a>
 
           @can('create', App\Models\Location::class)
             <a href="{{ route('settings.locations.create') }}"
                class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
               <x-icon name="plus" size="13" />
-              Add location
+              {{ __('locations.add') }}
             </a>
           @endcan
         </div>
@@ -65,27 +63,27 @@
                 <x-icon name="magnifying-glass" size="15" />
               </span>
               <input name="search" type="search" class="sd-input styledesk_input--prefixed"
-                     value="{{ $filters['search'] }}" aria-label="Search locations"
-                     placeholder="Search by name, code, city or address">
+                     value="{{ $filters['search'] }}" aria-label="{{ __('locations.search_label') }}"
+                     placeholder="{{ __('locations.search_placeholder') }}">
             </div>
 
             <div class="min-w-[190px]">
               @php
-                  $statusOptions = collect(config('locations.statuses'))->map(fn ($status) => $status['label']);
+                  $statusOptions = App\Support\LocationOptions::statuses();
               @endphp
               <x-combo name="status" :options="$statusOptions" :selected="$filters['status']"
-                       placeholder="All statuses" />
+                       placeholder="{{ __('locations.all_statuses') }}" />
             </div>
 
             <button type="submit"
                     class="h-11 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-              Search
+              {{ __('common.search') }}
             </button>
 
             @if ($filters['search'] !== '' || $filters['status'])
               <a href="{{ route('settings.locations.index') }}"
                  class="h-11 px-4 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-                Clear
+                {{ __('common.clear') }}
               </a>
             @endif
           </div>
@@ -104,26 +102,25 @@
               <x-icon name="location-dot" size="18" />
             </span>
 
-            <p class="text-[15px] font-semibold text-head mt-3">No locations yet.</p>
+            <p class="text-[15px] font-semibold text-head mt-3">{{ __('locations.empty_title') }}</p>
             <p class="text-[13px] text-sub mt-1.5 max-w-[420px] mx-auto leading-relaxed">
-              Add the branch your business operates from, so staff, services and bookings have somewhere
-              to belong.
+              {{ __('locations.empty_body') }}
             </p>
 
             @can('create', App\Models\Location::class)
               <a href="{{ route('settings.locations.create') }}"
                  class="mt-4 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
                 <x-icon name="plus" size="13" />
-                Add your first location
+                {{ __('locations.add_first') }}
               </a>
             @endcan
           @else
-            <p class="text-[15px] font-semibold text-head">No locations match your search.</p>
-            <p class="text-[13px] text-sub mt-1.5">Try a different word, or clear the filters.</p>
+            <p class="text-[15px] font-semibold text-head">{{ __('locations.no_matches') }}</p>
+            <p class="text-[13px] text-sub mt-1.5">{{ __('locations.no_matches_hint') }}</p>
 
             <a href="{{ route('settings.locations.index') }}"
                class="mt-4 inline-flex items-center h-9 px-4 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-              Clear search
+              {{ __('locations.clear_search') }}
             </a>
           @endif
         </div>
@@ -147,7 +144,7 @@
 
                   <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
                     @if ($location->is_primary)
-                      <span class="styledesk_badge styledesk_badge--active">Primary</span>
+                      <span class="styledesk_badge styledesk_badge--active">{{ __('locations.fields.primary') }}</span>
                     @endif
 
                     <span class="styledesk_badge {{ $location->statusClass() }}">{{ $location->statusLabel() }}</span>
@@ -161,7 +158,7 @@
                 <span class="styledesk_rowmenu styledesk_locationcard__actions shrink-0" data-rowmenu>
                   <button type="button" class="styledesk_rowmenu__button" data-rowmenu-button
                           aria-haspopup="true" aria-expanded="false"
-                          aria-label="Actions for {{ $location->name }}">
+                          aria-label="{{ __('locations.actions_for', ['name' => $location->name]) }}">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>
                     </svg>
@@ -169,12 +166,12 @@
 
                   <span class="styledesk_rowmenu__pop" data-rowmenu-pop hidden role="menu">
                     <a href="{{ route('settings.locations.show', $location) }}" class="styledesk_rowmenu__item" role="menuitem">
-                      <x-icon name="location-dot" size="14" /> View location
+                      <x-icon name="location-dot" size="14" /> {{ __('locations.view') }}
                     </a>
 
                     @can('update', $location)
                       <a href="{{ route('settings.locations.edit', $location) }}" class="styledesk_rowmenu__item" role="menuitem">
-                        <x-icon name="pen-to-square" size="14" /> Edit location
+                        <x-icon name="pen-to-square" size="14" /> {{ __('locations.edit') }}
                       </a>
                     @endcan
 
@@ -189,7 +186,7 @@
                               data-name="{{ $location->name }}"
                               data-status="inactive"
                               data-action="{{ route('settings.locations.status', $location) }}">
-                        <x-icon name="calendar-xmark" size="14" /> Deactivate location
+                        <x-icon name="calendar-xmark" size="14" /> {{ __('locations.deactivate') }}
                       </button>
                     @endcan
 
@@ -199,7 +196,7 @@
                               data-name="{{ $location->name }}"
                               data-status="active"
                               data-action="{{ route('settings.locations.status', $location) }}">
-                        <x-icon name="calendar-check" size="14" /> Activate location
+                        <x-icon name="calendar-check" size="14" /> {{ __('locations.activate') }}
                       </button>
                     @endcan
                   </span>
@@ -220,23 +217,23 @@
                 </div>
 
                 <div>
-                  <dt class="text-[12px] text-sub">Manager</dt>
+                  <dt class="text-[12px] text-sub">{{ __('locations.fields.manager') }}</dt>
                   {{-- "Not assigned", not a dash. A branch with no manager is
                        a decision someone has yet to make, and an em dash reads
                        as a field that failed to load. --}}
-                  <dd class="text-ink truncate">{{ $location->manager?->displayName() ?? 'Not assigned' }}</dd>
+                  <dd class="text-ink truncate">{{ $location->manager?->displayName() ?? __('locations.not_assigned') }}</dd>
                 </div>
 
                 <div>
-                  <dt class="text-[12px] text-sub">Contact</dt>
-                  <dd class="text-ink truncate">{{ $location->phone ?: 'No phone number' }}</dd>
+                  <dt class="text-[12px] text-sub">{{ __('locations.fields.contact') }}</dt>
+                  <dd class="text-ink truncate">{{ $location->phone ?: __('locations.no_phone') }}</dd>
                   @if ($location->email)
                     <dd class="text-sub truncate">{{ $location->email }}</dd>
                   @endif
                 </div>
 
                 <div>
-                  <dt class="text-[12px] text-sub">Today</dt>
+                  <dt class="text-[12px] text-sub">{{ __('locations.fields.today') }}</dt>
                   <dd class="text-ink">{{ $location->todayLabel() }}</dd>
                 </div>
               </dl>
@@ -346,9 +343,12 @@
           var name = button.getAttribute('data-name');
           var status = button.getAttribute('data-status');
 
+          /* The confirmation is built server-side per language rather than
+             concatenated here: Spanish does not put the name where English
+             does, and string addition cannot express that. */
           var message = status === 'inactive'
-            ? 'Make ' + name + ' inactive? It stops taking new bookings and is hidden from online booking. Its past appointments, transactions and staff history are kept.'
-            : 'Make ' + name + ' active again? It can take bookings and will appear in online booking.';
+            ? @json(__('locations.confirm.deactivate', ['name' => '__NAME__'])).replace('__NAME__', name)
+            : @json(__('locations.confirm.activate', ['name' => '__NAME__'])).replace('__NAME__', name);
 
           if (!window.confirm(message)) {
             return;

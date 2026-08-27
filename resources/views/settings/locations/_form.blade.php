@@ -49,57 +49,57 @@
 
 {{-- ------------------------------------------ 1. location information --}}
 <section class="bg-white border border-line rounded-card p-5 space-y-4">
-  <h2 class="text-[15px] font-semibold text-head">Location information</h2>
+  <h2 class="text-[15px] font-semibold text-head">{{ __('locations.cards.information') }}</h2>
 
   <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
     <div class="sm:col-span-2">
       <label for="name" class="block text-[13px] font-medium text-ink mb-1.5">
-        Location name <span class="text-danger">*</span>
+        {{ __('locations.fields.name') }} <span class="text-danger">*</span>
       </label>
       <input id="name" name="name" type="text" class="sd-input" data-capitalize required
-             placeholder="Downtown Salon" value="{{ $locationValue('name') }}" autofocus>
+             placeholder="{{ __('locations.placeholders.name') }}" value="{{ $locationValue('name') }}" autofocus>
       @error('name')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
     </div>
 
     <div>
       <label for="code" class="block text-[13px] font-medium text-ink mb-1.5">
-        Location code <span class="text-faint font-normal">(optional)</span>
+        {{ __('locations.fields.code') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
-      <input id="code" name="code" type="text" class="sd-input" placeholder="DT01"
+      <input id="code" name="code" type="text" class="sd-input" placeholder="{{ __('locations.placeholders.code') }}"
              value="{{ $locationValue('code') }}">
       @error('code')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
-      <p class="mt-1.5 text-[12px] text-sub">A short name that tells this branch apart on reports and receipts.</p>
+      <p class="mt-1.5 text-[12px] text-sub">{{ __('locations.fields.code_hint') }}</p>
     </div>
 
-    <x-combo name="type" label="Location type" :options="$types"
-             :selected="$locationValue('type')" placeholder="Not specified" />
+    <x-combo name="type" label="{{ __('locations.fields.type') }}" :options="App\Support\LocationOptions::types()"
+             :selected="$locationValue('type')" placeholder="{{ __('locations.placeholders.type') }}" />
   </div>
 
   <div class="pt-4 border-t border-line space-y-3">
     <label class="flex items-start gap-2.5 cursor-pointer">
       <input id="is_primary" name="is_primary" type="checkbox" value="1" class="sd-check mt-0.5" @checked($isPrimary)>
       <span class="min-w-0">
-        <span class="block text-[13px] font-medium text-ink">Primary location</span>
+        <span class="block text-[13px] font-medium text-ink">{{ __('locations.fields.primary') }}</span>
         {{-- Says what happens rather than forbidding it. The controller
              demotes the previous primary, so the honest wording is what it
              will do, not a rule the user has to enforce themselves. --}}
-        <span class="block text-[12px] text-sub">The business's main branch. Setting this here removes it from whichever location holds it now.</span>
+        <span class="block text-[12px] text-sub">{{ __('locations.fields.primary_hint') }}</span>
       </span>
     </label>
   </div>
 
   <fieldset class="pt-4 border-t border-line">
-    <legend class="text-[13px] font-medium text-ink mb-2">Status <span class="text-danger">*</span></legend>
+    <legend class="text-[13px] font-medium text-ink mb-2">{{ __('locations.fields.status') }} <span class="text-danger">*</span></legend>
     <div class="flex items-center gap-5">
-      @foreach (config('locations.statuses') as $value => $meta)
+      @foreach (App\Support\LocationOptions::statuses() as $value => $statusLabel)
         <label class="flex items-center gap-2.5 cursor-pointer">
           <input type="radio" name="status" value="{{ $value }}" class="sd-check" @checked($status === $value)>
-          <span class="text-[13px] text-ink">{{ $meta['label'] }}</span>
+          <span class="text-[13px] text-ink">{{ $statusLabel }}</span>
         </label>
       @endforeach
     </div>
     <p class="mt-1.5 text-[12px] text-sub">
-      An inactive location takes no new bookings and is hidden from online booking. Its history is kept.
+      {{ __('locations.fields.status_hint') }}
     </p>
     @error('status')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
   </fieldset>
@@ -107,12 +107,12 @@
 
 {{-- ---------------------------------------------------- 2. address --}}
 <section class="bg-white border border-line rounded-card p-5 space-y-4">
-  <h2 class="text-[15px] font-semibold text-head">Address</h2>
+  <h2 class="text-[15px] font-semibold text-head">{{ __('locations.cards.address') }}</h2>
 
   <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
     <div class="sm:col-span-2">
       <label for="address_line1" class="block text-[13px] font-medium text-ink mb-1.5">
-        Address line 1 <span class="text-danger">*</span>
+        {{ __('locations.fields.address_line1') }} <span class="text-danger">*</span>
       </label>
       <input id="address_line1" name="address_line1" type="text" class="sd-input" data-capitalize required
              value="{{ $locationValue('address_line1') }}">
@@ -121,7 +121,7 @@
 
     <div>
       <label for="address_line2" class="block text-[13px] font-medium text-ink mb-1.5">
-        Address line 2 <span class="text-faint font-normal">(optional)</span>
+        {{ __('locations.fields.address_line2') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="address_line2" name="address_line2" type="text" class="sd-input" data-capitalize
              value="{{ $locationValue('address_line2') }}">
@@ -129,7 +129,7 @@
 
     <div>
       <label for="suite" class="block text-[13px] font-medium text-ink mb-1.5">
-        Suite / unit <span class="text-faint font-normal">(optional)</span>
+        {{ __('locations.fields.suite') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="suite" name="suite" type="text" class="sd-input" data-capitalize
              value="{{ $locationValue('suite') }}">
@@ -137,7 +137,7 @@
 
     <div>
       <label for="city" class="block text-[13px] font-medium text-ink mb-1.5">
-        City <span class="text-danger">*</span>
+        {{ __('locations.fields.city') }} <span class="text-danger">*</span>
       </label>
       <input id="city" name="city" type="text" class="sd-input" data-capitalize required
              value="{{ $locationValue('city') }}">
@@ -146,7 +146,7 @@
 
     <div>
       <label for="state" class="block text-[13px] font-medium text-ink mb-1.5">
-        State / province <span class="text-danger">*</span>
+        {{ __('locations.fields.state') }} <span class="text-danger">*</span>
       </label>
       <input id="state" name="state" type="text" class="sd-input" data-capitalize required
              value="{{ $locationValue('state') }}">
@@ -155,7 +155,7 @@
 
     <div>
       <label for="postal_code" class="block text-[13px] font-medium text-ink mb-1.5">
-        ZIP / postal code <span class="text-danger">*</span>
+        {{ __('locations.fields.postal_code') }} <span class="text-danger">*</span>
       </label>
       <input id="postal_code" name="postal_code" type="text" class="sd-input" required
              value="{{ $locationValue('postal_code') }}">
@@ -167,36 +167,36 @@
          established on that screen; a second branch may genuinely be in
          another one, and a group with sites across a border is the ordinary
          case this module exists for. --}}
-    <x-combo name="country" label="Country" required :options="$countries"
+    <x-combo name="country" label="{{ __('locations.fields.country') }}" required :options="$countries"
              :selected="$locationValue('country', $defaultCountry)"
-             placeholder="Choose a country" />
+             placeholder="{{ __('locations.placeholders.country') }}" />
 
-    <x-combo name="timezone" label="Time zone" required :options="$timezones"
-             :selected="$locationValue('timezone', $defaultTimezone)" placeholder="Choose a time zone"
-             hint="Opening hours and bookings for this branch are read in this zone." />
+    <x-combo name="timezone" label="{{ __('locations.fields.timezone') }}" required :options="$timezones"
+             :selected="$locationValue('timezone', $defaultTimezone)" placeholder="{{ __('locations.placeholders.timezone') }}"
+             hint="{{ __('locations.fields.timezone_hint') }}" />
   </div>
 </section>
 
 {{-- --------------------------------------------- 3. location manager --}}
 <section class="bg-white border border-line rounded-card p-5 space-y-4">
-  <h2 class="text-[15px] font-semibold text-head">Location manager</h2>
+  <h2 class="text-[15px] font-semibold text-head">{{ __('locations.cards.manager') }}</h2>
   <p class="text-[13px] text-sub">
-    Who is responsible for this branch. Naming someone here does not change what they can do in
-    StyleDesk — that is decided by their role under Roles &amp; permissions.
+    {{ __('locations.cards.manager_hint') }}
   </p>
 
   @if ($staffChoices->isEmpty())
     <p class="text-[13px] text-sub">
-      No active staff yet. <a href="{{ route('settings.staff.create') }}" class="text-link hover:underline">Add a staff member</a>
-      and you can name a manager here.
+      {{ __('locations.no_active_staff') }}
+      <a href="{{ route('settings.staff.create') }}" class="text-link hover:underline">{{ __('locations.no_active_staff_link') }}</a>
+      {{ __('locations.no_active_staff_tail') }}
     </p>
   @else
-    <x-combo name="manager_staff_id" label="Location manager" :options="$staffChoices"
-             :selected="$locationValue('manager_staff_id')" placeholder="Not assigned" />
+    <x-combo name="manager_staff_id" label="{{ __('locations.fields.manager') }}" :options="$staffChoices"
+             :selected="$locationValue('manager_staff_id')" placeholder="{{ __('locations.placeholders.manager') }}" />
 
     <fieldset>
       <legend class="text-[13px] font-medium text-ink mb-2">
-        Assistant managers <span class="text-faint font-normal">(optional)</span>
+        {{ __('locations.fields.assistants') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </legend>
       <div class="grid sm:grid-cols-2 gap-x-4 gap-y-2">
         @foreach ($staffOptions as $member)
@@ -207,22 +207,22 @@
           </label>
         @endforeach
       </div>
-      <p class="mt-1.5 text-[12px] text-sub">Anyone also chosen as the location manager above is not listed twice.</p>
+      <p class="mt-1.5 text-[12px] text-sub">{{ __('locations.fields.assistants_hint') }}</p>
     </fieldset>
   @endif
 </section>
 
 {{-- ---------------------------------------------- 4. contact details --}}
 <section class="bg-white border border-line rounded-card p-5 space-y-4">
-  <h2 class="text-[15px] font-semibold text-head">Contact details</h2>
+  <h2 class="text-[15px] font-semibold text-head">{{ __('locations.cards.contact') }}</h2>
   <p class="text-[13px] text-sub">
-    Used instead of the main business contact details wherever this branch is named.
+    {{ __('locations.cards.contact_hint') }}
   </p>
 
   <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
     <div>
       <label for="phone" class="block text-[13px] font-medium text-ink mb-1.5">
-        Main phone number <span class="text-danger">*</span>
+        {{ __('locations.fields.phone') }} <span class="text-danger">*</span>
       </label>
       <input id="phone" name="phone" type="tel" class="sd-input" required value="{{ $locationValue('phone') }}">
       @error('phone')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
@@ -230,7 +230,7 @@
 
     <div>
       <label for="phone_secondary" class="block text-[13px] font-medium text-ink mb-1.5">
-        Secondary phone <span class="text-faint font-normal">(optional)</span>
+        {{ __('locations.fields.phone_secondary') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="phone_secondary" name="phone_secondary" type="tel" class="sd-input"
              value="{{ $locationValue('phone_secondary') }}">
@@ -238,7 +238,7 @@
 
     <div>
       <label for="email" class="block text-[13px] font-medium text-ink mb-1.5">
-        Location email <span class="text-danger">*</span>
+        {{ __('locations.fields.email') }} <span class="text-danger">*</span>
       </label>
       <input id="email" name="email" type="email" class="sd-input" required value="{{ $locationValue('email') }}">
       @error('email')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
@@ -246,7 +246,7 @@
 
     <div>
       <label for="booking_email" class="block text-[13px] font-medium text-ink mb-1.5">
-        Booking contact email <span class="text-faint font-normal">(optional)</span>
+        {{ __('locations.fields.booking_email') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="booking_email" name="booking_email" type="email" class="sd-input"
              value="{{ $locationValue('booking_email') }}">
@@ -255,7 +255,7 @@
 
     <div>
       <label for="support_email" class="block text-[13px] font-medium text-ink mb-1.5">
-        Customer service email <span class="text-faint font-normal">(optional)</span>
+        {{ __('locations.fields.support_email') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="support_email" name="support_email" type="email" class="sd-input"
              value="{{ $locationValue('support_email') }}">
@@ -264,7 +264,7 @@
 
     <div>
       <label for="website" class="block text-[13px] font-medium text-ink mb-1.5">
-        Website <span class="text-faint font-normal">(optional)</span>
+        {{ __('locations.fields.website') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="website" name="website" type="url" class="sd-input" placeholder="https://"
              value="{{ $locationValue('website') }}">
@@ -273,14 +273,14 @@
 
     <div>
       <label for="extension" class="block text-[13px] font-medium text-ink mb-1.5">
-        Internal extension <span class="text-faint font-normal">(optional)</span>
+        {{ __('locations.fields.extension') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="extension" name="extension" type="text" class="sd-input" value="{{ $locationValue('extension') }}">
     </div>
 
     <div>
       <label for="contact_person" class="block text-[13px] font-medium text-ink mb-1.5">
-        Contact person <span class="text-faint font-normal">(optional)</span>
+        {{ __('locations.fields.contact_person') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="contact_person" name="contact_person" type="text" class="sd-input" data-capitalize
              value="{{ $locationValue('contact_person') }}">
@@ -354,10 +354,11 @@
         'splitPeriods' => true,
         // The business's own 12/24-hour choice, so every screen agrees.
         'use12Hours' => App\Support\TimeFormat::use12Hours(),
-        'days' => array_values(config('locations.weekdays')),
-        'title' => 'Location hours',
-        'description' => "When this branch is open, in its own time zone. Add a second period to a day that closes in the middle.",
+        'days' => array_values(App\Support\LocationOptions::weekdays()),
+        'title' => __('locations.hours_card'),
+        'description' => __('locations.hours_card_hint'),
         'errors' => (object) $hoursErrors,
+        'labels' => __('locations.hours_editor'),
     ];
 @endphp
 

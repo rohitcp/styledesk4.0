@@ -129,7 +129,18 @@
                 ];
             })->all();
 
-            $hoursProps = ['initial' => $hoursInitial];
+            /**
+             * Onboarding gets the same labels as every other mount.
+             *
+             * Not split-period mode — that is Locations' need, not this
+             * screen's — but the day names and the copy button are the same
+             * words and should read the same way.
+             */
+            $hoursProps = [
+                'initial' => $hoursInitial,
+                'days' => array_values(App\Support\LocationOptions::weekdays()),
+                'labels' => __('locations.hours_editor'),
+            ];
         @endphp
 
         {{-- Divider before the hours: everything above describes where the
