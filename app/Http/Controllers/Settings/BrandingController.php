@@ -58,9 +58,9 @@ class BrandingController extends Controller
             'logo_path' => ['nullable', 'string', 'max:255'],
             'favicon_path' => ['nullable', 'string', 'max:255'],
         ], [
-            'brand_primary.required' => 'Choose a primary colour.',
-            'brand_secondary.required' => 'Choose a secondary colour.',
-            'brand_accent.required' => 'Choose an accent colour.',
+            'brand_primary.required' => __('branding.colours.required_primary'),
+            'brand_secondary.required' => __('branding.colours.required_secondary'),
+            'brand_accent.required' => __('branding.colours.required_accent'),
         ]);
 
         $colors = [
@@ -114,13 +114,13 @@ class BrandingController extends Controller
             // chosen, for a failure that was not the user's doing.
             return back()->withInput()->with('toast', [
                 'type' => 'danger',
-                'message' => "We couldn't save your branding. Please try again.",
+                'message' => __('branding.save_failed'),
             ]);
         }
 
         return redirect()
             ->route('settings.branding.show')
-            ->with('toast', ['type' => 'success', 'message' => 'Branding settings updated successfully.']);
+            ->with('toast', ['type' => 'success', 'message' => __('branding.saved')]);
     }
 
     /**
@@ -151,7 +151,7 @@ class BrandingController extends Controller
 
         return redirect()
             ->route('settings.branding.show')
-            ->with('toast', ['type' => 'success', 'message' => 'Branding reset to the StyleDesk default.']);
+            ->with('toast', ['type' => 'success', 'message' => __('branding.reset_done')]);
     }
 
     // -------------------------------------------------------------- uploads
@@ -189,8 +189,8 @@ class BrandingController extends Controller
              */
             $field => ['required', 'file', 'mimes:'.implode(',', $mimes), 'max:'.Branding::MAX_KB],
         ], [
-            $field.'.mimes' => 'Use a '.strtoupper(implode(', ', $mimes)).' file.',
-            $field.'.max' => 'The file must be 2 MB or smaller.',
+            $field.'.mimes' => __('branding.upload.mimes', ['formats' => mb_strtoupper(implode(', ', $mimes))]),
+            $field.'.max' => __('branding.upload.too_large'),
         ]);
 
         $path = Branding::store($request->file($field), $directory);

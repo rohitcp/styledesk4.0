@@ -1,36 +1,35 @@
 @extends('layouts.app')
 
-@section('title', 'Branding')
+@section('title', __('branding.title'))
 
 @section('content')
   <main class="w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
     <div class="max-w-[1180px]">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
-        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">App settings</a>
+        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
         <span class="mx-1.5 text-faint">/</span>
-        <span class="text-ink">Branding</span>
+        <span class="text-ink">{{ __('branding.title') }}</span>
       </nav>
 
       <div class="mt-3 flex flex-wrap items-start gap-4">
         <div class="min-w-0 flex-1">
-          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">Branding</h1>
+          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">{{ __('branding.title') }}</h1>
           <p class="text-[14px] text-sub mt-2 max-w-[640px] leading-relaxed">
-            Your logo, favicon and colours, used across StyleDesk, your booking page, confirmation and
-            reminder emails, receipts and invoices.
+            {{ __('branding.intro') }}
           </p>
         </div>
 
         <a href="{{ route('settings.index') }}"
            class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Back
+          {{ __('common.back') }}
         </a>
       </div>
 
       @if ($errors->any())
         <div class="sd-alert sd-alert--danger mt-5" role="alert">
-          <p class="min-w-0">Please correct the highlighted fields and try again.</p>
+          <p class="min-w-0">{{ __('branding.correct_fields') }}</p>
         </div>
       @endif
 
@@ -49,10 +48,9 @@
             {{-- ------------------------------------------------ logo --}}
             <section class="bg-white border border-line rounded-card p-5 space-y-4">
               <div>
-                <h2 class="text-[15px] font-semibold text-head">Business logo</h2>
+                <h2 class="text-[15px] font-semibold text-head">{{ __('branding.logo.title') }}</h2>
                 <p class="text-[13px] text-sub mt-0.5">
-                  PNG, JPG, SVG or WEBP, up to 2&nbsp;MB. Around 400×120&nbsp;px works well.
-                  A transparent background is kept as-is.
+                  {{ __('branding.logo.hint') }}
                 </p>
               </div>
 
@@ -77,12 +75,12 @@
                   <div class="flex flex-wrap items-center gap-2">
                     <label for="logoFile"
                            class="inline-flex items-center h-9 px-3.5 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold cursor-pointer transition-colors">
-                      {{ $logoUrl ? 'Replace logo' : 'Upload logo' }}
+                      {{ $logoUrl ? __('branding.logo.replace') : __('branding.logo.upload') }}
                     </label>
 
                     <button type="button" data-asset-remove="logo" @if (! $logoUrl) hidden @endif
                             class="h-9 px-3 rounded-md text-sub hover:text-danger hover:bg-hover text-[13px] font-semibold transition-colors">
-                      Remove
+                      {{ __('common.remove') }}
                     </button>
                   </div>
 
@@ -97,9 +95,9 @@
             {{-- --------------------------------------------- favicon --}}
             <section class="bg-white border border-line rounded-card p-5 space-y-4">
               <div>
-                <h2 class="text-[15px] font-semibold text-head">Favicon / app icon</h2>
+                <h2 class="text-[15px] font-semibold text-head">{{ __('branding.favicon.title') }}</h2>
                 <p class="text-[13px] text-sub mt-0.5">
-                  PNG, SVG or ICO, up to 2&nbsp;MB. Use a square image — 512×512&nbsp;px is ideal.
+                  {{ __('branding.favicon.hint') }}
                 </p>
               </div>
 
@@ -122,12 +120,12 @@
                   <div class="flex flex-wrap items-center gap-2">
                     <label for="faviconFile"
                            class="inline-flex items-center h-9 px-3.5 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold cursor-pointer transition-colors">
-                      {{ $faviconUrl ? 'Replace favicon' : 'Upload favicon' }}
+                      {{ $faviconUrl ? __('branding.favicon.replace') : __('branding.favicon.upload') }}
                     </label>
 
                     <button type="button" data-asset-remove="favicon" @if (! $faviconUrl) hidden @endif
                             class="h-9 px-3 rounded-md text-sub hover:text-danger hover:bg-hover text-[13px] font-semibold transition-colors">
-                      Remove
+                      {{ __('common.remove') }}
                     </button>
                   </div>
 
@@ -142,28 +140,27 @@
             {{-- ---------------------------------------------- colours --}}
             <section class="bg-white border border-line rounded-card p-5 space-y-4">
               <div>
-                <h2 class="text-[15px] font-semibold text-head">Brand colours</h2>
+                <h2 class="text-[15px] font-semibold text-head">{{ __('branding.colours.title') }}</h2>
                 <p class="text-[13px] text-sub mt-0.5">
-                  Pick a colour or type a hex value. The hover shade and the colour of text on your
-                  buttons are worked out from these.
+                  {{ __('branding.colours.hint') }}
                 </p>
               </div>
 
               @php
                   $colorFields = [
                       'brand_primary' => [
-                          'label' => 'Primary',
-                          'hint' => 'Buttons, links and the app bar.',
+                          'label' => __('branding.colours.primary'),
+                          'hint' => __('branding.colours.primary_hint'),
                           'value' => old('brand_primary', $palette->colors['primary']),
                       ],
                       'brand_secondary' => [
-                          'label' => 'Secondary',
-                          'hint' => 'Supporting highlights.',
+                          'label' => __('branding.colours.secondary'),
+                          'hint' => __('branding.colours.secondary_hint'),
                           'value' => old('brand_secondary', $palette->colors['secondary']),
                       ],
                       'brand_accent' => [
-                          'label' => 'Accent',
-                          'hint' => 'Badges and small emphasis.',
+                          'label' => __('branding.colours.accent'),
+                          'hint' => __('branding.colours.accent_hint'),
                           'value' => old('brand_accent', $palette->colors['accent']),
                       ],
                   ];
@@ -183,7 +180,7 @@
                     <input type="color" class="styledesk_swatch shrink-0"
                            id="{{ $field }}_picker" value="{{ $meta['value'] }}"
                            data-color-picker="{{ $field }}"
-                           aria-label="{{ $meta['label'] }} colour picker">
+                           aria-label="{{ __('branding.colours.picker_label', ['name' => $meta['label']]) }}">
 
                     <input type="text" class="sd-input font-mono" id="{{ $field }}_hex"
                            name="{{ $field }}" value="{{ $meta['value'] }}"
@@ -193,7 +190,7 @@
 
                   <p class="mt-1.5 text-[12px] text-sub">{{ $meta['hint'] }}</p>
                   <p class="mt-1 text-[12px] text-danger" data-color-error="{{ $field }}" hidden>
-                    Enter a hex colour, like #3d348b.
+                    {{ __('branding.colours.invalid') }}
                   </p>
                   @error($field)<p class="mt-1 text-[12px] text-danger">{{ $message }}</p>@enderror
                 </div>
@@ -205,13 +202,12 @@
                    than finding it out here. --}}
               <div class="pt-4 border-t border-line">
                 <p class="text-[12px] text-sub">
-                  White text on your primary colour:
-                  <span class="font-semibold" data-contrast-label>{{ $primaryGrade['label'] }}</span>
+                  {{ __('branding.colours.contrast') }}
+                  <span class="font-semibold" data-contrast-label>{{ __('branding.grades.'.$primaryGrade['key']) }}</span>
                   <span class="text-faint" data-contrast-ratio>({{ $primaryGrade['ratio'] }}:1)</span>
                 </p>
                 <p class="mt-1 text-[12px] text-danger" data-contrast-warning @if ($primaryGrade['ok']) hidden @endif>
-                  Your app bar, booking page header and email header print white text on this colour,
-                  and at this shade it is hard to read. A darker colour usually fixes it.
+                  {{ __('branding.colours.contrast_warning') }}
                 </p>
               </div>
             </section>
@@ -219,18 +215,18 @@
             <div class="flex flex-wrap items-center gap-3">
               <button type="submit" id="brandingSave"
                       class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
-                Save changes
+                {{ __('common.save_changes') }}
               </button>
 
               <a href="{{ route('settings.index') }}"
                  class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-                Cancel
+                {{ __('common.cancel') }}
               </a>
 
               @unless ($isDefault)
                 <button type="button" data-branding-reset
                         class="ml-auto h-9 px-3.5 rounded-lg text-danger hover:bg-hover text-[13px] font-semibold transition-colors">
-                  Reset to default branding
+                  {{ __('branding.reset') }}
                 </button>
               @endunless
             </div>
@@ -334,7 +330,10 @@
            and white scores better, so it always passes and the warning could
            never fire. White is what the chrome actually prints. */
         var ratio = contrast(primary, '#ffffff');
-        var label = ratio >= 7 ? 'AAA' : ratio >= 4.5 ? 'AA' : ratio >= 3 ? 'Large text only' : 'Fails';
+        /* The grades come from the server, so the reading beside the picker
+           is worded the same as the one rendered on load. */
+        var grades = @json(__('branding.grades'));
+        var label = ratio >= 7 ? grades.aaa : ratio >= 4.5 ? grades.aa : ratio >= 3 ? grades.large : grades.fails;
 
         form.querySelector('[data-contrast-label]').textContent = label;
         form.querySelector('[data-contrast-ratio]').textContent = '(' + (Math.round(ratio * 10) / 10) + ':1)';
@@ -408,7 +407,7 @@
           var file = input.files && input.files[0];
           if (!file) return;
 
-          status.textContent = 'Uploading…';
+          status.textContent = @json(__('branding.upload.uploading'));
           status.classList.remove('text-danger');
 
           var body = new FormData();
@@ -418,7 +417,7 @@
           fetch(endpoint, { method: 'POST', body: body, headers: { 'Accept': 'application/json' } })
             .then(function (response) {
               return response.json().then(function (data) {
-                if (!response.ok) throw new Error(data.message || 'That file could not be uploaded.');
+                if (!response.ok) throw new Error(data.message || @json(__('branding.upload.failed')));
                 return data;
               });
             })
@@ -441,7 +440,7 @@
           pathField.value = '';
           input.value = '';
           box.innerHTML = '';
-          status.textContent = 'Removed. Save to confirm.';
+          status.textContent = @json(__('branding.upload.removed'));
           remove.hidden = true;
           previewAssets();
         });
@@ -472,7 +471,7 @@
       /* -------------------------------------------------------- actions */
 
       document.querySelector('[data-branding-reset]')?.addEventListener('click', function () {
-        if (!window.confirm('Reset branding to the StyleDesk default? Your logo, favicon and colours are removed.')) return;
+        if (!window.confirm(@json(__('branding.reset_confirm')))) return;
 
         document.getElementById('brandingResetForm').submit();
       });
@@ -485,7 +484,7 @@
         if (saving) { e.preventDefault(); return; }
         saving = true;
         save.disabled = true;
-        save.textContent = 'Saving…';
+        save.textContent = @json(__('common.saving'));
       });
     }());
   </script>

@@ -203,7 +203,11 @@ class BrandPalette
      * 18.66px bold or 24px regular; our buttons are 13px semibold, so they
      * are held to the normal-text bar.
      *
-     * @return array{ratio: float, label: string, ok: bool}
+     * Returns the grade's key rather than its wording. The screen decides how
+     * to say "Large text only" in the reader's language; this decides which
+     * of the four it is.
+     *
+     * @return array{ratio: float, key: string, ok: bool}
      */
     public static function grade(string $background, string $text): array
     {
@@ -211,11 +215,11 @@ class BrandPalette
 
         return [
             'ratio' => round($ratio, 1),
-            'label' => match (true) {
-                $ratio >= 7 => 'AAA',
-                $ratio >= 4.5 => 'AA',
-                $ratio >= 3 => 'Large text only',
-                default => 'Fails',
+            'key' => match (true) {
+                $ratio >= 7 => 'aaa',
+                $ratio >= 4.5 => 'aa',
+                $ratio >= 3 => 'large',
+                default => 'fails',
             },
             'ok' => $ratio >= 4.5,
         ];

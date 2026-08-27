@@ -8,6 +8,7 @@ use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
+use App\Support\BrandPalette;
 use App\Support\Locale;
 use Database\Seeders\BusinessTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -798,6 +799,77 @@ class LanguageTest extends TestCase
                 'toast.message',
                 'Horario comercial guardado correctamente. También aplicado a 1 ubicación más.'
             );
+    }
+
+    // --------------------------------------------------- the branding module
+
+    public function test_the_branding_screen_is_translated(): void
+    {
+        $this->actingAs($this->spanishOwner())
+            ->get(route('settings.branding.show'))
+            ->assertOk()
+            ->assertSee('Identidad de marca')
+            ->assertSee('Logotipo del negocio')
+            ->assertSee('Colores de marca')
+            ->assertSee('Favicon / icono de la app')
+            ->assertDontSee('Business logo')
+            ->assertDontSee('Brand colours');
+    }
+
+    /**
+     * The previews are representations of what branding produces, so a reader
+     * looking at what their colours will do should be able to read them.
+     */
+    public function test_the_branding_previews_are_translated(): void
+    {
+        $this->actingAs($this->spanishOwner())
+            ->get(route('settings.branding.show'))
+            ->assertOk()
+            ->assertSee('Vista previa')
+            ->assertSee('Tu página de reservas')
+            ->assertSee('Tu cita está confirmada')
+            ->assertSee('Recibos y facturas')
+            ->assertSee('Dónde se usa')
+            ->assertDontSee('Your appointment is confirmed')
+            ->assertDontSee('Where this is used');
+    }
+
+    public function test_branding_messages_are_translated(): void
+    {
+        $owner = $this->spanishOwner();
+
+        $this->actingAs($owner)
+            ->patch(route('settings.branding.update'), [
+                'brand_primary' => '#0f766e',
+                'brand_secondary' => '#0d9488',
+                'brand_accent' => '#b45309',
+            ])
+            ->assertSessionHas('toast.message', 'Identidad de marca actualizada correctamente.');
+
+        $this->actingAs($owner)
+            ->patch(route('settings.branding.update'), [
+                'brand_primary' => '',
+                'brand_secondary' => '#0d9488',
+                'brand_accent' => '#b45309',
+            ])
+            ->assertSessionHasErrors(['brand_primary' => 'Elige un color principal.']);
+    }
+
+    /**
+     * The contrast grade is a key, not a phrase.
+     *
+     * BrandPalette decides which of the four grades a colour earns; the
+     * screen decides how to say it. "AA" stays as it is — that is the name of
+     * a conformance level, not an English word.
+     */
+    public function test_the_contrast_grade_is_translated(): void
+    {
+        $this->assertSame('fails', BrandPalette::grade('#f5e663', '#ffffff')['key']);
+
+        $this->assertSame('No cumple', __('branding.grades.fails', [], 'es'));
+        $this->assertSame('Fails', __('branding.grades.fails', [], 'en'));
+        // Unchanged in both: a conformance level, not a word.
+        $this->assertSame('AA', __('branding.grades.aa', [], 'es'));
     }
 
     // ---------------------------------------------------------- the module
