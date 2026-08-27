@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppSettingsController;
+use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
@@ -401,4 +402,15 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
 
     Route::delete('getting-started', [GettingStartedController::class, 'destroy'])
         ->name('getting-started.dismiss');
+
+    /*
+    | Clients — the module, not its settings.
+    |
+    | Outside the App Settings group on purpose. Configuring what a client
+    | record looks like is Owner/Admin work; working with clients is what a
+    | receptionist does all day, and §Access Control asks for the two to stay
+    | separate. The permission is checked in the controller, so every role
+    | that holds clients.view can open it at whatever scope it holds.
+    */
+    Route::get('/clients', [ClientController::class, 'index'])->name('clients.index');
 });

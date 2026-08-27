@@ -150,4 +150,26 @@ return [
         'preference_exists' => 'You already have a preference with that name.',
         'tag_exists' => 'You already have a tag with that name.',
     ],
+
+    /*
+     * The Clients module's own landing page — not the settings screen.
+     *
+     * Kept in this file because both talk about the same thing, and a reader
+     * of one is the reader of the other.
+     */
+    'module' => [
+        'title' => 'Clients',
+        'intro' => 'Your client records, their history and their preferences.',
+        'empty_title' => 'No clients yet.',
+        'empty_body' => 'Client records arrive with the Clients module. Everything you configure now — required fields, preferences, tags and duplicate rules — is what those records will follow.',
+        'ready_title' => 'What is already set up',
+        'ready_hint' => 'Configured in App Settings. Client records will follow these from the day they exist.',
+        'required_fields' => 'Required on every client',
+        'name_format' => 'Names written as',
+        'preferences' => '{1} :count active preference|[2,*] :count active preferences',
+        'tags' => '{1} :count active tag|[2,*] :count active tags',
+        'configure' => 'Configure client settings',
+        'configure_hint' => 'Defaults, fields, preferences, tags, duplicate rules and consent.',
+        'permission_note' => 'What you can see and change about a client is set by your role under Roles & permissions, separately from this configuration.',
+    ],
 ];

@@ -144,4 +144,20 @@ return [
         'preference_exists' => 'Ya tienes una preferencia con ese nombre.',
         'tag_exists' => 'Ya tienes una etiqueta con ese nombre.',
     ],
+
+    'module' => [
+        'title' => 'Clientes',
+        'intro' => 'Tus fichas de cliente, su historial y sus preferencias.',
+        'empty_title' => 'Todavía no hay clientes.',
+        'empty_body' => 'Las fichas de cliente llegarán con el módulo de Clientes. Todo lo que configures ahora —campos obligatorios, preferencias, etiquetas y reglas de duplicados— es lo que seguirán esas fichas.',
+        'ready_title' => 'Lo que ya está configurado',
+        'ready_hint' => 'Se configura en Configuración. Las fichas de cliente lo seguirán desde el día en que existan.',
+        'required_fields' => 'Obligatorio en cada cliente',
+        'name_format' => 'Los nombres se escriben',
+        'preferences' => '{1} :count preferencia activa|[2,*] :count preferencias activas',
+        'tags' => '{1} :count etiqueta activa|[2,*] :count etiquetas activas',
+        'configure' => 'Configurar los ajustes de clientes',
+        'configure_hint' => 'Valores predeterminados, campos, preferencias, etiquetas, reglas de duplicados y consentimiento.',
+        'permission_note' => 'Lo que puedes ver y cambiar de un cliente lo define tu rol en Roles y permisos, con independencia de esta configuración.',
+    ],
 ];

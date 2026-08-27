@@ -28,9 +28,9 @@ return [
             'key' => 'clients',
             'label' => 'Clients',
             'icon' => 'user',
-            'pending' => 'clients.html',
+            'route' => 'clients.index',
             'children' => [
-                ['label' => 'All Clients', 'pending' => 'clients.html'],
+                ['label' => 'All Clients', 'route' => 'clients.index'],
                 ['label' => 'Groups'],
                 ['label' => 'Forms & Waivers'],
                 ['label' => 'Memberships & Packages'],
