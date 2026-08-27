@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
 use App\Support\Locale;
+use Database\Seeders\BusinessTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
@@ -441,6 +442,114 @@ class LanguageTest extends TestCase
             ->assertSee('Untranslated Module')
             ->assertSee('Nowhere')
             ->assertDontSee('modules.modules', false);
+    }
+
+    // --------------------------------------------------- the business module
+
+    public function test_the_business_screen_is_translated(): void
+    {
+        $this->enableSpanish();
+
+        $owner = $this->owner();
+        $owner->forceFill(['locale' => 'es'])->save();
+
+        $this->actingAs($owner->fresh())
+            ->get(route('settings.business.show'))
+            ->assertOk()
+            ->assertSee('Información del negocio')
+            ->assertSee('Nombre del negocio')
+            ->assertSee('Datos de contacto')
+            ->assertSee('Ajustes regionales')
+            ->assertSee('Editar negocio')
+            ->assertDontSee('Business information')
+            ->assertDontSee('Contact information');
+    }
+
+    public function test_the_business_form_is_translated(): void
+    {
+        $this->enableSpanish();
+
+        $owner = $this->owner();
+        $owner->forceFill(['locale' => 'es'])->save();
+
+        $this->actingAs($owner->fresh())
+            ->get(route('settings.business.edit'))
+            ->assertOk()
+            ->assertSee('Razón social')
+            ->assertSee('Primer día de la semana')
+            // Dropdown values, not just their labels.
+            ->assertSee('Los precios incluyen impuestos')
+            ->assertSee('Cualquier miembro del equipo disponible')
+            ->assertSee('Domingo')
+            // A placeholder.
+            ->assertSee('Especialistas en pelo rizado');
+    }
+
+    /**
+     * A form that validates in English hands its reader the one sentence on
+     * the page they most need to understand in the language they did not
+     * choose.
+     */
+    public function test_business_validation_messages_are_translated(): void
+    {
+        $this->enableSpanish();
+
+        $owner = $this->owner();
+        $owner->forceFill(['locale' => 'es'])->save();
+
+        $response = $this->actingAs($owner->fresh())
+            ->patch(route('settings.business.update'), [
+                'name' => '',
+                'status' => 'active',
+                'business_email' => 'not-an-email',
+            ]);
+
+        $response->assertSessionHasErrors([
+            'name' => 'El nombre del negocio es obligatorio.',
+            'business_email' => 'Introduce una dirección de correo válida.',
+        ]);
+    }
+
+    public function test_the_business_saved_toast_is_translated(): void
+    {
+        $this->enableSpanish();
+
+        $owner = $this->owner();
+        $owner->forceFill(['locale' => 'es'])->save();
+
+        $this->actingAs($owner->fresh())
+            ->patch(route('settings.business.update'), [
+                'name' => 'Nadia Hair Studio',
+                'status' => 'active',
+                'business_email' => 'hello@nadia.test',
+            ])
+            ->assertSessionHas('toast.message', 'Configuración del negocio actualizada correctamente.');
+    }
+
+    /**
+     * StyleDesk's own reference list is ours to translate.
+     *
+     * Unlike a service name or a client note, which is the business's own
+     * words and stays exactly as typed.
+     */
+    public function test_business_types_are_translated_but_business_content_is_not(): void
+    {
+        $this->enableSpanish();
+
+        $owner = $this->owner();
+        $owner->forceFill(['locale' => 'es'])->save();
+
+        $this->tenant->forceFill(['business_category' => 'Curly hair specialists'])->save();
+
+        $this->seed(BusinessTypeSeeder::class);
+
+        $this->actingAs($owner->fresh())
+            ->get(route('settings.business.edit'))
+            ->assertOk()
+            ->assertSee('Peluquería')
+            ->assertDontSee('Hair Salon')
+            // What the business typed is untouched.
+            ->assertSee('Curly hair specialists');
     }
 
     // ---------------------------------------------------------- the module

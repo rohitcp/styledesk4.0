@@ -92,20 +92,24 @@ class BusinessSettingsController extends Controller
              * "The business email field must be a valid email address" names
              * the validator; "Enter a valid email address" names what to do,
              * and it is read inches from the box it is about.
+             *
+             * Translated, because a Spanish form that validates in English
+             * hands its reader the one sentence on the page they most need to
+             * understand in the one language they did not choose.
              */
-            'name.required' => 'Business name is required.',
-            'business_email.required' => 'Primary email is required.',
-            'business_email.email' => 'Enter a valid email address.',
-            'support_email.email' => 'Enter a valid email address.',
-            'booking_email.email' => 'Enter a valid email address.',
-            'website.url' => 'Enter a valid website URL, including https://',
-            'instagram_url.url' => 'Enter a valid Instagram URL, including https://',
-            'facebook_url.url' => 'Enter a valid Facebook URL, including https://',
-            'tiktok_url.url' => 'Enter a valid TikTok URL, including https://',
-            'google_business_url.url' => 'Enter a valid Google Business URL, including https://',
-            'status.required' => 'Choose whether the business is active.',
-            'status.in' => 'Choose whether the business is active.',
-            'location_id.exists' => 'Choose one of your own locations.',
+            'name.required' => __('business.validation.name_required'),
+            'business_email.required' => __('business.validation.email_required'),
+            'business_email.email' => __('business.validation.email_invalid'),
+            'support_email.email' => __('business.validation.email_invalid'),
+            'booking_email.email' => __('business.validation.email_invalid'),
+            'website.url' => __('business.validation.url_invalid'),
+            'instagram_url.url' => __('business.validation.instagram_invalid'),
+            'facebook_url.url' => __('business.validation.facebook_invalid'),
+            'tiktok_url.url' => __('business.validation.tiktok_invalid'),
+            'google_business_url.url' => __('business.validation.google_invalid'),
+            'status.required' => __('business.validation.status_required'),
+            'status.in' => __('business.validation.status_required'),
+            'location_id.exists' => __('business.validation.location_invalid'),
         ]);
 
         // The project capitalisation rule. Emails and URLs are deliberately
@@ -150,7 +154,7 @@ class BusinessSettingsController extends Controller
                 'exception' => $e->getMessage(),
             ]);
 
-            $message = "We couldn't save your changes right now. Please try again.";
+            $message = __('business.save_failed');
 
             // Stay on the edit page. Redirecting away would discard everything
             // typed, for a failure that was not the user's doing.
@@ -172,7 +176,7 @@ class BusinessSettingsController extends Controller
 
         $request->session()->flash('toast', [
             'type' => 'success',
-            'message' => 'Business settings updated successfully.',
+            'message' => __('business.saved'),
         ]);
 
         if ($request->expectsJson()) {
