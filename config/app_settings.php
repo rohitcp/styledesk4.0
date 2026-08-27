@@ -33,6 +33,8 @@ return [
         'active' => ['label' => 'Active', 'class' => 'styledesk_badge--active'],
         'setup-required' => ['label' => 'Setup required', 'class' => 'styledesk_badge--setup'],
         'coming-soon' => ['label' => 'Coming soon', 'class' => 'styledesk_badge--soon'],
+        // Built and useful, but not yet editable.
+        'view-only' => ['label' => 'View only', 'class' => 'styledesk_badge--soon'],
     ],
 
     'groups' => [
@@ -291,6 +293,11 @@ return [
                     'name' => 'Roles & Permissions',
                     'description' => 'Control what Owners, Admins, Managers, Receptionists, Service Providers and custom roles can access.',
                     'icon' => 'user-shield',
+                    'route' => 'settings.roles.index',
+                    // Not 'coming-soon': the module is here and useful, it
+                    // simply cannot be edited yet. "Coming soon" would say the
+                    // whole thing is unavailable.
+                    'status' => 'view-only',
                     'keywords' => ['role', 'permission', 'access', 'admin', 'manager', 'receptionist', 'custom role', 'matrix'],
                     'counts' => ['roles'],
                 ],

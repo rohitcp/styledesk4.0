@@ -101,10 +101,13 @@ class StaffProfileTest extends TestCase
     }
 
     /**
-     * §21 gives Admin view/create/edit/deactivate and no delete, so the menu
-     * shows what they may do rather than a button that will be refused.
+     * The Roles & Permissions access matrix marks Admin as full on Staff
+     * Members, so they may delete — where the earlier §21 list enumerated
+     * their rights without it. The newer matrix is explicit and this is a
+     * permissions specification, so it wins; the guards that matter are
+     * unchanged, and Admin still cannot delete themselves or the last owner.
      */
-    public function test_an_admin_sees_view_and_edit_but_not_delete(): void
+    public function test_an_admin_may_delete_staff_but_never_themselves(): void
     {
         $this->owner();
 
@@ -118,14 +121,19 @@ class StaffProfileTest extends TestCase
 
         $amara = $this->member('manager', ['email' => 'amara2@acme.test']);
 
-        $content = $this->actingAs($adminUser->fresh())->get('http://styledesk.test/settings/staff')->getContent();
+        $admin = $adminUser->fresh();
+        $content = $this->actingAs($admin)->get('http://styledesk.test/settings/staff')->getContent();
 
         $this->assertStringContainsString(route('settings.staff.edit', $amara), $content);
 
         // Not 'data-delete-staff': that literal also appears in the page's own
         // querySelectorAll call, so it is present whether or not any row
         // renders the button. The per-row data-name is the real marker.
-        $this->assertStringNotContainsString('data-name="'.$amara->displayName().'"', $content);
+        $this->assertStringContainsString('data-name="'.$amara->displayName().'"', $content);
+
+        // But never their own row, and never the last owner's.
+        $ownStaff = Staff::withoutGlobalScopes()->where('user_id', $admin->id)->firstOrFail();
+        $this->assertFalse($admin->can('delete', $ownStaff));
     }
 
     public function test_nobody_is_offered_delete_on_their_own_row(): void

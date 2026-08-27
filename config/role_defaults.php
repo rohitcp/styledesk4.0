@@ -7,19 +7,24 @@ declare(strict_types=1);
 | System roles and their default permissions
 |--------------------------------------------------------------------------
 |
-| The matrices from §20-24. Each tenant is seeded its own copy of these five
-| roles, so a business can change what Manager means without changing it for
-| every other business.
+| The access matrix from the Roles & Permissions spec. Each tenant is seeded
+| its own copy of these five roles, so a business can change what Manager
+| means without changing it for every other business.
 |
-| `permissions` maps a catalogue key to its scope. `*` grants every permission
-| in the catalogue at `all` scope and is used only by Owner — writing Owner's
-| 135 rows out by hand would be a list to keep in step with the catalogue
-| forever, and the one role that must never be short a permission is the one
-| that can fix everything else.
+| `permissions` maps a catalogue key to the scope the role holds it at. '*'
+| grants everything at full scope and is used only by Owner — writing its 155
+| rows by hand would be a list to keep in step with the catalogue forever, and
+| the one role that must never be short a permission is the one that can fix
+| everything else.
 |
 | A permission absent from a role's list is not granted. There is no "deny"
-| entry, because a missing grant and an explicit denial would be two ways to
-| say the same thing and would eventually disagree.
+| entry: a missing grant and an explicit denial would be two ways to say the
+| same thing, and they would eventually disagree.
+|
+| The matrix's softer words map onto scopes rather than onto separate ideas:
+| "Own" and "Assigned" are scopes, and "Limited" means some of a module's
+| permissions and not others — which falls out of the lists below rather than
+| needing a concept of its own.
 |
 */
 
@@ -27,290 +32,349 @@ return [
 
     'owner' => [
         'name' => 'Owner',
-        'description' => 'Full access to everything, including billing, security and ownership.',
+        'description' => 'Full access to the business, staff, settings, billing and operational data.',
         'display_order' => 0,
         'permissions' => '*',
     ],
 
     'administrator' => [
         'name' => 'Admin',
-        'description' => 'Business administration, staff and operations. Billing and security are restricted.',
+        'description' => 'Full operational and administrative access, except protected Owner-only actions.',
         'display_order' => 1,
         'permissions' => [
             'dashboard.view' => 'all',
-            'dashboard.metrics' => 'all',
-            'dashboard.financial_summary' => 'all',
-
+            'dashboard.business_summary' => 'all',
+            'dashboard.todays_appointments' => 'all',
+            'dashboard.revenue_summary' => 'all',
+            'dashboard.staff_performance' => 'all',
             'calendar.view' => 'all',
-            'calendar.manage_availability' => 'all',
+            'calendar.view_all_staff' => 'all',
+            'appointments.create' => 'all',
+            'appointments.edit' => 'all',
+            'appointments.cancel' => 'all',
+            'appointments.reschedule' => 'all',
+            'appointments.check_in' => 'all',
+            'appointments.check_out' => 'all',
             'calendar.block_time' => 'all',
-            'calendar.override_availability' => 'all',
-            'calendar.double_book' => 'all',
-
-            'bookings.view' => 'all',
-            'bookings.create' => 'all',
-            'bookings.edit' => 'all',
-            'bookings.reschedule' => 'all',
-            'bookings.cancel' => 'all',
-            'bookings.override_rules' => 'all',
-            'bookings.override_pricing' => 'all',
-            'bookings.apply_discount' => 'all',
-            'bookings.mark_no_show' => 'all',
-            'bookings.check_in' => 'all',
-            'bookings.complete' => 'all',
-            'bookings.reassign_provider' => 'all',
-
+            'appointments.override_rules' => 'all',
             'clients.view' => 'all',
             'clients.create' => 'all',
             'clients.edit' => 'all',
             'clients.view_contact' => 'all',
+            'clients.view_history' => 'all',
             'clients.view_notes' => 'all',
             'clients.add_notes' => 'all',
-            'clients.edit_notes' => 'all',
-            'clients.view_sensitive_notes' => 'all',
-            'clients.view_history' => 'all',
-            'clients.view_spending' => 'all',
             'clients.view_preferences' => 'all',
-            'clients.export' => 'all',
-
-            'staff.view' => 'all',
-            'staff.create' => 'all',
-            'staff.edit' => 'all',
-            'staff.activate' => 'all',
-            'staff.deactivate' => 'all',
-            'staff.archive' => 'all',
-            'staff.invite' => 'all',
-            'staff.assign_role' => 'all',
-            'staff.assign_location' => 'all',
-            'staff.assign_services' => 'all',
-            'staff.manage_working_hours' => 'all',
-            'staff.manage_availability' => 'all',
-            'staff.manage_booking_settings' => 'all',
-            'staff.view_employment' => 'all',
-
+            'clients.edit_preferences' => 'all',
+            'clients.merge' => 'all',
+            'clients.archive' => 'all',
+            'clients.delete' => 'all',
+            'clients.view_sensitive_notes' => 'all',
             'services.view' => 'all',
             'services.create' => 'all',
             'services.edit' => 'all',
+            'services.toggle_active' => 'all',
             'services.delete' => 'all',
-            'services.change_pricing' => 'all',
-            'services.manage_duration' => 'all',
             'services.manage_categories' => 'all',
+            'services.manage_pricing' => 'all',
+            'services.manage_duration' => 'all',
             'services.assign_staff' => 'all',
-            'services.assign_locations' => 'all',
             'services.assign_resources' => 'all',
-
+            'staff.view' => 'all',
+            'staff.view_profile' => 'all',
+            'staff.create' => 'all',
+            'staff.edit' => 'all',
+            'staff.deactivate' => 'all',
+            'staff.archive' => 'all',
+            'staff.delete' => 'all',
+            'staff.invite' => 'all',
+            'staff.resend_invitation' => 'all',
+            'staff.assign_location' => 'all',
+            'staff.manage_working_hours' => 'all',
+            'staff.assign_services' => 'all',
+            'staff.manage_availability' => 'all',
+            'staff.manage_booking_settings' => 'all',
+            'staff.assign_role' => 'all',
+            'staff.view_employment' => 'all',
+            'roles.view' => 'all',
+            'roles.view_permissions' => 'all',
             'locations.view' => 'all',
             'locations.create' => 'all',
             'locations.edit' => 'all',
+            'locations.delete' => 'all',
             'locations.manage_hours' => 'all',
-            'locations.manage_closures' => 'all',
-            'locations.manage_staff' => 'all',
-
+            'locations.assign_staff' => 'all',
+            'locations.assign_services' => 'all',
+            'locations.manage_resources' => 'all',
+            'business_hours.view' => 'all',
+            'business_hours.edit' => 'all',
+            'business_hours.manage_closures' => 'all',
+            'business_hours.manage_holidays' => 'all',
+            'business_hours.manage_special' => 'all',
+            'business_hours.manage_split_shifts' => 'all',
             'resources.view' => 'all',
             'resources.create' => 'all',
             'resources.edit' => 'all',
             'resources.delete' => 'all',
+            'resources.manage_availability' => 'all',
             'resources.assign_services' => 'all',
-            'resources.block_availability' => 'all',
-
-            'payments.view_prices' => 'all',
-            'payments.checkout' => 'all',
-            'payments.take_payment' => 'all',
+            'resources.assign_location' => 'all',
+            'payments.view_checkout' => 'all',
+            'payments.process' => 'all',
+            'payments.refund' => 'all',
             'payments.apply_discount' => 'all',
             'payments.manual_adjustment' => 'all',
-            'payments.refund' => 'all',
+            'payments.accept_tips' => 'all',
             'payments.void' => 'all',
             'payments.view_transactions' => 'all',
-            'payments.view_tips' => 'all',
-            'payments.manage_register' => 'all',
-
+            'payments.view_details' => 'all',
+            'sales.view' => 'all',
+            'sales.view_revenue' => 'all',
+            'sales.view_financial_reports' => 'all',
+            'sales.view_staff_revenue' => 'all',
+            'sales.view_tips' => 'all',
+            'sales.view_taxes' => 'all',
+            'sales.view_discounts' => 'all',
+            'sales.view_refunds' => 'all',
             'reports.view' => 'all',
-            'reports.revenue' => 'all',
-            'reports.staff_performance' => 'all',
-            'reports.clients' => 'all',
-            'reports.services' => 'all',
             'reports.appointments' => 'all',
+            'reports.clients' => 'all',
+            'reports.staff' => 'all',
+            'reports.services' => 'all',
+            'reports.sales' => 'all',
+            'reports.financial' => 'all',
             'reports.export' => 'all',
-
+            'inventory.view_products' => 'all',
+            'inventory.create_product' => 'all',
+            'inventory.edit_product' => 'all',
+            'inventory.delete_product' => 'all',
+            'inventory.adjust' => 'all',
+            'inventory.view_levels' => 'all',
+            'inventory.view_cost' => 'all',
+            'inventory.manage_suppliers' => 'all',
+            'inventory.manage_purchase_orders' => 'all',
+            'notifications.view' => 'all',
+            'notifications.manage_own' => 'all',
+            'notifications.manage_business' => 'all',
+            'notifications.manage_client_settings' => 'all',
+            'notifications.manage_staff_settings' => 'all',
+            'notifications.manage_templates' => 'all',
             'settings.view' => 'all',
-            'settings.edit_business' => 'all',
-            'settings.manage_hours' => 'all',
-            'settings.manage_booking_rules' => 'all',
+            'settings.manage_business' => 'all',
             'settings.manage_branding' => 'all',
-            'settings.manage_notifications' => 'all',
-            'settings.manage_languages' => 'all',
-            'settings.manage_currencies' => 'all',
-            'settings.manage_tax' => 'all',
+            'settings.manage_booking_rules' => 'all',
+            'settings.manage_hours' => 'all',
             'settings.manage_locations' => 'all',
-
+            'settings.manage_staff' => 'all',
+            'settings.manage_services' => 'all',
+            'settings.manage_payments' => 'all',
+            'settings.manage_notifications' => 'all',
+            'settings.manage_integrations' => 'all',
             'integrations.view' => 'all',
             'integrations.connect' => 'all',
-            'integrations.disconnect' => 'all',
             'integrations.configure' => 'all',
-
-            // View only by default, per §21. Changing the plan and cancelling
-            // the subscription stay with the Owner.
-            'billing.view_plan' => 'all',
+            'integrations.disconnect' => 'all',
+            'data.export_clients' => 'all',
+            'data.export_appointments' => 'all',
+            'data.export_financial' => 'all',
+            'data.import' => 'all',
+            'data.export_business' => 'all',
+            'billing.view_subscription' => 'all',
             'billing.view' => 'all',
             'billing.view_invoices' => 'all',
-
-            // "Limited" in §21: they can see the settings and the history,
-            // but not change the policy or force anyone out.
+            'billing.download_invoices' => 'all',
             'security.view' => 'all',
-            'security.view_login_history' => 'all',
-            'security.view_audit_log' => 'all',
-
-            'data.import' => 'all',
-            'data.export' => 'all',
-
-        /**
-         * roles.* is deliberately absent.
-         *
-         * §21 makes role administration "optional, Owner-controlled", so
-         * the default is off and the Owner grants it deliberately. A
-         * default that can edit the permission matrix is a default that
-         * can grant itself everything else.
-         */
+            'security.view_login_activity' => 'all',
         ],
     ],
 
     'manager' => [
         'name' => 'Manager',
-        'description' => 'Day-to-day operations for their assigned locations.',
+        'description' => 'Day-to-day operations, staff, services, clients and reporting for their locations.',
         'display_order' => 2,
         'permissions' => [
             'dashboard.view' => 'all',
-            'dashboard.metrics' => 'location',
-
+            'dashboard.business_summary' => 'all',
+            'dashboard.todays_appointments' => 'location',
+            'dashboard.staff_performance' => 'location',
             'calendar.view' => 'location',
-            'calendar.manage_availability' => 'location',
-            'calendar.block_time' => 'all',
-
-            'bookings.view' => 'location',
-            'bookings.create' => 'all',
-            'bookings.edit' => 'location',
-            'bookings.reschedule' => 'location',
-            'bookings.cancel' => 'location',
-            'bookings.mark_no_show' => 'all',
-            'bookings.check_in' => 'all',
-            'bookings.complete' => 'all',
-            'bookings.reassign_provider' => 'all',
-
+            'calendar.view_all_staff' => 'all',
+            'appointments.create' => 'all',
+            'appointments.check_in' => 'all',
+            'appointments.check_out' => 'all',
+            'appointments.edit' => 'location',
+            'appointments.cancel' => 'location',
+            'appointments.reschedule' => 'location',
+            'calendar.block_time' => 'location',
             'clients.view' => 'location',
-            'clients.create' => 'all',
             'clients.edit' => 'location',
+            'clients.create' => 'all',
             'clients.view_contact' => 'all',
+            'clients.view_history' => 'all',
             'clients.view_notes' => 'all',
             'clients.add_notes' => 'all',
-            'clients.edit_notes' => 'all',
-            'clients.view_history' => 'all',
-
-            // View and schedule their locations' staff, but not add them.
+            'clients.view_preferences' => 'all',
+            'clients.edit_preferences' => 'all',
+            'clients.archive' => 'all',
+            'services.view' => 'all',
+            'services.create' => 'all',
+            'services.edit' => 'all',
+            'services.toggle_active' => 'all',
+            'services.manage_categories' => 'all',
+            'services.manage_duration' => 'all',
+            'services.assign_staff' => 'all',
+            'services.assign_resources' => 'all',
             'staff.view' => 'location',
+            'staff.view_profile' => 'location',
+            'staff.edit' => 'location',
             'staff.manage_working_hours' => 'location',
             'staff.manage_availability' => 'location',
-
-            'services.view' => 'all',
-            /**
-             * Kept from the earlier Service Categories spec, which gave
-             * Manager add-but-not-delete rights over categories. §22 lists
-             * only "Services — View", but its list is a summary of defaults
-             * rather than an exhaustive matrix, and silently removing a
-             * capability a business already relies on is the worse reading.
-             */
-            'services.manage_categories' => 'all',
-
+            'staff.deactivate' => 'all',
+            'staff.assign_services' => 'all',
+            'staff.manage_booking_settings' => 'all',
+            'staff.resend_invitation' => 'all',
+            'roles.view' => 'all',
+            'roles.view_permissions' => 'all',
             'locations.view' => 'assigned',
-
+            'locations.edit' => 'location',
+            'locations.manage_hours' => 'location',
+            'locations.assign_staff' => 'all',
+            'locations.assign_services' => 'all',
+            'locations.manage_resources' => 'all',
+            'business_hours.view' => 'all',
+            'business_hours.edit' => 'all',
+            'business_hours.manage_closures' => 'all',
+            'business_hours.manage_holidays' => 'all',
+            'business_hours.manage_special' => 'all',
+            'business_hours.manage_split_shifts' => 'all',
             'resources.view' => 'location',
-            'resources.create' => 'all',
             'resources.edit' => 'location',
-            'resources.block_availability' => 'all',
-
-            'payments.view_prices' => 'all',
-            'payments.checkout' => 'all',
-            'payments.take_payment' => 'all',
+            'resources.create' => 'all',
+            'resources.manage_availability' => 'all',
+            'resources.assign_services' => 'all',
+            'resources.assign_location' => 'all',
+            'payments.view_checkout' => 'all',
+            'payments.process' => 'all',
+            'payments.apply_discount' => 'all',
+            'payments.accept_tips' => 'all',
+            'payments.view_details' => 'all',
             'payments.view_transactions' => 'location',
-            'payments.manage_register' => 'all',
-
-            // Location-level reporting only; revenue is withheld by default.
+            'sales.view' => 'location',
+            'sales.view_revenue' => 'location',
+            'sales.view_staff_revenue' => 'location',
+            'sales.view_tips' => 'location',
             'reports.view' => 'location',
-            'reports.appointments' => 'all',
-            'reports.staff_performance' => 'location',
+            'reports.appointments' => 'location',
+            'reports.staff' => 'location',
+            'reports.sales' => 'location',
+            'reports.clients' => 'all',
+            'reports.services' => 'all',
+            'inventory.view_products' => 'all',
+            'inventory.adjust' => 'all',
+            'inventory.view_levels' => 'all',
+            'inventory.edit_product' => 'all',
+            'inventory.create_product' => 'all',
+            'notifications.view' => 'all',
+            'notifications.manage_own' => 'all',
+        /**
+         * settings.view is deliberately absent.
+         *
+         * This spec's matrix reads "App Settings — Limited" for Manager,
+         * while the earlier App Settings spec said only Owner and Admin
+         * may see the module at all — and that is what is built and
+         * tested. Widening access to a settings area is not something to
+         * do as a side effect of reorganising a catalogue, so the
+         * narrower of the two rules stands until it is asked for.
+         */
         ],
     ],
 
     'front-desk' => [
         'name' => 'Receptionist',
-        'description' => 'Front-desk operations: clients, bookings and the day\'s calendar.',
+        'description' => 'Appointments, clients, bookings, check-in and check-out, and front-desk activities.',
         'display_order' => 3,
         'permissions' => [
             'dashboard.view' => 'all',
-
+            'dashboard.todays_appointments' => 'location',
             'calendar.view' => 'location',
-
-            'bookings.view' => 'location',
-            'bookings.create' => 'all',
-            'bookings.reschedule' => 'location',
-            'bookings.cancel' => 'location',
-            'bookings.check_in' => 'all',
-            'bookings.complete' => 'all',
-
+            'calendar.view_all_staff' => 'all',
+            'appointments.create' => 'all',
+            'appointments.check_in' => 'all',
+            'appointments.check_out' => 'all',
+            'appointments.edit' => 'location',
+            'appointments.cancel' => 'location',
+            'appointments.reschedule' => 'location',
             'clients.view' => 'location',
-            'clients.create' => 'all',
             'clients.edit' => 'location',
+            'clients.create' => 'all',
             'clients.view_contact' => 'all',
+            'clients.view_history' => 'all',
             'clients.view_notes' => 'all',
             'clients.add_notes' => 'all',
-            'clients.view_history' => 'all',
-            // Sensitive notes are explicitly withheld by §23.
-
-            'staff.view' => 'location',
-
+            'clients.view_preferences' => 'all',
             'services.view' => 'all',
+            'staff.view' => 'location',
+            'staff.view_profile' => 'location',
             'locations.view' => 'assigned',
+            'business_hours.view' => 'all',
             'resources.view' => 'location',
-
-            'payments.view_prices' => 'all',
-            'payments.checkout' => 'all',
-            'payments.take_payment' => 'all',
+            'payments.view_checkout' => 'all',
+            'payments.process' => 'all',
+            'payments.apply_discount' => 'all',
+            'payments.accept_tips' => 'all',
+            'payments.view_details' => 'all',
+            'reports.view' => 'own',
+            'inventory.view_products' => 'all',
+            'inventory.view_levels' => 'all',
+            'notifications.view' => 'all',
+            'notifications.manage_own' => 'all',
         ],
     ],
 
     'service-provider' => [
         'name' => 'Service Provider',
-        'description' => 'Their own calendar, appointments, clients and availability.',
+        'description' => 'Their own calendar, appointments, assigned clients and services.',
         'display_order' => 4,
         'is_default' => true,
         'permissions' => [
             'dashboard.view' => 'all',
-            'dashboard.metrics' => 'own',
-
+            'dashboard.todays_appointments' => 'own',
+            'dashboard.staff_performance' => 'own',
             'calendar.view' => 'own',
-            'calendar.manage_availability' => 'own',
-
-            'bookings.view' => 'own',
-
-            // Assigned rather than location: the clients they can see are the
-            // ones they have appointments with, not everyone at the site.
+            'calendar.block_time' => 'own',
+            'appointments.edit' => 'own',
+            'appointments.cancel' => 'own',
+            'appointments.reschedule' => 'own',
+            'appointments.check_in' => 'all',
+            'appointments.check_out' => 'all',
             'clients.view' => 'assigned',
+            'clients.edit' => 'assigned',
             'clients.view_contact' => 'all',
+            'clients.view_history' => 'all',
             'clients.view_notes' => 'all',
             'clients.add_notes' => 'all',
-            'clients.view_history' => 'all',
-
+            'clients.view_preferences' => 'all',
+            'services.view' => 'assigned',
             'staff.view' => 'own',
+            'staff.view_profile' => 'own',
             'staff.manage_working_hours' => 'own',
             'staff.manage_availability' => 'own',
-
-            'services.view' => 'assigned',
             'locations.view' => 'assigned',
-
-            'payments.view_prices' => 'all',
-
+            'business_hours.view' => 'all',
+            'resources.view' => 'location',
+            'payments.view_checkout' => 'all',
+            'payments.accept_tips' => 'all',
+            'sales.view' => 'own',
+            'sales.view_revenue' => 'own',
+            'sales.view_staff_revenue' => 'own',
+            'sales.view_tips' => 'own',
             'reports.view' => 'own',
-            'reports.staff_performance' => 'own',
-            'payments.view_tips' => 'own',
+            'reports.appointments' => 'own',
+            'reports.staff' => 'own',
+            'inventory.view_products' => 'all',
+            'inventory.view_levels' => 'all',
+            'notifications.view' => 'all',
+            'notifications.manage_own' => 'all',
         ],
     ],
 ];

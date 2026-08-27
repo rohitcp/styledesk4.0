@@ -6,6 +6,7 @@ use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
+use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\StaffController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
@@ -166,6 +167,21 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
     ->name('settings.')
     ->group(function () {
         Route::get('/', AppSettingsController::class)->name('index');
+
+        /*
+        | Roles & permissions — read-only in Phase 1.
+        |
+        | Two GET routes and nothing else. Editing arrives in Phase 2 with the
+        | screens that do it; adding write routes now would mean shipping an
+        | endpoint whose only job is to refuse.
+        */
+        Route::controller(RolePermissionController::class)
+            ->prefix('roles-permissions')
+            ->name('roles.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('{role}', 'show')->name('show');
+            });
 
         /*
         | Staff members — the directory, per §3.

@@ -96,10 +96,10 @@ class RolesAndPermissionsTest extends TestCase
 
         $this->assertNotSame($mine->id, $theirs->id);
 
-        app(ProvisionSystemRoles::class)->syncPermissions($mine, ['bookings.view' => 'own']);
+        app(ProvisionSystemRoles::class)->syncPermissions($mine, ['calendar.view' => 'own']);
 
-        $this->assertSame(['bookings.view' => 'own'], $mine->fresh()->permissionMap());
-        $this->assertTrue($theirs->fresh()->grants('bookings.view', 'location'));
+        $this->assertSame(['calendar.view' => 'own'], $mine->fresh()->permissionMap());
+        $this->assertTrue($theirs->fresh()->grants('calendar.view', 'location'));
     }
 
     public function test_every_default_matrix_only_names_permissions_that_exist(): void
@@ -132,11 +132,11 @@ class RolesAndPermissionsTest extends TestCase
         $role = $this->roleKeyed('manager');
 
         app(ProvisionSystemRoles::class)->syncPermissions($role, [
-            'bookings.view' => 'all',
-            'bookings.teleport' => 'all',
+            'calendar.view' => 'all',
+            'calendar.teleport' => 'all',
         ]);
 
-        $this->assertSame(['bookings.view' => 'all'], $role->fresh()->permissionMap());
+        $this->assertSame(['calendar.view' => 'all'], $role->fresh()->permissionMap());
     }
 
     // ------------------------------------------------------------- scopes
@@ -145,10 +145,10 @@ class RolesAndPermissionsTest extends TestCase
     {
         $manager = $this->roleKeyed('manager');
 
-        // Manager holds bookings.view at location.
-        $this->assertTrue($manager->grants('bookings.view', 'own'));
-        $this->assertTrue($manager->grants('bookings.view', 'location'));
-        $this->assertFalse($manager->grants('bookings.view', 'all'));
+        // Manager holds calendar.view at location.
+        $this->assertTrue($manager->grants('calendar.view', 'own'));
+        $this->assertTrue($manager->grants('calendar.view', 'location'));
+        $this->assertFalse($manager->grants('calendar.view', 'all'));
     }
 
     public function test_a_service_provider_sees_only_their_own_work(): void
@@ -312,7 +312,7 @@ class RolesAndPermissionsTest extends TestCase
         $role = $this->roleKeyed('manager');
 
         AuditLog::record('roles.permission_removed', $owner, $role,
-            ['bookings.cancel' => 'location'], [], 'Manager');
+            ['appointments.cancel' => 'location'], [], 'Manager');
 
         $entry = AuditLog::withoutGlobalScopes()->latest('id')->first();
 
@@ -321,7 +321,7 @@ class RolesAndPermissionsTest extends TestCase
         // The actor's name is stored, not looked up, so history survives the
         // deletion of the account it names.
         $this->assertSame('Sam Person', $entry->actor_name);
-        $this->assertSame(['bookings.cancel' => 'location'], $entry->old_values);
+        $this->assertSame(['appointments.cancel' => 'location'], $entry->old_values);
         $this->assertSame($this->tenant->getTenantKey(), $entry->tenant_id);
     }
 
