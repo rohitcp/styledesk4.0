@@ -8,6 +8,7 @@ use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\Settings\BrandingController;
 use App\Http\Controllers\Settings\BusinessHoursController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
+use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
 use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\StaffController;
@@ -288,6 +289,23 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
             });
 
         /*
+        | Languages — what the interface is shown in.
+        |
+        | The business-level configuration only. Choosing your own language is
+        | route `language.preference` below, outside this group: it changes
+        | nothing but the chooser's own screen, so requiring an administrator
+        | for it would make the feature useless to the people it is for.
+        */
+        Route::controller(LanguageController::class)
+            ->prefix('languages')
+            ->name('languages.')
+            ->group(function () {
+                Route::get('/', 'show')->name('show');
+                Route::get('edit', 'edit')->name('edit');
+                Route::patch('/', 'update')->name('update');
+            });
+
+        /*
         | Business — company-level information.
         |
         | Read-only by default with a separate /edit address, so the page a
@@ -312,6 +330,16 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
 */
 Route::middleware('auth')->post('session/keep-alive', fn () => response()->json(['ok' => true]))
     ->name('session.keep-alive');
+
+/*
+| One person's own interface language, chosen from the header.
+|
+| `auth` only. A receptionist reading the app in Spanish changes nothing
+| except their own screen, and gating it behind App Settings would put the
+| feature out of reach of everyone it exists for.
+*/
+Route::middleware('auth')->patch('language', [LanguageController::class, 'preference'])
+    ->name('language.preference');
 
 Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(function () {
     /**

@@ -8,6 +8,7 @@ use App\Models\LocationClosure;
 use App\Models\Role;
 use App\Models\TeamInvitation;
 use App\Support\Icon;
+use App\Support\Locale;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -115,6 +116,8 @@ class AppSettingsController extends Controller
 
         $activeLocations = $tenant->locations()->active()->count();
 
+        $enabledLanguages = Locale::enabledFor($tenant)->count();
+
         $upcomingClosures = LocationClosure::query()
             ->whereIn('location_id', $tenant->locations()->select('id'))
             ->upcoming()
@@ -126,6 +129,7 @@ class AppSettingsController extends Controller
             'roles' => ['value' => $roles, 'label' => Str::plural('role', $roles)],
             'active_locations' => ['value' => $activeLocations, 'label' => Str::plural('active location', $activeLocations)],
             'upcoming_closures' => ['value' => $upcomingClosures, 'label' => Str::plural('upcoming closure', $upcomingClosures)],
+            'enabled_languages' => ['value' => $enabledLanguages, 'label' => Str::plural('language', $enabledLanguages)],
         ];
     }
 }

@@ -84,9 +84,17 @@ return [
                 [
                     'key' => 'languages',
                     'name' => 'Languages',
-                    'description' => 'Your primary language and the secondary languages you support.',
+                    'description' => 'Set the primary application language and choose the additional languages available to your team.',
                     'icon' => 'language',
-                    'keywords' => ['locale', 'translation', 'english', 'arabic', 'spanish'],
+                    'route' => 'settings.languages.show',
+                    /**
+                     * Built, and honestly labelled while it is two languages
+                     * and a partly translated interface. 'active' would claim
+                     * the whole app speaks Spanish, which it does not yet.
+                     */
+                    'status' => 'coming-soon',
+                    'counts' => ['enabled_languages'],
+                    'keywords' => ['locale', 'translation', 'english', 'spanish', 'español', 'language'],
                 ],
                 [
                     'key' => 'currency',

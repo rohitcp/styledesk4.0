@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'App settings')
+@section('title', __('settings.title'))
 
 @section('content')
   <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
     <div class="max-w-[1180px]">
 
-      <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">App settings</h1>
+      <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">{{ __('settings.title') }}</h1>
       <p class="text-[14px] text-sub mt-2 max-w-[640px] leading-relaxed">
-        Everything you can configure in StyleDesk, grouped by what it affects. Open a section to change its settings.
+        {{ __('settings.intro') }}
       </p>
 
       {{-- Server-rendered, filtered client-side.
@@ -22,17 +22,17 @@
           <x-icon name="magnifying-glass" size="15" />
         </span>
         <input id="settingsSearch" type="search" class="sd-input styledesk_input--prefixed"
-               placeholder="Search settings…" aria-label="Search settings" autocomplete="off">
+               placeholder="{{ __('settings.search_placeholder') }}" aria-label="{{ __('settings.search_placeholder') }}" autocomplete="off">
       </div>
 
       <p id="settingsCount" class="mt-2.5 text-[13px] text-sub" role="status" aria-live="polite" hidden></p>
 
       <div id="settingsEmpty" class="mt-8 rounded-card border border-line bg-white p-8 text-center" hidden>
-        <p class="text-[15px] font-semibold text-head">Nothing matches your search.</p>
-        <p class="text-[13px] text-sub mt-1.5">Try a broader word — “email”, “booking”, “tax” or “staff”.</p>
+        <p class="text-[15px] font-semibold text-head">{{ __('settings.no_matches') }}</p>
+        <p class="text-[13px] text-sub mt-1.5">{{ __('settings.no_matches_hint') }}</p>
         <button type="button" id="settingsClear"
                 class="mt-4 h-9 px-4 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-          Clear search
+          {{ __('settings.clear_search') }}
         </button>
       </div>
 

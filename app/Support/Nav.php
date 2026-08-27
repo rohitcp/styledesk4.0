@@ -18,6 +18,31 @@ use Illuminate\Support\HtmlString;
  */
 class Nav
 {
+    /**
+     * A navigation item's label, translated where a translation exists.
+     *
+     * Resolved from the item's `key` — `navigation.clients` — rather than from
+     * the English string, so a label reads the same in the rail, the drawer
+     * and a tooltip without three copies to keep in step.
+     *
+     * Falls back to the literal label in the config when there is no key for
+     * it. That is not a gap to be tidied away: the deeper menu entries name
+     * screens that do not exist yet, and translating a label for a page nobody
+     * can open would be work spent ahead of the work it describes.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    public static function label(array $item): string
+    {
+        $key = isset($item['key']) ? 'navigation.'.$item['key'] : null;
+
+        if ($key !== null && trans()->has($key)) {
+            return __($key);
+        }
+
+        return $item['label'] ?? '';
+    }
+
     /** @param array<string, mixed> $item */
     public static function href(array $item): string
     {

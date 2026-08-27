@@ -7,7 +7,7 @@
       <div class="sd-menu" data-menu>
         <a href="{{ \App\Support\Nav::href($item) }}" {!! \App\Support\Nav::pending($item) !!}
            class="sd-navicon grid sd-tip @if ($active) is-active @endif"
-           data-tip="{{ $item['label'] }}" aria-label="{{ $item['aria'] ?? $item['label'] }}"
+           data-tip="{{ App\Support\Nav::label($item) }}" aria-label="{{ $item['aria'] ?? App\Support\Nav::label($item) }}"
            aria-haspopup="true" aria-expanded="false">
           <x-icon :name="$item['icon']" size="18" />
         </a>
@@ -24,7 +24,7 @@
     @else
       <a href="{{ \App\Support\Nav::href($item) }}" {!! \App\Support\Nav::pending($item) !!}
          class="sd-navicon grid sd-tip @if ($active) is-active @endif"
-         data-tip="{{ $item['label'] }}" aria-label="{{ $item['aria'] ?? $item['label'] }}"
+         data-tip="{{ App\Support\Nav::label($item) }}" aria-label="{{ $item['aria'] ?? App\Support\Nav::label($item) }}"
          @if ($active) aria-current="page" @endif>
         <x-icon :name="$item['icon']" size="18" />
       </a>

@@ -11,7 +11,7 @@
 <div id="sd-drawer" class="styledesk_drawer" hidden>
   <div class="styledesk_drawer__scrim" data-drawer-close aria-hidden="true"></div>
 
-  <div class="styledesk_drawer__panel" role="dialog" aria-modal="true" aria-label="Main menu">
+  <div class="styledesk_drawer__panel" role="dialog" aria-modal="true" aria-label="{{ __('navigation.main_menu') }}">
     <div class="styledesk_drawer__head">
       <span class="flex items-center gap-2.5 text-head">
         <svg width="22" height="22" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
@@ -22,7 +22,7 @@
         <span class="text-[15px] font-bold tracking-tight">StyleDesk</span>
       </span>
 
-      <button type="button" class="styledesk_drawer__close" data-drawer-close aria-label="Close menu">
+      <button type="button" class="styledesk_drawer__close" data-drawer-close aria-label="{{ __('common.close') }}">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
         </svg>
@@ -37,7 +37,7 @@
            class="styledesk_drawerlink @if ($active) is-active @endif"
            @if ($active) aria-current="page" @endif>
           <span class="styledesk_drawerlink__icon"><x-icon :name="$item['icon']" size="17" /></span>
-          {{ $item['label'] }}
+          {{ \App\Support\Nav::label($item) }}
         </a>
 
         {{-- Children are listed inline rather than behind another tap. The
@@ -57,7 +57,7 @@
       @foreach (config('navigation.utility') as $item)
         <a href="{{ \App\Support\Nav::href($item) }}" {!! \App\Support\Nav::pending($item) !!} class="styledesk_drawerlink">
           <span class="styledesk_drawerlink__icon"><x-icon :name="$item['icon']" size="17" /></span>
-          {{ $item['label'] }}
+          {{ \App\Support\Nav::label($item) }}
         </a>
       @endforeach
 

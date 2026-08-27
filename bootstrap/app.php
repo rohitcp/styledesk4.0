@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureOnboardingIsComplete;
 use App\Http\Middleware\InitializeTenancyFromRoute;
 use App\Http\Middleware\InitializeTenancyFromUser;
 use App\Http\Middleware\RedirectIfOnboarded;
+use App\Http\Middleware\SetApplicationLocale;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -59,6 +60,19 @@ return Application::configure(basePath: dirname(__DIR__))
          */
         $middleware->web(append: [
             EnforceSessionTimeout::class,
+
+            /**
+             * Applied to every web request, not to a group.
+             *
+             * A screen added next year is then translated by existing rather
+             * than by somebody remembering to opt it in — and signed-out
+             * pages settle on the fallback, which is what a login page in
+             * English should do.
+             *
+             * After the session middleware, because the reader is resolved
+             * from the authenticated user.
+             */
+            SetApplicationLocale::class,
         ]);
 
         $middleware->alias([

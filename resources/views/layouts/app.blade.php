@@ -109,7 +109,7 @@
            where the rail sits so navigation stays in the same corner at every
            width. --}}
       <button type="button" data-drawer-toggle
-              class="sd-navicon grid lg:hidden shrink-0" aria-label="Main menu"
+              class="sd-navicon grid lg:hidden shrink-0" aria-label="{{ __('navigation.main_menu') }}"
               aria-expanded="false" aria-controls="sd-drawer">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
@@ -125,7 +125,7 @@
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none">
           <x-icon name="magnifying-glass" size="16" />
         </span>
-        <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="Type for search and recent items…" aria-label="Search" />
+        <input type="search" class="sd-input-dark has-prefix has-suffix" placeholder="{{ __('navigation.search_placeholder') }}" aria-label="{{ __('common.search') }}" />
         <kbd class="hidden sm:grid absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 place-items-center rounded bg-white/15 text-white/70 text-[11px] font-semibold pointer-events-none">/</kbd>
       </div>
       </div>
@@ -160,13 +160,15 @@
           <x-icon name="circle-question" size="18" />
         </a>
 
+        @include('layouts.partials.language-selector')
+
         {{-- Hidden from anyone who cannot open it. The route enforces the
              same rule, so this is tidiness rather than the control: a manager
              who guesses the URL is redirected, not shown a 403. --}}
         @if (auth()->user()?->canManageSettings())
           <a href="{{ route('settings.index') }}"
              class="sd-navicon sd-tip hidden sm:grid @if (request()->routeIs('settings.*')) is-active @endif"
-             data-tip="App settings" aria-label="App settings">
+             data-tip="{{ __('navigation.app_settings') }}" aria-label="{{ __('navigation.app_settings') }}">
             <x-icon name="gear" size="18" />
           </a>
         @endif
