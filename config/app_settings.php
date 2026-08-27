@@ -55,9 +55,12 @@ return [
                 [
                     'key' => 'locations',
                     'name' => 'Locations',
-                    'description' => 'Branches, addresses, location contact details and per-site settings.',
+                    'description' => 'Branches, addresses, location managers, operating hours and contact details.',
                     'icon' => 'location-dot',
-                    'keywords' => ['branch', 'address', 'site', 'salon', 'shop'],
+                    'route' => 'settings.locations.index',
+                    'status' => 'active',
+                    'counts' => ['active_locations'],
+                    'keywords' => ['branch', 'address', 'site', 'salon', 'shop', 'manager', 'hours', 'timezone'],
                 ],
                 [
                     'key' => 'business-hours',

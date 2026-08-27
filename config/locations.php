@@ -161,7 +161,7 @@ return [
             'LIG' => 'Liguria', 'LOM' => 'Lombardy', 'MAR' => 'Marche', 'MOL' => 'Molise',
             'PIE' => 'Piedmont', 'PUG' => 'Apulia', 'SAR' => 'Sardinia', 'SIC' => 'Sicily',
             'TOS' => 'Tuscany', 'TAA' => 'Trentino-Alto Adige', 'UMB' => 'Umbria',
-            'VDA' => "Aosta Valley", 'VEN' => 'Veneto',
+            'VDA' => 'Aosta Valley', 'VEN' => 'Veneto',
         ],
 
         'MX' => [
@@ -336,10 +336,57 @@ return [
         'AT' => 'Europe/Vienna',      'IT' => 'Europe/Rome',       'DK' => 'Europe/Copenhagen',
         'NO' => 'Europe/Oslo',        'SE' => 'Europe/Stockholm',  'FI' => 'Europe/Helsinki',
         'PL' => 'Europe/Warsaw',      'CZ' => 'Europe/Prague',     'GR' => 'Europe/Athens',
-        'ZA' => 'Africa/Johannesburg','AE' => 'Asia/Dubai',        'SA' => 'Asia/Riyadh',
+        'ZA' => 'Africa/Johannesburg', 'AE' => 'Asia/Dubai',        'SA' => 'Asia/Riyadh',
         'IN' => 'Asia/Kolkata',       'SG' => 'Asia/Singapore',    'HK' => 'Asia/Hong_Kong',
         'MY' => 'Asia/Kuala_Lumpur',  'JP' => 'Asia/Tokyo',        'AU' => 'Australia/Sydney',
         'NZ' => 'Pacific/Auckland',
+    ],
+
+    /*
+     * What kind of place a branch is.
+     *
+     * Not the same question as the tenant's business type: a spa group can
+     * have one site that is only a clinic, and the booking page eventually
+     * needs to say which. `other` exists so the list never forces a wrong
+     * answer.
+     */
+    'types' => [
+        'salon' => 'Salon',
+        'spa' => 'Spa',
+        'barbershop' => 'Barbershop',
+        'clinic' => 'Clinic',
+        'studio' => 'Studio',
+        'mobile' => 'Mobile',
+        'other' => 'Other',
+    ],
+
+    /*
+     * Whether a branch is trading.
+     *
+     * Inactive is the retirement path for a location that has history: §12
+     * requires bookings, transactions and staff assignments to survive it,
+     * which deleting the row cannot do.
+     */
+    'statuses' => [
+        'active' => ['label' => 'Active', 'class' => 'styledesk_badge--active'],
+        'inactive' => ['label' => 'Inactive', 'class' => 'styledesk_badge--soon'],
+    ],
+
+    /*
+     * Weekdays, keyed by the integer stored in location_hours.day_of_week.
+     *
+     * 0 = Sunday, matching Carbon and the column onboarding already writes.
+     * The display order is a separate question, answered by the business's
+     * first_day_of_week setting, not by this list.
+     */
+    'weekdays' => [
+        0 => 'Sunday',
+        1 => 'Monday',
+        2 => 'Tuesday',
+        3 => 'Wednesday',
+        4 => 'Thursday',
+        5 => 'Friday',
+        6 => 'Saturday',
     ],
 
 ];

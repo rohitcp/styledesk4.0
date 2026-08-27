@@ -6,6 +6,7 @@ use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
+use App\Http\Controllers\Settings\LocationController;
 use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\StaffController;
 use App\Http\Controllers\TeamInvitationController;
@@ -207,6 +208,29 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 Route::get('{staff}/edit', 'edit')->name('edit');
                 Route::patch('{staff}', 'update')->name('update');
                 Route::delete('{staff}', 'destroy')->name('destroy');
+            });
+
+        /*
+        | Locations — branches and how each one operates.
+        |
+        | Read-only show, separate create and edit addresses, matching Business
+        | and Staff: the page someone lands on is never a form they did not ask
+        | for, and both forms are linkable and back-button friendly.
+        |
+        | `create` is bound before `{location}`, or /settings/locations/create
+        | would look up a branch called "create" and 404.
+        */
+        Route::controller(LocationController::class)
+            ->prefix('locations')
+            ->name('locations.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+
+                Route::get('{location}', 'show')->name('show');
+                Route::get('{location}/edit', 'edit')->name('edit');
+                Route::patch('{location}', 'update')->name('update');
             });
 
         /*

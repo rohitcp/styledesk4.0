@@ -177,4 +177,30 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->belongsTo(Tenant::class);
     }
+
+    /**
+     * This user's staff record in their tenant, or null.
+     *
+     * Null is a real answer, not a fault: the owner has rights from the
+     * moment the business exists, which is before onboarding seeds them as
+     * staff. Callers that ask "which location do they work at" must treat
+     * null as "not tied to one" rather than as an error.
+     *
+     * Memoised because scope checks ask for it several times in one request,
+     * and the question cannot change part-way through.
+     */
+    public function staffRecord(): ?Staff
+    {
+        if ($this->tenant_id === null) {
+            return null;
+        }
+
+        return $this->resolvedStaffRecord ??= Staff::withoutGlobalScopes()
+            ->where('tenant_id', $this->tenant_id)
+            ->where('user_id', $this->id)
+            ->first();
+    }
+
+    /** Backing store for staffRecord(); not an attribute, so it is never saved. */
+    private ?Staff $resolvedStaffRecord = null;
 }

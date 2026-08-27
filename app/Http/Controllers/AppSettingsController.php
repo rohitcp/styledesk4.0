@@ -112,10 +112,13 @@ class AppSettingsController extends Controller
 
         $roles = Role::withoutGlobalScopes()->where('tenant_id', $tenant->getTenantKey())->count();
 
+        $activeLocations = $tenant->locations()->active()->count();
+
         return [
             'active_staff' => ['value' => $activeStaff, 'label' => Str::plural('active member', $activeStaff)],
             'pending_invites' => ['value' => $pendingInvites, 'label' => Str::plural('pending invite', $pendingInvites)],
             'roles' => ['value' => $roles, 'label' => Str::plural('role', $roles)],
+            'active_locations' => ['value' => $activeLocations, 'label' => Str::plural('active location', $activeLocations)],
         ];
     }
 }
