@@ -758,3 +758,83 @@ textarea.sd-input {
 .styledesk_shell > footer {
     margin-top: auto;
 }
+
+/* ------------------------------------------------------------------
+   Row actions
+   ------------------------------------------------------------------
+   The ⋯ menu on a directory row. Not .sd-menu: that one is built for the
+   app bar — full height, opening on hover, anchored to the left. A table
+   row needs none of those, and a row's menu must open on click because
+   the devices without hover are the ones where a table is hardest to use.
+   ------------------------------------------------------------------ */
+
+.styledesk_rowmenu {
+    position: relative;
+    display: inline-flex;
+}
+
+.styledesk_rowmenu__button {
+    display: grid;
+    place-items: center;
+    height: 2rem;
+    width: 2rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.styledesk_rowmenu__button:hover,
+.styledesk_rowmenu.is-open .styledesk_rowmenu__button {
+    background: #f3f4f6;
+    color: #0f0f10;
+}
+
+.styledesk_rowmenu__button:focus-visible {
+    outline: 2px solid var(--sd-brand, #3d348b);
+    outline-offset: -2px;
+}
+
+.styledesk_rowmenu__pop {
+    position: absolute;
+    top: calc(100% + 4px);
+    /* Anchored to the right: the menu lives at the end of a row, and a
+       left-anchored panel would hang off the table. */
+    right: 0;
+    z-index: 40;
+    min-width: 11rem;
+    padding: 0.25rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 10px 28px rgb(15 15 16 / 14%);
+}
+
+.styledesk_rowmenu__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.625rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: #0f0f10;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.styledesk_rowmenu__item:hover { background: #f3f4f6; }
+
+.styledesk_rowmenu__item--danger { color: #b91c1c; }
+.styledesk_rowmenu__item--danger:hover { background: #fef2f2; }
+
+.styledesk_rowmenu__rule {
+    height: 1px;
+    margin: 0.25rem 0.375rem;
+    background: #e5e7eb;
+}

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Add staff member')
+@section('title', 'Edit '.$staff->displayName())
 
 @section('content')
   <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
@@ -11,19 +11,17 @@
         <span class="mx-1.5 text-faint">/</span>
         <a href="{{ route('settings.staff.index') }}" class="hover:text-ink transition-colors">Staff members</a>
         <span class="mx-1.5 text-faint">/</span>
-        <span class="text-ink">Add</span>
+        <a href="{{ route('settings.staff.show', $staff) }}" class="hover:text-ink transition-colors">{{ $staff->displayName() }}</a>
+        <span class="mx-1.5 text-faint">/</span>
+        <span class="text-ink">Edit</span>
       </nav>
 
       <div class="mt-3 flex flex-wrap items-start gap-4">
         <div class="min-w-0 flex-1">
-          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">Add staff member</h1>
-          <p class="text-[14px] text-sub mt-2 leading-relaxed">
-            Their details and role. Working hours, availability and per-service settings are configured
-            once the record exists.
-          </p>
+          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">Edit {{ $staff->displayName() }}</h1>
         </div>
 
-        <a href="{{ route('settings.staff.index') }}" data-back
+        <a href="{{ route('settings.staff.show', $staff) }}" data-back
            class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Back
@@ -36,18 +34,19 @@
         </div>
       @endif
 
-      <form id="staffForm" method="POST" action="{{ route('settings.staff.store') }}"
+      <form id="staffForm" method="POST" action="{{ route('settings.staff.update', $staff) }}"
             enctype="multipart/form-data" class="mt-6 space-y-5">
         @csrf
+        @method('PATCH')
 
-        @include('settings.staff._form', ['staff' => null])
+        @include('settings.staff._form', ['staff' => $staff])
 
         <div class="flex flex-wrap items-center gap-3">
           <button type="submit" id="staffSave"
                   class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
-            Add staff member
+            Save changes
           </button>
-          <a href="{{ route('settings.staff.index') }}"
+          <a href="{{ route('settings.staff.show', $staff) }}"
              class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
             Cancel
           </a>
@@ -63,31 +62,23 @@
       var form = document.getElementById('staffForm');
       if (!form) return;
 
-      /* The invitation options only mean anything with a login, so they are
-         hidden rather than left to be filled in and silently ignored. */
       var login = document.getElementById('login_enabled');
       var block = document.querySelector('[data-invite-block]');
 
-      function syncInvite() {
-        block.hidden = !login.checked;
+      if (login && block) {
+        var syncInvite = function () { block.hidden = !login.checked; };
+        login.addEventListener('change', syncInvite);
+        syncInvite();
       }
 
-      login.addEventListener('change', syncInvite);
-      syncInvite();
-
-      /* One submission. Creating a staff member sends an email, and a double
-         click would send two. */
       var save = document.getElementById('staffSave');
       var saving = false;
 
       form.addEventListener('submit', function (e) {
-        if (saving) {
-          e.preventDefault();
-          return;
-        }
+        if (saving) { e.preventDefault(); return; }
         saving = true;
         save.disabled = true;
-        save.textContent = 'Adding…';
+        save.textContent = 'Saving…';
       });
     }());
   </script>

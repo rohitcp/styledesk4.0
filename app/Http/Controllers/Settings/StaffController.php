@@ -6,16 +6,20 @@ namespace App\Http\Controllers\Settings;
 
 use App\Actions\Staff\CreateStaffMember;
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Location;
 use App\Models\Role;
 use App\Models\Service;
 use App\Models\Staff;
+use App\Models\TeamInvitation;
+use App\Support\InputCase;
 use App\Support\RoleGuard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -131,6 +135,160 @@ class StaffController extends Controller
             ->with('toast', ['type' => 'success', 'message' => $message]);
     }
 
+    public function show(Request $request, Staff $staff): View
+    {
+        $this->authorize('view', $staff);
+
+        return view('settings.staff.show', [
+            'staff' => $staff->load(['roleRecord', 'location', 'user', 'services']),
+            'invitation' => TeamInvitation::query()->where('staff_id', $staff->id)->latest('id')->first(),
+            'history' => AuditLog::query()
+                ->where('subject_type', Staff::class)
+                ->where('subject_id', $staff->id)
+                ->latest('id')
+                ->limit(20)
+                ->get(),
+        ]);
+    }
+
+    public function edit(Request $request, Staff $staff): View
+    {
+        $this->authorize('update', $staff);
+
+        return view('settings.staff.edit', [
+            ...$this->formData($request),
+            'staff' => $staff->load(['roleRecord', 'services']),
+        ]);
+    }
+
+    public function update(Request $request, Staff $staff): RedirectResponse
+    {
+        $this->authorize('update', $staff);
+
+        $data = $this->validated($request, $staff);
+
+        // The same capitalisation rule the create path applies. Without it an
+        // edited name follows a different rule from a created one, and which
+        // you get depends on which screen last touched the record.
+        $data = InputCase::apply($data, [
+            'first_name', 'middle_name', 'last_name', 'preferred_name',
+            'job_title', 'bio', 'emergency_contact_name', 'emergency_contact_relationship',
+        ]);
+
+        $role = Role::query()->find($data['role_id']);
+
+        if ($role === null || ! RoleGuard::canAssignRole($request->user(), $role)) {
+            throw ValidationException::withMessages(['role_id' => 'You cannot assign that role.']);
+        }
+
+        /**
+         * Changing your own role is refused outright, per §32.
+         *
+         * Otherwise the narrowest path to more authority is to open your own
+         * record and pick a bigger role — the one edit nobody should be able
+         * to make regardless of what they are otherwise allowed to do.
+         */
+        if ($staff->user_id === $request->user()->id && $staff->role_id !== $role->id) {
+            throw ValidationException::withMessages([
+                'role_id' => 'You cannot change your own role. Ask another administrator.',
+            ]);
+        }
+
+        if ($request->filled('avatar_path')) {
+            $data['avatar_path'] = $request->string('avatar_path')->toString();
+        } elseif ($request->hasFile('avatar')) {
+            $data['avatar_path'] = $request->file('avatar')->store('staff', 'brand');
+        }
+
+        $before = $staff->only(['first_name', 'last_name', 'role', 'location_id', 'is_active']);
+
+        try {
+            DB::transaction(function () use ($staff, $data, $role, $request) {
+                /**
+                 * A whitelist, not an exclusion list.
+                 *
+                 * The validated set carries fields that are not columns —
+                 * send_invitation, invitation_message — and excluding the ones
+                 * that happen to be known today means the next field added to
+                 * the form becomes a fatal "unknown column" the first time
+                 * somebody saves.
+                 */
+                $staff->fill([
+                    ...collect($data)->only([
+                        'first_name', 'middle_name', 'last_name', 'preferred_name', 'pronouns',
+                        'job_title', 'employee_ref', 'bio', 'avatar_path',
+                        'email', 'work_email', 'phone', 'phone_type', 'secondary_phone', 'address',
+                        'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship',
+                        'location_id', 'employment_type', 'provider_type', 'specialities',
+                        'login_enabled',
+                    ])->all(),
+                    'role' => $role->key,
+                    'role_id' => $role->id,
+                    'is_active' => ($data['account_status'] ?? 'active') === 'active',
+                    'membership_status' => $data['account_status'] ?? 'active',
+                ]);
+
+                // Read before save(): afterwards the model considers itself
+                // clean and getDirty() is empty, so the history would record
+                // that something changed without saying what.
+                $changed = $staff->getDirty();
+                $previous = collect($staff->getOriginal())->only(array_keys($changed))->all();
+
+                $staff->save();
+                $staff->services()->sync($data['service_ids'] ?? []);
+
+                AuditLog::record('staff.edited', $request->user(), $staff,
+                    $previous, $changed, $staff->displayName());
+            });
+        } catch (Throwable $e) {
+            Log::error('Staff member could not be updated.', [
+                'staff_id' => $staff->id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return back()->withInput()->with('toast', [
+                'type' => 'danger',
+                'message' => "We couldn't save those changes right now. Please try again.",
+            ]);
+        }
+
+        if ($before['role'] !== $staff->role) {
+            AuditLog::record('staff.role_changed', $request->user(), $staff,
+                ['role' => $before['role']], ['role' => $staff->role], $staff->displayName());
+        }
+
+        return redirect()
+            ->route('settings.staff.show', $staff)
+            ->with('toast', ['type' => 'success', 'message' => $staff->displayName().'\'s details were updated.']);
+    }
+
+    public function destroy(Request $request, Staff $staff): RedirectResponse
+    {
+        $this->authorize('delete', $staff);
+
+        $name = $staff->displayName();
+
+        DB::transaction(function () use ($staff, $request, $name) {
+            /**
+             * The record is removed; the person's account is not.
+             *
+             * A user may belong to another business, and their login is not
+             * this business's to delete. Clearing tenant_id is what actually
+             * removes their access here.
+             */
+            $staff->user?->forceFill(['tenant_id' => null])->save();
+
+            AuditLog::record('staff.deleted', $request->user(), null,
+                ['name' => $name, 'role' => $staff->role], [], $name);
+
+            $staff->delete();
+        });
+
+        return redirect()
+            ->route('settings.staff.index')
+            ->with('toast', ['type' => 'success', 'message' => $name.' was removed from your team.']);
+    }
+
     /**
      * Receive a profile image on its own, so the form can show real progress.
      *
@@ -160,7 +318,7 @@ class StaffController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validated(Request $request): array
+    private function validated(Request $request, ?Staff $staff = null): array
     {
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
@@ -188,7 +346,10 @@ class StaffController extends Controller
              */
             'email' => [
                 'required', 'email', 'max:255',
-                Rule::unique('staff', 'email')->where('tenant_id', $request->user()->tenant_id),
+                Rule::unique('staff', 'email')
+                    ->where('tenant_id', $request->user()->tenant_id)
+                    // Editing someone must not collide with themselves.
+                    ->ignore($staff?->id),
             ],
             'work_email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:32'],

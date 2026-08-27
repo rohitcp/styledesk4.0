@@ -137,6 +137,7 @@
                 <th class="font-medium px-4 py-3 text-right">Services</th>
                 <th class="font-medium px-4 py-3">Status</th>
                 <th class="font-medium px-4 py-3">Last login</th>
+                <th class="font-medium px-4 py-3 text-right"><span class="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-line">
@@ -168,12 +169,59 @@
                   <td class="px-4 py-3 text-sub">
                     {{ $member->user?->last_login_at?->diffForHumans() ?? 'Never' }}
                   </td>
+                  <td class="px-4 py-3 text-right">
+                    <span class="styledesk_rowmenu" data-rowmenu>
+                      <button type="button" class="styledesk_rowmenu__button" data-rowmenu-button
+                              aria-haspopup="true" aria-expanded="false"
+                              aria-label="Actions for {{ $member->displayName() }}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>
+                        </svg>
+                      </button>
+
+                      <span class="styledesk_rowmenu__pop" data-rowmenu-pop hidden role="menu">
+                        <a href="{{ route('settings.staff.show', $member) }}" class="styledesk_rowmenu__item" role="menuitem">
+                          <x-icon name="user" size="14" /> View profile
+                        </a>
+
+                        @can('update', $member)
+                          <a href="{{ route('settings.staff.edit', $member) }}" class="styledesk_rowmenu__item" role="menuitem">
+                            <x-icon name="sliders" size="14" /> Edit
+                          </a>
+                        @endcan
+
+                        {{-- Only rendered when it is actually permitted. The
+                             policy refuses deleting yourself and deleting the
+                             last owner, so those rows simply do not offer it
+                             rather than offering a button that will be
+                             refused. --}}
+                        @can('delete', $member)
+                          <span class="styledesk_rowmenu__rule" role="separator"></span>
+                          <button type="button" class="styledesk_rowmenu__item styledesk_rowmenu__item--danger"
+                                  role="menuitem"
+                                  data-delete-staff
+                                  data-name="{{ $member->displayName() }}"
+                                  data-action="{{ route('settings.staff.destroy', $member) }}">
+                            <x-icon name="calendar-xmark" size="14" /> Delete
+                          </button>
+                        @endcan
+                      </span>
+                    </span>
+                  </td>
                 </tr>
               @endforeach
             </tbody>
           </table>
         </div>
       @endif
+
+      {{-- One delete form for the table, not one per row: a form per row is
+           twelve identical elements whose only difference is an action, and
+           the confirmation has to name the person anyway. --}}
+      <form id="staffDeleteForm" method="POST" class="hidden">
+        @csrf
+        @method('DELETE')
+      </form>
     </div>
   </main>
 @endsection
@@ -191,6 +239,61 @@
       toggle.addEventListener('click', function () {
         panel.hidden = !panel.hidden;
         toggle.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+      });
+    }());
+
+    /* Row action menus. */
+    (function () {
+      var menus = Array.prototype.slice.call(document.querySelectorAll('[data-rowmenu]'));
+      if (!menus.length) return;
+
+      function closeAll(except) {
+        menus.forEach(function (menu) {
+          if (menu === except) return;
+          menu.querySelector('[data-rowmenu-pop]').hidden = true;
+          menu.querySelector('[data-rowmenu-button]').setAttribute('aria-expanded', 'false');
+          menu.classList.remove('is-open');
+        });
+      }
+
+      menus.forEach(function (menu) {
+        var button = menu.querySelector('[data-rowmenu-button]');
+        var pop = menu.querySelector('[data-rowmenu-pop]');
+
+        button.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var opening = pop.hidden;
+          /* One open menu at a time: two panels over the same table is a
+             guess about which row the next click belongs to. */
+          closeAll(menu);
+          pop.hidden = !opening;
+          button.setAttribute('aria-expanded', opening ? 'true' : 'false');
+          menu.classList.toggle('is-open', opening);
+        });
+      });
+
+      document.addEventListener('click', function () { closeAll(null); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeAll(null);
+      });
+    }());
+
+    /* Delete, behind a confirmation that names who is being removed. */
+    (function () {
+      var form = document.getElementById('staffDeleteForm');
+      if (!form) return;
+
+      document.querySelectorAll('[data-delete-staff]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var name = button.getAttribute('data-name');
+
+          if (!window.confirm('Remove ' + name + ' from your team? Their record is deleted and, if they had a login, they lose access to this business.')) {
+            return;
+          }
+
+          form.action = button.getAttribute('data-action');
+          form.submit();
+        });
       });
     }());
   </script>

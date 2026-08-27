@@ -183,6 +183,14 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 Route::get('create', 'create')->name('create');
                 Route::post('/', 'store')->name('store');
                 Route::post('avatar', 'uploadAvatar')->name('avatar.upload');
+
+                // Bound last: a literal segment must win over {staff}, or
+                // /settings/staff/create would look up a member called
+                // "create" and 404.
+                Route::get('{staff}', 'show')->name('show');
+                Route::get('{staff}/edit', 'edit')->name('edit');
+                Route::patch('{staff}', 'update')->name('update');
+                Route::delete('{staff}', 'destroy')->name('destroy');
             });
 
         /*

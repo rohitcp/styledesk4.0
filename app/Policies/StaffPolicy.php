@@ -66,6 +66,21 @@ class StaffPolicy
             && ! ($staff->user && RoleGuard::wouldLeaveTenantWithoutOwner($staff->user));
     }
 
+    public function delete(User $user, Staff $staff): bool
+    {
+        if (! $this->sameTenant($user, $staff) || ! $user->hasPermission('staff.delete', 'all')) {
+            return false;
+        }
+
+        // Nobody deletes themselves out of the business.
+        if ($staff->user_id === $user->id) {
+            return false;
+        }
+
+        // And the business is never left without an owner, §33.
+        return ! ($staff->user && RoleGuard::wouldLeaveTenantWithoutOwner($staff->user));
+    }
+
     public function invite(User $user): bool
     {
         return $user->hasPermission('staff.invite', 'all');
