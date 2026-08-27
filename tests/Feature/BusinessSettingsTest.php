@@ -459,11 +459,24 @@ class BusinessSettingsTest extends TestCase
             ->assertSee('Active');
     }
 
-    /** Drops the shared layout so assertions only see the page's own markup. */
+    /**
+     * The page's own markup, without the shell around it.
+     *
+     * Bounded at </main>, not run to the end of the document: the shell now
+     * carries a logout form and a session-timeout dialog after the footer, and
+     * taking everything from <main> onwards swept their inputs into an
+     * assertion about whether this page renders form controls.
+     */
     private function stripLayout(string $html): string
     {
         $start = strpos($html, '<main');
 
-        return $start === false ? $html : substr($html, $start);
+        if ($start === false) {
+            return $html;
+        }
+
+        $end = strpos($html, '</main>', $start);
+
+        return $end === false ? substr($html, $start) : substr($html, $start, $end - $start);
     }
 }

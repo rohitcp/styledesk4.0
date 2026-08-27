@@ -180,6 +180,8 @@
 
 @include('layouts.partials.nav-drawer')
 
+@include('partials.session-timeout')
+
 <x-toast />
 
 @yield('content')
@@ -212,6 +214,12 @@
         ];
     @endphp
     <script id="sd-account-boot" type="application/json">@json($sdAccountBoot)</script>
+
+    {{-- One logout form for the shell. The account menu is built by script,
+         so it has no form of its own to submit. --}}
+    <form id="sd-logout-form" method="POST" action="{{ route('logout') }}" class="hidden">
+        @csrf
+    </form>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             if (!window.SD || typeof window.SD.accountMenuAll !== 'function') return;
@@ -220,6 +228,21 @@
             try {
                 boot = JSON.parse(document.getElementById('sd-account-boot').textContent);
             } catch (e) { /* fall back to the module defaults */ }
+
+            /**
+             * Sign out has to actually sign out.
+             *
+             * Without onSignOut the prototype's own handler runs, and that
+             * was written for a demo with no login screen: it shows a toast
+             * saying what would happen and leaves the session exactly where
+             * it was. A POST is used rather than a link because signing out
+             * changes state, and a GET that does is one prefetch away from
+             * logging someone out for them.
+             */
+            boot.onSignOut = function () {
+                var form = document.getElementById('sd-logout-form');
+                if (form) form.submit();
+            };
 
             window.SD.accountMenuAll(boot);
         });

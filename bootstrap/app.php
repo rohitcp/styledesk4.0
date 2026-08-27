@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnforceSessionTimeout;
 use App\Http\Middleware\EnsureCanManageSettings;
 use App\Http\Middleware\EnsureOnboardingIsComplete;
 use App\Http\Middleware\InitializeTenancyFromRoute;
@@ -50,6 +51,15 @@ return Application::configure(basePath: dirname(__DIR__))
             AuthenticatesRequests::class,
             InitializeTenancyFromUser::class,
         );
+
+        /**
+         * Idle sessions end on the server, not on the browser's promise to
+         * drop a cookie. Appended to the web group so it covers every page a
+         * signed-in person can reach.
+         */
+        $middleware->web(append: [
+            EnforceSessionTimeout::class,
+        ]);
 
         $middleware->alias([
             'tenant.subdomain' => InitializeTenancyBySubdomain::class,

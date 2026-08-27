@@ -210,6 +210,15 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
             });
     });
 
+/*
+| Keeps an idle session alive when someone answers the timeout warning.
+|
+| Deliberately trivial: the session middleware stamps the activity time on
+| every request, so simply arriving here is the whole effect.
+*/
+Route::middleware('auth')->post('session/keep-alive', fn () => response()->json(['ok' => true]))
+    ->name('session.keep-alive');
+
 Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(function () {
     /**
      * Placeholder landing page, and the end-to-end check that the stack is

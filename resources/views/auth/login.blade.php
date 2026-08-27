@@ -5,6 +5,18 @@
 @section('subheading', 'Welcome back. Pick up where you left off.')
 
 @section('form')
+    @if (session(\App\Http\Middleware\EnforceSessionTimeout::FLAG))
+        {{-- Named, not left to be guessed. Landing on a bare login form reads
+             as the product losing your session; being told it timed out reads
+             as the product protecting it. --}}
+        <div class="sd-alert sd-alert--warn mt-6" role="status">
+            <div class="flex items-start gap-2.5">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="shrink-0 mt-px" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <p class="min-w-0">Your session timed out after a period of inactivity. Please sign in again.</p>
+            </div>
+        </div>
+    @endif
+
     {{--
         Method switcher. "Magic link" has no backend yet, so the tab is
         rendered in the prototype's styling but disabled rather than wired to

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
+use Laravel\Fortify\Contracts\LogoutResponse;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -21,7 +22,21 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        /**
+         * Signing out lands on the login screen, not the marketing page.
+         *
+         * Fortify's default sends people to '/', which for someone who has
+         * just deliberately signed out is the front door of a product they
+         * were already inside. The login form is what they want next, whether
+         * they are switching accounts or handing the machine over.
+         */
+        $this->app->singleton(LogoutResponse::class, fn () => new class implements LogoutResponse
+        {
+            public function toResponse($request)
+            {
+                return redirect()->route('login');
+            }
+        });
     }
 
     /**

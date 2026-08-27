@@ -34,6 +34,26 @@ return [
 
     'lifetime' => (int) env('SESSION_LIFETIME', 120),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Idle Timeout
+    |--------------------------------------------------------------------------
+    |
+    | Minutes of inactivity before the application ends a session itself, as
+    | opposed to `lifetime` above, which is how long the cookie is allowed to
+    | live. The two are separate on purpose.
+    |
+    | A cookie's expiry is enforced by the browser, and when it wins there is
+    | no session left to explain what happened — the person simply arrives at
+    | a login form. Keeping the cookie alive longer than this value means the
+    | server is always the one that decides, so it can end the session, say
+    | why, and be right even if the client's clock is wrong or its cookie
+    | handling is not to be trusted.
+    |
+    */
+
+    'idle_timeout' => (int) env('SESSION_IDLE_TIMEOUT', 120),
+
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
     /*
