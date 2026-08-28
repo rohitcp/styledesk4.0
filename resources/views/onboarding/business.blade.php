@@ -93,6 +93,21 @@
                         $selectedTypes = array_map('intval', (array) old('business_type_ids', $tenant?->businessTypes->pluck('id')->all() ?? []));
                     @endphp
 
+                    {{-- An empty catalogue is said out loud rather than
+                         rendered as a heading with nothing under it.
+
+                         Production shipped exactly that: the table is created
+                         by a migration and filled by a seeder, a deploy runs
+                         migrations only, and the step became a required field
+                         with no options — silently unanswerable. The seeding
+                         moved into a migration; this is what would have made
+                         the fault legible in the first place. --}}
+                    @if ($businessTypes->isEmpty())
+                        <p class="text-[13px] text-danger" role="alert">
+                            {{ __('onboarding.business.types.none') }}
+                        </p>
+                    @endif
+
                     <div id="types" class="grid sm:grid-cols-2 gap-2.5">
                         @foreach ($businessTypes as $type)
                             <div>

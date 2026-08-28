@@ -200,7 +200,7 @@ class OnboardingTest extends TestCase
     public function test_step_one_creates_the_tenant_and_links_the_user(): void
     {
         $user = $this->user();
-        $type = BusinessType::create(['name' => 'Hair Salon', 'slug' => 'hair-salon']);
+        $type = BusinessType::firstOrCreate(['slug' => 'hair-salon'], ['name' => 'Hair Salon', 'slug' => 'hair-salon']);
 
         $this->actingAs($user)
             ->post('http://styledesk.test/onboarding/business', [
@@ -239,7 +239,7 @@ class OnboardingTest extends TestCase
 
     public function test_the_business_name_is_capitalised(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
         $user = $this->user();
 
         $this->actingAs($user)
@@ -265,7 +265,7 @@ class OnboardingTest extends TestCase
     {
         // Str::title() would turn these into "Bella Beauty" and "Medspa",
         // overriding capitalisation the owner chose.
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
         $user = $this->user();
 
         $this->actingAs($user)
@@ -288,7 +288,7 @@ class OnboardingTest extends TestCase
     {
         Storage::fake('brand');
 
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
         $user = $this->user();
 
         // Step 1 runs before any tenant exists, so the upload endpoint parks
@@ -353,7 +353,7 @@ class OnboardingTest extends TestCase
 
     public function test_country_currency_and_language_are_stored_against_the_tenant(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
         $user = $this->user();
 
         $this->actingAs($user)
@@ -376,7 +376,7 @@ class OnboardingTest extends TestCase
 
     public function test_multiple_countries_and_currencies_are_stored_with_a_primary(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
         $user = $this->user();
 
         $this->actingAs($user)
@@ -404,7 +404,7 @@ class OnboardingTest extends TestCase
 
     public function test_secondary_currencies_and_languages_are_stored_after_the_primary(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
         $user = $this->user();
 
         $this->actingAs($user)
@@ -433,7 +433,7 @@ class OnboardingTest extends TestCase
 
     public function test_a_secondary_may_not_repeat_the_primary(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
 
         $this->actingAs($this->user())
             ->post('http://styledesk.test/onboarding/business', [
@@ -487,7 +487,7 @@ class OnboardingTest extends TestCase
 
     public function test_an_empty_country_or_currency_list_is_refused(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
 
         $this->actingAs($this->user())
             ->post('http://styledesk.test/onboarding/business', [
@@ -503,7 +503,7 @@ class OnboardingTest extends TestCase
 
     public function test_country_currency_and_language_are_required(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
 
         $this->actingAs($this->user())
             ->post('http://styledesk.test/onboarding/business', [
@@ -516,7 +516,7 @@ class OnboardingTest extends TestCase
 
     public function test_only_supported_languages_are_accepted(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
 
         $this->actingAs($this->user())
             ->post('http://styledesk.test/onboarding/business', [
@@ -646,7 +646,7 @@ class OnboardingTest extends TestCase
 
     public function test_the_slug_is_generated_from_the_business_name(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
 
         $this->actingAs($this->user())
             ->post('http://styledesk.test/onboarding/business', [
@@ -671,7 +671,7 @@ class OnboardingTest extends TestCase
     public function test_a_taken_slug_gets_a_numeric_suffix(): void
     {
         Tenant::create(['name' => 'Bella Beauty Studio', 'slug' => 'bellabeautystudio']);
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
         $user = $this->user();
 
         $this->actingAs($user)
@@ -813,6 +813,42 @@ class OnboardingTest extends TestCase
             mb_strpos($content, 'Hair Salon'),
             'Types are listed in their configured order.',
         );
+    }
+
+    /**
+     * The catalogue arrives with the migrations, not only with the seeder.
+     *
+     * A deploy runs `migrate --force`; it does not run `db:seed`. Production
+     * therefore had the table and none of the rows, which turned a required
+     * field into one with no options — an onboarding step nobody could
+     * finish. The migration seeds it, so any environment that migrates has a
+     * catalogue.
+     */
+    public function test_migrating_provides_the_business_type_catalogue(): void
+    {
+        $types = BusinessType::query()->orderBy('sort_order')->get();
+
+        $this->assertGreaterThanOrEqual(13, $types->count());
+        $this->assertNotNull($types->firstWhere('slug', 'hair-salon'));
+
+        /* Other stays last, whatever is added before it. */
+        $this->assertSame('Other', $types->last()->name);
+    }
+
+    /**
+     * An empty catalogue says so.
+     *
+     * The step is a required field: with no options it is unanswerable, and
+     * silence made that take far longer to diagnose than it should have.
+     */
+    public function test_an_empty_catalogue_is_reported_rather_than_left_blank(): void
+    {
+        BusinessType::query()->delete();
+
+        $this->actingAs($this->user())
+            ->get('http://styledesk.test/onboarding/business')
+            ->assertOk()
+            ->assertSee(__('onboarding.business.types.none'));
     }
 
     public function test_reserved_slugs_are_rejected(): void

@@ -5,6 +5,10 @@ declare(strict_types=1);
 return [
 
     'business' => [
+        'types' => [
+            'none' => 'No business types are set up yet. Ask an administrator to add them before continuing.',
+        ],
+
         'slug' => [
             'hint' => 'Filled in from your business name — edit it if you would like something shorter.',
             'checking' => 'Checking…',

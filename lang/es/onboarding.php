@@ -5,6 +5,10 @@ declare(strict_types=1);
 return [
 
     'business' => [
+        'types' => [
+            'none' => 'Todavía no hay tipos de negocio configurados. Pide a un administrador que los añada antes de continuar.',
+        ],
+
         'slug' => [
             'hint' => 'Se genera a partir del nombre de tu negocio; edítala si prefieres algo más corto.',
             'checking' => 'Comprobando…',

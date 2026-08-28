@@ -76,7 +76,7 @@ class InputCapitalizationTest extends TestCase
 
     public function test_the_business_name_uses_the_project_rule(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
         $user = $this->verifiedUser();
 
         $this->actingAs($user)->post('http://styledesk.test/onboarding/business', [
@@ -95,7 +95,7 @@ class InputCapitalizationTest extends TestCase
 
     public function test_the_business_slug_is_untouched_by_capitalisation(): void
     {
-        $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
         $user = $this->verifiedUser();
 
         $this->actingAs($user)->post('http://styledesk.test/onboarding/business', [
@@ -107,8 +107,9 @@ class InputCapitalizationTest extends TestCase
             'business_type_ids' => [$type->id],
         ]);
 
-        // A subdomain must stay lowercase whatever the display name does.
-        $this->assertSame('bella-beauty-studio', $user->fresh()->tenant->slug);
+        // A subdomain must stay lowercase whatever the display name does —
+        // and carries no spaces, so the three words run together.
+        $this->assertSame('bellabeautystudio', $user->fresh()->tenant->slug);
     }
 
     public function test_location_and_service_names_are_capitalised(): void
