@@ -148,6 +148,8 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'not-onboarded'])
     ->group(function () {
         Route::get('business', 'business')->name('business');
         Route::post('business', 'storeBusiness')->name('business.store');
+        /* Asked while the user is still typing their address. */
+        Route::get('business/slug-availability', 'slugAvailability')->name('business.slug');
 
         Route::get('location', 'location')->name('location');
         Route::post('location', 'storeLocation')->name('location.store');

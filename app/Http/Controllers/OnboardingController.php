@@ -13,6 +13,7 @@ use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Support\InputCase;
+use App\Support\Subdomain;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,10 +59,15 @@ class OnboardingController extends Controller
     /** Section 13. Roles are permissions; job title is what clients see. */
     public const ROLES = ['owner', 'administrator', 'manager', 'front-desk', 'service-provider'];
 
-    private const RESERVED_SLUGS = [
-        'www', 'app', 'admin', 'api', 'mail', 'billing', 'status',
-        'support', 'help', 'blog', 'static', 'assets', 'cdn',
-    ];
+    /**
+     * Reserved subdomains, kept with the rest of the address rules.
+     *
+     * Held here as an alias so existing references keep working, but there is
+     * one list: the browser's live check and the server's validation have to
+     * agree, and two copies is a form that says "Available" and then refuses
+     * to save.
+     */
+    private const RESERVED_SLUGS = Subdomain::RESERVED;
 
     // ---------------------------------------------------------------- step 1
 
@@ -658,9 +664,48 @@ class OnboardingController extends Controller
      * "bella-beauty-studio-2" rather than failing validation and making the
      * user invent one.
      */
+    /**
+     * Whether an address is free, asked while the user is still typing.
+     *
+     * The same three questions the validator asks, in the same order, so the
+     * answer here and the answer on submit cannot disagree: is it a legal
+     * shape, is it ours to give, and has somebody taken it.
+     */
+    public function slugAvailability(Request $request): JsonResponse
+    {
+        $slug = Subdomain::normalise($request->query('slug'));
+        $tenantId = $request->user()->tenant_id;
+
+        if ($slug === '') {
+            return response()->json(['status' => 'empty', 'slug' => $slug]);
+        }
+
+        if (! Subdomain::isValid($slug)) {
+            return response()->json(['status' => 'invalid', 'slug' => $slug]);
+        }
+
+        if (Subdomain::isReserved($slug)) {
+            return response()->json(['status' => 'reserved', 'slug' => $slug]);
+        }
+
+        $taken = Tenant::where('slug', $slug)
+            ->when($tenantId, fn ($query) => $query->where('id', '!=', $tenantId))
+            ->exists();
+
+        return response()->json(['status' => $taken ? 'taken' : 'available', 'slug' => $slug]);
+    }
+
     private function resolveSlug(?string $given, string $name, ?string $tenantId): string
     {
-        $base = Str::slug($given ?: $name) ?: 'business';
+        /* The user's own value is normalised rather than re-slugged, so a
+           hyphen they typed on purpose survives; a name is reduced to letters
+           and digits, so "Bell Body" becomes "bellbody" rather than
+           "bell-body". */
+        $base = ($given !== null && $given !== '')
+            ? Subdomain::normalise($given)
+            : Subdomain::fromName($name);
+
+        $base = $base !== '' ? $base : 'business';
 
         if (in_array($base, self::RESERVED_SLUGS, true)) {
             $base .= '-business';

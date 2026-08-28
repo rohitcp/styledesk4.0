@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+
+    'business' => [
+        'slug' => [
+            'hint' => 'Filled in from your business name — edit it if you would like something shorter.',
+            'checking' => 'Checking…',
+            'available' => 'Available',
+            'taken' => 'Already in use — try another.',
+            'reserved' => 'That address is reserved. Please choose another.',
+            'invalid' => 'Use lowercase letters, numbers and hyphens only.',
+            'regenerate' => 'Regenerate from business name',
+        ],
+    ],
+
+];

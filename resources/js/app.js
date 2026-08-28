@@ -22,6 +22,7 @@ import { initDataGrid } from './data-grid';
 import { initNavMenus } from './nav-menu';
 import { initColorPickers, initDepositToggles } from './color-picker';
 import { initRowMenus } from './row-menu';
+import { initSubdomainFields } from './subdomain';
 import { initCombos } from './combos';
 import { initTooltips } from './tooltip';
 import { initNoteComposer, initNoteReveal } from './note-composer';
@@ -148,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initColorPickers();
     initDepositToggles();
     initRowMenus();
+    initSubdomainFields();
     initListingFilters();
 });
 

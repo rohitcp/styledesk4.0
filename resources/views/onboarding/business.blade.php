@@ -23,21 +23,62 @@
                 @enderror
             </div>
 
-            <div>
-                <label for="bizSlug" class="block text-[13px] font-medium text-ink mb-1.5">
-                    Business URL <span class="text-danger" aria-hidden="true">*</span>
-                </label>
+            {{-- The address, suggested from the name and editable. Only the
+                 subdomain is a field; the domain after it is text, because it
+                 is not the business's to change.
+
+                 The wrapper carries the rules the script needs — where to ask
+                 whether an address is free, and what to say about the answer
+                 — so the component is markup rather than a page-local
+                 script. --}}
+            @php
+                /* Assembled here rather than inline in the attribute: Blade's
+                   json directive counts brackets instead of reading PHP, so
+                   an array literal written inside the tag ends at its first
+                   closing bracket. */
+                $slugLabels = [
+                    'empty' => __('onboarding.business.slug.hint'),
+                    'checking' => __('onboarding.business.slug.checking'),
+                    'available' => __('onboarding.business.slug.available'),
+                    'taken' => __('onboarding.business.slug.taken'),
+                    'reserved' => __('onboarding.business.slug.reserved'),
+                    'invalid' => __('onboarding.business.slug.invalid'),
+                ];
+            @endphp
+
+            <div data-subdomain
+                 data-subdomain-source="#bizName"
+                 data-check-url="{{ route('onboarding.business.slug') }}"
+                 data-labels='@json($slugLabels)'>
+                <div class="flex flex-wrap items-baseline justify-between gap-2 mb-1.5">
+                    <label for="bizSlug" class="block text-[13px] font-medium text-ink">
+                        Business URL <span class="text-danger" aria-hidden="true">*</span>
+                    </label>
+
+                    {{-- Offered rather than automatic. Once someone has
+                         chosen their own address, renaming the business must
+                         not quietly take it back — but they still need a way
+                         to ask for it back. --}}
+                    <button type="button" data-subdomain-regenerate
+                            class="text-[12px] font-medium text-link hover:underline">
+                        {{ __('onboarding.business.slug.regenerate') }}
+                    </button>
+                </div>
+
                 <div class="sd-group">
                     <input id="bizSlug" name="slug" type="text" class="sd-group__field" placeholder="serenityspa"
-                           spellcheck="false" autocapitalize="none" autocorrect="off"
+                           spellcheck="false" autocapitalize="none" autocorrect="off" data-subdomain-field
                            value="{{ old('slug', $tenant?->slug) }}" aria-describedby="bizSlug-error slug-status">
                     <span class="sd-group__suffix">.{{ config('tenancy.tenant_domain_suffix') }}</span>
                 </div>
+
                 @error('slug')
                     <p id="bizSlug-error" role="alert" class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>
                 @enderror
-                <p id="slug-status" class="mt-1.5 text-[12px] text-faint" role="status" aria-live="polite">
-                    Filled in from your business name — edit it if you'd like something shorter.
+
+                <p id="slug-status" class="mt-1.5 text-[12px] text-faint" role="status" aria-live="polite"
+                   data-subdomain-status>
+                    {{ __('onboarding.business.slug.hint') }}
                 </p>
             </div>
 
@@ -274,15 +315,12 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        /* ---- Slug suggested from the business name ----------------------
-           Only while the user has not taken the field over: once they type
-           their own slug, overwriting it on every keystroke of the name
-           would be maddening. */
+        /* The address field is the shared subdomain component now — it
+           generates from the name, cleans what is typed, checks whether the
+           address is free and offers to regenerate. This page kept a `touched`
+           flag and never used it: nothing here ever wrote the suggestion. */
         var name = document.getElementById('bizName');
         var slug = document.getElementById('bizSlug');
-        var touched = slug.value !== '';
-
-        slug.addEventListener('input', function () { touched = true; });
 
         /* ---- Logo preview ----------------------------------------------
            Read locally rather than uploaded first, so the user sees what they

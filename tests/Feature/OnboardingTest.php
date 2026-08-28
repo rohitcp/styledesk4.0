@@ -8,6 +8,7 @@ use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
+use App\Support\Subdomain;
 use Database\Seeders\BusinessTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -661,12 +662,15 @@ class OnboardingTest extends TestCase
             ])
             ->assertRedirect(route('onboarding.location'));
 
-        $this->assertSame('bella-beauty-studio', Tenant::first()->slug);
+        /* Spaces are removed rather than hyphenated: "Bella Beauty Studio"
+           becomes "bellabeautystudio", which is what a business reads out
+           over the phone. */
+        $this->assertSame('bellabeautystudio', Tenant::first()->slug);
     }
 
     public function test_a_taken_slug_gets_a_numeric_suffix(): void
     {
-        Tenant::create(['name' => 'Bella Beauty Studio', 'slug' => 'bella-beauty-studio']);
+        Tenant::create(['name' => 'Bella Beauty Studio', 'slug' => 'bellabeautystudio']);
         $type = BusinessType::create(['name' => 'Spa', 'slug' => 'spa']);
         $user = $this->user();
 
@@ -686,7 +690,129 @@ class OnboardingTest extends TestCase
 
         // Found via the user, not Tenant::first(): the primary key is a UUID,
         // so "first" is not creation order and would pick either row.
-        $this->assertSame('bella-beauty-studio-2', $user->fresh()->tenant->slug);
+        $this->assertSame('bellabeautystudio-2', $user->fresh()->tenant->slug);
+    }
+
+    /**
+     * The address rules, in one place.
+     *
+     * Three things have to agree about what a subdomain may contain — the
+     * suggestion the browser makes, the value the server stores and the
+     * availability check between them — so they all read the same class.
+     */
+    public function test_a_business_name_becomes_an_address_without_spaces(): void
+    {
+        $this->assertSame('bellbody', Subdomain::fromName('Bell Body'));
+        $this->assertSame('bellabeautyspa', Subdomain::fromName('Bella Beauty Spa'));
+        $this->assertSame('johnshairbeauty', Subdomain::fromName("John's Hair & Beauty"));
+
+        /* A hyphen the user typed between words is theirs to keep; one at
+           either end is not, because a subdomain may not begin or end with
+           it. A space is removed rather than becoming a hyphen. */
+        $this->assertSame('my-salon', Subdomain::normalise('  -My-Salon-  '));
+        $this->assertSame('mysalon', Subdomain::normalise('My Salon'));
+
+        $this->assertTrue(Subdomain::isValid('bellbody'));
+        $this->assertFalse(Subdomain::isValid('-bad'));
+        $this->assertFalse(Subdomain::isValid('Bell Body'));
+    }
+
+    /** Free, and said so while the user is still typing. */
+    public function test_an_unused_address_reports_available(): void
+    {
+        $this->actingAs($this->user())
+            ->getJson('http://styledesk.test/onboarding/business/slug-availability?slug=bellbody')
+            ->assertOk()
+            ->assertJson(['status' => 'available', 'slug' => 'bellbody']);
+    }
+
+    public function test_an_address_another_business_holds_reports_taken(): void
+    {
+        Tenant::create(['name' => 'Bell Body', 'slug' => 'bellbody']);
+
+        $this->actingAs($this->user())
+            ->getJson('http://styledesk.test/onboarding/business/slug-availability?slug=bellbody')
+            ->assertOk()
+            ->assertJson(['status' => 'taken']);
+    }
+
+    /**
+     * The three answers the check can give, in the order the validator asks
+     * them: is it a legal shape, is it ours to give, is it taken.
+     */
+    public function test_the_check_reports_invalid_and_reserved_addresses(): void
+    {
+        $user = $this->user();
+
+        /* Cleaned before it is judged, exactly as the field cleans it — so
+           "Bell Body" arrives as "bellbody" and is available rather than
+           being called invalid. */
+        $this->actingAs($user)
+            ->getJson('http://styledesk.test/onboarding/business/slug-availability?slug=Bell%20Body')
+            ->assertOk()
+            ->assertJson(['status' => 'available', 'slug' => 'bellbody']);
+
+        $this->actingAs($user)
+            ->getJson('http://styledesk.test/onboarding/business/slug-availability?slug=www')
+            ->assertOk()
+            ->assertJson(['status' => 'reserved']);
+
+        $this->actingAs($user)
+            ->getJson('http://styledesk.test/onboarding/business/slug-availability?slug=')
+            ->assertOk()
+            ->assertJson(['status' => 'empty']);
+    }
+
+    /** A business editing its own address is not competing with itself. */
+    public function test_a_business_keeps_its_own_address(): void
+    {
+        $tenant = Tenant::create(['name' => 'Bell Body', 'slug' => 'bellbody']);
+
+        $user = $this->user();
+        $user->forceFill(['tenant_id' => $tenant->getTenantKey()])->save();
+        $user = $user->fresh();
+
+        $this->actingAs($user)
+            ->getJson('http://styledesk.test/onboarding/business/slug-availability?slug=bellbody')
+            ->assertOk()
+            ->assertJson(['status' => 'available']);
+    }
+
+    /** The address field is the shared component, not a page-local script. */
+    public function test_the_business_step_mounts_the_shared_address_field(): void
+    {
+        $this->actingAs($this->user())
+            ->get('http://styledesk.test/onboarding/business')
+            ->assertOk()
+            ->assertSee('data-subdomain', false)
+            ->assertSee('data-subdomain-regenerate', false)
+            ->assertSee(route('onboarding.business.slug'), false)
+            ->assertSee(config('tenancy.tenant_domain_suffix'), false);
+    }
+
+    /**
+     * Business types come from the database, active ones only, in the order
+     * the table sets — so adding or retiring one never touches a template.
+     */
+    public function test_the_business_step_lists_active_types_in_order(): void
+    {
+        BusinessType::query()->delete();
+
+        $second = BusinessType::create(['name' => 'Barber Shop', 'slug' => 'barber-shop', 'sort_order' => 1]);
+        $first = BusinessType::create(['name' => 'Hair Salon', 'slug' => 'hair-salon', 'sort_order' => 0]);
+        $hidden = BusinessType::create(['name' => 'Retired Type', 'slug' => 'retired', 'sort_order' => 2, 'is_active' => false]);
+
+        $content = $this->actingAs($this->user())
+            ->get('http://styledesk.test/onboarding/business')
+            ->assertOk()
+            ->assertDontSee('Retired Type')
+            ->getContent();
+
+        $this->assertLessThan(
+            mb_strpos($content, 'Barber Shop'),
+            mb_strpos($content, 'Hair Salon'),
+            'Types are listed in their configured order.',
+        );
     }
 
     public function test_reserved_slugs_are_rejected(): void
