@@ -140,10 +140,14 @@ class StaffDirectoryTest extends TestCase
 
         $content = $this->get('http://styledesk.test/settings/staff')->getContent();
 
+        // The hooks the shared row-menu module binds to. The behaviour that
+        // used to be asserted here — positioned against the button, closed on
+        // scroll, because a fixed panel cannot follow what it is anchored to —
+        // moved into resources/js/row-menu.js when the third copy of it
+        // appeared. What a rendered page can still promise is that the menu is
+        // marked up for that module to find.
         $this->assertStringContainsString('data-rowmenu-pop', $content);
-        // Positioned by script against the button, and closed on scroll,
-        // because a fixed panel cannot follow what it is anchored to.
-        $this->assertStringContainsString("addEventListener('scroll'", $content);
+        $this->assertStringContainsString('data-rowmenu-button', $content);
     }
 
     public function test_search_covers_name_email_phone_and_job_title(): void

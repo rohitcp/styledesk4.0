@@ -1,4 +1,22 @@
-@props(['name', 'label', 'type' => 'text', 'autocomplete' => null, 'required' => false, 'autofocus' => false])
+@props([
+    'name',
+    'label',
+    'type' => 'text',
+    'autocomplete' => null,
+    'required' => false,
+    'autofocus' => false,
+    /**
+     * What the field holds when nothing has been submitted — the stored
+     * value on an edit form.
+     *
+     * old() still wins, so a refused submission comes back with what was
+     * typed rather than with what was stored. Without this the component
+     * could only ever render a blank field, which is why every edit form so
+     * far has written its inputs by hand.
+     */
+    'value' => null,
+    'maxlength' => null,
+])
 
 @php
     // Password fields get a visibility toggle, so they need a positioning
@@ -17,7 +35,8 @@
             @if ($autocomplete) autocomplete="{{ $autocomplete }}" @endif
             @if ($required) required @endif
             @if ($autofocus) autofocus @endif
-            value="{{ $isPassword ? '' : old($name) }}"
+            @if ($maxlength) maxlength="{{ $maxlength }}" @endif
+            value="{{ $isPassword ? '' : old($name, $value) }}"
             @class(['sd-input', 'has-suffix' => $isPassword])
         >
 

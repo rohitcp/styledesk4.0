@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -30,7 +31,14 @@ class Resource extends Model
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'capacity' => 'integer'];
+        return [
+            'is_active' => 'boolean',
+            'capacity' => 'integer',
+            'booking_interval_minutes' => 'integer',
+            'preparation_minutes' => 'integer',
+            'cleanup_minutes' => 'integer',
+            'buffer_minutes' => 'integer',
+        ];
     }
 
     public function category(): BelongsTo
@@ -46,6 +54,18 @@ class Resource extends Model
     public function blocks(): HasMany
     {
         return $this->hasMany(ResourceBlock::class);
+    }
+
+    /** Its own opening hours, when it does not keep the location's. */
+    public function hours(): HasMany
+    {
+        return $this->hasMany(ResourceHour::class);
+    }
+
+    /** The services that may claim it. */
+    public function services(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class);
     }
 
     public function scopeActive(Builder $query): Builder
@@ -99,14 +119,31 @@ class Resource extends Model
         return $this->is_active && $this->blockAt($moment) === null;
     }
 
-    /** available · blocked · inactive — what the listing shows. */
+    /**
+     * available · blocked · inactive — what the listing shows.
+     *
+     * Three questions in order of how final they are: retired outright, out
+     * for a stated period, or marked unavailable by hand. Saying "under
+     * maintenance" about a chair that was sold would send somebody looking
+     * for it.
+     */
     public function availabilityStatus(?Carbon $moment = null): string
     {
         if (! $this->is_active) {
             return 'inactive';
         }
 
-        return $this->blockAt($moment) !== null ? 'blocked' : 'available';
+        if ($this->blockAt($moment) !== null) {
+            return 'blocked';
+        }
+
+        return $this->availability_status === 'available' ? 'available' : 'blocked';
+    }
+
+    /** Whether it keeps hours of its own rather than its location's. */
+    public function hasCustomHours(): bool
+    {
+        return $this->availability_type === 'custom';
     }
 
     public function availabilityLabel(?Carbon $moment = null): string

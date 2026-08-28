@@ -17,8 +17,11 @@ import './prototype/account';
 import { capitalizeFirst, initCapitalization } from './capitalize';
 import { initPhoneFields } from './phone';
 import { initClientContacts } from './client-contacts';
-import { initClientFilters } from './client-filters';
-import { initClientGrid } from './client-grid';
+import { initListingFilters } from './listing-filters';
+import { initDataGrid } from './data-grid';
+import { initNavMenus } from './nav-menu';
+import { initColorPickers, initDepositToggles } from './color-picker';
+import { initRowMenus } from './row-menu';
 import { initCombos } from './combos';
 import { initTooltips } from './tooltip';
 import { initNoteComposer, initNoteReveal } from './note-composer';
@@ -140,8 +143,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initNoteReveal();
     initDateFields();
     initClientContacts();
-    initClientGrid();
-    initClientFilters();
+    initDataGrid();
+    initNavMenus();
+    initColorPickers();
+    initDepositToggles();
+    initRowMenus();
+    initListingFilters();
 });
 
 export { initDateFields };

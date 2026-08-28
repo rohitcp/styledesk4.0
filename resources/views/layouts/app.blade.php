@@ -154,17 +154,17 @@
             <a href="#" data-pending-route="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
           </div>
         </div>
-        <a href="#" data-pending-route="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" aria-label="Add booking">
+        <a href="#" data-pending-route="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" data-tip-placement="right" aria-label="Add booking">
           <x-icon name="plus" size="18" />
         </a>
 
-        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" data-tip-placement="right" aria-label="Mentions">
           <x-icon name="at" size="18" />
         </button>
-        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" data-tip-placement="right" aria-label="Activity">
           <x-icon name="wifi" size="18" />
         </button>
-        <a href="#" data-pending-route="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
+        <a href="#" data-pending-route="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" data-tip-placement="right" aria-label="Design system">
           <x-icon name="circle-question" size="18" />
         </a>
 
@@ -176,7 +176,7 @@
         @if (auth()->user()?->canManageSettings())
           <a href="{{ route('settings.index') }}"
              class="sd-navicon sd-tip hidden sm:grid @if (request()->routeIs('settings.*')) is-active @endif"
-             data-tip="{{ __('navigation.app_settings') }}" aria-label="{{ __('navigation.app_settings') }}">
+             data-tip="{{ __('navigation.app_settings') }}" data-tip-placement="right" aria-label="{{ __('navigation.app_settings') }}">
             <x-icon name="gear" size="18" />
           </a>
         @endif

@@ -24,6 +24,17 @@
     'values' => [],
     'hint' => null,
     'required' => false,
+    /**
+     * A deposit per price rather than one per service.
+     *
+     * The deposit belongs to the price it is a deposit on: 20% of one price
+     * and 20% of another are different amounts, and a single service-wide
+     * setting cannot say "deposit on the premium price only".
+     *
+     * Keyed by currency: ['USD' => ['required' => true, 'type' => 'percent',
+     * 'value' => '20']].
+     */
+    'deposits' => null,
 ])
 
 @php
@@ -34,6 +45,11 @@
         ->mapWithKeys(fn (string $code) => [
             $code => old($name.'.'.$code, data_get($values, $code)),
         ]);
+
+    $depositFor = fn (string $code, string $key, $fallback = null) => old(
+        'deposit.'.$code.'.'.$key,
+        data_get($deposits, $code.'.'.$key, $fallback),
+    );
 @endphp
 
 <div {{ $attributes }} data-price-input>
@@ -67,6 +83,31 @@
         </p>
 
         @error($name.'.'.$only)<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+
+        {{-- The deposit for this price, beside the price it belongs to.
+             Hidden until it is switched on, so a service that takes no
+             deposit is three fields shorter. --}}
+        <div class="mt-2.5" data-deposit-row>
+            <x-toggle :name="'deposit['.$only.'][required]'" :label="__('services.deposit_required')"
+                      :checked="(bool) $depositFor($only, 'required', false)" data-deposit-toggle />
+
+            <div class="mt-2.5 grid sm:grid-cols-2 gap-3 max-w-[420px]" data-deposit-fields
+                 @unless ($depositFor($only, 'required', false)) hidden @endunless>
+                <x-combo :name="'deposit['.$only.'][type]'" :label="__('services.deposit_type')"
+                         :options="['fixed' => __('services.deposit_types.fixed'), 'percent' => __('services.deposit_types.percent')]"
+                         :selected="$depositFor($only, 'type', 'percent')" />
+
+                <div>
+                    <label class="block text-[13px] font-medium text-ink mb-1.5">{{ __('services.deposit_value') }}</label>
+                    <input type="text" inputmode="decimal" class="sd-input"
+                           name="deposit[{{ $only }}][value]"
+                           value="{{ $depositFor($only, 'value') }}"
+                           aria-label="{{ __('services.deposit_value') }}" autocomplete="off">
+                </div>
+            </div>
+
+            @error('deposit.'.$only.'.value')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+        </div>
     @else
         <div class="space-y-2">
             @foreach ($priceCurrencies as $code)
@@ -92,6 +133,30 @@
                 </div>
 
                 @error($name.'.'.$code)<p class="text-[12px] text-danger">{{ $message }}</p>@enderror
+
+                {{-- Its own deposit, stored independently: switching one on
+                     must leave every other price alone. --}}
+                <div class="pl-[64px]" data-deposit-row>
+                    <x-toggle :name="'deposit['.$code.'][required]'" :label="__('services.deposit_required')"
+                              :checked="(bool) $depositFor($code, 'required', false)" data-deposit-toggle />
+
+                    <div class="mt-2 grid sm:grid-cols-2 gap-3 max-w-[420px]" data-deposit-fields
+                         @unless ($depositFor($code, 'required', false)) hidden @endunless>
+                        <x-combo :name="'deposit['.$code.'][type]'" :label="__('services.deposit_type')"
+                                 :options="['fixed' => __('services.deposit_types.fixed'), 'percent' => __('services.deposit_types.percent')]"
+                                 :selected="$depositFor($code, 'type', 'percent')" />
+
+                        <div>
+                            <label class="block text-[13px] font-medium text-ink mb-1.5">{{ __('services.deposit_value') }}</label>
+                            <input type="text" inputmode="decimal" class="sd-input"
+                                   name="deposit[{{ $code }}][value]"
+                                   value="{{ $depositFor($code, 'value') }}"
+                                   aria-label="{{ __('services.deposit_value') }}" autocomplete="off">
+                        </div>
+                    </div>
+
+                    @error('deposit.'.$code.'.value')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+                </div>
             @endforeach
         </div>
 

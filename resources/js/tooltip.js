@@ -49,6 +49,16 @@ function show(trigger) {
     const anchor = trigger.getBoundingClientRect();
     const box = el.getBoundingClientRect();
 
+    /* Beside the control rather than under it, where the control is asked to
+       be. The navigation icons are: their menus now open flush against the
+       bottom of the bar, so a hint drawn below the icon lands on top of the
+       menu it is describing. */
+    if (trigger.dataset.tipPlacement === 'right') {
+        placeBeside(el, anchor, box);
+
+        return;
+    }
+
     // Below by default, above when the space beneath is not enough.
     const below = window.innerHeight - anchor.bottom;
     const above = below < box.height + GAP && anchor.top > box.height + GAP;
@@ -62,6 +72,26 @@ function show(trigger) {
     const clamped = Math.min(Math.max(GAP, centred), window.innerWidth - box.width - GAP);
 
     el.style.left = `${clamped}px`;
+}
+
+/**
+ * To the right of the control, or to its left when the window has run out.
+ *
+ * The same flip the vertical placement makes, in the other axis: the last
+ * icon in a bar is the one with nothing to its right, and it is exactly the
+ * one a tooltip would otherwise disappear off the edge beside.
+ */
+function placeBeside(el, anchor, box) {
+    const room = window.innerWidth - anchor.right;
+    const flip = room < box.width + GAP && anchor.left > box.width + GAP;
+
+    el.style.left = `${flip ? anchor.left - box.width - GAP : anchor.right + GAP}px`;
+
+    /* Centred against the icon, then held inside the window — a hint level
+       with nothing is a hint pointing at nothing. */
+    const centred = anchor.top + anchor.height / 2 - box.height / 2;
+
+    el.style.top = `${Math.min(Math.max(GAP, centred), window.innerHeight - box.height - GAP)}px`;
 }
 
 function hide() {

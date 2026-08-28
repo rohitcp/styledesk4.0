@@ -253,18 +253,31 @@
          scrolling inside itself, with rows fetched a page at a time as the
          reader scrolls. --}}
     <div class="mt-4 styledesk_gridframe">
-      <div
-           data-client-grid
+      {{-- The shared listing grid. The columns are named here and the row
+           actions travel with each row, so this page describes its table
+           rather than carrying a copy of one. --}}
+      @php
+          $gridConfig = [
+              'labels' => $gridLabels,
+              'name_field' => 'name',
+              'columns' => [
+                  ['field' => 'name', 'title' => $gridLabels['columns']['client'], 'type' => 'primary', 'grow' => 3, 'min' => 200, 'responsive' => 0],
+                  ['field' => 'mobile', 'title' => $gridLabels['columns']['mobile'], 'grow' => 1.4, 'min' => 130, 'responsive' => 1],
+                  ['field' => 'email', 'title' => $gridLabels['columns']['email'], 'grow' => 2, 'min' => 180, 'responsive' => 1],
+                  ['field' => 'staff', 'title' => $gridLabels['columns']['staff'], 'grow' => 1.5, 'min' => 140, 'responsive' => 5],
+                  ['field' => 'location', 'title' => $gridLabels['columns']['location'], 'grow' => 1.5, 'min' => 140, 'responsive' => 5],
+                  ['field' => 'last_visit', 'title' => $gridLabels['columns']['last_visit'], 'grow' => 1.3, 'min' => 120, 'responsive' => 4, 'muted' => true],
+                  ['field' => 'next_booking', 'title' => $gridLabels['columns']['next_booking'], 'grow' => 1.3, 'min' => 120, 'responsive' => 2, 'muted' => true],
+                  ['field' => 'status', 'title' => $gridLabels['columns']['status'], 'type' => 'badge', 'width' => 110, 'responsive' => 1],
+                  ['field' => 'actions', 'type' => 'actions'],
+              ],
+          ];
+      @endphp
+
+      <div data-grid
            data-url="{{ route('clients.data', array_filter($filters)) }}"
-           data-params='@json([])'
-           data-labels='@json($gridLabels)'
-           data-can='@json(['edit' => $canEdit, 'archive' => $canArchive])'></div>
+           data-config='@json($gridConfig)'></div>
     </div>
     @endif
-
-    <form id="clientArchiveForm" method="POST" class="hidden">
-      @csrf
-      @method('PATCH')
-    </form>
   </main>
 @endsection

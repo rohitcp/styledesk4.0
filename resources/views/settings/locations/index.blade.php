@@ -270,71 +270,7 @@
 
 @push('scripts')
   <script>
-    /* Card action menus. Identical behaviour to the staff directory's: one
-       open at a time, positioned against its button because the panel is
-       fixed, and closed by a scroll it cannot follow. */
-    (function () {
-      var menus = Array.prototype.slice.call(document.querySelectorAll('[data-rowmenu]'));
-      if (!menus.length) return;
 
-      function closeAll(except) {
-        menus.forEach(function (menu) {
-          if (menu === except) return;
-          menu.querySelector('[data-rowmenu-pop]').hidden = true;
-          menu.querySelector('[data-rowmenu-button]').setAttribute('aria-expanded', 'false');
-          menu.classList.remove('is-open');
-        });
-      }
-
-      menus.forEach(function (menu) {
-        var button = menu.querySelector('[data-rowmenu-button]');
-        var pop = menu.querySelector('[data-rowmenu-pop]');
-
-        button.addEventListener('click', function (e) {
-          /* The whole card is a link. Without this the menu button would
-             open the location it belongs to instead of its own menu. */
-          e.preventDefault();
-          e.stopPropagation();
-
-          var opening = pop.hidden;
-          closeAll(menu);
-          pop.hidden = !opening;
-          button.setAttribute('aria-expanded', opening ? 'true' : 'false');
-          menu.classList.toggle('is-open', opening);
-
-          if (opening) place(button, pop);
-        });
-
-        /* Same reason: a click anywhere inside the open panel must not fall
-           through to the card underneath it. */
-        pop.addEventListener('click', function (e) { e.stopPropagation(); });
-      });
-
-      function place(button, pop) {
-        var rect = button.getBoundingClientRect();
-
-        pop.style.visibility = 'hidden';
-        var height = pop.offsetHeight;
-        var width = pop.offsetWidth;
-        pop.style.visibility = '';
-
-        /* Flip above when there is not room below, so a card in the last row
-           does not open its menu into the fold. */
-        var below = window.innerHeight - rect.bottom;
-        var top = below < height + 12 ? rect.top - height - 4 : rect.bottom + 4;
-
-        pop.style.top = Math.max(8, top) + 'px';
-        pop.style.left = Math.max(8, rect.right - width) + 'px';
-      }
-
-      document.addEventListener('click', function () { closeAll(null); });
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeAll(null);
-      });
-
-      window.addEventListener('scroll', function () { closeAll(null); }, true);
-      window.addEventListener('resize', function () { closeAll(null); });
-    }());
 
     /* Deactivate and activate. The question is asked by the shared
        confirmation dialog off each button's own data-confirm attributes, so

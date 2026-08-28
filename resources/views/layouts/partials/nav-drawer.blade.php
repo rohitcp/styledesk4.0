@@ -46,7 +46,15 @@
           <div class="styledesk_drawer__sub">
             @foreach ($item['children'] as $child)
               @continue (! empty($child['separator']))
-              <a href="{{ \App\Support\Nav::href($child) }}" {!! \App\Support\Nav::pending($child) !!} class="styledesk_drawersub">{{ $child['label'] }}</a>
+
+              @if (! empty($child['section']))
+                {{-- The same headings the desktop menu uses: a group of six
+                     links reads as a list without them. --}}
+                <span class="styledesk_drawersub__section">{{ $child['section'] }}</span>
+              @else
+                <a href="{{ \App\Support\Nav::href($child) }}" {!! \App\Support\Nav::pending($child) !!}
+                   class="styledesk_drawersub @if (\App\Support\Nav::isCurrent($child)) is-active @endif">{{ $child['label'] }}</a>
+              @endif
             @endforeach
           </div>
         @endif

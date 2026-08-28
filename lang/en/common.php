@@ -18,6 +18,7 @@ return [
     'delete' => 'Delete',
     'remove' => 'Remove',
     'add' => 'Add',
+    'custom_color' => 'Custom colour',
     'back' => 'Back',
     'close' => 'Close',
     'search' => 'Search',

@@ -137,6 +137,23 @@
     cursor: not-allowed;
 }
 
+/* One line, trimmed with an ellipsis where it does not fit.
+
+   `min-width: 0` is what makes the ellipsis possible at all: a flex child's
+   default minimum is the width of its own content, so without it the label
+   pushes the control wider instead of being cut — and a filter row of
+   different heights is what a wrapped label leaves behind.
+
+   Not the chips variant, which is a grid of its own and is meant to grow. */
+.styledesk_timepicker__value:not(.styledesk_chips) {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
 .styledesk_timepicker__value { flex: 1 1 auto; }
 .styledesk_timepicker__value--empty { color: #9ca3af; }
 
@@ -3457,6 +3474,172 @@ fieldset:disabled :where(button, input, select, textarea),
         justify-content: flex-end;
         margin-left: auto;
     }
+}
+
+/* ------------------------------------------------------------------
+   Resource day row
+   ------------------------------------------------------------------
+   One day of a resource's own week: the day and its switch on the left,
+   the two time pickers on the right. A grid rather than a flex row so
+   every day's times start at the same x — ragged starts make a week of
+   seven rows read as seven unrelated controls.
+   ------------------------------------------------------------------ */
+.styledesk_dayrow {
+    display: grid;
+    grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-line);
+}
+
+.styledesk_dayrow:last-child { border-bottom: 0; }
+
+@media (max-width: 520px) {
+    .styledesk_dayrow { grid-template-columns: minmax(0, 1fr); }
+}
+
+.styledesk_daytoggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.styledesk_daytoggle__name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-ink);
+}
+
+/* ------------------------------------------------------------------
+   Category row
+   ------------------------------------------------------------------
+   The reorderable list in App Settings → Resources. A grid rather than
+   a table: the row has a drag handle and a menu at its ends, and a
+   table would need two columns that hold no data to carry them.
+
+   The columns that leave first are the ones a reader can do without —
+   the section and the system/custom label — because the name, the
+   status and the menu are the row.
+   ------------------------------------------------------------------ */
+.styledesk_catrow {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) auto 2rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    border-bottom: 1px solid var(--color-line);
+    background: #fff;
+}
+
+@media (min-width: 640px) {
+    .styledesk_catrow { grid-template-columns: 1.75rem minmax(0, 1fr) minmax(0, 12rem) auto 2rem; }
+}
+
+@media (min-width: 768px) {
+    .styledesk_catrow { grid-template-columns: 1.75rem minmax(0, 1fr) minmax(0, 12rem) 7rem auto 2rem; }
+}
+
+/* The same row without the section and capacity columns, for a catalogue
+   that has neither. Stated as a modifier rather than a second component:
+   the grip, the name, the type, the status and the menu are the row, and
+   only the middle of it differs. */
+.styledesk_catrow--slim { grid-template-columns: 1.75rem minmax(0, 1fr) auto 2rem; }
+
+@media (min-width: 768px) {
+    .styledesk_catrow--slim { grid-template-columns: 1.75rem minmax(0, 1fr) 7rem auto 2rem; }
+}
+
+.styledesk_catrow:last-child { border-bottom: 0; }
+
+.styledesk_catrow--head {
+    padding-block: 0.5rem;
+    background: var(--color-hover);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-sub);
+}
+
+/* Only the rows are dragged, so only they take the cursor. */
+.styledesk_catrow[draggable='true'] { cursor: grab; }
+.styledesk_catrow.is-dragging { opacity: 0.45; cursor: grabbing; }
+
+.styledesk_catrow__grip {
+    display: grid;
+    place-items: center;
+    height: 1.75rem;
+    width: 1.75rem;
+    border-radius: 0.375rem;
+    color: var(--color-faint);
+}
+
+.styledesk_catrow:hover .styledesk_catrow__grip { color: var(--color-sub); }
+
+/* ------------------------------------------------------------------
+   Service colour
+   ------------------------------------------------------------------
+   The colour a service is drawn in on the calendar, shown beside its
+   name in the list and chosen from a fixed palette in its form.
+
+   Distinct from styledesk_swatch, which styles a native colour input:
+   these two are a shown value and a control, and giving them one class
+   made the list's 10px dot inherit a 44px control's box.
+   ------------------------------------------------------------------ */
+.styledesk_servicedot {
+    height: 0.625rem;
+    width: 0.625rem;
+    border-radius: 3px;
+    background: var(--service-color, var(--color-stroke));
+}
+
+/* One colour in the palette. The radio itself is hidden rather than
+   removed: it is what the keyboard arrows move through and what the
+   form posts, and a div with a click handler is neither. */
+.styledesk_swatchpick {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    cursor: pointer;
+}
+
+.styledesk_swatchpick input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    margin: 0;
+    cursor: pointer;
+}
+
+.styledesk_swatchpick__dot {
+    height: 1.5rem;
+    width: 1.5rem;
+    border-radius: 0.375rem;
+    background: var(--service-color, var(--color-stroke));
+    /* The ring is always drawn and only coloured in when chosen, so the
+       swatch does not move by two pixels as the selection changes. */
+    box-shadow: 0 0 0 2px #fff, 0 0 0 2px transparent;
+}
+
+/* The custom card before it holds anything: the outline of a swatch rather
+   than a swatch, so it reads as a place to put a colour instead of as a
+   colour that happens to be white. */
+.styledesk_swatchpick__dot.is-empty {
+    background:
+        linear-gradient(135deg, transparent 46%, var(--color-stroke) 46%, var(--color-stroke) 54%, transparent 54%);
+    box-shadow: inset 0 0 0 1px var(--color-stroke);
+}
+
+.styledesk_swatchpick input:checked + .styledesk_swatchpick__dot {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--service-color);
+}
+
+.styledesk_swatchpick input:focus-visible + .styledesk_swatchpick__dot {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 3px;
 }
 
 /* ------------------------------------------------------------------

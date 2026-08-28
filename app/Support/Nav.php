@@ -44,10 +44,51 @@ class Nav
         return $item['label'] ?? '';
     }
 
-    /** @param array<string, mixed> $item */
+    /**
+     * @param  array<string, mixed>  $item
+     */
     public static function href(array $item): string
     {
-        return isset($item['route']) ? route($item['route']) : '#';
+        if (! isset($item['route'])) {
+            return '#';
+        }
+
+        /* Some entries are a screen with a state rather than a screen: "Add
+           resource" is the list with its dialog already open, because the
+           list is where adding happens. */
+        return route($item['route'], $item['params'] ?? []);
+    }
+
+    /**
+     * Whether this exact entry is the page being looked at.
+     *
+     * Narrower than isActive on purpose: the rail marks a whole section, but
+     * inside an open menu "All services" and "Add service" are two pages, and
+     * lighting both because the reader is somewhere under services would say
+     * nothing.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    public static function isCurrent(array $item): bool
+    {
+        if (! isset($item['route'])) {
+            return false;
+        }
+
+        if (! Request::routeIs($item['route'])) {
+            return false;
+        }
+
+        /* An entry that carries query parameters is a state of a screen, not
+           the screen: "Add resource" is only current when the list was opened
+           through it. */
+        foreach ($item['params'] ?? [] as $key => $value) {
+            if ((string) Request::query($key) !== (string) $value) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** @param array<string, mixed> $item */

@@ -153,6 +153,9 @@ class ClientController extends Controller
         $page = $this->query($request, $tenant, $settings)
             ->paginate($size, ['*'], 'page', max(1, (int) $request->query('page', 1)));
 
+        $canEdit = $request->user()->hasPermission('clients.edit', 'own');
+        $canArchive = $request->user()->hasPermission('clients.archive', 'own');
+
         return response()->json([
             /**
              * Tabulator's own shape for a progressively loaded table: the
@@ -188,8 +191,64 @@ class ClientController extends Controller
                 'url' => route('clients.show', $client),
                 'edit_url' => route('clients.edit', $client),
                 'archive_url' => route('clients.archive', $client),
+
+                /*
+                 * The row's own actions menu.
+                 *
+                 * Decided here rather than in the browser for the same reason
+                 * the labels above are: which entries a reader may see is a
+                 * permission question, and a grid that assembled the menu
+                 * itself would be a second place for that rule to live — one
+                 * that a change to the first would not reach.
+                 */
+                'menu' => $this->rowMenu($client, $canEdit, $canArchive),
             ])->all(),
         ]);
+    }
+
+    /**
+     * One row's actions.
+     *
+     * View is always there; the rest depend on what this reader may do. The
+     * booking entry is shown disabled rather than hidden: there is no booking
+     * module yet, and an entry that quietly disappears reads as a permission
+     * the reader lacks.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function rowMenu(Client $client, bool $canEdit, bool $canArchive): array
+    {
+        $name = $client->displayName();
+
+        $menu = [
+            ['label' => __('clients.module.view'), 'url' => route('clients.show', $client)],
+        ];
+
+        if ($canEdit) {
+            $menu[] = ['label' => __('common.edit'), 'url' => route('clients.edit', $client)];
+        }
+
+        $menu[] = ['label' => __('clients.module.create_booking'), 'disabled' => true];
+
+        if ($canArchive) {
+            $label = $client->isArchived() ? __('clients.module.restore') : __('clients.module.archive');
+
+            $menu[] = ['separator' => true];
+            $menu[] = [
+                'label' => $label,
+                'url' => route('clients.archive', $client),
+                'method' => 'PATCH',
+                'danger' => ! $client->isArchived(),
+                'confirm' => $client->isArchived()
+                    ? __('clients.module.restore_confirm', ['name' => $name])
+                    : __('clients.module.archive_confirm', ['name' => $name]),
+                'confirm_title' => $label,
+                'confirm_label' => $label,
+                'tone' => $client->isArchived() ? 'brand' : 'danger',
+            ];
+        }
+
+        return $menu;
     }
 
     /**

@@ -9,13 +9,51 @@
  * Removing a chip asks the control to drop the value rather than editing the
  * hidden input behind its back, so the control's own count stays right.
  */
-/** The controls that hold a list of values. */
-const FILTERS = ['location', 'staff', 'tag'];
+/**
+ * Which filters this page has, read from the page.
+ *
+ * Named lists used to live here, which meant this file knew the clients
+ * screen by heart: a second listing got chips for the three filters clients
+ * happen to share with it and none for its own. The controls already say what
+ * they are — a combo carries its name and whether it takes one value in its
+ * props — so they are asked instead of described.
+ */
+function readFilters(form) {
+    const many = [];
+    const one = [];
+    const combos = [];
 
-/** The single-value filters that also earn a chip: status, and the cards. */
-const SINGLES = ['status', 'created', 'upcoming'];
+    form.querySelectorAll('[data-vue-component="MultiSelect"][data-props]').forEach((el) => {
+        let props;
 
-export function initClientFilters(root = document) {
+        try {
+            props = JSON.parse(el.dataset.props);
+        } catch (error) {
+            return;
+        }
+
+        if (!props.name) {
+            return;
+        }
+
+        combos.push(props.name);
+        (props.single ? one : many).push(props.name);
+    });
+
+    /* Filters that are not dropdowns at all — the stat cards post theirs
+       through hidden inputs, and they earn a chip like any other. */
+    form.querySelectorAll('[data-filter-labels]').forEach((el) => {
+        const name = el.dataset.filterLabels;
+
+        if (!many.includes(name) && !one.includes(name)) {
+            one.push(name);
+        }
+    });
+
+    return { many, one, combos };
+}
+
+export function initListingFilters(root = document) {
     const row = root.querySelector('[data-active-filters]');
     const form = row?.closest('form');
 
@@ -24,7 +62,8 @@ export function initClientFilters(root = document) {
     }
 
     const chips = row.querySelector('[data-active-chips]');
-    const grid = document.querySelector('[data-client-grid]');
+    const grid = document.querySelector('[data-grid]');
+    const { many: FILTERS, one: SINGLES, combos: COMBOS } = readFilters(form);
 
     /** What each control holds, read from the inputs it posts. */
     function current() {
@@ -66,7 +105,10 @@ export function initClientFilters(root = document) {
             field.value = '';
         }
 
-        if (name === 'status') {
+        /* A single-value dropdown is still an island: told to drop the value
+           rather than written to, or its button carries on showing what the
+           chip just removed. */
+        if (COMBOS.includes(name)) {
             document.dispatchEvent(new CustomEvent('styledesk:filter-remove', {
                 detail: { name, value },
             }));
@@ -165,9 +207,16 @@ export function initClientFilters(root = document) {
         const search = form.querySelector('[name="search"]');
         if (search) search.value = '';
 
-        // The single-value status control has no island event to wait for.
-        const status = form.querySelector('[name="status"]');
-        if (status) status.value = '';
+        /* The hidden inputs behind the single-value filters: the islands are
+           cleared by the event above, but a filter posted through a plain
+           input has nothing listening for it. */
+        SINGLES.forEach((name) => {
+            const field = form.querySelector(`[name="${name}"]`);
+
+            if (field) {
+                field.value = '';
+            }
+        });
 
         window.setTimeout(() => {
             paint();

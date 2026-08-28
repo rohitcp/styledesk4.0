@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
+
 /**
  * Searchable multi-select with an explicit primary.
  *
@@ -133,12 +134,57 @@ watch(() => props.modelValue, (value) => {
     }
 });
 
+/** What the control is currently showing, for the tooltip. */
+const buttonLabel = computed(() => {
+    if (props.single) {
+        return selected.value.length ? nameOf(selected.value[0]) : props.placeholder;
+    }
+
+    if (props.summaryLabel) {
+        return selected.value.length
+            ? `${props.summaryLabel} (${selected.value.length})`
+            : props.placeholder;
+    }
+
+    return selected.value.length
+        ? selected.value.map((code) => nameOf(code)).join(', ')
+        : props.placeholder;
+});
+
 function toggle() {
     open.value = !open.value;
 
     if (open.value) {
+        /**
+         * Only one panel open at a time.
+         *
+         * The button below carries `@click.stop`, so a click on this control
+         * never reaches the document listener that closes the others — which
+         * left every dropdown the reader had opened standing open behind the
+         * one they were using. Announced rather than reached for: a control
+         * has no handle on its siblings, and two on the same page may not
+         * even belong to the same form.
+         */
+        document.dispatchEvent(new CustomEvent('styledesk:combo-open', {
+            detail: { source: root.value },
+        }));
+
         query.value = '';
         nextTick(() => searchBox.value?.focus());
+    }
+}
+
+/**
+ * Another control has opened; this one gets out of the way.
+ *
+ * Told apart by its own root element rather than by a number handed out on
+ * mount. Each island is mounted as a Vue app of its own, so a module-level
+ * counter is not the shared thing it looks like — every control called itself
+ * 1, decided the announcement was its own, and stayed open.
+ */
+function onOtherOpen(event) {
+    if (open.value && event.detail?.source !== root.value) {
+        open.value = false;
     }
 }
 
@@ -187,6 +233,7 @@ onMounted(() => {
     document.addEventListener('styledesk:filter-remove', onExternalRemove);
     document.addEventListener('styledesk:filter-clear', onExternalClear);
     document.addEventListener('styledesk:filter-set', onExternalSet);
+    document.addEventListener('styledesk:combo-open', onOtherOpen);
     emit('primary-changed', primary.value);
 
     /**
@@ -209,6 +256,7 @@ onBeforeUnmount(() => {
     document.removeEventListener('styledesk:filter-remove', onExternalRemove);
     document.removeEventListener('styledesk:filter-clear', onExternalClear);
     document.removeEventListener('styledesk:filter-set', onExternalSet);
+    document.removeEventListener('styledesk:combo-open', onOtherOpen);
 });
 </script>
 
@@ -221,8 +269,11 @@ onBeforeUnmount(() => {
             <input v-for="code in selected" :key="code" type="hidden" :name="`${name}[]`" :value="code">
         </template>
 
+        <!-- The label is trimmed to one line by the stylesheet, so the full
+             text is put where a reader can still get at it. -->
         <button type="button" class="styledesk_timepicker__field"
                 :style="single || summaryLabel ? {} : { height: 'auto', minHeight: '2.75rem', padding: '0.375rem 0.75rem' }"
+                :title="buttonLabel"
                 :aria-label="ariaLabel" :aria-expanded="open" aria-haspopup="listbox" @click.stop="toggle">
             <span v-if="single" class="styledesk_timepicker__value"
                   :class="{ 'styledesk_timepicker__value--empty': !selected.length }">

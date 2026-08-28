@@ -306,59 +306,7 @@
       });
     }());
 
-    /* The header's actions menu, and any other row menu on the page. */
-    (function () {
-      var menus = Array.prototype.slice.call(document.querySelectorAll('[data-rowmenu]'));
-      if (!menus.length) return;
 
-      function closeAll(except) {
-        menus.forEach(function (menu) {
-          if (menu === except) return;
-          menu.querySelector('[data-rowmenu-pop]').hidden = true;
-          menu.querySelector('[data-rowmenu-button]').setAttribute('aria-expanded', 'false');
-          menu.classList.remove('is-open');
-        });
-      }
-
-      menus.forEach(function (menu) {
-        var button = menu.querySelector('[data-rowmenu-button]');
-        var pop = menu.querySelector('[data-rowmenu-pop]');
-
-        button.addEventListener('click', function (e) {
-          e.stopPropagation();
-          var opening = pop.hidden;
-          closeAll(menu);
-          pop.hidden = !opening;
-          button.setAttribute('aria-expanded', opening ? 'true' : 'false');
-          menu.classList.toggle('is-open', opening);
-          if (opening) place(button, pop);
-        });
-
-        pop.addEventListener('click', function (e) { e.stopPropagation(); });
-      });
-
-      /* The panel is fixed, so it is positioned against its button rather
-         than by the flow, and closed by a scroll it cannot follow. */
-      function place(button, pop) {
-        var rect = button.getBoundingClientRect();
-
-        pop.style.visibility = 'hidden';
-        var height = pop.offsetHeight;
-        var width = pop.offsetWidth;
-        pop.style.visibility = '';
-
-        var below = window.innerHeight - rect.bottom;
-        var top = below < height + 12 ? rect.top - height - 4 : rect.bottom + 4;
-
-        pop.style.top = Math.max(8, top) + 'px';
-        pop.style.left = Math.max(8, rect.right - width) + 'px';
-      }
-
-      document.addEventListener('click', function () { closeAll(null); });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(null); });
-      window.addEventListener('scroll', function () { closeAll(null); }, true);
-      window.addEventListener('resize', function () { closeAll(null); });
-    }());
 
     /* The client tag card and its modal.
 

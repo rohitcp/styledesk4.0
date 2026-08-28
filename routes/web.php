@@ -9,6 +9,7 @@ use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\ServiceCategoryController;
+use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\Settings\BrandingController;
 use App\Http\Controllers\Settings\BusinessHoursController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
@@ -16,7 +17,9 @@ use App\Http\Controllers\Settings\ClientSettingsController;
 use App\Http\Controllers\Settings\CurrencyController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
+use App\Http\Controllers\Settings\ResourceCategoryController;
 use App\Http\Controllers\Settings\RolePermissionController;
+use App\Http\Controllers\Settings\ServiceCategoryController as SettingsServiceCategoryController;
 use App\Http\Controllers\Settings\StaffController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
@@ -178,6 +181,43 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
     ->name('settings.')
     ->group(function () {
         Route::get('/', AppSettingsController::class)->name('index');
+
+        /*
+        | App Settings → Resources: the catalogue of resource categories.
+        |
+        | The kinds of thing a business books, decided once. The chairs and
+        | rooms themselves are the Resources module's business, which is why
+        | that one lives outside settings.
+        */
+        /*
+        | App Settings → Services: the catalogue of service categories.
+        |
+        | How the price list is organised, decided once. The services
+        | themselves are the Services module's business.
+        */
+        Route::controller(SettingsServiceCategoryController::class)
+            ->prefix('services')
+            ->name('services.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/', 'store')->name('store');
+                Route::post('reorder', 'reorder')->name('reorder');
+                Route::patch('{serviceCategory}', 'update')->name('update');
+                Route::patch('{serviceCategory}/status', 'toggle')->name('toggle');
+                Route::delete('{serviceCategory}', 'destroy')->name('destroy');
+            });
+
+        Route::controller(ResourceCategoryController::class)
+            ->prefix('resources')
+            ->name('resources.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/', 'store')->name('store');
+                Route::post('reorder', 'reorder')->name('reorder');
+                Route::patch('{resourceCategory}', 'update')->name('update');
+                Route::patch('{resourceCategory}/status', 'toggle')->name('toggle');
+                Route::delete('{resourceCategory}', 'destroy')->name('destroy');
+            });
 
         /*
         | Roles & permissions — read-only in Phase 1.
@@ -498,6 +538,32 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
     | exist precisely so a business can separate the two.
     */
     /*
+    | Services — the work the business sells.
+    |
+    | An operational area rather than a settings screen: a price changes and a
+    | treatment is added the week it launches. What belongs in App Settings is
+    | the catalogue of categories; what lives here is the list itself.
+    */
+    Route::controller(ServiceController::class)
+        ->prefix('services')
+        ->name('services.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            /* Before the {service} routes: a literal segment declared after a
+               parameter is reached by matching "create" as an id. */
+            Route::get('create', 'create')->name('create');
+            /* The rows the listing grid asks for, as JSON. */
+            Route::get('data', 'data')->name('data');
+            Route::post('/', 'store')->name('store');
+            Route::get('{service}/edit', 'edit')->name('edit');
+            Route::get('{service}', 'show')->name('show');
+            Route::delete('{service}', 'destroy')->name('destroy');
+            Route::patch('{service}', 'update')->name('update');
+            Route::patch('{service}/status', 'toggle')->name('toggle');
+            Route::post('{service}/duplicate', 'duplicate')->name('duplicate');
+        });
+
+    /*
     | Resources — the chairs, rooms and equipment a booking needs as well as
     | a person.
     |
@@ -511,6 +577,13 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
         ->name('resources.')
         ->group(function () {
             Route::get('/', 'index')->name('index');
+            /* Before the {resource} routes: a literal segment declared after
+               a parameter is reached by matching "create" as an id. */
+            Route::get('create', 'create')->name('create');
+            Route::get('data', 'data')->name('data');
+            Route::get('{resource}/edit', 'edit')->name('edit');
+            Route::get('{resource}', 'show')->name('show');
+            Route::delete('{resource}', 'destroy')->name('destroy');
             Route::post('/', 'store')->name('store');
             Route::patch('{resource}', 'update')->name('update');
             Route::patch('{resource}/status', 'toggle')->name('toggle');

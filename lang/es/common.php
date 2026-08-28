@@ -16,6 +16,7 @@ return [
     'delete' => 'Eliminar',
     'remove' => 'Quitar',
     'add' => 'Añadir',
+    'custom_color' => 'Color personalizado',
     'back' => 'Atrás',
     'close' => 'Cerrar',
     'search' => 'Buscar',

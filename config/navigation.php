@@ -31,6 +31,10 @@ return [
             'route' => 'clients.index',
             'children' => [
                 ['label' => 'All Clients', 'route' => 'clients.index'],
+                // Straight to the form, the same pair Services offers: the
+                // list and the way to add to it are the two things anyone
+                // opens this menu for.
+                ['label' => 'Add Client', 'route' => 'clients.create'],
                 ['label' => 'Groups'],
                 ['label' => 'Forms & Waivers'],
                 ['label' => 'Memberships & Packages'],
@@ -45,16 +49,28 @@ return [
             // than one reading the symbol.
             'aria' => 'Services and resources',
             'icon' => 'tag',
-            'pending' => 'services.html',
+            'route' => 'services.index',
+            // Two groups under their own headings: what the business sells,
+            // and what it needs to deliver it. The headings are labels rather
+            // than links — "Services" as a clickable row above "All Services"
+            // is two ways to the same page and a reader wondering how they
+            // differ.
+            //
+            // Categories and add-ons used to sit here and have gone to App
+            // Settings: they are decided once and revisited rarely, which is
+            // the line this module is drawn on.
             'children' => [
-                ['label' => 'All Services', 'pending' => 'services.html'],
-                ['label' => 'Categories', 'pending' => 'service-categories.html'],
-                ['label' => 'Add-ons', 'pending' => 'service-addons.html'],
-                ['separator' => true],
+                ['section' => 'Services'],
+                ['label' => 'All Services', 'route' => 'services.index'],
+                ['label' => 'Add Service', 'route' => 'services.create'],
+
+                ['section' => 'Resources'],
                 ['label' => 'All Resources', 'route' => 'resources.index'],
-                ['label' => 'Resource Types', 'pending' => 'resource-types.html'],
-                ['label' => 'Availability', 'pending' => 'resource-availability.html'],
-                ['label' => 'Maintenance', 'pending' => 'resource-maintenance.html'],
+                // The resources list adds through a dialog rather than a page
+                // of its own, so this opens the list with it already up.
+                ['label' => 'Add Resource', 'route' => 'resources.index', 'params' => ['add' => 1]],
+                ['label' => 'Resource Availability', 'pending' => 'resource-availability.html'],
+                ['label' => 'Resource Utilization', 'pending' => 'resource-utilization.html'],
             ],
         ],
 

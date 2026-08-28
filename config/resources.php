@@ -20,23 +20,57 @@ return [
     |
     | Seeded rather than left blank, because "styling chair" and "treatment
     | room" are the same idea in every salon and typing them out is not the
-    | work anyone signed up for. A business deletes what it does not use.
+    | work anyone signed up for. A business deactivates the ones it does not
+    | use — never deletes them, because a default that can be removed is one
+    | it has no way to get back.
     |
-    | `capacity` is what a resource in that category starts with: a couples
-    | room is the one place two clients share, and it is the exception.
+    | `group` is the heading the category sits under in a list thirty entries
+    | long; `capacity` is what a resource in that category starts with, and a
+    | couples room is the one place two clients share.
     */
     'seed_categories' => [
-        ['key' => 'styling-chair', 'capacity' => 1],
-        ['key' => 'barber-chair', 'capacity' => 1],
-        ['key' => 'shampoo-station', 'capacity' => 1],
-        ['key' => 'treatment-room', 'capacity' => 1],
-        ['key' => 'massage-room', 'capacity' => 1],
-        ['key' => 'couples-massage-room', 'capacity' => 2],
-        ['key' => 'facial-room', 'capacity' => 1],
-        ['key' => 'nail-station', 'capacity' => 1],
-        ['key' => 'pedicure-chair', 'capacity' => 1],
-        ['key' => 'sauna', 'capacity' => 4],
-        ['key' => 'equipment', 'capacity' => 1],
+        /* chairs */
+        ['key' => 'styling-chair', 'group' => 'chairs', 'capacity' => 1],
+        ['key' => 'barber-chair', 'group' => 'chairs', 'capacity' => 1],
+        ['key' => 'shampoo-station', 'group' => 'chairs', 'capacity' => 1],
+        ['key' => 'hair-processing-station', 'group' => 'chairs', 'capacity' => 1],
+        ['key' => 'nail-station', 'group' => 'chairs', 'capacity' => 1],
+        ['key' => 'manicure-station', 'group' => 'chairs', 'capacity' => 1],
+        ['key' => 'pedicure-chair', 'group' => 'chairs', 'capacity' => 1],
+        ['key' => 'makeup-station', 'group' => 'chairs', 'capacity' => 1],
+        ['key' => 'lash-brow-station', 'group' => 'chairs', 'capacity' => 1],
+        ['key' => 'trolley-mobile-station', 'group' => 'chairs', 'capacity' => 1],
+
+        /* rooms */
+        ['key' => 'facial-room', 'group' => 'rooms', 'capacity' => 1],
+        ['key' => 'treatment-room', 'group' => 'rooms', 'capacity' => 1],
+        ['key' => 'massage-room', 'group' => 'rooms', 'capacity' => 1],
+        ['key' => 'couples-massage-room', 'group' => 'rooms', 'capacity' => 2],
+        ['key' => 'waxing-room', 'group' => 'rooms', 'capacity' => 1],
+        ['key' => 'spa-room', 'group' => 'rooms', 'capacity' => 1],
+        ['key' => 'consultation-room', 'group' => 'rooms', 'capacity' => 1],
+        ['key' => 'private-room', 'group' => 'rooms', 'capacity' => 1],
+        ['key' => 'multi-purpose-room', 'group' => 'rooms', 'capacity' => 1],
+
+        /* wellness */
+        ['key' => 'sauna', 'group' => 'wellness', 'capacity' => 4],
+        ['key' => 'steam-room', 'group' => 'wellness', 'capacity' => 4],
+        ['key' => 'shower-room', 'group' => 'wellness', 'capacity' => 1],
+
+        /* beds */
+        ['key' => 'treatment-bed', 'group' => 'beds', 'capacity' => 1],
+        ['key' => 'massage-table', 'group' => 'beds', 'capacity' => 1],
+        ['key' => 'facial-bed', 'group' => 'beds', 'capacity' => 1],
+
+        /* equipment */
+        ['key' => 'equipment', 'group' => 'equipment', 'capacity' => 1],
+        ['key' => 'portable-equipment', 'group' => 'equipment', 'capacity' => 1],
+        ['key' => 'shared-equipment', 'group' => 'equipment', 'capacity' => 1],
+
+        /* general */
+        ['key' => 'reception-waiting-area', 'group' => 'general', 'capacity' => 1],
+        ['key' => 'other', 'group' => 'general', 'capacity' => 1],
+
     ],
 
     /*
@@ -47,6 +81,28 @@ return [
     | did we lose to repairs" is a question a business will eventually ask.
     */
     'block_reasons' => ['maintenance', 'cleaning', 'repair', 'closure', 'other'],
+
+    /*
+    | The state a resource is in, set by hand.
+    |
+    | Distinct from a block, which is a period with a reason and an end. This
+    | is "the room is out at the moment" without anyone committing to when it
+    | comes back.
+    */
+    'availability_statuses' => ['available', 'unavailable', 'maintenance'],
+
+    /* Whose opening hours a resource keeps. */
+    'availability_types' => ['location', 'custom'],
+
+    /*
+    | The steps a resource may be booked in, and the periods either side.
+    |
+    | A fixed list rather than a free number: a diary drawn in seven-minute
+    | steps is a diary nobody can read, and every one of these divides an
+    | hour.
+    */
+    'intervals' => [5, 10, 15, 20, 30, 45, 60],
+    'ancillary_minutes' => [0, 5, 10, 15, 20, 30, 45, 60],
 
     /* What a resource holds when nobody says otherwise. */
     'default_capacity' => 1,

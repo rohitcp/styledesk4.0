@@ -93,20 +93,45 @@ class ResourcesTest extends TestCase
 
     // ------------------------------------------------------------- the page
 
-    public function test_the_listing_shows_resources_grouped_by_category(): void
+    /**
+     * The page mounts the shared grid; the rows come from their own endpoint.
+     *
+     * The same split the clients and services listings use, so all three are
+     * one component with different data.
+     */
+    public function test_the_listing_mounts_the_shared_grid(): void
     {
-        $chairs = ResourceCategory::withoutGlobalScopes()
-            ->where('tenant_id', $this->tenant->getTenantKey())
-            ->where('name', __('resources.categories.styling-chair'))
-            ->firstOrFail();
-
-        $this->resource(['name' => 'Window chair', 'resource_category_id' => $chairs->id]);
+        $this->resource();
 
         $this->actingAs($this->owner)
             ->get(route('resources.index'))
             ->assertOk()
-            ->assertSee('Window chair')
-            ->assertSee(__('resources.categories.styling-chair'));
+            ->assertSee('data-grid', false)
+            ->assertSee(route('resources.data'), false);
+    }
+
+    public function test_a_row_carries_its_columns_already_worded(): void
+    {
+        $chairs = ResourceCategory::withoutGlobalScopes()
+            ->where('tenant_id', $this->tenant->getTenantKey())
+            ->where('key', 'styling-chair')
+            ->firstOrFail();
+
+        $this->resource([
+            'name' => 'Window chair',
+            'resource_category_id' => $chairs->id,
+            'capacity' => 2,
+        ]);
+
+        $row = $this->actingAs($this->owner)
+            ->getJson(route('resources.data'))
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertSame('Window chair', $row['name']);
+        $this->assertSame(__('resources.categories.styling-chair'), $row['category']);
+        $this->assertSame(__('resources.holds_many', ['count' => 2]), $row['capacity']);
+        $this->assertSame(__('resources.availability.available'), $row['availability']);
     }
 
     /** An empty module explains itself rather than offering filters over nothing. */
@@ -119,39 +144,184 @@ class ResourcesTest extends TestCase
             ->assertDontSee(__('resources.search'));
     }
 
-    public function test_the_listing_can_be_searched(): void
+    public function test_the_rows_can_be_searched(): void
     {
         $this->resource(['name' => 'Window chair']);
         $this->resource(['name' => 'Sauna']);
 
-        $this->actingAs($this->owner)
-            ->get(route('resources.index', ['search' => 'sauna']))
+        $names = $this->actingAs($this->owner)
+            ->getJson(route('resources.data', ['search' => 'sauna']))
             ->assertOk()
-            ->assertSee('Sauna')
-            ->assertDontSee('Window chair');
+            ->json('data.*.name');
+
+        $this->assertSame(['Sauna'], $names);
     }
 
     // ------------------------------------------------------------- writing
 
+    /** What a resource needs before it can be saved at all. */
+    private function payload(array $overrides = []): array
+    {
+        return $overrides + [
+            'name' => 'Treatment room 2',
+            'capacity' => 1,
+            'resource_category_id' => $this->category()->id,
+            'location_id' => $this->location()->id,
+            'is_active' => 1,
+            'availability_status' => 'available',
+            'availability_type' => 'location',
+        ];
+    }
+
+    private function category(string $key = 'treatment-room'): ResourceCategory
+    {
+        return ResourceCategory::withoutGlobalScopes()
+            ->where('tenant_id', $this->tenant->getTenantKey())
+            ->where('key', $key)
+            ->firstOrFail();
+    }
+
+    private function location(): Location
+    {
+        return Location::withoutGlobalScopes()
+            ->where('tenant_id', $this->tenant->getTenantKey())
+            ->firstOr(fn () => $this->tenant->locations()->create([
+                'name' => 'Downtown', 'address_line1' => '1 High Street', 'city' => 'Leeds',
+                'postal_code' => 'LS1 1AA', 'country' => 'GB', 'timezone' => 'Europe/London',
+            ]));
+    }
+
     public function test_a_resource_can_be_added(): void
     {
-        $location = Location::withoutGlobalScopes()->where('tenant_id', $this->tenant->getTenantKey())->first();
-
         $this->actingAs($this->owner)
-            ->post(route('resources.store'), [
-                'name' => 'Treatment room 2',
-                'capacity' => 1,
-                'location_id' => $location?->id,
-            ])
+            ->post(route('resources.store'), $this->payload())
             ->assertRedirect();
 
         $this->assertNotNull(Resource::withoutGlobalScopes()->where('name', 'Treatment room 2')->first());
     }
 
+    /**
+     * A resource nobody can categorise cannot be asked for by category,
+     * which is the whole way a service claims one.
+     */
+    public function test_a_resource_needs_a_category_and_a_location(): void
+    {
+        $this->actingAs($this->owner)
+            ->post(route('resources.store'), [
+                'name' => 'Nowhere room', 'capacity' => 1,
+                'availability_status' => 'available', 'availability_type' => 'location',
+            ])
+            ->assertSessionHasErrors(['resource_category_id', 'location_id']);
+    }
+
+    /**
+     * Its own week is kept only when it keeps one.
+     *
+     * Switching back to the location's hours clears the days rather than
+     * leaving them: a half-remembered week is one the diary would still
+     * believe in the next time somebody switched back.
+     */
+    public function test_custom_hours_are_kept_only_while_the_resource_keeps_its_own(): void
+    {
+        $this->actingAs($this->owner)
+            ->post(route('resources.store'), $this->payload([
+                'availability_type' => 'custom',
+                'hours' => [
+                    1 => ['is_available' => 1, 'starts_at' => '09:00', 'ends_at' => '17:00'],
+                    0 => ['is_available' => 0],
+                ],
+            ]))
+            ->assertRedirect();
+
+        $resource = Resource::withoutGlobalScopes()->where('name', 'Treatment room 2')->firstOrFail();
+
+        $monday = $resource->hours()->where('day', 1)->firstOrFail();
+        $this->assertTrue($monday->is_available);
+        $this->assertSame('09:00', substr((string) $monday->starts_at, 0, 5));
+
+        /* A day marked unavailable keeps no times: two stored hours behind an
+           unticked day is a day the diary could still be read as open. */
+        $sunday = $resource->hours()->where('day', 0)->firstOrFail();
+        $this->assertFalse($sunday->is_available);
+        $this->assertNull($sunday->starts_at);
+
+        $this->actingAs($this->owner)
+            ->patch(route('resources.update', $resource), $this->payload(['availability_type' => 'location']))
+            ->assertRedirect();
+
+        $this->assertSame(0, $resource->fresh()->hours()->count());
+    }
+
+    /** A day's closing time has to come after it opens. */
+    public function test_a_day_that_ends_before_it_starts_is_refused(): void
+    {
+        $this->actingAs($this->owner)
+            ->post(route('resources.store'), $this->payload([
+                'availability_type' => 'custom',
+                'hours' => [1 => ['is_available' => 1, 'starts_at' => '17:00', 'ends_at' => '09:00']],
+            ]))
+            ->assertSessionHasErrors('hours.1.ends_at');
+    }
+
+    /** Saving lands on the resource, which is what the reader wants to see. */
+    public function test_saving_opens_the_resource(): void
+    {
+        $response = $this->actingAs($this->owner)
+            ->post(route('resources.store'), $this->payload());
+
+        $resource = Resource::withoutGlobalScopes()->where('name', 'Treatment room 2')->firstOrFail();
+
+        $response->assertRedirect(route('resources.show', $resource));
+    }
+
+    public function test_the_view_page_shows_the_resource(): void
+    {
+        $resource = $this->resource(['name' => 'Room A', 'code' => 'ROOM-A']);
+
+        $this->actingAs($this->owner)
+            ->get(route('resources.show', $resource))
+            ->assertOk()
+            ->assertSee('Room A')
+            ->assertSee('ROOM-A')
+            ->assertSee(route('resources.edit', $resource), false);
+    }
+
+    /**
+     * Delete removes it from every list without rewriting history.
+     *
+     * Soft, always: a chair appears in appointments that already happened,
+     * and a hard delete would take those with it. Distinct from retiring,
+     * which is a chair the business still owns.
+     */
+    public function test_a_resource_can_be_deleted_without_losing_its_history(): void
+    {
+        $resource = $this->resource(['name' => 'Old chair']);
+
+        $this->actingAs($this->owner)
+            ->delete(route('resources.destroy', $resource))
+            ->assertRedirect(route('resources.index'));
+
+        $this->assertNull(Resource::query()->find($resource->id));
+        $this->assertNotNull(Resource::withoutGlobalScopes()->find($resource->id)->deleted_at);
+    }
+
+    /** The edit page offers it, behind the shared confirmation. */
+    public function test_the_edit_page_offers_delete_behind_a_confirmation(): void
+    {
+        $resource = $this->resource(['name' => 'Old chair']);
+
+        $this->actingAs($this->owner)
+            ->get(route('resources.edit', $resource))
+            ->assertOk()
+            ->assertSee(__('resources.delete'))
+            ->assertSee('data-confirm-title="'.e(__('resources.delete_title')).'"', false)
+            ->assertSee(route('resources.destroy', $resource), false);
+    }
+
     public function test_capacity_must_be_at_least_one(): void
     {
         $this->actingAs($this->owner)
-            ->post(route('resources.store'), ['name' => 'Nothing room', 'capacity' => 0])
+            ->post(route('resources.store'), $this->payload(['name' => 'Nothing room', 'capacity' => 0]))
             ->assertSessionHasErrors('capacity');
     }
 

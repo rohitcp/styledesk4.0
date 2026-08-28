@@ -561,13 +561,16 @@ input.sd-input.is-picker:read-only:focus { outline: 2px solid var(--sd-brand); o
 }
 .sd-menu__pop {
   position: absolute;
-  /* +1px clears the bar's own bottom border, which sits outside the nav's
-     content box — without it the panel covers that hairline. */
-  top: calc(100% + 1px);
+  /* Flush against the bar, with nothing in between. A gap of even one pixel
+     is a gap the pointer crosses on its way down, and crossing it closed the
+     menu the reader was reaching for. */
+  top: 100%;
   left: 0;
   min-width: 216px;
   padding: 0.25rem;
-  border-radius: 0 0 0.5rem 0.5rem; /* flush against the bar, rounded below */
+  /* Square where it meets the bar, so the panel reads as the bar continuing
+     rather than as a card floating under it. */
+  border-radius: 0 0 2px 2px;
   background-color: #fff;
   border: 1px solid #e5e7eb;        /* line */
   border-top: 0;                    /* no double line where it meets the bar */
@@ -585,6 +588,32 @@ input.sd-input.is-picker:read-only:focus { outline: 2px solid var(--sd-brand); o
 }
 .sd-menu__item:hover,
 .sd-menu__item:focus-visible { background-color: var(--sd-brand); color: #fff; outline: none; }
+
+/* The page the reader is on, marked without the pointer being anywhere near
+   it. Quieter than hover: hover is what happens next, this is where you are. */
+.sd-menu__item.is-active {
+  background-color: #eef1f4;        /* sel */
+  font-weight: 600;
+}
+
+/* A group heading. Not a menu item and deliberately unlike one: smaller,
+   quieter, uppercase, and with no hover state at all, so nothing about it
+   invites a click it cannot answer. */
+.sd-menu__section {
+  padding: 0.5rem 0.625rem 0.25rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9ca3af;                   /* faint */
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+}
+
+/* The first heading sits at the top of the panel, where the padding above it
+   is the panel's own. */
+.sd-menu__section:first-child { padding-top: 0.375rem; }
 
 /* ==================================================================
    CLIENT MANAGEMENT
@@ -1280,7 +1309,18 @@ body.sd-locked { overflow: hidden; }
 /* ------------------------------------------------------------------
    Avatar dropdown in the app bar (§2)
    ------------------------------------------------------------------ */
-.sd-acct { position: relative; }
+/* Full height of the bar, like the navigation menus beside it.
+
+   The panel is positioned from this element's bottom edge, so without a
+   height it hangs from the button — which is 2.5rem inside a 3.5rem bar,
+   leaving the menu starting half a centimetre above the header's own bottom
+   line and overlapping it. */
+.sd-acct {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
 
 .sd-acct__btn {
   display: flex;
@@ -1296,18 +1336,26 @@ body.sd-locked { overflow: hidden; }
 .sd-acct__btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: 2px; }
 .sd-acct__btn[aria-expanded="true"] { background-color: rgba(255, 255, 255, 0.16); }
 
+/* The same panel as the navigation menus, on the other side of the bar.
+
+   It used to float 6px below with all four corners rounded, which read as a
+   card belonging to the page rather than as the bar continuing — and left a
+   gap the pointer fell through on the way down. Flush, square at the top,
+   2px at the bottom: identical to .sd-menu__pop, because they are the same
+   thing in two places. */
 .sd-acct__pop {
   position: absolute;
   z-index: 50;
-  top: calc(100% + 6px);
+  top: 100%;
   right: 0;
   width: 268px;
   max-width: calc(100vw - 1.5rem);
   padding: 0.25rem;
-  border-radius: 0.625rem;
+  border-radius: 0 0 2px 2px;
   background-color: #fff;
   border: 1px solid #e5e7eb;        /* line */
-  box-shadow: 0 16px 40px rgba(15, 15, 16, 0.20);
+  border-top: 0;                    /* no double line where it meets the bar */
+  box-shadow: 0 12px 32px rgba(15, 15, 16, 0.16);
 }
 
 .sd-acct__head {
@@ -2270,7 +2318,6 @@ body.sd-locked { overflow: hidden; }
 .sd-menu--right .sd-menu__pop {
   left: auto;
   right: 0;
-  border-radius: 0 0 0.5rem 0.5rem;
 }
 
 /* ===== Booking accordion ===========================================

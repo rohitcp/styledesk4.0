@@ -3,87 +3,140 @@
 @section('title', __('resources.title'))
 
 @section('content')
+  {{-- The same shape as the clients and services listings, because it is the
+       same kind of screen: header, then the toolbar that narrows the list,
+       then the list. --}}
   <main class="w-full px-6 lg:px-8 pt-5 pb-[100px]">
 
     <header class="flex flex-wrap items-start gap-4">
       <div class="min-w-0 flex-1">
-        <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">{{ __('resources.title') }}</h1>
-        <p class="text-[14px] text-sub mt-2 max-w-[640px] leading-relaxed">{{ __('resources.subtitle') }}</p>
+        <h1 class="text-[22px] sm:text-[24px] font-bold text-head tracking-tight">{{ __('resources.title') }}</h1>
+        <p class="text-[13px] text-sub mt-1.5 leading-relaxed">{{ __('resources.subtitle') }}</p>
       </div>
 
       @if ($canCreate)
-        <button type="button" class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors"
-                data-resource-add>
+        <a href="{{ route('resources.create') }}"
+           class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
           <x-icon name="plus" size="14" />
           {{ __('resources.add') }}
-        </button>
+        </a>
       @endif
     </header>
 
     @if ($total === 0)
       {{-- Nothing yet, and nothing pretending otherwise: no search over an
            empty list, no filters that can only return nothing. --}}
-      <div class="mt-8 max-w-[520px]">
+      <div class="mt-4 border-t border-line py-16 text-center">
         <p class="text-[15px] font-semibold text-head">{{ __('resources.none_yet') }}</p>
-        <p class="text-[13px] text-sub mt-1.5 leading-relaxed">{{ __('resources.none_yet_hint') }}</p>
+        <p class="text-[13px] text-sub mt-1.5 max-w-[420px] mx-auto leading-relaxed">{{ __('resources.none_yet_hint') }}</p>
+
+        @if ($canCreate)
+          <a href="{{ route('resources.create') }}"
+             class="mt-4 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+            <x-icon name="plus" size="14" />
+            {{ __('resources.add') }}
+          </a>
+        @endif
       </div>
     @else
-      <form method="GET" class="flex flex-wrap items-center gap-2 mt-6">
-        <div class="relative flex-1 min-w-[220px]">
-          <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">
-            <x-icon name="magnifying-glass" size="14" />
-          </span>
-          <input type="search" name="search" value="{{ $filters['search'] }}"
-                 class="sd-input styledesk_input--prefixed !h-9"
-                 placeholder="{{ __('resources.search') }}" aria-label="{{ __('resources.search') }}">
+      @php
+          /* Assembled here rather than inline. Blade's json directive counts
+             brackets instead of reading PHP, so an array literal written
+             inside it ends at its first closing bracket — the same trap the
+             combo and the resource card both carry a warning about. */
+          $statusOptions = [
+              'available' => __('resources.availability.available'),
+              'blocked' => __('resources.availability.blocked'),
+              'inactive' => __('resources.availability.inactive'),
+          ];
+      @endphp
+
+      <form method="GET" action="{{ route('resources.index') }}" class="mt-4">
+        <div class="flex flex-wrap items-start gap-2">
+          <div class="relative w-full lg:w-auto lg:flex-1 lg:min-w-[220px]">
+            <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">
+              <x-icon name="magnifying-glass" size="15" />
+            </span>
+            <input name="search" type="search" class="sd-input styledesk_input--prefixed"
+                   value="{{ $filters['search'] }}"
+                   aria-label="{{ __('resources.search') }}"
+                   placeholder="{{ __('resources.search') }}">
+          </div>
+
+          <div class="flex flex-col lg:flex-row lg:flex-wrap items-stretch lg:items-start gap-2 w-full lg:w-auto">
+            <x-combo name="category" :options="$categoryOptions" :selected="$filters['category']"
+                     :placeholder="__('resources.all_categories')"
+                     class="w-full lg:w-[170px] shrink-0" />
+
+            <x-combo name="location" multiple :options="$locations->pluck('name', 'id')" :selected="$filters['location']"
+                     :placeholder="__('resources.all_locations')"
+                     :summary="__('resources.location')"
+                     class="w-full lg:w-[170px] shrink-0" />
+
+            <x-combo name="status" :selected="$filters['status']"
+                     :placeholder="__('resources.all_statuses')"
+                     :options="$statusOptions"
+                     class="w-full lg:w-[150px] shrink-0" />
+
+            <button type="submit" class="styledesk_search w-full lg:w-auto shrink-0">
+              {{ __('common.search') }}
+            </button>
+          </div>
         </div>
 
-        <x-combo name="category" :options="$categories->pluck('name', 'id')" :selected="$filters['category']"
-                 :placeholder="__('resources.all_categories')"
-                 class="w-full lg:w-[180px] shrink-0" />
+        <span hidden data-filter-labels="category" data-labels='@json($categoryOptions)'></span>
+        <span hidden data-filter-labels="location" data-labels='@json($locations->pluck('name', 'id'))'></span>
+        <span hidden data-filter-labels="status" data-labels='@json($statusOptions)'></span>
 
-        <x-combo name="location" :options="$locations->pluck('name', 'id')" :selected="$filters['location']"
-                 :placeholder="__('resources.all_locations')"
-                 class="w-full lg:w-[180px] shrink-0" />
+        <div class="mt-2.5 flex flex-wrap items-center gap-2" data-active-filters hidden
+             data-remove-label="{{ __('common.remove') }}">
+          <span class="text-[12px] font-semibold text-sub">{{ __('resources.filters_active') }}</span>
+          <span class="flex flex-wrap items-center gap-1.5" data-active-chips></span>
 
-        <x-combo name="status" :selected="$filters['status']"
-                 :placeholder="__('resources.all_statuses')"
-                 :options="[
-                     'available' => __('resources.availability.available'),
-                     'blocked' => __('resources.availability.blocked'),
-                     'inactive' => __('resources.availability.inactive'),
-                 ]"
-                 class="w-full lg:w-[170px] shrink-0" />
-
-        <button type="submit" class="styledesk_action styledesk_action--sm">{{ __('common.search') }}</button>
+          <button type="button" class="styledesk_action styledesk_action--sm" data-clear-filters>
+            {{ __('common.clear_all') }}
+          </button>
+        </div>
       </form>
 
-      <p class="text-[13px] text-sub mt-4">{{ trans_choice('resources.count', $resources->count()) }}</p>
+      @php
+          $gridLabels = [
+              'columns' => __('resources.columns'),
+              'actions_for' => __('resources.actions_for', ['name' => ':name']),
+              'showing' => __('resources.showing'),
+              'results' => [
+                  'zero' => __('resources.results.zero'),
+                  'one' => __('resources.results.one'),
+                  'many' => __('resources.results.many'),
+              ],
+              'clear_filters' => __('resources.results.clear'),
+              'empty' => __('resources.results.empty'),
+          ];
 
-      @if ($resources->isEmpty())
-        <p class="text-[13px] text-sub mt-6">{{ __('resources.no_matches') }}</p>
-      @else
-        {{-- Grouped by category, because that is how a business counts them:
-             four styling chairs, two treatment rooms. --}}
-        @foreach ($grouped as $categoryName => $items)
-          <section class="mt-6">
-            <h2 class="styledesk_label">{{ $categoryName }}</h2>
+          $gridConfig = [
+              'labels' => $gridLabels,
+              'columns' => [
+                  ['field' => 'name', 'title' => $gridLabels['columns']['resource'], 'type' => 'primary', 'grow' => 2.5, 'min' => 180, 'responsive' => 0],
+                  ['field' => 'category', 'title' => $gridLabels['columns']['category'], 'grow' => 1.6, 'min' => 140, 'responsive' => 3],
+                  ['field' => 'location', 'title' => $gridLabels['columns']['location'], 'grow' => 1.5, 'min' => 130, 'responsive' => 4],
+                  ['field' => 'capacity', 'title' => $gridLabels['columns']['capacity'], 'grow' => 1.2, 'min' => 120, 'responsive' => 5],
+                  ['field' => 'description', 'title' => $gridLabels['columns']['description'], 'grow' => 2, 'min' => 160, 'responsive' => 6, 'muted' => true],
+                  ['field' => 'availability', 'title' => $gridLabels['columns']['availability'], 'type' => 'badge', 'grow' => 1.6, 'min' => 150, 'responsive' => 1],
+                  ['field' => 'actions', 'type' => 'actions'],
+              ],
+          ];
+      @endphp
 
-            <div class="grid gap-2.5 mt-2.5 sm:grid-cols-2 xl:grid-cols-3">
-              @foreach ($items as $resource)
-                @include('resources.partials._card', ['resource' => $resource])
-              @endforeach
-            </div>
-          </section>
-        @endforeach
-      @endif
+      <p class="mt-3 text-[12px] font-semibold text-sub" data-result-count></p>
+
+      <div class="mt-4 styledesk_gridframe">
+        <div data-grid
+             data-url="{{ route('resources.data', array_filter($filters)) }}"
+             data-config='@json($gridConfig)'></div>
+      </div>
     @endif
 
-    @if ($canCreate || $canEdit)
-      @include('resources.partials._form-modal')
-    @endif
-
-    @if ($canBlock)
+    @if ($canBlock ?? false)
       @include('resources.partials._block-modal')
     @endif
   </main>

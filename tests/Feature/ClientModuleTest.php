@@ -200,7 +200,7 @@ class ClientModuleTest extends TestCase
         $this->actingAs($this->owner())
             ->get(route('clients.index'))
             ->assertOk()
-            ->assertSee('data-client-grid', false)
+            ->assertSee('data-grid', false)
             ->assertSee(route('clients.data'), false);
     }
 

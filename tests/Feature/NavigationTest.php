@@ -89,10 +89,15 @@ class NavigationTest extends TestCase
                     continue;
                 }
 
+                /* A section heading names the group below it and has no page
+                   of its own — the drawer still has to show it, or six links
+                   arrive as one undifferentiated list. */
+                $label = $child['label'] ?? $child['section'];
+
                 $this->assertStringContainsString(
-                    e($child['label'], false),
+                    e($label, false),
                     $drawer,
-                    "[{$child['label']}] is missing from the drawer."
+                    "[{$label}] is missing from the drawer."
                 );
             }
         }

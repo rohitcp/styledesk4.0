@@ -277,68 +277,7 @@
       });
     }());
 
-    /* Row action menus. */
-    (function () {
-      var menus = Array.prototype.slice.call(document.querySelectorAll('[data-rowmenu]'));
-      if (!menus.length) return;
 
-      function closeAll(except) {
-        menus.forEach(function (menu) {
-          if (menu === except) return;
-          menu.querySelector('[data-rowmenu-pop]').hidden = true;
-          menu.querySelector('[data-rowmenu-button]').setAttribute('aria-expanded', 'false');
-          menu.classList.remove('is-open');
-        });
-      }
-
-      menus.forEach(function (menu) {
-        var button = menu.querySelector('[data-rowmenu-button]');
-        var pop = menu.querySelector('[data-rowmenu-pop]');
-
-        button.addEventListener('click', function (e) {
-          e.stopPropagation();
-          var opening = pop.hidden;
-          /* One open menu at a time: two panels over the same table is a
-             guess about which row the next click belongs to. */
-          closeAll(menu);
-          pop.hidden = !opening;
-          button.setAttribute('aria-expanded', opening ? 'true' : 'false');
-          menu.classList.toggle('is-open', opening);
-
-          if (opening) place(button, pop);
-        });
-      });
-
-      /* The panel is fixed, so it is positioned against the button rather
-         than by the layout. Right edges aligned, because the menu sits at the
-         end of a row and a left-aligned panel would hang off the page. */
-      function place(button, pop) {
-        var rect = button.getBoundingClientRect();
-
-        pop.style.visibility = 'hidden';
-        var height = pop.offsetHeight;
-        var width = pop.offsetWidth;
-        pop.style.visibility = '';
-
-        /* Flip above when there is not room below, so the last rows of a
-           long table do not open a menu into the fold. */
-        var below = window.innerHeight - rect.bottom;
-        var top = below < height + 12 ? rect.top - height - 4 : rect.bottom + 4;
-
-        pop.style.top = Math.max(8, top) + 'px';
-        pop.style.left = Math.max(8, rect.right - width) + 'px';
-      }
-
-      document.addEventListener('click', function () { closeAll(null); });
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeAll(null);
-      });
-
-      /* A fixed panel cannot follow the thing it is anchored to, so any
-         scroll closes it rather than leaving it floating over the page. */
-      window.addEventListener('scroll', function () { closeAll(null); }, true);
-      window.addEventListener('resize', function () { closeAll(null); });
-    }());
 
     /* Delete. The question is asked by the shared confirmation dialog off
        the button's own data-confirm attributes, so by the time this handler
