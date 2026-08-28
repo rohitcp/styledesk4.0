@@ -178,9 +178,9 @@
             <legend class="text-[13px] font-medium text-ink mb-2">
               {{ __('staff.fields.specialities') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
             </legend>
-            <div class="flex flex-wrap gap-2">
+            <div class="styledesk_choicelist sm:grid-cols-2">
               @foreach (App\Support\StaffOptions::specialities() as $value => $label)
-                <label class="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover cursor-pointer transition-colors text-[13px] text-ink">
+                <label class="styledesk_choice">
                   <input type="checkbox" name="specialities[]" value="{{ $value }}" class="sd-check"
                          @checked(in_array((string) $value, $chosenSpecialities, true))>
                   {{ $label }}
@@ -192,12 +192,12 @@
           @if ($services->isNotEmpty())
             <fieldset>
               <legend class="text-[13px] font-medium text-ink mb-2">{{ __('staff.fields.services') }}</legend>
-              <div class="grid sm:grid-cols-2 gap-x-4 gap-y-2">
+              <div class="styledesk_choicelist sm:grid-cols-2">
                 @foreach ($services as $service)
-                  <label class="flex items-center gap-2.5 cursor-pointer">
+                  <label class="styledesk_choice">
                     <input type="checkbox" name="service_ids[]" value="{{ $service->id }}" class="sd-check"
                            @checked(in_array((string) $service->id, $chosenServices, true))>
-                    <span class="text-[13px] text-ink">{{ $service->name }}</span>
+                    <span class="styledesk_choice__label">{{ $service->name }}</span>
                   </label>
                 @endforeach
               </div>
@@ -212,12 +212,12 @@
 
           <fieldset>
             <legend class="text-[13px] font-medium text-ink mb-2">{{ __('staff.fields.account_status') }} <span class="text-danger">*</span></legend>
-            <div class="flex items-center gap-5">
+            <div class="styledesk_choicelist">
               @foreach (['active' => __('common.active'), 'inactive' => __('common.inactive')] as $value => $label)
-                <label class="flex items-center gap-2.5 cursor-pointer">
+                <label class="styledesk_choice">
                   <input type="radio" name="account_status" value="{{ $value }}" class="sd-check"
                          @checked($accountStatus === $value)>
-                  <span class="text-[13px] text-ink">{{ $label }}</span>
+                  <span class="styledesk_choice__label">{{ $label }}</span>
                 </label>
               @endforeach
             </div>
@@ -225,10 +225,10 @@
           </fieldset>
 
           <div class="pt-4 border-t border-line space-y-3">
-            <label class="flex items-start gap-2.5 cursor-pointer">
+            <label class="styledesk_choice">
               <input id="login_enabled" name="login_enabled" type="checkbox" value="1" class="sd-check mt-0.5"
                      @checked($loginEnabled)>
-              <span class="min-w-0">
+              <span class="styledesk_choice__label min-w-0">
                 <span class="block text-[13px] font-medium text-ink">{{ __('staff.fields.login_enabled') }}</span>
                 <span class="block text-[12px] text-sub">{{ __('staff.fields.login_enabled_hint') }}</span>
               </span>
@@ -246,10 +246,10 @@
                  an email inviting someone to an account they cannot have. --}}
             @if (! $staff)
             <div data-invite-block class="pl-[26px] space-y-3">
-              <label class="flex items-start gap-2.5 cursor-pointer">
+              <label class="styledesk_choice">
                 <input id="send_invitation" name="send_invitation" type="checkbox" value="1" class="sd-check mt-0.5"
                        @checked($staffValue('send_invitation', true))>
-                <span class="min-w-0">
+                <span class="styledesk_choice__label min-w-0">
                   <span class="block text-[13px] font-medium text-ink">{{ __('staff.fields.send_invitation') }}</span>
                   <span class="block text-[12px] text-sub">{{ __('staff.fields.send_invitation_hint') }}</span>
                 </span>

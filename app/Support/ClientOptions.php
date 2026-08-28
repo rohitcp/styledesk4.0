@@ -28,6 +28,18 @@ class ClientOptions
     }
 
     /** @return array<string, string> */
+    public static function phoneTypes(): array
+    {
+        return self::translate('phone_types', config('clients.phone_types'));
+    }
+
+    /** @return array<string, string> */
+    public static function emailTypes(): array
+    {
+        return self::translate('email_types', config('clients.email_types'));
+    }
+
+    /** @return array<string, string> */
     public static function statuses(): array
     {
         return self::translate('statuses', config('clients.statuses'));

@@ -548,8 +548,10 @@ class LocationSettingsTest extends TestCase
             ->get(route('settings.locations.index'))
             ->assertOk();
 
-        // Offered once, for the branch that is not primary.
-        $this->assertSame(1, substr_count($response->getContent(), 'Deactivate location'));
+        /* Offered once, for the branch that is not primary. Counting the
+           control rather than its label: the confirmation dialog repeats the
+           wording, so the label appears more than once per control. */
+        $this->assertSame(1, substr_count($response->getContent(), 'data-status="inactive"'));
     }
 
     // ------------------------------------------------------------ the grid

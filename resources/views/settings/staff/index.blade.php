@@ -36,7 +36,7 @@
 
         <div class="shrink-0 flex items-center gap-2">
           <a href="{{ route('settings.index') }}"
-             class="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+             class="styledesk_action">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             {{ __('common.back') }}
           </a>
@@ -73,14 +73,13 @@
                    placeholder="{{ __('staff.search_placeholder') }}">
           </div>
 
-          <button type="submit"
-                  class="h-11 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+          <button type="submit" class="styledesk_search w-full sm:w-auto">
             {{ __('common.search') }}
           </button>
 
           <button type="button" data-filter-toggle aria-expanded="{{ $activeFilters ? 'true' : 'false' }}"
                   aria-controls="staff-filters"
-                  class="h-11 px-4 inline-flex items-center gap-2 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+                  class="styledesk_action">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
             </svg>
@@ -124,7 +123,7 @@
             <button type="submit" class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
               {{ __('staff.apply_filters') }}
             </button>
-            <a href="{{ route('settings.staff.index') }}" class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+            <a href="{{ route('settings.staff.index') }}" class="styledesk_action">
               {{ __('common.clear') }}
             </a>
           </div>
@@ -223,6 +222,9 @@
                                   role="menuitem"
                                   data-delete-staff
                                   data-name="{{ $member->displayName() }}"
+                                  data-confirm-title="{{ __('common.delete') }}"
+                                  data-confirm="{{ __('staff.delete_confirm', ['name' => $member->displayName()]) }}"
+                                  data-confirm-label="{{ __('common.delete') }}"
                                   data-action="{{ route('settings.staff.destroy', $member) }}">
                             <x-icon name="trash-can" size="14" /> {{ __('common.delete') }}
                           </button>
@@ -338,23 +340,15 @@
       window.addEventListener('resize', function () { closeAll(null); });
     }());
 
-    /* Delete, behind a confirmation that names who is being removed. */
+    /* Delete. The question is asked by the shared confirmation dialog off
+       the button's own data-confirm attributes, so by the time this handler
+       runs the reader has already said yes. */
     (function () {
       var form = document.getElementById('staffDeleteForm');
       if (!form) return;
 
       document.querySelectorAll('[data-delete-staff]').forEach(function (button) {
         button.addEventListener('click', function () {
-          var name = button.getAttribute('data-name');
-
-          /* Built server-side per language: Spanish does not put the name
-             where English does, and string addition cannot express that. */
-          var message = @json(__('staff.delete_confirm', ['name' => '__NAME__'])).replace('__NAME__', name);
-
-          if (!window.confirm(message)) {
-            return;
-          }
-
           form.action = button.getAttribute('data-action');
           form.submit();
         });

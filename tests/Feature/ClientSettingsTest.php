@@ -324,6 +324,46 @@ class ClientSettingsTest extends TestCase
         $this->assertFalse($preference->fresh()->is_active);
     }
 
+    /**
+     * A card saves its own fields and leaves the rest alone.
+     *
+     * The page is a set of independent sections now, and an unchecked box
+     * looks exactly like an absent one in a request — so a save that wrote
+     * every column would switch off everything the card never showed.
+     */
+    public function test_a_section_save_touches_only_its_own_settings(): void
+    {
+        $settings = ClientSettings::forTenant($this->tenant);
+        $settings->forceFill([
+            'notes_multiple' => true,
+            'comm_sms' => true,
+            'name_format' => 'last_first',
+        ])->save();
+
+        $this->actingAs($this->owner())
+            ->patch(route('settings.clients.update'), [
+                'section' => 'notes',
+                'notes_enabled' => 1,
+                // notes_multiple deliberately absent: unticked.
+            ])
+            ->assertRedirect(route('settings.clients.show'));
+
+        $settings = $settings->fresh();
+
+        $this->assertFalse($settings->notes_multiple);
+        // Neither of these was on the card, so neither moved.
+        $this->assertTrue($settings->comm_sms);
+        $this->assertSame('last_first', $settings->name_format);
+    }
+
+    /** A section nothing on the page posts is refused rather than guessed at. */
+    public function test_an_unknown_section_is_refused(): void
+    {
+        $this->actingAs($this->owner())
+            ->patch(route('settings.clients.update'), ['section' => 'nonsense'])
+            ->assertStatus(422);
+    }
+
     public function test_preferences_can_be_reordered(): void
     {
         $first = $this->tenant->clientPreferences()->create(['label' => 'Morning', 'position' => 0]);
@@ -341,10 +381,10 @@ class ClientSettingsTest extends TestCase
     public function test_a_tag_carries_a_colour_from_the_palette(): void
     {
         $this->actingAs($this->owner())
-            ->post(route('settings.clients.tags.store'), ['label' => 'VIP', 'color' => 'violet'])
+            ->post(route('settings.clients.tags.store'), ['label' => 'Photoshoot', 'color' => 'violet'])
             ->assertSessionHasNoErrors();
 
-        $tag = $this->tenant->clientTags()->first();
+        $tag = $this->tenant->clientTags()->where('label', 'Photoshoot')->firstOrFail();
 
         $this->assertSame('violet', $tag->color);
         // The palette entry, not a stored hex, so a shade can be corrected
@@ -355,7 +395,7 @@ class ClientSettingsTest extends TestCase
     public function test_a_tag_colour_outside_the_palette_is_refused(): void
     {
         $this->actingAs($this->owner())
-            ->post(route('settings.clients.tags.store'), ['label' => 'VIP', 'color' => '#ff0000'])
+            ->post(route('settings.clients.tags.store'), ['label' => 'Photoshoot', 'color' => '#ff0000'])
             ->assertSessionHasErrors('color');
     }
 

@@ -27,7 +27,7 @@
         <button type="button" class="sd-seg__btn" role="tab" aria-selected="true">Password</button>
         <button type="button" class="sd-seg__btn opacity-45 cursor-not-allowed" role="tab"
                 aria-selected="false" tabindex="-1" disabled
-                title="Magic link sign-in is not available yet">Magic link</button>
+                data-tip="Magic link sign-in is not available yet">Magic link</button>
     </div>
 
     <form method="POST" action="{{ route('login.store') }}" class="mt-6">
@@ -75,7 +75,7 @@
     <div class="mt-8">
         <p class="sd-or">Or continue with</p>
 
-        <div class="mt-5 space-y-2.5" title="Social sign-in is not available yet">
+        <div class="mt-5 space-y-2.5" data-tip="Social sign-in is not available yet">
             <button type="button" class="sd-social opacity-45 cursor-not-allowed" disabled>
                 <span class="sd-social__icon" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.2-.4-4.7H24v8.9h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.5 6.6-16.3z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.2l-7.1-5.5c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-9H4.5v5.7C8.1 41.3 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.8 28.4A13.2 13.2 0 0111.1 24c0-1.5.3-3 .7-4.4v-5.7H4.5A22 22 0 002 24c0 3.6.9 7 2.5 10.1l7.3-5.7z"/><path fill="#EA4335" d="M24 9.5c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.9 2.9 29.9 1 24 1 15.4 1 8.1 5.7 4.5 13.9l7.3 5.7C13.5 14.3 18.3 9.5 24 9.5z"/></svg>

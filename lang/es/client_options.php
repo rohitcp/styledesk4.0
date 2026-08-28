@@ -30,6 +30,19 @@ return [
         'preferred_last' => 'Nombre preferido y luego apellidos',
     ],
 
+    'phone_types' => [
+        'mobile' => 'Móvil',
+        'home' => 'Casa',
+        'work' => 'Trabajo',
+        'other' => 'Otro',
+    ],
+
+    'email_types' => [
+        'personal' => 'Personal',
+        'work' => 'Trabajo',
+        'other' => 'Otro',
+    ],
+
     'statuses' => [
         'active' => 'Activo',
         'inactive' => 'Inactivo',

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\TenantStorageContract;
+use App\Services\Storage\TenantStorageService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -15,6 +17,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        /* Storage is asked for by contract, so a test can hand a feature a
+           different implementation and nothing in the feature changes. */
+        $this->app->singleton(TenantStorageContract::class, TenantStorageService::class);
+
         //
     }
 

@@ -7,7 +7,7 @@
     {{-- Single column, per the recommended structure: eight cards read top to
          bottom, and a settings page that asks which column to start in is
          asking a question it should answer itself. --}}
-    <div class="max-w-[760px]">
+    <div class="styledesk_form">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
         <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
@@ -22,7 +22,7 @@
         </div>
 
         <a href="{{ route('settings.index') }}"
-           class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+           class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
         </a>
@@ -44,368 +44,235 @@
         </div>
       @endif
 
+
       @php
           $cfg = config('clients');
           $opt = App\Support\ClientOptions::class;
           $locationOptions = ['' => __('clients.defaults.none')] + $locations->pluck('name', 'id')->all();
           $staffOptions = ['' => __('clients.defaults.none')]
               + $staff->mapWithKeys(fn ($m) => [$m->id => $m->displayName()])->all();
+
+          /**
+           * The one-line summary each card shows when it is closed.
+           *
+           * Written from the settings themselves rather than restated by
+           * hand, so a card cannot describe a configuration the page is not
+           * actually holding — which is the only way a preview earns being
+           * trusted instead of opened.
+           */
+          $on = fn (bool $value) => $value ? __('common.on') : __('common.off');
+          $list = fn (array $keys, array $labels) => collect($keys)
+              ->map(fn ($key) => $labels[$key] ?? $key)->join(' · ');
+
+          $enabledFields = collect($settings->orderedFields())->where('enabled', true);
+
+          $summaries = [
+              'client-records' => trans_choice('clients.summary.fields', $enabledFields->count(), ['count' => $enabledFields->count()])
+                  .' · '.($opt::nameFormats()[$settings->name_format] ?? ''),
+
+              'lists' => trans_choice('clients.summary.preferences', $preferences->where('is_active', true)->count(), ['count' => $preferences->where('is_active', true)->count()])
+                  .' · '.trans_choice('clients.summary.tags', $tags->where('is_active', true)->count(), ['count' => $tags->where('is_active', true)->count()]),
+
+              'behavioral-tags' => trans_choice('clients.summary.behavioral', $behavioralTags->flatten()->where('is_active', true)->count(), [
+                  'count' => $behavioralTags->flatten()->where('is_active', true)->count(),
+                  'total' => $behavioralTags->flatten()->count(),
+              ]),
+
+              'notes' => $settings->notes_enabled
+                  ? trans_choice('clients.summary.notes_on', (int) $settings->notes_multiple)
+                  : __('clients.summary.notes_off'),
+
+              'booking' => trans_choice('clients.summary.panels', count($settings->booking_panels ?? []), ['count' => count($settings->booking_panels ?? [])]),
+
+              'duplicate-detection' => $settings->duplicate_warning
+                  ? $list($settings->duplicate_rules ?? [], $opt::duplicateRules())
+                  : __('clients.summary.duplicates_off'),
+
+              'communication' => $list(
+                  collect(['email' => $settings->comm_email, 'sms' => $settings->comm_sms, 'phone' => $settings->comm_phone])
+                      ->filter()->keys()->all(),
+                  $opt::communicationMethods(),
+              ) ?: __('common.none'),
+
+              'status' => __('clients.summary.status', [
+                  'inactive' => $on((bool) $settings->allow_booking_inactive),
+                  'archived' => $on((bool) $settings->archived_in_search),
+              ]),
+
+              'privacy' => $settings->consent_record
+                  ? __('clients.summary.consent_on')
+                  : __('clients.summary.consent_off'),
+          ];
+
+          /**
+           * The fuller preview each card shows when it is open: the saved
+           * configuration as a list of facts, in the same shape for every
+           * card so it can be scanned rather than learned.
+           */
+          $fieldSummary = fn () => collect($settings->orderedFields())
+              ->filter(fn (array $f) => $f['enabled'])
+              ->map(fn (array $f) => ($opt::fields()[$f['key']] ?? $f['key'])
+                  .' '.($f['required'] ? __('clients.preview.required') : __('clients.preview.optional')))
+              ->join(' · ');
+
+          $previews = [
+              'client-records' => [
+                  __('clients.preview.fields') => $fieldSummary(),
+                  __('clients.name_format') => $opt::nameFormats()[$settings->name_format] ?? '',
+                  __('clients.defaults.status') => $opt::defaultStatuses()[$settings->default_status] ?? '',
+                  __('clients.defaults.communication') => $opt::communicationMethods()[$settings->default_communication] ?? '',
+                  /* Drawn with the shared consent indicator rather than
+                     written out, so the default a business picked reads the
+                     same as the consent it produces on a client record. */
+                  __('clients.defaults.marketing') => new \Illuminate\Support\HtmlString(
+                      \Illuminate\Support\Facades\Blade::render(
+                          '<x-consent-status :granted="$granted" :label="$label" />',
+                          [
+                              'granted' => $settings->default_marketing === 'in',
+                              'label' => $opt::marketingDefaults()[$settings->default_marketing] ?? null,
+                          ],
+                      )
+                  ),
+              ],
+              'notes' => [
+                  __('clients.notes.enabled') => $on((bool) $settings->notes_enabled),
+                  __('clients.notes.multiple') => $on((bool) $settings->notes_multiple),
+                  __('clients.notes.in_booking') => $on((bool) $settings->notes_in_booking),
+                  __('clients.notes.important_on_profile') => $on((bool) $settings->notes_important_on_profile),
+                  __('clients.notes.admin_can_delete') => $on((bool) $settings->notes_admin_can_delete),
+              ],
+              'booking' => [
+                  __('clients.booking_panels') => $list($settings->booking_panels ?? [], $opt::bookingPanels()),
+                  __('clients.history_panels') => $list($settings->history_panels ?? [], $opt::historyPanels()),
+                  __('clients.creation') => $list($settings->creation_sources ?? [], $opt::creationSources()),
+              ],
+              'duplicate-detection' => [
+                  __('clients.duplicates.warning') => $on((bool) $settings->duplicate_warning),
+                  __('clients.duplicates.rules') => $list($settings->duplicate_rules ?? [], $opt::duplicateRules()),
+                  __('clients.duplicates.show_matches') => $on((bool) $settings->duplicate_show_matches),
+                  __('clients.search') => $list($settings->search_fields ?? [], $opt::searchFields()),
+              ],
+              'communication' => [
+                  __('clients.communication.methods') => $list(
+                      collect(['email' => $settings->comm_email, 'sms' => $settings->comm_sms, 'phone' => $settings->comm_phone])
+                          ->filter()->keys()->all(),
+                      $opt::communicationMethods(),
+                  ),
+                  __('clients.communication.marketing') => $list(
+                      collect(['email' => $settings->comm_marketing_email, 'sms' => $settings->comm_marketing_sms])
+                          ->filter()->keys()->all(),
+                      $opt::communicationMethods(),
+                  ),
+              ],
+              'status' => [
+                  __('clients.status.allow_booking_inactive') => $on((bool) $settings->allow_booking_inactive),
+                  __('clients.status.archived_in_search') => $on((bool) $settings->archived_in_search),
+              ],
+              'privacy' => [
+                  __('clients.consent.record') => $on((bool) $settings->consent_record),
+                  __('clients.consent.record_date') => $on((bool) $settings->consent_record_date),
+                  __('clients.consent.record_captured_by') => $on((bool) $settings->consent_record_captured_by),
+                  __('clients.consent.show_on_profile') => $on((bool) $settings->consent_show_on_profile),
+              ],
+          ];
+
+          /** Title, description and which partial holds each card's form. */
+          $cards = [
+              ['id' => 'client-records', 'title' => __('clients.cards.records'), 'hint' => __('clients.cards.records_hint'), 'section' => 'records'],
+              ['id' => 'notes', 'title' => __('clients.cards.notes'), 'hint' => __('clients.cards.notes_hint'), 'section' => 'notes'],
+              ['id' => 'booking', 'title' => __('clients.cards.booking'), 'hint' => __('clients.cards.booking_hint'), 'section' => 'booking'],
+              ['id' => 'duplicate-detection', 'title' => __('clients.cards.duplicates'), 'hint' => __('clients.cards.duplicates_hint'), 'section' => 'duplicates'],
+              ['id' => 'communication', 'title' => __('clients.cards.communication'), 'hint' => __('clients.cards.communication_hint'), 'section' => 'communication'],
+              ['id' => 'status', 'title' => __('clients.cards.status'), 'hint' => __('clients.cards.status_hint'), 'section' => 'status'],
+              ['id' => 'privacy', 'title' => __('clients.cards.privacy'), 'hint' => __('clients.cards.privacy_hint'), 'section' => 'privacy'],
+          ];
       @endphp
 
-      <form id="clientSettingsForm" method="POST" action="{{ route('settings.clients.update') }}" class="mt-6 space-y-5">
-        @csrf
-        @method('PATCH')
+      <div class="mt-6 flex flex-wrap items-center justify-end gap-2">
+        <button type="button" class="styledesk_action styledesk_action--sm" data-accordion-expand-all>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 10l4 4 4-4M8 4l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {{ __('clients.expand_all') }}
+        </button>
 
-        {{-- ═══════════════════════════ 1 — client records ═══════════════ --}}
-        <section class="bg-white border border-line rounded-card p-5 space-y-5">
-          <div>
-            <h2 class="text-[15px] font-semibold text-head">{{ __('clients.cards.records') }}</h2>
-            <p class="text-[13px] text-sub mt-0.5">{{ __('clients.cards.records_hint') }}</p>
-          </div>
+        <button type="button" class="styledesk_action styledesk_action--sm" data-accordion-collapse-all>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 14l4-4 4 4M8 20l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {{ __('clients.collapse_all') }}
+        </button>
+      </div>
 
-          <div class="pt-4 border-t border-line">
-            <h3 class="text-[13px] font-medium text-ink mb-3">{{ __('clients.defaults.title') }}</h3>
+      <div class="mt-3">
+        {{-- Each card is its own form, posting only what it owns. There is no
+             page-level Save: these settings have nothing to do with each
+             other, and one button that wrote all of them would make every
+             visit to this page a chance to change something the reader never
+             looked at. --}}
+        @foreach ($cards as $card)
+          <x-settings.accordion :id="$card['id']" :title="$card['title']"
+                                :description="$card['hint']" :summary="$summaries[$card['id']] ?? null">
+            <x-slot:preview>
+              @include('settings.clients._preview', ['rows' => $previews[$card['id']] ?? []])
+            </x-slot:preview>
 
-            <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
-              <x-combo name="default_status" :label="__('clients.defaults.status')" required
-                       :options="$opt::defaultStatuses()"
-                       :selected="old('default_status', $settings->default_status)" />
+            <form method="POST" action="{{ route('settings.clients.update') }}" data-accordion-form class="space-y-5">
+              @csrf
+              @method('PATCH')
+              <input type="hidden" name="section" value="{{ $card['section'] }}">
 
-              <x-combo name="default_communication" :label="__('clients.defaults.communication')" required
-                       :options="$opt::communicationMethods()"
-                       :selected="old('default_communication', $settings->default_communication)" />
+              @include('settings.clients.sections.'.$card['id'])
 
-              <x-combo name="default_location_id" :label="__('clients.defaults.location')"
-                       :options="$locationOptions"
-                       :selected="old('default_location_id', $settings->default_location_id)"
-                       :placeholder="__('clients.defaults.none')" />
-
-              <x-combo name="default_staff_id" :label="__('clients.defaults.staff')"
-                       :options="$staffOptions"
-                       :selected="old('default_staff_id', $settings->default_staff_id)"
-                       :placeholder="__('clients.defaults.none')" />
-
-              <div class="sm:col-span-2">
-                <x-combo name="default_marketing" :label="__('clients.defaults.marketing')" required
-                         :options="$opt::marketingDefaults()"
-                         :selected="old('default_marketing', $settings->default_marketing)" />
+              <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-line">
+                <button type="submit"
+                        class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+                  {{ __('common.save_changes') }}
+                </button>
               </div>
-            </div>
-          </div>
+            </form>
+          </x-settings.accordion>
+        @endforeach
 
-          {{-- ---------------------------------------- profile fields --}}
-          <div class="pt-4 border-t border-line">
-            <h3 class="text-[13px] font-medium text-ink">{{ __('clients.fields.title') }}</h3>
-            <p class="text-[12px] text-sub mt-0.5">{{ __('clients.fields.hint') }}</p>
+        {{-- The three list cards manage records rather than fields: adding a
+             tag or switching one off takes effect on its own, so they have no
+             Save of their own to press. --}}
+        <x-settings.accordion id="lists" :title="__('clients.cards.lists')"
+                              :description="__('clients.cards.lists_hint')"
+                              :summary="$summaries['lists']" :saves="false">
+          <x-slot:preview>
+            @include('settings.clients._preview', ['rows' => [
+                __('clients.preferences.title') => $preferences->where('is_active', true)->pluck('label')->take(6)->join(' · ')
+                    .($preferences->where('is_active', true)->count() > 6 ? ' '.__('clients.preview.more', ['count' => $preferences->where('is_active', true)->count() - 6]) : ''),
+                __('clients.preferences.multiple') => $on((bool) $settings->preferences_multiple),
+                __('clients.tags.title') => $tags->where('is_active', true)->pluck('label')->take(6)->join(' · ')
+                    .($tags->where('is_active', true)->count() > 6 ? ' '.__('clients.preview.more', ['count' => $tags->where('is_active', true)->count() - 6]) : ''),
+                __('clients.tags.enabled') => $on((bool) $settings->tags_enabled),
+            ]])
+          </x-slot:preview>
 
-            <div class="mt-3 rounded-lg border border-line overflow-hidden" data-field-list>
-              <div class="grid grid-cols-[1fr_auto_auto] gap-3 px-3 py-2 border-b border-line bg-hover/50 text-[12px] text-sub">
-                <span>{{ __('clients.fields.field') }}</span>
-                <span class="w-[44px] text-center">{{ __('clients.fields.enabled') }}</span>
-                <span class="w-[74px] text-center">{{ __('clients.fields.required') }}</span>
-              </div>
+          @include('settings.clients._lists')
+        </x-settings.accordion>
 
-              @foreach ($settings->orderedFields() as $index => $field)
-                <div class="grid grid-cols-[1fr_auto_auto] gap-3 items-center px-3 py-2.5 border-b border-line last:border-0"
-                     data-field-row draggable="true">
-                  <span class="flex items-center gap-2 min-w-0">
-                    <span class="text-faint cursor-grab select-none" aria-hidden="true" data-field-handle>⠿</span>
-
-                    <span class="min-w-0">
-                      <span class="block text-[13px] text-ink truncate">{{ $field['label'] }}</span>
-                      @if ($field['locked'])
-                        <span class="block text-[11px] text-faint">{{ __('clients.fields.locked') }}</span>
-                      @endif
-                    </span>
-                  </span>
-
-                  <span class="w-[44px] grid place-items-center">
-                    {{-- A locked field posts nothing and shows a tick it
-                         cannot change. The server forces it on regardless, so
-                         this is honesty about a decision already made rather
-                         than the control that enforces it. --}}
-                    <input type="checkbox" class="sd-check"
-                           @if (! $field['locked']) name="fields[{{ $field['key'] }}][enabled]" @endif
-                           value="1" data-field-enabled
-                           @checked($field['enabled']) @disabled($field['locked'])>
-                  </span>
-
-                  <span class="w-[74px] grid place-items-center">
-                    <input type="checkbox" class="sd-check"
-                           @if (! $field['locked']) name="fields[{{ $field['key'] }}][required]" @endif
-                           value="1" data-field-required
-                           @checked($field['required'])
-                           @disabled($field['locked'] || ! $field['enabled'])>
-                  </span>
-
-                  <input type="hidden" name="fields[{{ $field['key'] }}][order]" value="{{ $index }}" data-field-order>
-                </div>
-              @endforeach
-            </div>
-
-            <p class="mt-2 text-[12px] text-sub">{{ __('clients.fields.contact_advice') }}</p>
-          </div>
-
-          {{-- ------------------------------------------ name format --}}
-          <div class="pt-4 border-t border-line">
-            <x-combo name="name_format" :label="__('clients.name_format')" required
-                     :options="$opt::nameFormats()"
-                     :selected="old('name_format', $settings->name_format)"
-                     :hint="__('clients.name_format_hint')" />
-
-            @php
-                /**
-                 * A worked example of each format, so the choice is read
-                 * rather than decoded. "First name and last initial" means
-                 * far less than seeing "Amara O.".
-                 */
-                $namePreviews = [
-                    'first_last' => 'Amara Osei',
-                    'last_first' => 'Osei, Amara',
-                    'first_initial' => 'Amara O.',
-                    'preferred_last' => 'Ami Osei',
-                ];
-            @endphp
-
-            <p class="mt-2 text-[12px] text-sub">
-              {{ __('clients.name_preview') }}:
-              <span class="text-ink font-medium" data-name-preview>{{ $namePreviews[$settings->name_format] ?? '' }}</span>
-            </p>
-
-            <script type="application/json" data-name-previews>@json($namePreviews)</script>
-          </div>
-
-          {{-- -------------------------------------------- client ID --}}
-          <div class="pt-4 border-t border-line">
-            <p class="text-[13px] font-medium text-ink">{{ __('clients.client_id') }}</p>
-            <p class="text-[12px] text-sub mt-0.5 leading-relaxed">{{ __('clients.client_id_hint') }}</p>
-            <p class="text-[12px] text-sub mt-1">
-              {{ __('clients.client_id_example', [
-                  'example' => $cfg['client_id']['prefix'].str_pad('123', $cfg['client_id']['padding'], '0', STR_PAD_LEFT),
-              ]) }}
-            </p>
-          </div>
-        </section>
-
-        {{-- ═══════════════════════════ 3 — notes ════════════════════════ --}}
-        <section class="bg-white border border-line rounded-card p-5 space-y-4">
-          <div>
-            <h2 class="text-[15px] font-semibold text-head">{{ __('clients.cards.notes') }}</h2>
-            <p class="text-[13px] text-sub mt-0.5">{{ __('clients.cards.notes_hint') }}</p>
-          </div>
-
-          <div class="space-y-3">
-            @foreach ([
-                'notes_enabled' => 'clients.notes.enabled',
-                'notes_multiple' => 'clients.notes.multiple',
-                'notes_in_booking' => 'clients.notes.in_booking',
-                'notes_important_on_profile' => 'clients.notes.important_on_profile',
-                'notes_allow_important' => 'clients.notes.allow_important',
-                'notes_staff_can_edit' => 'clients.notes.staff_can_edit',
-                'notes_admin_can_delete' => 'clients.notes.admin_can_delete',
-            ] as $switch => $key)
-              @include('settings.clients._toggle', [
-                  'name' => $switch,
-                  'label' => __($key),
-                  'checked' => (bool) old($switch, $settings->{$switch}),
-              ])
-            @endforeach
-          </div>
-        </section>
-
-        {{-- ═══════════════════════ 4 — booking behaviour ════════════════ --}}
-        <section class="bg-white border border-line rounded-card p-5 space-y-4">
-          <div>
-            <h2 class="text-[15px] font-semibold text-head">{{ __('clients.cards.booking') }}</h2>
-            <p class="text-[13px] text-sub mt-0.5">{{ __('clients.cards.booking_hint') }}</p>
-          </div>
-
-          @include('settings.clients._checkset', [
-              'name' => 'booking_panels',
-              'legend' => __('clients.booking_panels'),
-              'options' => $opt::bookingPanels(),
-              'selected' => old('booking_panels', $settings->booking_panels ?? []),
-          ])
-
-          <div class="pt-4 border-t border-line">
-            @include('settings.clients._checkset', [
-                'name' => 'history_panels',
-                'legend' => __('clients.history_panels'),
-                'options' => $opt::historyPanels(),
-                'selected' => old('history_panels', $settings->history_panels ?? []),
+        <x-settings.accordion id="behavioral-tags" :title="__('clients.behavioral.title')"
+                              :description="__('clients.behavioral.intro')"
+                              :summary="$summaries['behavioral-tags']" :saves="false">
+          <x-slot:preview>
+            @include('settings.clients._preview', [
+                'rows' => collect(config('behavioral_tags.categories'))
+                    ->mapWithKeys(fn ($label, $key) => [$label => $behavioralTags->get($key, collect())
+                        ->where('is_active', true)->count().' / '.$behavioralTags->get($key, collect())->count()])
+                    ->all(),
+                'note' => __('clients.behavioral.pending'),
             ])
-          </div>
+          </x-slot:preview>
 
-          <div class="pt-4 border-t border-line">
-            @include('settings.clients._checkset', [
-                'name' => 'creation_sources',
-                'legend' => __('clients.creation'),
-                'options' => $opt::creationSources(),
-                'selected' => old('creation_sources', $settings->creation_sources ?? []),
-                'unavailable' => $opt::unavailableSources(),
-            ])
-          </div>
-        </section>
-
-        {{-- ═══════════════════ 5 — duplicate detection ══════════════════ --}}
-        <section class="bg-white border border-line rounded-card p-5 space-y-4">
-          <div>
-            <h2 class="text-[15px] font-semibold text-head">{{ __('clients.cards.duplicates') }}</h2>
-            <p class="text-[13px] text-sub mt-0.5">{{ __('clients.cards.duplicates_hint') }}</p>
-          </div>
-
-          @include('settings.clients._checkset', [
-              'name' => 'duplicate_rules',
-              'legend' => __('clients.duplicates.rules'),
-              'options' => $opt::duplicateRules(),
-              'selected' => old('duplicate_rules', $settings->duplicate_rules ?? []),
-              'columns' => 1,
-          ])
-
-          <div class="space-y-3 pt-4 border-t border-line">
-            @include('settings.clients._toggle', [
-                'name' => 'duplicate_warning',
-                'label' => __('clients.duplicates.warning'),
-                'checked' => (bool) old('duplicate_warning', $settings->duplicate_warning),
-            ])
-            @include('settings.clients._toggle', [
-                'name' => 'duplicate_show_matches',
-                'label' => __('clients.duplicates.show_matches'),
-                'checked' => (bool) old('duplicate_show_matches', $settings->duplicate_show_matches),
-            ])
-          </div>
-
-          <p class="text-[12px] text-sub leading-relaxed pt-4 border-t border-line">
-            {{ __('clients.duplicates.no_merge') }}
-          </p>
-
-          <div class="pt-4 border-t border-line">
-            @include('settings.clients._checkset', [
-                'name' => 'search_fields',
-                'legend' => __('clients.search'),
-                'options' => $opt::searchFields(),
-                'selected' => old('search_fields', $settings->search_fields ?? []),
-                'columns' => 3,
-            ])
-          </div>
-        </section>
-
-        {{-- ═════════════════════ 6 — communication ══════════════════════ --}}
-        <section class="bg-white border border-line rounded-card p-5 space-y-4">
-          <div>
-            <h2 class="text-[15px] font-semibold text-head">{{ __('clients.cards.communication') }}</h2>
-            <p class="text-[13px] text-sub mt-0.5">{{ __('clients.cards.communication_hint') }}</p>
-          </div>
-
-          <fieldset>
-            <legend class="text-[13px] font-medium text-ink mb-2">{{ __('clients.communication.methods') }}</legend>
-            <div class="grid sm:grid-cols-3 gap-x-4 gap-y-2">
-              @foreach (['comm_email' => 'Email', 'comm_sms' => 'SMS', 'comm_phone' => 'Phone'] as $switch => $label)
-                @include('settings.clients._toggle', [
-                    'name' => $switch,
-                    'label' => $opt::communicationMethods()[str_replace('comm_', '', $switch)] ?? $label,
-                    'checked' => (bool) old($switch, $settings->{$switch}),
-                ])
-              @endforeach
-            </div>
-          </fieldset>
-
-          <fieldset class="pt-4 border-t border-line">
-            <legend class="text-[13px] font-medium text-ink mb-2">{{ __('clients.communication.marketing') }}</legend>
-            <div class="grid sm:grid-cols-2 gap-x-4 gap-y-2">
-              @include('settings.clients._toggle', [
-                  'name' => 'comm_marketing_email',
-                  'label' => $opt::communicationMethods()['email'],
-                  'checked' => (bool) old('comm_marketing_email', $settings->comm_marketing_email),
-              ])
-              @include('settings.clients._toggle', [
-                  'name' => 'comm_marketing_sms',
-                  'label' => $opt::communicationMethods()['sms'],
-                  'checked' => (bool) old('comm_marketing_sms', $settings->comm_marketing_sms),
-              ])
-            </div>
-          </fieldset>
-
-          <p class="text-[12px] text-sub leading-relaxed">{{ __('clients.communication.stored_separately') }}</p>
-        </section>
-
-        {{-- ═══════════════════ 7 — status & archiving ═══════════════════ --}}
-        <section class="bg-white border border-line rounded-card p-5 space-y-4">
-          <div>
-            <h2 class="text-[15px] font-semibold text-head">{{ __('clients.cards.status') }}</h2>
-            <p class="text-[13px] text-sub mt-0.5">{{ __('clients.cards.status_hint') }}</p>
-          </div>
-
-          <div class="space-y-3">
-            @include('settings.clients._toggle', [
-                'name' => 'allow_booking_inactive',
-                'label' => __('clients.status.allow_booking_inactive'),
-                'checked' => (bool) old('allow_booking_inactive', $settings->allow_booking_inactive),
-            ])
-            @include('settings.clients._toggle', [
-                'name' => 'archived_in_search',
-                'label' => __('clients.status.archived_in_search'),
-                'checked' => (bool) old('archived_in_search', $settings->archived_in_search),
-            ])
-          </div>
-
-          <p class="text-[12px] text-sub leading-relaxed pt-4 border-t border-line">
-            {{ __('clients.status.explainer') }}
-          </p>
-        </section>
-
-        {{-- ═══════════════════ 8 — privacy & consent ════════════════════ --}}
-        <section class="bg-white border border-line rounded-card p-5 space-y-4">
-          <div>
-            <h2 class="text-[15px] font-semibold text-head">{{ __('clients.cards.privacy') }}</h2>
-            <p class="text-[13px] text-sub mt-0.5">{{ __('clients.cards.privacy_hint') }}</p>
-          </div>
-
-          <div class="space-y-3">
-            @foreach ([
-                'consent_record' => 'clients.consent.record',
-                'consent_record_date' => 'clients.consent.record_date',
-                'consent_record_captured_by' => 'clients.consent.record_captured_by',
-                'consent_client_can_opt_out' => 'clients.consent.client_can_opt_out',
-                'consent_show_on_profile' => 'clients.consent.show_on_profile',
-            ] as $switch => $key)
-              @include('settings.clients._toggle', [
-                  'name' => $switch,
-                  'label' => __($key),
-                  'checked' => (bool) old($switch, $settings->{$switch}),
-              ])
-            @endforeach
-          </div>
-
-          <p class="text-[12px] text-faint leading-relaxed pt-4 border-t border-line">
-            {{ __('clients.consent.later') }}
-          </p>
-        </section>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <button type="submit" id="clientSettingsSave"
-                  class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
-            {{ __('common.save_changes') }}
-          </button>
-          <a href="{{ route('settings.index') }}"
-             class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-            {{ __('common.cancel') }}
-          </a>
-        </div>
-      </form>
-
-      {{-- ═══════════════════ 2 — preferences & tags ═══════════════════
-           Outside the settings form on purpose: these are records with their
-           own lifecycle, and adding a tag should not require saving forty
-           unrelated switches — nor should a failed save of those switches
-           lose a tag somebody just added. --}}
-      @include('settings.clients._lists')
-
-      <p class="mt-6 text-[12px] text-faint">{{ __('clients.scope_note') }}</p>
+          @include('settings.clients._behavioral')
+        </x-settings.accordion>
+      </div>
     </div>
   </main>
 @endsection
 
+{{-- Pushed, not included loose: anything a child view emits outside a
+     section is discarded, so the page's behaviour has to be handed to the
+     layout's stack rather than left at the end of the file. --}}
 @push('scripts')
   @include('settings.clients._scripts')
 @endpush

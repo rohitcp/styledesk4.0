@@ -48,7 +48,7 @@
         </button>
 
         <button type="button" tabindex="-1"
-                class="h-9 px-4 rounded-lg border border-stroke bg-white text-ink text-[13px] font-semibold pointer-events-none">
+                class="styledesk_action pointer-events-none">
           {{ __('common.cancel') }}
         </button>
 

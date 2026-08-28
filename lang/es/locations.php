@@ -186,7 +186,7 @@ return [
         'open' => 'Abierto',
         'closed' => 'Cerrado',
         'closed_all_day' => 'Cerrado todo el día',
-        'add_period' => '+ Añadir otro tramo',
+        'add_period' => 'Añadir otro tramo',
         'to' => 'a',
         'remove_period' => 'Quitar este tramo del :day',
         'opening_time' => 'Hora de apertura del :day',

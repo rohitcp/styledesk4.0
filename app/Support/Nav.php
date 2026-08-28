@@ -6,6 +6,7 @@ namespace App\Support;
 
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 /**
  * Resolution shared by the icon rail and the mobile drawer.
@@ -50,9 +51,32 @@ class Nav
     }
 
     /** @param array<string, mixed> $item */
+    /**
+     * Whether this is the section the reader is in.
+     *
+     * The whole section, not the one screen it starts on: a client's profile
+     * is still Clients, and an icon that goes dark the moment you open a
+     * record leaves the reader with no answer to "where am I".
+     *
+     * Matched on the route name's own prefix — `clients.index` lights up for
+     * `clients.*`. That deliberately does not catch `settings.clients.show`,
+     * which belongs to App Settings and has the gear to light up instead.
+     */
     public static function isActive(array $item): bool
     {
-        return isset($item['route']) && Request::routeIs($item['route']);
+        /** An item may name its own patterns when the prefix is not enough. */
+        if (! empty($item['active'])) {
+            return Request::routeIs(...(array) $item['active']);
+        }
+
+        $routes = collect([$item['route'] ?? null])
+            ->merge(collect($item['children'] ?? [])->pluck('route'))
+            ->filter()
+            ->flatMap(fn (string $route) => [$route, Str::before($route, '.').'.*'])
+            ->unique()
+            ->all();
+
+        return $routes !== [] && Request::routeIs(...$routes);
     }
 
     /**

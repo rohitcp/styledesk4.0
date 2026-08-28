@@ -16,6 +16,13 @@ import './prototype/account';
 
 import { capitalizeFirst, initCapitalization } from './capitalize';
 import { initPhoneFields } from './phone';
+import { initClientContacts } from './client-contacts';
+import { initClientFilters } from './client-filters';
+import { initClientGrid } from './client-grid';
+import { initCombos } from './combos';
+import { initTooltips } from './tooltip';
+import { initNoteComposer, initNoteReveal } from './note-composer';
+import './confirm';
 import { createApp } from 'vue';
 
 /**
@@ -111,11 +118,33 @@ export function mountVueIslands(root = document) {
     });
 }
 
+/**
+ * Date fields (x-date-field) use the design system's calendar picker rather
+ * than a native date input, and are upgraded here so a view only has to write
+ * the markup. Each field carries its own options — range, opening month,
+ * wording — so nothing about a particular screen lives in this file.
+ */
+function initDateFields(root = document) {
+    if (window.SD && typeof window.SD.datePickerAll === 'function') {
+        window.SD.datePickerAll(root);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     mountVueIslands();
     initPhoneFields();
     initCapitalization();
+    initCombos();
+    initTooltips();
+    initNoteComposer();
+    initNoteReveal();
+    initDateFields();
+    initClientContacts();
+    initClientGrid();
+    initClientFilters();
 });
+
+export { initDateFields };
 
 /**
  * Password visibility toggles.

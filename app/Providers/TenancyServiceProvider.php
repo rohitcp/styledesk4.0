@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Actions\Roles\ProvisionSystemRoles;
+use App\Models\BehavioralTag;
+use App\Models\ClientTag;
 use App\Models\ServiceCategory;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\Event;
@@ -59,6 +61,27 @@ class TenancyServiceProvider extends ServiceProvider
                  */
                 function (Events\TenantCreated $event) {
                     app(ProvisionSystemRoles::class)->forTenant($event->tenant);
+                },
+
+                /**
+                 * The client tags every business starts with.
+                 *
+                 * Same reasoning as the service categories above: "VIP" and
+                 * "Walk-in" mean the same thing in every salon, and a
+                 * business should not have to invent them before it can
+                 * classify its first client.
+                 */
+                function (Events\TenantCreated $event) {
+                    ClientTag::seedDefaultsFor($event->tenant);
+                },
+
+                /**
+                 * And the behavioural tags, which are the same catalogue for
+                 * every business — all this row records is whether each one
+                 * is applied.
+                 */
+                function (Events\TenantCreated $event) {
+                    BehavioralTag::seedDefaultsFor($event->tenant);
                 },
             ],
             Events\SavingTenant::class => [],

@@ -523,7 +523,9 @@ a.styledesk_settingcard:focus-visible {
     border-radius: 4px;
     background: none;
     color: currentColor;
-    opacity: 0.55;
+    /* Legible rather than ghosted: a remove control nobody can see is one
+       people click twice. */
+    opacity: 0.8;
     cursor: pointer;
 }
 
@@ -1136,3 +1138,2254 @@ textarea.sd-input {
 .styledesk_swatch::-webkit-color-swatch-wrapper { padding: 3px; }
 .styledesk_swatch::-webkit-color-swatch { border: 0; border-radius: 4px; }
 .styledesk_swatch::-moz-color-swatch { border: 0; border-radius: 4px; }
+
+/* -----------------------------------------------------------------------
+   Video frame, for an explainer that has not been recorded yet.
+
+   The diagonal hatch matches the dashboard's own feature cards, so a
+   placeholder reads as a placeholder everywhere it appears rather than as a
+   video that failed to load.
+   ----------------------------------------------------------------------- */
+.styledesk_videoframe {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 16 / 9;
+    background-color: #eef0f3;
+    background-image: repeating-linear-gradient(
+        135deg,
+        rgb(255 255 255 / 55%) 0 10px,
+        transparent 10px 20px
+    );
+}
+
+.styledesk_videoframe__badge {
+    padding: 0.375rem 0.75rem;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 85%);
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+/*
+ * The calendar's month and year, once they are combos.
+ *
+ * `.sd-cal__mini` draws its own caret as a background image, which the combo
+ * button already paints as an SVG — without this a reader sees two arrows in
+ * a 92px control. The width also has to be released: the button carries the
+ * mini's `width: 100%`, and the year sits in a fixed-width column.
+ */
+.sd-combo-btn.sd-cal__mini {
+    background-image: none;
+    padding-right: 0.5rem;
+}
+
+/* ------------------------------------------------------------------
+   Secondary action button
+   ------------------------------------------------------------------
+   One class for every "do a small thing here" control: Add another number,
+   Add shift, Copy Monday's hours, Add exception, Back, Cancel.
+
+   Written as CSS rather than a Tailwind class string because the same button
+   has to exist in Blade and in Vue, and a string copied into six files is
+   six things to keep in step — which is exactly how this ended up with three
+   heights (h-8, h-9, h-10), two radii and one plain text link all meaning
+   the same thing.
+
+   What it is not: the primary action. Save, Continue and Create stay filled
+   with the brand colour, because a screen where everything is outlined is a
+   screen with no answer to "what do I press".
+   ------------------------------------------------------------------ */
+
+.styledesk_action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    height: 2.25rem;
+    padding: 0 0.875rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-stroke);
+    background: #fff;
+    color: var(--color-ink);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.styledesk_action:hover { background: var(--color-hover); }
+.styledesk_action:active { background: var(--color-sel); }
+
+/* focus-visible, not focus: a mouse user pressing Add should not be left
+   with a ring they did not ask for. */
+.styledesk_action:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+.styledesk_action:disabled,
+.styledesk_action[aria-disabled='true'] {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+/* The dense variant, for actions that sit inside a form card or a day row
+   next to the fields they add to. Filled rather than white so it reads as a
+   control against the card it sits on. */
+.styledesk_action--sm {
+    height: 2rem;
+    padding: 0 0.625rem;
+    border-radius: 0.375rem;
+    font-size: 12px;
+    background: var(--color-hover);
+}
+
+.styledesk_action--sm:hover { background: var(--color-sel); }
+.styledesk_action--sm:active { background: #e5e7eb; }
+
+/* Destructive, for an action whose result is a loss. */
+.styledesk_action--danger { color: #b91c1c; }
+.styledesk_action--danger:hover { background: #fef2f2; border-color: #fecaca; }
+
+/* The remove at the end of a repeated row: quiet until it is pointed at, so
+   a form with six rows does not read as six warnings. */
+.styledesk_action--remove { color: var(--color-sub); }
+.styledesk_action--remove:hover { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+
+/* Square, for an icon with no words. Width follows the height of whichever
+   size it is combined with, so the button stays a square rather than
+   inheriting the text padding. */
+.styledesk_action--icon { width: 2.25rem; padding: 0; }
+.styledesk_action--sm.styledesk_action--icon { width: 2rem; }
+
+/* Matching an input's height, for a control that sits in a field row. */
+.styledesk_action--tall { height: 2.75rem; }
+.styledesk_action--tall.styledesk_action--icon { width: 2.75rem; }
+
+/* ------------------------------------------------------------------
+   Choice cards — the standard for a checkbox or radio option
+   ------------------------------------------------------------------
+   One option per row, each in its own bordered card, the whole card
+   clickable. It is a <label> wrapping a real <input>, so "the whole row is
+   clickable" is the browser's own behaviour rather than a click handler that
+   has to be remembered on every screen — and the control stays a checkbox to
+   the keyboard, to a screen reader, and to the form that posts it.
+
+   The selected state is drawn from :has(:checked) rather than from a class
+   toggled in JavaScript. The input is the truth; anything that sets it —
+   a click, the space bar, autofill, a browser restoring a form on Back —
+   repaints the card without anyone having to notice it happened.
+   ------------------------------------------------------------------ */
+
+.styledesk_choicelist {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.styledesk_choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    width: 100%;
+    padding: 0.6875rem 0.875rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-stroke);
+    background: #fff;
+    cursor: pointer;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.styledesk_choice:hover { background: var(--color-hover); }
+
+.styledesk_choice:has(:checked) {
+    border-color: var(--sd-brand);
+    background: var(--color-sel);
+}
+
+/* On the card, not the box: the whole row is the control, so the ring has to
+   be able to say so. */
+.styledesk_choice:has(:focus-visible) {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+.styledesk_choice:has(:disabled) {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #fff;
+}
+
+/* Nudged onto the first line of the label rather than centred, so a card
+   carrying a description keeps its box beside the name and not beside the
+   gap between the two lines. */
+.styledesk_choice .sd-check,
+.styledesk_choice .sd-radio {
+    margin-top: 0.0625rem;
+    flex-shrink: 0;
+}
+
+.styledesk_choice__label {
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--color-ink);
+    min-width: 0;
+}
+
+.styledesk_choice__hint {
+    display: block;
+    margin-top: 0.1875rem;
+    font-size: 12px;
+    color: var(--color-sub);
+    line-height: 1.45;
+}
+
+/* ------------------------------------------------------------------
+   Workspace tabs (client profile)
+   ------------------------------------------------------------------ */
+
+.styledesk_tab {
+    position: relative;
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    border: 0;
+    background: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-sub);
+    cursor: pointer;
+    transition: color 0.12s ease;
+}
+
+.styledesk_tab:hover { color: var(--color-ink); }
+
+/* The underline sits on the container's own border, so the selected tab
+   reads as joined to the panel below it rather than merely coloured. */
+.styledesk_tab.is-active {
+    color: var(--sd-brand);
+    box-shadow: inset 0 -2px 0 0 var(--sd-brand);
+}
+
+.styledesk_tab:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: -2px;
+    border-radius: 0.375rem;
+}
+
+/* A filter that is on, in the shared secondary button. */
+.styledesk_action.is-active {
+    border-color: var(--sd-brand);
+    background: var(--color-sel);
+    color: var(--sd-brand);
+}
+
+.styledesk_action.is-copied { color: #15803d; border-color: #86efac; }
+
+/* ------------------------------------------------------------------
+   Detail-page typography
+   ------------------------------------------------------------------
+   Two levels, used everywhere the client profile sets out a section: the
+   heading that names it, and the small muted label above a single value.
+   Named here rather than repeated as a utility string, because the whole
+   point of the page is that these look identical in all three columns.
+   ------------------------------------------------------------------ */
+
+.styledesk_heading {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-head);
+    line-height: 1.3;
+}
+
+.styledesk_label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+}
+
+/* The separator inside a row menu, before its destructive entries. */
+.styledesk_rowmenu__rule {
+    display: block;
+    height: 1px;
+    margin: 0.25rem 0;
+    background: var(--color-line);
+}
+
+/* ------------------------------------------------------------------
+   Workspace shell — three panels, each scrolling on its own
+   ------------------------------------------------------------------
+   Opted into by one page (the client profile) rather than applied to the
+   whole app: a fixed-height shell is right for a workspace the reader works
+   inside for minutes at a time, and wrong for a settings page they read top
+   to bottom.
+
+   Desktop only. Below the three-column breakpoint the columns stack, and
+   nested scroll areas on a phone are how a reader ends up unable to reach
+   the end of anything.
+
+   The footer stays in the flex column rather than being pushed out of the
+   viewport: the page does not scroll here, so anything below the fold would
+   be unreachable rather than merely further down.
+   ------------------------------------------------------------------ */
+
+@media (min-width: 1280px) {
+    .styledesk_shell--workspace {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* min-height: 0 is what lets a flex child be shorter than its content.
+       Without it the panels grow to fit and the page scrolls after all —
+       the single most common reason a layout like this quietly fails. */
+    .styledesk_shell--workspace > main {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+}
+
+/* A panel that scrolls on its own.
+
+   `overscroll-behavior: contain` stops a flick at the end of one panel from
+   scrolling whatever is behind it, which is the whole point of separating
+   them. The scrollbar is slim and only appears when it is needed. */
+.styledesk_scroll {
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+.styledesk_scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.styledesk_scroll::-webkit-scrollbar-track { background: transparent; }
+
+.styledesk_scroll::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 999px;
+    /* Inset by a transparent border so the thumb sits away from the content
+       rather than against it. */
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.styledesk_scroll::-webkit-scrollbar-thumb:hover { background-color: #9ca3af; background-clip: content-box; }
+
+/* ------------------------------------------------------------------
+   Tabulator, dressed as StyleDesk
+   ------------------------------------------------------------------
+   The library ships its own theme; this replaces it rather than layering on
+   top, so the clients grid reads as the same table the rest of the app draws
+   by hand: white, hairline rules between rows, no border around every cell,
+   and the header row separated by a single line.
+
+   Written here rather than as utility classes on each cell because the
+   library builds its own DOM — there is nowhere to put a class.
+   ------------------------------------------------------------------ */
+
+.tabulator {
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--color-line);
+    font-size: 13px;
+}
+
+/* The header carries the brand: a 20% tint behind it and the brand colour
+   for the labels and the sort arrows.
+
+   color-mix rather than an opacity utility, because the brand is a runtime
+   variable — Branding repaints it per business — and Tailwind's `/20` syntax
+   needs colour channels it cannot get from a var() holding a whole colour.
+   The flat fallback above it is what a browser without color-mix draws. */
+.tabulator .tabulator-header {
+    background: var(--color-sel);
+    background: color-mix(in srgb, var(--sd-brand) 10%, transparent);
+    border-bottom: 1px solid var(--color-line);
+    border-bottom-color: color-mix(in srgb, var(--sd-brand) 22%, transparent);
+    color: var(--sd-brand);
+    font-weight: 600;
+}
+
+.tabulator .tabulator-header .tabulator-col {
+    /* Transparent, so the tint is one band across the whole header rather
+       than a row of cells that each drew their own. */
+    background: transparent;
+    border-right: 0;
+    color: var(--sd-brand);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 0.75rem 1rem; }
+
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable,
+.tabulator .tabulator-footer .tabulator-page:not(:disabled) {
+    cursor: pointer;
+}
+
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
+    background: color-mix(in srgb, var(--sd-brand) 8%, transparent);
+}
+
+/* Sort arrows in the brand, dimmed until the column is the one sorted by. */
+.tabulator .tabulator-header .tabulator-col .tabulator-col-sorter .tabulator-arrow {
+    border-bottom-color: var(--sd-brand);
+    opacity: 0.35;
+}
+
+.tabulator .tabulator-header .tabulator-col[aria-sort='ascending'] .tabulator-arrow,
+.tabulator .tabulator-header .tabulator-col[aria-sort='descending'] .tabulator-arrow {
+    opacity: 1;
+}
+
+.tabulator .tabulator-header .tabulator-col[aria-sort='descending'] .tabulator-arrow {
+    border-top-color: var(--sd-brand);
+    border-bottom-color: transparent;
+}
+
+/* Column menu and header filter icons follow the same colour. */
+.tabulator .tabulator-header .tabulator-header-popup-button,
+.tabulator .tabulator-header .tabulator-col .tabulator-header-filter { color: var(--sd-brand); }
+
+.tabulator .tabulator-row {
+    background: #fff;
+    border-bottom: 1px solid var(--color-line);
+    /* The whole row opens the client, so it says so. */
+    cursor: pointer;
+}
+
+/* One line between the header and the first row, and one under the last.
+   The library draws its own borders on the table and the row holder, which
+   land on top of the ones above — two hairlines a pixel apart read as a
+   thick grey band rather than as a rule. */
+.tabulator .tabulator-tableholder,
+.tabulator .tabulator-tableholder .tabulator-table {
+    border-top: 0;
+    border-bottom: 0;
+    background: transparent;
+}
+
+.tabulator .tabulator-row:last-child { border-bottom: 0; }
+
+/* Banded rows. The tint is a quarter of the hover fill, so a nine-column row
+   can be read across without the banding competing with the row the pointer
+   is on — which is the state that has to win. */
+.tabulator .tabulator-row.tabulator-row-even {
+    background: color-mix(in srgb, var(--color-hover) 45%, #fff);
+}
+/* Light grey at half strength: enough to say which row the pointer is on,
+   quiet enough that running down a long list is not a flicker. Listed after
+   the banding and stated for both rows so it wins on either. */
+.tabulator .tabulator-row:hover,
+.tabulator .tabulator-row.tabulator-row-even:hover {
+    background: color-mix(in srgb, var(--color-hover) 100%, #fff);
+}
+
+.tabulator .tabulator-row .tabulator-cell {
+    border-right: 0;
+    padding: 0.75rem 1rem;
+    color: var(--color-ink);
+    vertical-align: middle;
+}
+
+.tabulator .tabulator-row .tabulator-cell.is-muted { color: var(--color-sub); }
+
+/* Cells sit on the row's centre line, whatever they hold. */
+.tabulator .tabulator-row .tabulator-cell { display: flex; align-items: center; }
+
+/* The client cell: initials, name, then the reference beside it. */
+.styledesk_gridclient {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.styledesk_gridclient__name {
+    font-weight: 600;
+    color: var(--color-head);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Quieter than the name and hard against it, so the pair reads as one
+   label rather than as two columns that happen to touch. */
+.styledesk_gridclient__ref {
+    flex-shrink: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--color-faint);
+}
+
+.styledesk_gridclient__ref::before { content: '('; }
+.styledesk_gridclient__ref::after { content: ')'; }
+
+.tabulator-row:hover .styledesk_gridclient__name { color: var(--sd-link); }
+
+/* The placeholder, when a search matched nothing. */
+.tabulator .tabulator-placeholder { background: transparent; }
+
+.tabulator .tabulator-placeholder .tabulator-placeholder-contents {
+    color: var(--color-sub);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* The library's loader sits over the rows; keep it quiet rather than a
+   full-width blue bar arriving on every scroll. */
+.tabulator .tabulator-alert { background: rgb(255 255 255 / 70%); }
+.tabulator .tabulator-alert .tabulator-alert-msg {
+    border: 1px solid var(--color-line);
+    background: #fff;
+    color: var(--color-sub);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: none;
+}
+
+/* The grid's pager. Buttons in the shared secondary style, the counter as
+   quiet metadata, and a rule above it rather than the library's own frame. */
+.tabulator .tabulator-footer {
+    background: #fff;
+    /* The one line under the rows: the last row does not draw its own. */
+    border-top: 1px solid var(--color-line);
+    padding: 0.625rem 1rem;
+}
+
+.tabulator .tabulator-footer .tabulator-page-counter {
+    color: var(--color-sub);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.tabulator .tabulator-footer .tabulator-page {
+    height: 2rem;
+    min-width: 2rem;
+    padding: 0 0.625rem;
+    margin: 0 0.125rem;
+    border: 1px solid var(--color-stroke);
+    border-radius: 0.375rem;
+    background: #fff;
+    color: var(--color-ink);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.tabulator .tabulator-footer .tabulator-page:not(.disabled):hover {
+    background: var(--color-hover);
+    color: var(--color-ink);
+}
+
+/* The page you are on, in the brand rather than the library's blue. */
+.tabulator .tabulator-footer .tabulator-page.active {
+    background: var(--sd-brand);
+    border-color: var(--sd-brand);
+    color: #fff;
+}
+
+.tabulator .tabulator-footer .tabulator-page.disabled { opacity: 0.45; }
+
+.tabulator .tabulator-footer .tabulator-page:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------
+   Filter chips
+   ------------------------------------------------------------------
+   One per active filter value, under the toolbar. The control above says how
+   many are chosen; these say which, and each can be dropped on its own.
+   ------------------------------------------------------------------ */
+
+.styledesk_chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    max-width: 14rem;
+    height: 1.75rem;
+    padding: 0 0.25rem 0 0.625rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-line);
+    background: var(--color-sel);
+    color: var(--color-ink);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.styledesk_chip__remove {
+    display: grid;
+    place-items: center;
+    height: 1.25rem;
+    width: 1.25rem;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: var(--color-sub);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.styledesk_chip__remove:hover { background: #fff; color: #b91c1c; }
+
+.styledesk_chip__remove:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------
+   Stat cards (a listing's figures)
+   ------------------------------------------------------------------
+   A white card washed with a tenth of its category colour, a neutral hairline
+   and a tinted icon box. The colour identifies the metric without the card
+   shouting: a page of saturated tiles reads as a dashboard, and this is a
+   client list with four figures above it.
+
+   Each one is a filter, so it is a button — it reacts to the pointer and can
+   be reached by the keyboard, which a div with a click handler cannot.
+   ------------------------------------------------------------------ */
+
+/* Two by two below the desktop breakpoint, one row above it.
+   A grid rather than a sideways scroll: four figures that fit two-up are
+   four figures the reader can see at once, and a row that scrolls hides
+   half of them behind a gesture. */
+.styledesk_statrow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+/* One per row on a small phone, where half a row is not enough to read a
+   label, a figure and its supporting line. */
+@media (max-width: 30rem) {
+    .styledesk_statrow { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (min-width: 1024px) {
+    .styledesk_statrow {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 0.125rem;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+    }
+}
+
+.styledesk_statcard {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    /* In the desktop row: share the width, and never go below a readable
+       one. Ignored by the grid below that breakpoint, which sizes its own
+       columns. */
+    flex: 1 0 15rem;
+    padding: 1rem;
+    border: 1px solid var(--color-line);
+    border-radius: 2px;
+    background: linear-gradient(135deg, #fff 0%, var(--stat-wash, #fff) 100%);
+    cursor: pointer;
+    scroll-snap-align: start;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.styledesk_statcard:hover {
+    border-color: var(--stat-accent, var(--color-stroke));
+    box-shadow: 0 1px 3px rgb(15 15 16 / 8%);
+}
+
+.styledesk_statcard:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+/* The card whose filter is applied, so the reader can see which figure the
+   list below is showing. */
+.styledesk_statcard.is-active {
+    border-color: var(--stat-accent, var(--sd-brand));
+    box-shadow: inset 0 0 0 1px var(--stat-accent, var(--sd-brand));
+}
+
+.styledesk_statcard__icon {
+    display: grid;
+    place-items: center;
+    height: 2.25rem;
+    width: 2.25rem;
+    flex-shrink: 0;
+    border-radius: 2px;
+    background: var(--stat-tint, var(--color-sel));
+    color: var(--stat-accent, var(--sd-brand));
+    transition: background-color 0.12s ease;
+}
+
+/* A shade stronger under the pointer, and no other movement. */
+.styledesk_statcard:hover .styledesk_statcard__icon {
+    background: var(--stat-tint-strong, var(--color-sel));
+}
+
+/* One palette entry per metric. Literals rather than shades of the brand:
+   these say which figure you are looking at, and four tints of one colour
+   would say nothing. `--stat-wash` is the far end of the gradient — a tenth
+   of the accent, so the card still reads as white. */
+.styledesk_statcard--blue {
+    --stat-accent: #2563eb; --stat-tint: #eff6ff; --stat-tint-strong: #dbeafe;
+    --stat-wash: rgb(37 99 235 / 10%);
+}
+
+.styledesk_statcard--green {
+    --stat-accent: #059669; --stat-tint: #ecfdf5; --stat-tint-strong: #d1fae5;
+    --stat-wash: rgb(5 150 105 / 10%);
+}
+
+.styledesk_statcard--violet {
+    --stat-accent: #7c3aed; --stat-tint: #f5f3ff; --stat-tint-strong: #ede9fe;
+    --stat-wash: rgb(124 58 237 / 10%);
+}
+
+.styledesk_statcard--amber {
+    --stat-accent: #d97706; --stat-tint: #fffbeb; --stat-tint-strong: #fef3c7;
+    --stat-wash: rgb(217 119 6 / 10%);
+}
+
+/* ------------------------------------------------------------------
+   Search button
+   ------------------------------------------------------------------
+   Dark grey rather than the brand colour, everywhere in the app. Searching
+   narrows a list; the brand button is for the action a screen exists to
+   perform — Add client, Save, Continue. Two filled brand buttons in one
+   toolbar make the reader choose between them.
+   ------------------------------------------------------------------ */
+
+.styledesk_search {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.75rem;
+    padding: 0 1.25rem;
+    border: 1px solid #374151;
+    border-radius: 0.5rem;
+    background: #374151;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.styledesk_search:hover { background: #1f2937; border-color: #1f2937; }
+.styledesk_search:active { background: #111827; border-color: #111827; }
+
+.styledesk_search:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 2px;
+}
+
+.styledesk_search:disabled {
+    background: #9ca3af;
+    border-color: #9ca3af;
+    color: #f3f4f6;
+    cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------
+   Grid frame (a listing's data area)
+   ------------------------------------------------------------------
+   The frame is a plain wrapper: the height belongs to the grid, which is
+   given a ceiling rather than a fixed size (see maxHeight in client-grid.js).
+   It grows with the rows it holds and scrolls inside itself once it reaches
+   the window's worth — so a short result set draws no empty space, and a
+   full page of a hundred is reviewed without the page itself stretching.
+   ------------------------------------------------------------------ */
+
+.styledesk_gridframe { min-height: 8rem; }
+
+/* An icon button whose action removes something: neutral until pointed at. */
+.styledesk_iconbtn--danger:hover { background-color: #fef2f2; color: #b91c1c; }
+
+/* ------------------------------------------------------------------
+   Section navigation (an in-page table of contents)
+   ------------------------------------------------------------------
+   A row of chips linking to the cards below them, pinned under the app bar
+   so it stays reachable through a long settings page.
+   ------------------------------------------------------------------ */
+
+.styledesk_sectionnav {
+    position: sticky;
+    /* Under the app bar, which is itself sticky at the top of the window. */
+    top: 3.5rem;
+    z-index: 20;
+    display: flex;
+    gap: 0.375rem;
+    margin: 1.25rem 0 0;
+    padding: 0.625rem 0;
+    background: #fff;
+    border-bottom: 1px solid var(--color-line);
+
+    /* One row at every width: wrapped chips turn a table of contents into a
+       block of text the reader has to search. */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.styledesk_chiplink {
+    display: inline-flex;
+    align-items: center;
+    height: 1.875rem;
+    padding: 0 0.75rem;
+    flex-shrink: 0;
+    border-radius: 999px;
+    border: 1px solid var(--color-line);
+    background: #fff;
+    color: var(--color-sub);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.styledesk_chiplink:hover { background: var(--color-hover); color: var(--color-ink); }
+
+.styledesk_chiplink:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+/* The section the reader is in. One at a time, set from what is on screen
+   rather than from the last chip clicked — scrolling past a card is the same
+   arrival as jumping to it. */
+.styledesk_chiplink.is-active {
+    border-color: var(--sd-brand);
+    background: color-mix(in srgb, var(--sd-brand) 10%, #fff);
+    color: var(--sd-brand);
+}
+
+/* Where a section comes to rest when it is jumped to: clear of the app bar
+   and the chip row, so the heading is the first thing under them. */
+.styledesk_anchor { scroll-margin-top: 7rem; }
+
+/* Smooth for everyone who has not asked for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+}
+
+/* ------------------------------------------------------------------
+   Form container
+   ------------------------------------------------------------------
+   One width for every Add, Edit and Settings screen: full width of whatever
+   it is given, up to 980px. Named once here rather than written on each page,
+   because the value of a standard width is that no page has its own — this
+   app had four (640, 760, 900, 1180) and no reason for any of them.
+
+   Not for the screens that are deliberately wide: a data grid, the dashboard,
+   the client profile's three panels. Those own the whole content area.
+   ------------------------------------------------------------------ */
+
+.styledesk_form {
+    width: 100%;
+    max-width: 980px;
+}
+
+/* ------------------------------------------------------------------
+   Settings accordion
+   ------------------------------------------------------------------
+   One card per section, each with its own preview, edit and save. The header
+   stays legible whether the card is open or shut: the title, the description
+   and the one-line summary of what is configured are the point of the closed
+   state, not decoration on the open one.
+   ------------------------------------------------------------------ */
+
+.styledesk_accordion {
+    background: #fff;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card, 10px);
+}
+
+.styledesk_accordion + .styledesk_accordion { margin-top: 0.75rem; }
+
+.styledesk_accordion__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+}
+
+/* The whole header is the hit area for opening the card, so the button is
+   the header rather than a chevron in the corner of it. */
+.styledesk_accordion__toggle {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+}
+
+.styledesk_accordion__toggle:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 4px;
+    border-radius: 4px;
+}
+
+.styledesk_accordion__chevron {
+    color: var(--color-faint);
+    margin-top: 0.125rem;
+    transition: transform 0.15s ease;
+}
+
+.styledesk_accordion.is-open .styledesk_accordion__chevron { transform: rotate(180deg); }
+
+.styledesk_accordion__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.styledesk_accordion__body {
+    padding: 0 1.5rem 1.5rem;
+    border-top: 1px solid var(--color-line);
+    margin-top: 0.25rem;
+    padding-top: 1.25rem;
+}
+
+/* The card being edited, so an open form is distinguishable from an open
+   preview at a glance. */
+.styledesk_accordion.is-editing { border-color: var(--sd-brand); }
+
+@media (max-width: 640px) {
+    .styledesk_accordion__head { flex-wrap: wrap; padding: 1rem; }
+    .styledesk_accordion__body { padding: 1rem; padding-top: 1rem; }
+}
+
+/* ------------------------------------------------------------------
+   Identity chips (client profile header)
+   ------------------------------------------------------------------
+   The facts that identify a client, in the same shape as the status badge
+   beside them: one height, one radius, one type size, so the row reads as a
+   set rather than as five different controls.
+
+   The tints only distinguish kinds at a glance — a phone number and an email
+   address are told apart by their content, not their colour, so the colour
+   stays quiet enough to ignore.
+   ------------------------------------------------------------------ */
+
+.styledesk_metachip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    height: 1.5rem;
+    padding: 0 0.5rem;
+    border-radius: 4px;
+    background: var(--chip-bg, var(--color-hover));
+    color: var(--chip-ink, var(--color-ink));
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    max-width: 22rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Only the ones that do something react to the pointer. */
+a.styledesk_metachip:hover { filter: brightness(0.96); }
+
+a.styledesk_metachip:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+/* A status chip keeps the colour it has everywhere else in the app. Stated
+   with both classes so it beats the chip's own default fill, which is
+   defined later in this file and would otherwise win on order alone. */
+.styledesk_metachip.styledesk_badge--active { --chip-bg: #dcfce7; --chip-ink: #166534; }
+.styledesk_metachip.styledesk_badge--setup { --chip-bg: #fef3c7; --chip-ink: #92400e; }
+.styledesk_metachip.styledesk_badge--soon { --chip-bg: #f1f2f4; --chip-ink: #6b7280; }
+
+.styledesk_metachip--since { --chip-bg: #eef2ff; --chip-ink: #3730a3; }
+.styledesk_metachip--phone { --chip-bg: #ecfeff; --chip-ink: #0e7490; }
+.styledesk_metachip--email { --chip-bg: #f5f3ff; --chip-ink: #6d28d9; }
+.styledesk_metachip--place { --chip-bg: #fffbeb; --chip-ink: #b45309; }
+
+/* A square client photo. Rounded corners rather than a circle: a photograph
+   of a person survives being squared, where a circle crops the top of their
+   head to fit. */
+.styledesk_avatar--square { border-radius: 6px; }
+
+/* The dot on a status chip, in the chip's own colour. currentColor rather
+   than a value of its own, so a new status never needs a second rule to make
+   its dot match its wording. */
+.styledesk_statusdot {
+    display: inline-block;
+    height: 0.4375rem;
+    width: 0.4375rem;
+    border-radius: 999px;
+    background: currentColor;
+    flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------
+   Information cards (client profile, right column)
+   ------------------------------------------------------------------
+   A tinted card per kind of context. The right column is a stack of four
+   different things, and colour is what lets a reader find the one they want
+   without reading every heading.
+
+   Border, wash and heading come from one accent each, so a new card needs a
+   colour rather than a rule.
+   ------------------------------------------------------------------ */
+
+.styledesk_infocard {
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--card-accent, var(--color-line));
+    border-radius: 8px;
+    background: var(--card-wash, #fff);
+    color: var(--card-ink, var(--color-ink));
+}
+
+.styledesk_infocard__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--card-accent, var(--color-head));
+}
+
+.styledesk_infocard--violet {
+    --card-accent: #7c3aed;
+    --card-wash: #faf8ff;
+    --card-ink: #4c1d95;
+}
+
+.styledesk_infocard--blue {
+    --card-accent: #2563eb;
+    --card-wash: #f5f9ff;
+    --card-ink: #1e3a8a;
+}
+
+.styledesk_infocard--teal {
+    --card-accent: #0d9488;
+    --card-wash: #f2fdfb;
+    --card-ink: #115e59;
+}
+
+/* A tag on one of those cards: tinted like the card, and removable. */
+.styledesk_tagchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    height: 1.5rem;
+    padding: 0 0.25rem 0 0.5rem;
+    border-radius: 4px;
+    /* White, outlined in the card's own accent: the chips are what the
+       card is listing, so they sit on it rather than in it. */
+    border: 1px solid var(--card-accent, var(--color-stroke));
+    background: #fff;
+    color: var(--card-ink, var(--color-ink));
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.styledesk_tagchip__remove {
+    display: grid;
+    place-items: center;
+    height: 1rem;
+    width: 1rem;
+    border: 0;
+    border-radius: 3px;
+    background: none;
+    color: currentColor;
+    /* Legible rather than ghosted: a remove control nobody can see is one
+       people click twice. */
+    opacity: 0.8;
+    cursor: pointer;
+}
+
+.styledesk_tagchip__remove:hover { opacity: 1; background: #fef2f2; color: #b91c1c; }
+
+.styledesk_tagchip__remove:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+    opacity: 1;
+}
+
+/* The client reference, in the header. Near-black because it is an
+   identifier rather than a state: it never changes and never means
+   anything good or bad. */
+.styledesk_metachip--ref { --chip-bg: #1f2937; --chip-ink: #fff; }
+.styledesk_metachip--dob { --chip-bg: #fdf2f8; --chip-ink: #9d174d; }
+
+/* The amber card, for the note a client's record must be read with. */
+.styledesk_infocard--amber {
+    --card-accent: #d97706;
+    --card-wash: #fffbeb;
+    --card-ink: #92400e;
+}
+
+/* A card's own action button, in the card's accent. Outlined for adding one
+   thing, solid for opening an editor — the weight matches the action. */
+.styledesk_cardbtn {
+    display: grid;
+    place-items: center;
+    height: 1.75rem;
+    width: 1.75rem;
+    border-radius: 6px;
+    border: 1px solid var(--card-accent, var(--color-stroke));
+    /* Filled with the card's own accent — the same colour as its border, so
+       the button reads as part of the card rather than a hole punched in it.
+       No hover repaint: the colour is the button's identity, not a state,
+       and swapping it on hover made a settled control look like it had
+       changed meaning. */
+    background: var(--card-accent, var(--color-hover));
+    color: #fff;
+    cursor: pointer;
+}
+
+.styledesk_cardbtn:active { filter: brightness(0.92); }
+
+/* The same button on a card with no accent of its own.
+   Keeps the shape every other add button has — 1.75rem square, 6px radius —
+   and takes the neutral surface of the icon buttons beside it, because a
+   filled square would be the only colour in an untinted column and would
+   read louder than what it adds to. */
+.styledesk_cardbtn--neutral {
+    border-color: var(--color-stroke);
+    background: var(--color-hover);
+    color: var(--color-ink);
+}
+
+.styledesk_cardbtn:focus-visible {
+    outline: 2px solid var(--card-accent, var(--sd-brand));
+    outline-offset: 2px;
+}
+
+/* The header avatar: one fixed square for the whole identity block, so it
+   does not resize as chips wrap onto a second line. */
+.styledesk_avatar--identity {
+    height: 3.25rem;
+    width: 3.25rem;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+/* ------------------------------------------------------------------
+   Tooltip
+   ------------------------------------------------------------------
+   A single node on the body, placed by resources/js/tooltip.js.
+
+   It used to be a pseudo-element on the control itself, which failed in
+   two ways that only showed up at the edges of the screen: a column with
+   `overflow: hidden` clipped the bubble out of existence, and a control
+   near the right of the window pushed it past the viewport. Neither is
+   fixable from inside the element — an absolutely positioned child cannot
+   escape a clipping ancestor — so the bubble now lives outside the layout
+   entirely and is positioned in viewport coordinates.
+
+   `position: fixed` also means it can never widen a scroll container, so
+   a tooltip is incapable of causing horizontal scrolling.
+   ------------------------------------------------------------------ */
+.styledesk_tooltip {
+    position: fixed;
+    z-index: 200;                     /* above modals, which sit at 100 */
+    max-width: min(18rem, calc(100vw - 1rem));
+    padding: 5px 8px;
+    border-radius: 6px;
+    background-color: #0f0f10;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25;
+    box-shadow: 0 6px 18px rgba(15, 15, 16, 0.22);
+    pointer-events: none;             /* never eats the hover it describes */
+}
+
+/* Wraps rather than runs off, now that a long hint can meet a narrow window. */
+.styledesk_tooltip { white-space: normal; overflow-wrap: anywhere; }
+
+/* ------------------------------------------------------------------
+   Pointer cursor
+   ------------------------------------------------------------------
+   Stated once, for everything that does something when clicked, rather
+   than per component — a control added next year should inherit the
+   right cursor without anyone remembering to ask for it.
+
+   `[data-*]` selectors are here because several controls in StyleDesk are
+   plain elements the page's own scripts listen on: a grid row that opens
+   a profile, a chip that applies a filter, a copy button. They look
+   clickable and they act clickable, so they point.
+   ------------------------------------------------------------------ */
+button,
+summary,
+label[for],
+a[href],
+[role='button'],
+[role='tab'],
+[role='option'],
+[data-copy],
+[data-toggle],
+[data-tab],
+[data-accordion-toggle],
+[data-menu-trigger],
+[data-filter],
+[data-chip-remove],
+input[type='checkbox'],
+input[type='radio'],
+input[type='submit'],
+input[type='button'],
+input[type='file'],
+select {
+    cursor: pointer;
+}
+
+/* A control that cannot act says so, and outranks the rule above. */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+fieldset:disabled :where(button, input, select, textarea),
+[aria-disabled='true'],
+.is-disabled {
+    cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------
+   Consent status — Opted in / Opted out
+   ------------------------------------------------------------------
+   One way of saying whether a client agreed to be contacted, used by
+   email, SMS, marketing preferences and anything else that records a
+   permission.
+
+   Opted out is grey, not red. Red reads as an error someone should fix,
+   and a client declining marketing is neither an error nor anything the
+   salon is entitled to correct. Grey says "recorded, and not active".
+
+   The icon never travels alone. A green tick and a grey dash are hard to
+   tell apart at a glance, impossible for a colour-blind reader, and
+   meaningless to a screen reader — the label is what carries the fact.
+   ------------------------------------------------------------------ */
+.styledesk_consent {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.styledesk_consent__icon {
+    flex-shrink: 0;
+    display: inline-flex;
+}
+
+.styledesk_consent--in { color: #166534; }
+.styledesk_consent--out { color: #6b7280; }
+
+/* ------------------------------------------------------------------
+   Metric card — the four figures at the top of a client profile
+   ------------------------------------------------------------------
+   Flat by instruction: a 2px radius, a light grey 1px border, white
+   behind it and no shadow at all. Colour is carried by the label alone —
+   four coloured outlines competed with the coloured cards further down
+   the page, while a grey frame lets the labels do the distinguishing.
+   The value stays black, so the number is what the eye lands on.
+
+   Each card sets --metric-ink and the label reads it, so adding a fifth
+   metric is one line of colour rather than a new rule.
+   ------------------------------------------------------------------ */
+/* Wraps on the width it actually has, not on the width of the window.
+   The four cards sit in the middle column of the profile, which can be
+   narrow while the viewport is wide — a breakpoint would keep four cards
+   in a 420px column and squeeze each label onto three lines. auto-fit
+   drops to two rows when a card can no longer hold its label. */
+.styledesk_metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+    gap: 0.75rem;
+}
+
+.styledesk_metric {
+    --metric-ink: var(--color-sub);
+
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-height: 4.5rem;              /* equal height whether or not a card has a figure */
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--color-line);
+    border-radius: 2px;
+    background: #fff;
+}
+
+.styledesk_metric__label {
+    color: var(--metric-ink);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+
+/* Black, and heavier than the label — the value is the answer. */
+.styledesk_metric__value {
+    color: var(--color-head);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+/* What a card says when the figure does not exist yet. Deliberately not
+   styled as a value: an explanation should not be mistaken for a number. */
+.styledesk_metric__empty {
+    color: var(--color-sub);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.styledesk_metric--blue { --metric-ink: #1d4ed8; }
+.styledesk_metric--violet { --metric-ink: #6d28d9; }
+.styledesk_metric--teal { --metric-ink: #0f766e; }
+.styledesk_metric--amber { --metric-ink: #b45309; }
+
+/* ------------------------------------------------------------------
+   The hidden attribute means hidden
+   ------------------------------------------------------------------
+   Every component class here sets its own `display`, and this file is the
+   last stylesheet in the cascade — so `.styledesk_action { display:
+   inline-flex }` quietly beat both `hidden` the utility and `hidden` the
+   HTML attribute, and a control marked hidden stayed on screen. Said once,
+   with the weight to win, rather than remembered per component.
+   ------------------------------------------------------------------ */
+[hidden] {
+    display: none !important;
+}
+
+/* ------------------------------------------------------------------
+   Client tag chip
+   ------------------------------------------------------------------
+   The business's own colour, used as an outline and text rather than a
+   solid fill. A column of solid chips in nine different colours reads as
+   nine warnings; outlined, the colour still tells them apart while the
+   card stays quiet enough to sit beside the contact details.
+
+   The colour arrives as --tag-ink from the tag's own palette entry, so a
+   business adding a tag colour changes nothing here.
+   ------------------------------------------------------------------ */
+.styledesk_clienttag {
+    --tag-ink: var(--color-sub);
+
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    height: 1.5rem;
+    padding: 0 0.25rem 0 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--tag-ink) 45%, #fff);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--tag-ink) 8%, #fff);
+    color: var(--tag-ink);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* A chip with nothing to remove keeps its left padding on both sides. */
+.styledesk_clienttag:not(:has(.styledesk_clienttag__remove)) { padding-right: 0.5rem; }
+
+.styledesk_clienttag__remove {
+    display: grid;
+    place-items: center;
+    height: 1rem;
+    width: 1rem;
+    border-radius: 999px;
+    color: inherit;
+    opacity: 0.65;
+    transition: background-color 0.12s ease, opacity 0.12s ease;
+}
+
+.styledesk_clienttag__remove:hover {
+    background: color-mix(in srgb, var(--tag-ink) 18%, #fff);
+    opacity: 1;
+}
+
+/* The same colour, as a dot beside a tag's name in the modal list. */
+.styledesk_clienttag__dot {
+    display: inline-block;
+    height: 0.5rem;
+    width: 0.5rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------
+   Notes — the list on a client profile
+   ------------------------------------------------------------------
+   Three kinds of note, told apart by more than colour: each state carries
+   a badge with an icon and a word, because a reader who cannot
+   distinguish amber from violet still has to know which note is which.
+
+   Private notes are the reason for the tinted variants. Their text is a
+   dark shade of the same hue rather than a pale one — a note nobody can
+   comfortably read is a note that gets skipped, and these are the ones
+   that must not be.
+   ------------------------------------------------------------------ */
+.styledesk_note {
+    --note-ink: var(--color-stroke);
+
+    position: relative;              /* the Delete icon sits in its corner */
+
+    padding: 0.875rem;
+    border: 1px solid var(--note-ink);
+    border-radius: 8px;
+    background: #fff;
+}
+
+.styledesk_note__body {
+    color: var(--color-ink);
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+/* White, with the colour carried by the border and the badge. A tinted
+   card competed with the tinted private one beside it, and a list where
+   every card is a different wash reads as a warning about everything. */
+.styledesk_note--important {
+    --note-ink: #d97706;
+    border-color: var(--note-ink);
+    background: #fff;
+}
+
+/* White, like the important card: the violet border and the lock are
+   what say private, and a tinted fill on top of them was saying it three
+   times. */
+.styledesk_note--private {
+    --note-ink: #6d28d9;
+    border-color: var(--note-ink);
+    background: #fff;
+}
+
+/* A note that is both keeps the private frame — the stricter of the two
+   states is the one a reader needs to see first. */
+.styledesk_note--important.styledesk_note--private { --note-ink: #6d28d9; }
+
+.styledesk_notebadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    height: 1.375rem;
+    padding: 0 0.5rem;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.styledesk_notebadge--important { background: #fef3c7; color: #92400e; }
+/* Outlined in the card's own border colour rather than filled: on a white
+   card the lock and the frame should read as one statement. */
+.styledesk_notebadge--private {
+    background: #fff;
+    border: 1px solid var(--note-ink, #6d28d9);
+    color: var(--note-ink, #6d28d9);
+}
+
+/* ------------------------------------------------------------------
+   Avatar stack — who has access to a private note
+   ------------------------------------------------------------------ */
+.styledesk_avatarstack {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.styledesk_avatarstack__item {
+    /* Overlapped, so a long list stays short. The white ring is what keeps
+       two faces from reading as one shape. */
+    margin-left: -0.5rem;
+    box-shadow: 0 0 0 2px #fff;
+}
+
+.styledesk_avatarstack__item:first-child { margin-left: 0; }
+
+.styledesk_avatarstack__more {
+    background: var(--color-hover);
+    color: var(--color-sub);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+/* ------------------------------------------------------------------
+   Note composer
+   ------------------------------------------------------------------
+   Anchored to the bottom-right of the window rather than centred over it:
+   a note is written *about* the profile behind it, and a modal in the
+   middle of the screen hides the record you are describing.
+
+   Full screen on a phone, where a floating window is a small screen
+   inside a small screen — and there is no Expand there for the same
+   reason: it is already as large as it can be.
+   ------------------------------------------------------------------ */
+.styledesk_composer {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+}
+
+@media (min-width: 640px) {
+    .styledesk_composer {
+        inset: auto 1.5rem 1.5rem auto;
+        width: min(52.5rem, calc(100vw - 3rem));
+        height: clamp(32.5rem, 70vh, calc(100vh - 3rem));
+        border: 1px solid var(--color-line);
+        border-radius: 12px;
+        box-shadow: 0 18px 48px rgba(15, 15, 16, 0.22);
+        overflow: hidden;
+    }
+
+    /* Expanded: a working page rather than a panel, for a long note or a
+       long access list. Same element, so nothing typed is lost in the
+       change — only its size is different. */
+    .styledesk_composer--expanded {
+        inset: 50% auto auto 50%;
+        transform: translate(-50%, -50%);
+        width: 92vw;
+        height: 92vh;
+    }
+}
+
+.styledesk_composer form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+.styledesk_composer__head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-head, #0f0f10);
+    color: #fff;
+}
+
+.styledesk_composer__head h2 { flex: 1; min-width: 0; }
+
+.styledesk_composer__icon {
+    display: grid;
+    place-items: center;
+    height: 1.75rem;
+    width: 1.75rem;
+    border-radius: 6px;
+    color: #fff;
+    opacity: 0.8;
+    cursor: pointer;
+    transition: background-color 0.12s ease, opacity 0.12s ease;
+}
+
+.styledesk_composer__icon:hover { opacity: 1; background: rgba(255, 255, 255, 0.14); }
+
+.styledesk_composer__icon:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+    opacity: 1;
+}
+
+/* The body scrolls, the header and footer do not: on a short window the
+   Add note button must stay reachable without scrolling to find it.
+
+   No padding of its own: the editor runs edge to edge so the window is one
+   surface rather than a white card sitting inside a white window. What
+   comes after the editor gets its own padding instead. */
+.styledesk_composer__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.styledesk_composer__settings {
+    padding: 0.875rem 1rem 1rem;
+    border-top: 1px solid var(--color-line);
+}
+
+.styledesk_composer__foot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1rem;
+    border-top: 1px solid var(--color-line);
+    background: #fff;
+}
+
+/* ------------------------------------------------------------------
+   Access For — a searchable multi-select over real checkboxes
+   ------------------------------------------------------------------
+   The list is checkboxes in a panel rather than a JavaScript widget with
+   a hidden field behind it: the form posts what is ticked, the keyboard
+   gets a control it already understands, and the whole thing still works
+   if the script never runs.
+
+   The panel stays open while choosing — picking four people should not
+   mean opening the same list four times.
+   ------------------------------------------------------------------ */
+.styledesk_combo {
+    position: relative;
+}
+
+.styledesk_combo__panel {
+    position: absolute;
+    z-index: 5;
+    left: 0;
+    right: 0;
+    top: calc(100% + 0.375rem);
+    max-height: 15rem;
+    overflow-y: auto;
+    padding: 0.375rem;
+    border: 1px solid var(--color-line);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 12px 32px rgba(15, 15, 16, 0.16);
+}
+
+/* Keyboard focus moves through the rows without moving the caret out of
+   the search field, so typing and choosing are one gesture. */
+.styledesk_combo__option.is-active {
+    border-color: var(--sd-brand);
+    background: color-mix(in srgb, var(--sd-brand) 8%, #fff);
+}
+
+/* ------------------------------------------------------------------
+   Selected people, as chips
+   ------------------------------------------------------------------ */
+.styledesk_person {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    max-width: 100%;
+    height: 1.75rem;
+    padding: 0 0.25rem;
+    /* White on the section's grey, outlined in the brand colour: the chips
+       are the answer the section was opened to give, so they are the thing
+       that stands off it. */
+    border: 1px solid var(--sd-brand);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-ink);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.styledesk_person__avatar {
+    height: 1.25rem;
+    width: 1.25rem;
+    font-size: 9px;
+    flex-shrink: 0;
+}
+
+.styledesk_person__name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.styledesk_person__remove {
+    display: grid;
+    place-items: center;
+    height: 1.125rem;
+    width: 1.125rem;
+    border-radius: 999px;
+    color: var(--color-sub);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.styledesk_person__remove:hover { background: #fef2f2; color: #b91c1c; }
+
+
+/* ------------------------------------------------------------------
+   Rich text — how a note reads once it is written
+   ------------------------------------------------------------------
+   Shared by the editor and the saved note, so what someone types is what
+   they later see. Only the tags NoteHtml allows are styled; anything else
+   never reaches the page.
+   ------------------------------------------------------------------ */
+.styledesk_richtext {
+    font-size: 13px;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.styledesk_richtext > * + * { margin-top: 0.5rem; }
+
+.styledesk_richtext h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-head);
+}
+
+.styledesk_richtext strong { font-weight: 700; }
+.styledesk_richtext em { font-style: italic; }
+.styledesk_richtext u { text-decoration: underline; }
+.styledesk_richtext s { text-decoration: line-through; }
+
+.styledesk_richtext ul,
+.styledesk_richtext ol {
+    padding-left: 1.25rem;
+}
+
+.styledesk_richtext ul { list-style: disc; }
+.styledesk_richtext ol { list-style: decimal; }
+.styledesk_richtext li { margin-top: 0.125rem; }
+
+.styledesk_richtext a {
+    color: var(--color-link);
+    text-decoration: underline;
+}
+
+/* An image can never be wider than the note holding it. */
+.styledesk_richtext img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    margin: 0.5rem 0;
+}
+
+/* ------------------------------------------------------------------
+   The editor
+   ------------------------------------------------------------------ */
+/* Borderless and flush with the window. The toolbar's own rule is the
+   only divider needed — a bordered, rounded box here read as a card
+   inside a card. */
+.styledesk_editor {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #fff;
+}
+
+/* Sticky rather than scrolled away: formatting the bottom of a long note
+   should not mean scrolling back up to find Bold. */
+.styledesk_editor__toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.375rem;
+    border-bottom: 1px solid var(--color-line);
+    background: #fff;
+}
+
+.styledesk_editor__button {
+    display: grid;
+    place-items: center;
+    height: 1.875rem;
+    width: 1.875rem;
+    border-radius: 6px;
+    color: var(--color-sub);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.styledesk_editor__button:hover { background: var(--color-hover); color: var(--color-ink); }
+
+/* Active formatting is a filled button, not a tinted glyph: the state has
+   to survive being read by someone who cannot see the colour. */
+.styledesk_editor__button.is-active {
+    background: var(--sd-brand);
+    color: #fff;
+}
+
+.styledesk_editor__button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.styledesk_editor__button:disabled:hover { background: transparent; color: var(--color-sub); }
+
+.styledesk_editor__button:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+.styledesk_editor__surface {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.styledesk_editor__content {
+    min-height: 11rem;
+    padding: 0.875rem 1rem;
+    outline: none;
+}
+
+.styledesk_composer--expanded .styledesk_editor__content { min-height: 20rem; }
+
+/* Tiptap's own empty-state hook: the placeholder is drawn by CSS so the
+   document itself stays empty rather than holding text nobody typed. */
+.styledesk_editor__content p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    color: var(--color-faint);
+    float: left;
+    height: 0;
+    pointer-events: none;
+}
+
+.styledesk_editor__link {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-top: 1px solid var(--color-line);
+    background: var(--color-hover);
+}
+
+.styledesk_editor__link input { flex: 1; min-width: 12rem; }
+
+.styledesk_editor__status {
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--color-line);
+    font-size: 12px;
+    color: var(--color-sub);
+}
+
+.styledesk_editor__status.is-error { color: #b91c1c; }
+
+/* ------------------------------------------------------------------
+   Combo field — chips and the search share one box
+   ------------------------------------------------------------------ */
+.styledesk_combo__field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--color-stroke);
+    border-radius: 8px;
+    background: #fff;
+}
+
+.styledesk_combo__field:focus-within { border-color: var(--sd-brand); }
+
+.styledesk_combo__chips {
+    display: contents;
+}
+
+/* The search keeps a usable width but yields to the chips, so the box grows
+   downward as people are added rather than scrolling sideways. */
+.styledesk_combo__input {
+    flex: 1 1 8rem;
+    min-width: 6rem;
+    height: 1.75rem;
+    border: 0;
+    background: transparent;
+    font-size: 13px;
+    color: var(--color-ink);
+    outline: none;
+}
+
+/* ------------------------------------------------------------------
+   Toggle — a switch for a setting that takes effect as itself
+   ------------------------------------------------------------------
+   A real checkbox with the box hidden and a track drawn in its place, so
+   the keyboard, the screen reader and the form all still see a checkbox.
+   The label sits beside it and is part of the control, which makes the
+   whole row the hit area.
+
+   On is the brand colour *and* the knob at the other end: a switch that
+   said "on" only by changing colour would say nothing to a reader who
+   cannot see the difference.
+   ------------------------------------------------------------------ */
+.styledesk_toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.6875rem 0.875rem;
+    border: 1px solid var(--color-stroke);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.styledesk_toggle:hover { background: var(--color-hover); }
+
+.styledesk_toggle__input {
+    position: absolute;
+    height: 1px;
+    width: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+.styledesk_toggle__track {
+    position: relative;
+    flex-shrink: 0;
+    height: 1.25rem;
+    width: 2.25rem;
+    margin-top: 0.0625rem;
+    border-radius: 999px;
+    background: #d1d5db;
+    transition: background-color 0.15s ease;
+}
+
+.styledesk_toggle__knob {
+    position: absolute;
+    top: 0.1875rem;
+    left: 0.1875rem;
+    height: 0.875rem;
+    width: 0.875rem;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 15, 16, 0.3);
+    transition: transform 0.15s ease;
+}
+
+.styledesk_toggle__input:checked + .styledesk_toggle__track { background: var(--sd-brand); }
+.styledesk_toggle__input:checked + .styledesk_toggle__track .styledesk_toggle__knob { transform: translateX(1rem); }
+
+.styledesk_toggle__input:focus-visible + .styledesk_toggle__track {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 2px;
+}
+
+.styledesk_toggle:has(.styledesk_toggle__input:checked) {
+    border-color: var(--sd-brand);
+    background: color-mix(in srgb, var(--sd-brand) 4%, #fff);
+}
+
+.styledesk_toggle__label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-head);
+}
+
+.styledesk_toggle__hint {
+    display: block;
+    font-size: 12px;
+    color: var(--color-sub);
+    line-height: 1.45;
+    margin-top: 0.125rem;
+}
+
+/* ------------------------------------------------------------------
+   Access For — the field that opens the picker
+   ------------------------------------------------------------------
+   A button dressed as an input. It is not typed into: choosing who may
+   read a note happens in its own window, and a field that looks
+   editable but is not is a small lie the reader finds by trying.
+   ------------------------------------------------------------------ */
+.styledesk_pickerfield {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--color-stroke);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--color-sub);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.styledesk_pickerfield:hover { border-color: var(--sd-brand); }
+
+.styledesk_pickerfield:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+.styledesk_pickerfield__icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--color-faint);
+}
+
+.styledesk_pickerfield__text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------
+   Select People — a modal above the composer
+   ------------------------------------------------------------------
+   Layered over the note window rather than replacing it: the note being
+   written stays visible and intact behind the decision about who may
+   read it. The scrim is what makes the composer inert while it is open.
+   ------------------------------------------------------------------ */
+.styledesk_picker {
+    position: fixed;
+    inset: 0;
+    z-index: 140;                     /* above the composer's 120 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.styledesk_picker__scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 15, 16, 0.5);
+}
+
+.styledesk_picker__panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(32rem, 100%);
+    max-height: min(75vh, calc(100vh - 2rem));
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 24px 60px rgba(15, 15, 16, 0.32);
+    overflow: hidden;
+}
+
+.styledesk_picker__head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-line);
+}
+
+/* Search above and actions below stay put; only the list moves. */
+.styledesk_picker__search {
+    padding: 0.875rem 1.25rem;
+    border-bottom: 1px solid var(--color-line);
+}
+
+.styledesk_picker__list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.75rem 1.25rem;
+}
+
+/* The picker's footer is the shared one; it only needs to stay put while
+   the list behind it scrolls. */
+.styledesk_picker__panel .styledesk_modalfoot { background: #fff; }
+
+/* Full screen on a phone, where a centred window would be a small screen
+   inside a small screen. */
+@media (max-width: 639px) {
+    .styledesk_picker { padding: 0; }
+
+    .styledesk_picker__panel {
+        width: 100%;
+        max-height: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+}
+
+
+/* ------------------------------------------------------------------
+   Icon action — a control that is only its icon
+   ------------------------------------------------------------------
+   No border, no fill, no box: for actions that sit in a card's own
+   header, where a bordered button would read as a second card. The hit
+   area is still a full 28px square, so it is no harder to press than a
+   button that draws one.
+   ------------------------------------------------------------------ */
+.styledesk_iconaction {
+    display: grid;
+    place-items: center;
+    height: 2rem;
+    width: 2rem;
+    border-radius: 6px;
+    color: var(--color-faint);
+    cursor: pointer;
+    transition: color 0.12s ease, background-color 0.12s ease;
+}
+
+/* Only the icon changes. No fill and no border on hover: the control is
+   the icon, and drawing a box around it on approach turns it back into
+   the button this was meant not to be. */
+.styledesk_iconaction:hover { color: var(--color-sub); }
+
+/* Destructive actions say so on hover rather than sitting red all the
+   time: a delete that is always red reads as an error on the card. */
+.styledesk_iconaction--danger:hover { color: #b91c1c; }
+
+/* The keyboard still gets a ring — a focus state that only changed colour
+   would be invisible to whoever needs it most. */
+.styledesk_iconaction:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+    color: var(--color-sub);
+}
+
+
+/* ------------------------------------------------------------------
+   Access For — a bordered section inside the composer
+   ------------------------------------------------------------------
+   Grouped in a frame because it is a decision of its own: who may read
+   the note is not another property of the note in the way Important is,
+   and the frame is what says the chips below belong to it.
+   ------------------------------------------------------------------ */
+.styledesk_accessbox {
+    padding: 0.875rem;
+    border: 1px solid var(--color-line);
+    border-radius: 8px;
+    /* A fifth of the way to grey: enough to lift the section off the white
+       panel without turning it into a second card. */
+    background: color-mix(in srgb, var(--color-sub) 20%, #fff);
+}
+
+/* ------------------------------------------------------------------
+   People table — the Select People list
+   ------------------------------------------------------------------
+   Three columns in the same place on every row, so a team of thirty is
+   read down a column rather than one card at a time. The row is a label
+   around a real checkbox, so "the whole row is clickable" is the
+   browser's own behaviour rather than a click handler.
+   ------------------------------------------------------------------ */
+.styledesk_peoplerow {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+}
+
+.styledesk_peoplerow:hover { background: var(--color-hover); }
+
+.styledesk_peoplerow:has(input:checked) {
+    background: color-mix(in srgb, var(--sd-brand) 7%, #fff);
+}
+
+.styledesk_peoplerow:has(input:focus-visible) {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: -1px;
+}
+
+/* The column names, once at the top. */
+.styledesk_peoplerow--head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
+    border-radius: 0;
+    border-bottom: 1px solid var(--color-line);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+    cursor: default;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+}
+
+.styledesk_peoplerow--head:hover { background: #fff; }
+
+.styledesk_peoplerow--head > :last-child { text-align: right; }
+
+
+/* ------------------------------------------------------------------
+   Modal footer — the same actions bar everywhere
+   ------------------------------------------------------------------
+   One rule for every dialog in StyleDesk: a top border separating the
+   actions from what they act on, and the buttons at the left in the
+   order they are read — the thing you came to do, then the way out of
+   it. Written here so a new dialog inherits it rather than each one
+   arranging its own buttons and drifting.
+   ------------------------------------------------------------------ */
+.styledesk_modalfoot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid var(--color-line);
+}
+
+/* Anything the footer also has to say — a count, a hint — sits after the
+   buttons rather than pushing them out of the corner. */
+.styledesk_modalfoot__note {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--color-sub);
+}
+
+/* ------------------------------------------------------------------
+   Page action row
+   ------------------------------------------------------------------
+   The actions that belong to the whole record, on a row above the thing
+   they act on. `flex-wrap: nowrap` is the point: leaving, the primary
+   action and the overflow menu are one cluster, and a primary button
+   that has dropped onto its own line reads as belonging to whatever is
+   above it.
+   ------------------------------------------------------------------ */
+.styledesk_actionrow {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+/* Sticky only where the page itself scrolls.
+
+   Written as a media query rather than an `xl:static` utility on the
+   element: this stylesheet is the last one in the cascade, so a class
+   here beats a Tailwind utility and the element would have stayed sticky
+   inside the three-column layout — where main does not scroll, and a
+   sticky row with a top offset simply pushes itself down the page. */
+@media (max-width: 1279px) {
+    .styledesk_actionrow {
+        position: sticky;
+        top: var(--sd-appbar, 3.5rem);
+        z-index: 20;
+        padding-top: 0.5rem;
+        /* Opaque, or the client's name scrolls through it. */
+        background: #fff;
+        border-bottom: 1px solid var(--color-line);
+    }
+}
+
+/* Never a second line, however narrow the window: the label tightens
+   before the row breaks. */
+@media (max-width: 420px) {
+    .styledesk_actionrow > button:not(.styledesk_action) {
+        padding-inline: 0.75rem;
+        font-size: 12px;
+    }
+}

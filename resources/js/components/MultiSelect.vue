@@ -41,6 +41,16 @@ const props = defineProps({
      * field means.
      */
     showPrimary: { type: Boolean, default: true },
+    /**
+     * Filter mode: the control reports how many are chosen rather than
+     * listing them, and the choices themselves are shown as chips elsewhere
+     * on the page. A toolbar of controls that each grow with their selections
+     * reflows every time one is touched.
+     *
+     * Empty string keeps the chips inside the control, which is what the
+     * onboarding and settings screens want.
+     */
+    summaryLabel: { type: String, default: '' },
 });
 
 const emit = defineEmits(['update:modelValue', 'primary-changed']);
@@ -100,7 +110,19 @@ function remove(code) {
     selected.value = selected.value.filter((c) => c !== code);
 }
 
-watch(selected, (value) => emit('update:modelValue', [...value]), { deep: true });
+watch(selected, (value) => {
+    emit('update:modelValue', [...value]);
+
+    /**
+     * Announced on the DOM as well as to Vue, so the parts of the page that
+     * are not Vue — the active-filter chips, the grid — can follow a
+     * selection without either side importing the other.
+     */
+    root.value?.dispatchEvent(new CustomEvent('styledesk:selection', {
+        bubbles: true,
+        detail: { name: props.name, values: [...value] },
+    }));
+}, { deep: true });
 watch(primary, (code) => emit('primary-changed', code));
 
 // Follow changes made from outside — the currency list is rewritten when the
@@ -126,6 +148,33 @@ function onDocumentClick(event) {
     }
 }
 
+/* A chip removed elsewhere on the page is still this control's selection to
+   drop: the input remains the owner of what is chosen. */
+function onExternalRemove(event) {
+    const { name, value } = event.detail ?? {};
+
+    if (name === props.name) {
+        remove(value);
+    }
+}
+
+/* A card elsewhere on the page choosing this control's value — "show me the
+   inactive ones". Set through the control rather than around it, so its
+   button and its list agree with what the grid was asked for. */
+function onExternalSet(event) {
+    const { name, values } = event.detail ?? {};
+
+    if (name === props.name) {
+        selected.value = props.single ? values.slice(0, 1) : [...values];
+    }
+}
+
+function onExternalClear() {
+    if (selected.value.length) {
+        selected.value = [];
+    }
+}
+
 function onKeydown(event) {
     if (event.key === 'Escape' && open.value) {
         open.value = false;
@@ -135,12 +184,31 @@ function onKeydown(event) {
 onMounted(() => {
     document.addEventListener('click', onDocumentClick);
     document.addEventListener('keydown', onKeydown);
+    document.addEventListener('styledesk:filter-remove', onExternalRemove);
+    document.addEventListener('styledesk:filter-clear', onExternalClear);
+    document.addEventListener('styledesk:filter-set', onExternalSet);
     emit('primary-changed', primary.value);
+
+    /**
+     * Announced on mount as well as on change.
+     *
+     * The islands mount after the page's own scripts have run, so a filter
+     * row that only listened for changes would start empty on a page loaded
+     * with filters already in the address bar — the chips would appear only
+     * once something was touched.
+     */
+    root.value?.dispatchEvent(new CustomEvent('styledesk:selection', {
+        bubbles: true,
+        detail: { name: props.name, values: [...selected.value], initial: true },
+    }));
 });
 
 onBeforeUnmount(() => {
     document.removeEventListener('click', onDocumentClick);
     document.removeEventListener('keydown', onKeydown);
+    document.removeEventListener('styledesk:filter-remove', onExternalRemove);
+    document.removeEventListener('styledesk:filter-clear', onExternalClear);
+    document.removeEventListener('styledesk:filter-set', onExternalSet);
 });
 </script>
 
@@ -154,11 +222,18 @@ onBeforeUnmount(() => {
         </template>
 
         <button type="button" class="styledesk_timepicker__field"
-                :style="single ? {} : { height: 'auto', minHeight: '2.75rem', padding: '0.375rem 0.75rem' }"
+                :style="single || summaryLabel ? {} : { height: 'auto', minHeight: '2.75rem', padding: '0.375rem 0.75rem' }"
                 :aria-label="ariaLabel" :aria-expanded="open" aria-haspopup="listbox" @click.stop="toggle">
             <span v-if="single" class="styledesk_timepicker__value"
                   :class="{ 'styledesk_timepicker__value--empty': !selected.length }">
                 {{ selected.length ? nameOf(selected[0]) : placeholder }}
+            </span>
+
+            <!-- Filter mode: how many, not which. Which is shown as chips
+                 below the toolbar, where they have room to be read. -->
+            <span v-else-if="summaryLabel" class="styledesk_timepicker__value"
+                  :class="{ 'styledesk_timepicker__value--empty': !selected.length }">
+                {{ selected.length ? `${summaryLabel} (${selected.length})` : placeholder }}
             </span>
 
             <!-- Three per row, each the same width. A grid rather than

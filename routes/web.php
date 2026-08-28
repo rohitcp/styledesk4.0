@@ -1,7 +1,9 @@
 <?php
 
+use App\Contracts\TenantStorageContract;
 use App\Http\Controllers\AppSettingsController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ClientNoteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
@@ -18,6 +20,7 @@ use App\Http\Controllers\Settings\StaffController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
 use App\Http\Controllers\VerificationEmailController;
+use App\Models\StoredFile;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Route;
 
@@ -350,8 +353,27 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 Route::patch('preferences/{preference}', 'togglePreference')->name('preferences.toggle');
 
                 Route::post('tags', 'storeTag')->name('tags.store');
+
+                // Before {tag}, or the order route reads as a tag called
+                // "order" and 404s on a business that has no such tag.
+                Route::patch('tags/order', 'reorderTags')->name('tags.reorder');
                 Route::patch('tags/{tag}', 'updateTag')->name('tags.update');
                 Route::patch('tags/{tag}/toggle', 'toggleTag')->name('tags.toggle');
+
+                /*
+                | Refused for a tag any client carries — see destroyTag.
+                | Deactivating is what "remove" means once a label is part of
+                | someone's record.
+                */
+                Route::delete('tags/{tag}', 'destroyTag')->name('tags.destroy');
+
+                /*
+                | Behavioural tags: activate and deactivate, and nothing
+                | else. They are defined by StyleDesk, and their keys are
+                | what reporting joins on.
+                */
+                Route::patch('behavioral-tags/{behavioralTag}/toggle', 'toggleBehavioralTag')
+                    ->name('behavioral.toggle');
             });
 
         /*
@@ -412,5 +434,95 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
     | separate. The permission is checked in the controller, so every role
     | that holds clients.view can open it at whatever scope it holds.
     */
-    Route::get('/clients', [ClientController::class, 'index'])->name('clients.index');
+    Route::controller(ClientController::class)
+        ->prefix('clients')
+        ->name('clients.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('create', 'create')->name('create');
+
+            /*
+            | The grid's rows, a page at a time.
+            |
+            | Bound before {client} so it is never read as a client called
+            | "data", and behind the same permission as the page itself: an
+            | endpoint that hands out client records is the page, whatever
+            | shape it returns them in.
+            */
+            Route::get('data', 'data')->name('data');
+            Route::post('/', 'store')->name('store');
+
+            // Bound last: a literal segment must win over {client}, or
+            // /clients/create would look up a client called "create" and 404.
+            Route::get('{client}', 'show')->name('show');
+            Route::get('{client}/edit', 'edit')->name('edit');
+            Route::patch('{client}', 'update')->name('update');
+
+            /*
+            | Archive, not delete. §11 keeps an archived client out of booking
+            | search and in every appointment and report that names them, so
+            | there is no destroy route to reach by accident.
+            */
+            Route::patch('{client}/archive', 'archive')->name('archive');
+
+            /*
+            | Active / inactive, on its own.
+            |
+            | Not the update route with one field filled in: that one builds
+            | its rules from the business's whole field configuration, and a
+            | menu item posting to it would either be refused or quietly
+            | rewrite the rest of the record.
+            */
+            Route::patch('{client}/status', 'status')->name('status');
+
+            /*
+            | The client tags a client carries — the ones the team puts on by
+            | hand. Posted as a whole set, because that is what the modal
+            | asks: of your tags, which apply to this client.
+            */
+            Route::patch('{client}/tags', 'tags')->name('tags');
+
+            /*
+            | The behavioural tags a client carries. Posted as a whole set,
+            | because that is what the modal asks: which of these apply.
+            */
+            Route::patch('{client}/behavioral-tags', 'behavioralTags')->name('behavioral');
+        });
+
+    /*
+    | Notes on a client's record.
+    |
+    | Their own controller and their own permissions: reading a client is not
+    | reading their notes, and `clients.view_notes` / `clients.add_notes`
+    | exist precisely so a business can separate the two.
+    */
+    /*
+    | A stored file, handed over only to someone who may have it.
+    |
+    | Every private file is reached through here rather than by URL: a link
+    | that works because it was guessed is not a permission check, and the
+    | local disk cannot sign URLs at all.
+    */
+    Route::get('files/{storedFile}', function (StoredFile $storedFile, TenantStorageContract $storage) {
+        return $storage->show($storedFile);
+    })->name('files.show');
+
+    Route::get('files/{storedFile}/download', function (StoredFile $storedFile, TenantStorageContract $storage) {
+        return $storage->download($storedFile);
+    })->name('files.download');
+
+    Route::controller(ClientNoteController::class)
+        ->prefix('clients/{client}/notes')
+        ->name('clients.notes.')
+        ->group(function () {
+            Route::post('/', 'store')->name('store');
+            Route::patch('{note}', 'update')->name('update');
+            Route::delete('{note}', 'destroy')->name('destroy');
+
+            /*
+            | An image the editor is about to place in a note. Bound before
+            | {note} so it is never read as a note called "images".
+            */
+            Route::post('images', 'image')->name('images');
+        });
 });

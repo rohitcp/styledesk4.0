@@ -76,9 +76,9 @@
   </div>
 
   <div class="pt-4 border-t border-line space-y-3">
-    <label class="flex items-start gap-2.5 cursor-pointer">
+    <label class="styledesk_choice">
       <input id="is_primary" name="is_primary" type="checkbox" value="1" class="sd-check mt-0.5" @checked($isPrimary)>
-      <span class="min-w-0">
+      <span class="styledesk_choice__label min-w-0">
         <span class="block text-[13px] font-medium text-ink">{{ __('locations.fields.primary') }}</span>
         {{-- Says what happens rather than forbidding it. The controller
              demotes the previous primary, so the honest wording is what it
@@ -90,11 +90,11 @@
 
   <fieldset class="pt-4 border-t border-line">
     <legend class="text-[13px] font-medium text-ink mb-2">{{ __('locations.fields.status') }} <span class="text-danger">*</span></legend>
-    <div class="flex items-center gap-5">
+    <div class="styledesk_choicelist">
       @foreach (App\Support\LocationOptions::statuses() as $value => $statusLabel)
-        <label class="flex items-center gap-2.5 cursor-pointer">
+        <label class="styledesk_choice">
           <input type="radio" name="status" value="{{ $value }}" class="sd-check" @checked($status === $value)>
-          <span class="text-[13px] text-ink">{{ $statusLabel }}</span>
+          <span class="styledesk_choice__label">{{ $statusLabel }}</span>
         </label>
       @endforeach
     </div>
@@ -198,12 +198,12 @@
       <legend class="text-[13px] font-medium text-ink mb-2">
         {{ __('locations.fields.assistants') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </legend>
-      <div class="grid sm:grid-cols-2 gap-x-4 gap-y-2">
+      <div class="styledesk_choicelist sm:grid-cols-2">
         @foreach ($staffOptions as $member)
-          <label class="flex items-center gap-2.5 cursor-pointer">
+          <label class="styledesk_choice">
             <input type="checkbox" name="assistant_manager_ids[]" value="{{ $member->id }}" class="sd-check"
                    @checked(in_array((string) $member->id, $chosenAssistants, true))>
-            <span class="text-[13px] text-ink">{{ $member->displayName() }}</span>
+            <span class="styledesk_choice__label">{{ $member->displayName() }}</span>
           </label>
         @endforeach
       </div>

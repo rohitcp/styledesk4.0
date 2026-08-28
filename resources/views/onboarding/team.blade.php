@@ -26,13 +26,13 @@
                     $providesServices = old('provides_services', $staff->firstWhere('user_id', $owner->id)?->provides_services ?? true);
                 @endphp
                 <div class="flex items-center gap-5">
-                    <label class="flex items-center gap-2.5 cursor-pointer">
+                    <label class="styledesk_choice">
                         <input type="radio" name="provides_services" value="1" class="sd-check" @checked((bool) $providesServices)>
-                        <span class="text-[13px] text-ink">Yes</span>
+                        <span class="styledesk_choice__label">Yes</span>
                     </label>
-                    <label class="flex items-center gap-2.5 cursor-pointer">
+                    <label class="styledesk_choice">
                         <input type="radio" name="provides_services" value="0" class="sd-check" @checked(! $providesServices)>
-                        <span class="text-[13px] text-ink">No</span>
+                        <span class="styledesk_choice__label">No</span>
                     </label>
                 </div>
                 @error('provides_services')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
@@ -43,10 +43,10 @@
                     <legend class="text-[13px] font-medium text-ink mb-2">Services you provide</legend>
                     <div class="grid sm:grid-cols-2 gap-x-4 gap-y-2">
                         @foreach ($services as $service)
-                            <label class="flex items-center gap-2.5 cursor-pointer">
+                            <label class="styledesk_choice">
                                 <input type="checkbox" name="owner_services[]" value="{{ $service->id }}" class="sd-check"
                                        @checked(in_array($service->id, old('owner_services', $staff->firstWhere('user_id', $owner->id)?->services->pluck('id')->all() ?? []), true))>
-                                <span class="text-[13px] text-ink">{{ $service->name }}</span>
+                                <span class="styledesk_choice__label">{{ $service->name }}</span>
                             </label>
                         @endforeach
                     </div>
@@ -104,7 +104,7 @@
             {{-- ml-auto: Back sits on the opposite side from Continue, so
                  the button that moves forward stays where the eye lands. --}}
             <a href="{{ route('onboarding.'.$previousStep) }}"
-               class="ml-auto inline-flex items-center gap-1.5 h-11 px-4 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+               class="styledesk_action ml-auto">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Back
             </a>

@@ -31,7 +31,7 @@
         <p class="text-[15px] font-semibold text-head">{{ __('settings.no_matches') }}</p>
         <p class="text-[13px] text-sub mt-1.5">{{ __('settings.no_matches_hint') }}</p>
         <button type="button" id="settingsClear"
-                class="mt-4 h-9 px-4 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+                class="styledesk_action mt-4">
           {{ __('settings.clear_search') }}
         </button>
       </div>

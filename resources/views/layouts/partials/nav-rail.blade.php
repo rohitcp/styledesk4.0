@@ -8,7 +8,8 @@
         <a href="{{ \App\Support\Nav::href($item) }}" {!! \App\Support\Nav::pending($item) !!}
            class="sd-navicon grid sd-tip @if ($active) is-active @endif"
            data-tip="{{ App\Support\Nav::label($item) }}" aria-label="{{ $item['aria'] ?? App\Support\Nav::label($item) }}"
-           aria-haspopup="true" aria-expanded="false">
+           aria-haspopup="true" aria-expanded="false"
+           @if ($active) aria-current="page" @endif>
           <x-icon :name="$item['icon']" size="18" />
         </a>
         <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="{{ $item['aria'] ?? $item['label'] }} menu">

@@ -4,7 +4,7 @@
 
 @section('content')
   <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
-    <div class="max-w-[760px]">
+    <div class="styledesk_form">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
         <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
@@ -22,7 +22,7 @@
         </div>
 
         <a href="{{ route('settings.staff.show', $staff) }}" data-back
-           class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+           class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
         </a>
@@ -47,7 +47,7 @@
             {{ __('common.save_changes') }}
           </button>
           <a href="{{ route('settings.staff.show', $staff) }}"
-             class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+             class="styledesk_action">
             {{ __('common.cancel') }}
           </a>
         </div>

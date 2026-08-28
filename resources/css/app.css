@@ -5,6 +5,11 @@
    tokens; the @theme blocks below simply expose those to Tailwind utilities.
    Keeping it unmodified is deliberate: the 37-page prototype and the app then
    render from the same source, so the two cannot drift apart. */
+/* Tabulator's own stylesheet, imported before ours so the StyleDesk rules in
+   styledesk.css win — the library is used for its grid behaviour, not for its
+   appearance. */
+@import 'tabulator-tables/dist/css/tabulator.min.css';
+
 @import './prototype.css';
 @import './styledesk.css';
 
@@ -30,6 +35,7 @@
     /* Surfaces & borders */
     --color-line: #e5e7eb;   /* hairline borders */
     --color-stroke: #d1d5db; /* input borders, slightly stronger */
+    --sd-appbar: 3.5rem;     /* height of the sticky application header */
     --color-hover: #f3f4f6;  /* hover fill */
     --color-sel: #eef1f4;    /* selected fill */
     --color-canvas: #ffffff; /* page background */

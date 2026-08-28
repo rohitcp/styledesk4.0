@@ -37,7 +37,7 @@
 
         <div class="shrink-0 flex items-center gap-2">
           <a href="{{ route('settings.index') }}"
-             class="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+             class="styledesk_action">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             {{ __('common.back') }}
           </a>
@@ -45,7 +45,7 @@
           @can('create', App\Models\Location::class)
             <a href="{{ route('settings.locations.create') }}"
                class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-              <x-icon name="plus" size="13" />
+              <x-icon name="plus" size="14" />
               {{ __('locations.add') }}
             </a>
           @endcan
@@ -75,14 +75,13 @@
                        placeholder="{{ __('locations.all_statuses') }}" />
             </div>
 
-            <button type="submit"
-                    class="h-11 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+            <button type="submit" class="styledesk_search w-full sm:w-auto">
               {{ __('common.search') }}
             </button>
 
             @if ($filters['search'] !== '' || $filters['status'])
               <a href="{{ route('settings.locations.index') }}"
-                 class="h-11 px-4 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+                 class="styledesk_action">
                 {{ __('common.clear') }}
               </a>
             @endif
@@ -110,7 +109,7 @@
             @can('create', App\Models\Location::class)
               <a href="{{ route('settings.locations.create') }}"
                  class="mt-4 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-                <x-icon name="plus" size="13" />
+                <x-icon name="plus" size="14" />
                 {{ __('locations.add_first') }}
               </a>
             @endcan
@@ -119,7 +118,7 @@
             <p class="text-[13px] text-sub mt-1.5">{{ __('locations.no_matches_hint') }}</p>
 
             <a href="{{ route('settings.locations.index') }}"
-               class="mt-4 inline-flex items-center h-9 px-4 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+               class="styledesk_action mt-4">
               {{ __('locations.clear_search') }}
             </a>
           @endif
@@ -185,6 +184,9 @@
                               data-set-status
                               data-name="{{ $location->name }}"
                               data-status="inactive"
+                              data-confirm-title="{{ __('locations.deactivate') }}"
+                              data-confirm="{{ __('locations.confirm.deactivate', ['name' => $location->name]) }}"
+                              data-confirm-label="{{ __('common.confirm.deactivate') }}"
                               data-action="{{ route('settings.locations.status', $location) }}">
                         <x-icon name="calendar-xmark" size="14" /> {{ __('locations.deactivate') }}
                       </button>
@@ -195,6 +197,10 @@
                               data-set-status
                               data-name="{{ $location->name }}"
                               data-status="active"
+                              data-confirm-title="{{ __('locations.activate') }}"
+                              data-confirm="{{ __('locations.confirm.activate', ['name' => $location->name]) }}"
+                              data-confirm-label="{{ __('common.confirm.activate') }}"
+                              data-confirm-tone="brand"
                               data-action="{{ route('settings.locations.status', $location) }}">
                         <x-icon name="calendar-check" size="14" /> {{ __('locations.activate') }}
                       </button>
@@ -330,8 +336,9 @@
       window.addEventListener('resize', function () { closeAll(null); });
     }());
 
-    /* Deactivate and activate, behind a confirmation that names the branch
-       and says what changes. */
+    /* Deactivate and activate. The question is asked by the shared
+       confirmation dialog off each button's own data-confirm attributes, so
+       by the time this handler runs the reader has already said yes. */
     (function () {
       var form = document.getElementById('locationStatusForm');
       if (!form) return;
@@ -340,21 +347,7 @@
 
       document.querySelectorAll('[data-set-status]').forEach(function (button) {
         button.addEventListener('click', function () {
-          var name = button.getAttribute('data-name');
-          var status = button.getAttribute('data-status');
-
-          /* The confirmation is built server-side per language rather than
-             concatenated here: Spanish does not put the name where English
-             does, and string addition cannot express that. */
-          var message = status === 'inactive'
-            ? @json(__('locations.confirm.deactivate', ['name' => '__NAME__'])).replace('__NAME__', name)
-            : @json(__('locations.confirm.activate', ['name' => '__NAME__'])).replace('__NAME__', name);
-
-          if (!window.confirm(message)) {
-            return;
-          }
-
-          field.value = status;
+          field.value = button.getAttribute('data-status');
           form.action = button.getAttribute('data-action');
           form.submit();
         });

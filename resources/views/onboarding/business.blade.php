@@ -181,8 +181,12 @@
                 <div>
                     <input id="logo" name="logo" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
                     <div class="flex items-center gap-2">
-                        <label for="logo" class="inline-flex items-center h-9 px-4 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold cursor-pointer transition-colors">Upload logo</label>
-                        <button type="button" id="logo-remove" hidden class="h-9 px-3 rounded-md text-sub hover:bg-hover text-[13px] font-semibold transition-colors">Remove</button>
+                        <label for="logo" class="styledesk_action">Upload logo</label>
+                        <button type="button" id="logo-remove" hidden
+                                data-confirm-title="{{ __('common.remove') }}"
+                                data-confirm="{{ __('branding.remove_confirm') }}"
+                                data-confirm-label="{{ __('common.remove') }}"
+                                class="h-9 px-3 rounded-md text-sub hover:bg-hover text-[13px] font-semibold transition-colors">Remove</button>
                     </div>
                     @error('logo')
                         <p id="logo-error" role="alert" class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>

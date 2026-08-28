@@ -64,7 +64,7 @@ const props = defineProps({
             open: 'Open',
             closed: 'Closed',
             closed_all_day: 'Closed all day',
-            add_period: '+ Add another period',
+            add_period: 'Add another period',
             to: 'to',
             remove_period: 'Remove this period from :day',
             opening_time: ':day opening time',
@@ -190,7 +190,11 @@ onMounted(() => nextTick(announce));
             </div>
 
             <button type="button" @click="copyMondayToWeek"
-                    class="ml-auto h-9 px-3.5 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold shrink-0 transition-colors">
+                    class="styledesk_action ml-auto shrink-0">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="8.5" y="8.5" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.7"/>
+                    <path d="M15.5 5.5h-9a2 2 0 00-2 2v9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
                 {{ labels.copy_monday }}
             </button>
         </div>
@@ -235,7 +239,7 @@ onMounted(() => nextTick(announce));
                              nobody wants. The placeholder keeps the pickers
                              from shifting sideways on the first row. -->
                         <button v-if="splitPeriods && index > 0" type="button"
-                                class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-md border border-stroke bg-white hover:bg-hover text-sub transition-colors"
+                                class="styledesk_action styledesk_action--icon shrink-0"
                                 :aria-label="withDay(labels.remove_period, row.label)"
                                 @click="removePeriod(day, index)">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -248,7 +252,10 @@ onMounted(() => nextTick(announce));
                     </div>
 
                     <button v-if="splitPeriods" type="button" @click="addPeriod(day)"
-                            class="text-[13px] font-medium text-link hover:underline">
+                            class="styledesk_action styledesk_action--sm">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                        </svg>
                         {{ labels.add_period }}
                     </button>
                 </div>

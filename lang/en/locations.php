@@ -206,7 +206,7 @@ return [
         'open' => 'Open',
         'closed' => 'Closed',
         'closed_all_day' => 'Closed all day',
-        'add_period' => '+ Add another period',
+        'add_period' => 'Add another period',
         'to' => 'to',
         'remove_period' => 'Remove this period from :day',
         'opening_time' => ':day opening time',

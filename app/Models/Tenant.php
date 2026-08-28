@@ -108,6 +108,12 @@ class Tenant extends BaseTenant
         ];
     }
 
+    /** The people this business sees. */
+    public function clients(): HasMany
+    {
+        return $this->hasMany(Client::class);
+    }
+
     /** The structured preferences staff can assign to this business's clients. */
     public function clientPreferences(): HasMany
     {
@@ -115,6 +121,15 @@ class Tenant extends BaseTenant
     }
 
     /** The labels this business classifies its clients with. */
+    /**
+     * This business's behavioural tag settings — which of the catalogue it
+     * applies. The tags themselves live in config; see BehavioralTag.
+     */
+    public function behavioralTags(): HasMany
+    {
+        return $this->hasMany(BehavioralTag::class);
+    }
+
     public function clientTags(): HasMany
     {
         return $this->hasMany(ClientTag::class);

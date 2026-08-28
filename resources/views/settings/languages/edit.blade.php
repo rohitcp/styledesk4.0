@@ -4,7 +4,7 @@
 
 @section('content')
   <main class="w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
-    <div class="max-w-[760px]">
+    <div class="styledesk_form">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
         <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
@@ -21,7 +21,7 @@
         </div>
 
         <a href="{{ route('settings.languages.show') }}"
-           class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+           class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
         </a>
@@ -61,11 +61,11 @@
                      Removing the row as the primary changes would make the
                      list jump under the cursor; a disabled row explains
                      itself. --}}
-                <label class="flex items-center gap-2.5 cursor-pointer" data-secondary-row="{{ $code }}">
+                <label class="styledesk_choice" data-secondary-row="{{ $code }}">
                   <input type="checkbox" name="secondary[]" value="{{ $code }}" class="sd-check"
                          data-secondary-box="{{ $code }}"
                          @checked(in_array($code, $chosenSecondary, true))>
-                  <span class="text-[13px] text-ink">
+                  <span class="styledesk_choice__label">
                     {{ $language['native'] }}
                     <span class="text-sub">— {{ $language['name'] }}</span>
                   </span>
@@ -83,7 +83,7 @@
             {{ __('common.save_changes') }}
           </button>
           <a href="{{ route('settings.languages.show') }}"
-             class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+             class="styledesk_action">
             {{ __('common.cancel') }}
           </a>
         </div>

@@ -43,11 +43,14 @@
                accept="image/jpeg,image/png,image/webp" class="sr-only">
 
         <label for="{{ $uploadId }}"
-               class="inline-flex items-center h-9 px-3.5 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold cursor-pointer transition-colors">
+               class="styledesk_action">
             {{ __('common.upload.choose') }}
         </label>
 
         <button type="button" data-upload-remove hidden
+                data-confirm-title="{{ __('common.remove') }}"
+                data-confirm="{{ __('branding.remove_confirm') }}"
+                data-confirm-label="{{ __('common.remove') }}"
                 class="h-9 px-3 rounded-md text-sub hover:text-danger hover:bg-hover text-[13px] font-semibold transition-colors">
             {{ __('common.remove') }}
         </button>

@@ -20,7 +20,7 @@
                 An account already exists with this email address.
             </p>
             <a href="{{ route('login') }}"
-               class="inline-flex items-center h-8 px-3 mt-2.5 ml-[23px] rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+               class="styledesk_action mt-2.5 ml-[23px]">
                 Log in instead
             </a>
         </div>
@@ -106,7 +106,7 @@
 
     {{-- Designed, not implemented: needs Socialite plus Google OAuth credentials. --}}
     <button type="button" disabled title="Google sign-up is not available yet"
-            class="relative w-full h-11 rounded-lg border border-stroke bg-white text-[14px] font-semibold text-ink opacity-45 cursor-not-allowed">
+            class="styledesk_action relative w-full text-[14px] opacity-45 cursor-not-allowed">
         <span class="absolute left-4 top-1/2 -translate-y-1/2"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.1-3.8 6.4-9.4 6.4-16z"/><path fill="#FBBC05" d="M10.4 28.3c-.5-1.4-.8-2.9-.8-4.3s.3-3 .8-4.3l-7.8-6.1C.9 16.6 0 20.2 0 24s.9 7.4 2.6 10.4l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.5-2 15.3-5.5l-7.1-5.5c-2 1.3-4.6 2.1-8.2 2.1-6.3 0-11.7-3.7-13.6-9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg></span>
         Sign up with Google
     </button>

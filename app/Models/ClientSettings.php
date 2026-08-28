@@ -120,7 +120,15 @@ class ClientSettings extends Model
 
         $settings->save();
 
-        return $settings;
+        /**
+         * Read back, so the row's own defaults are on the model.
+         *
+         * A freshly inserted model knows only what was assigned: every
+         * boolean the schema defaults would read as null, and a caller
+         * passing one to a typed argument gets a TypeError rather than the
+         * false the column actually holds.
+         */
+        return $settings->refresh();
     }
 
     /**

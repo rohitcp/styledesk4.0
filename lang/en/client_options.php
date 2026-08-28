@@ -38,6 +38,19 @@ return [
         'preferred_last' => 'Preferred name, then last name',
     ],
 
+    'phone_types' => [
+        'mobile' => 'Mobile',
+        'home' => 'Home',
+        'work' => 'Work',
+        'other' => 'Other',
+    ],
+
+    'email_types' => [
+        'personal' => 'Personal',
+        'work' => 'Work',
+        'other' => 'Other',
+    ],
+
     'statuses' => [
         'active' => 'Active',
         'inactive' => 'Inactive',

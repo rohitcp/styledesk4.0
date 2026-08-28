@@ -4,7 +4,7 @@
 
 @section('content')
   <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
-    <div class="max-w-[760px]">
+    <div class="styledesk_form">
 
       @php
           $opts = config('business_profile');
@@ -73,7 +73,7 @@
              must not sit inside the form or look like it might save. The
              unsaved-changes guard intercepts it. --}}
         <a href="{{ route('settings.business.show') }}" data-back
-           class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+           class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
         </a>
@@ -127,7 +127,7 @@
                 <legend class="text-[13px] font-medium text-ink mb-2">{{ __('business.fields.business_type') }}</legend>
                 <div class="flex flex-wrap gap-2">
                   @foreach ($businessTypes as $type)
-                    <label class="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover cursor-pointer transition-colors text-[13px] text-ink">
+                    <label class="styledesk_choice">
                       <input type="checkbox" name="business_type_ids[]" value="{{ $type->id }}" class="sd-check"
                              @checked(in_array($type->id, old('business_type_ids', $selectedTypes), false))>
                       {{ $type->label() }}
@@ -157,10 +157,10 @@
                 <legend class="text-[13px] font-medium text-ink mb-2">{{ __('business.fields.status') }} <span class="text-danger">*</span></legend>
                 <div class="flex items-center gap-5">
                   @foreach (['active' => __('common.active'), 'inactive' => __('common.inactive')] as $value => $label)
-                    <label class="flex items-center gap-2.5 cursor-pointer">
+                    <label class="styledesk_choice">
                       <input type="radio" name="status" value="{{ $value }}" class="sd-check"
                              @checked(old('status', $tenant->status) === $value)>
-                      <span class="text-[13px] text-ink">{{ $label }}</span>
+                      <span class="styledesk_choice__label">{{ $label }}</span>
                     </label>
                   @endforeach
                 </div>
@@ -280,7 +280,7 @@
             {{ __('common.save_changes') }}
           </button>
           <a href="{{ route('settings.business.show') }}" data-cancel
-             class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+             class="styledesk_action">
             {{ __('common.cancel') }}
           </a>
         </div>

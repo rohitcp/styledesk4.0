@@ -28,6 +28,20 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Tenant storage
+    |--------------------------------------------------------------------------
+    |
+    | Which disk TenantStorageService puts tenant files on: `tenants` for a
+    | local directory, `spaces` for DigitalOcean. It is read in exactly one
+    | place, so switching provider is this line and nothing else — no feature
+    | in the application names a disk.
+    |
+    */
+
+    'tenant_disk' => env('TENANT_STORAGE_DISK', 'tenants'),
+
     'disks' => [
 
         'local' => [
@@ -64,6 +78,43 @@ return [
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        /**
+         * Tenant files, wherever they actually live.
+         *
+         * One logical disk with two implementations behind it: a local
+         * directory in development, a DigitalOcean Space in production. The
+         * folder structure inside is identical either way, so a path written
+         * on a laptop is the same path in production and nothing above
+         * TenantStorageService has to know which is in use.
+         *
+         * `tenants` is deliberately absent from tenancy.filesystem.disks:
+         * the tenant is already the first segment of every path this disk
+         * stores, and letting the tenancy package also move the disk root
+         * would put it in the path twice.
+         */
+        'tenants' => [
+            'driver' => 'local',
+            'root' => storage_path('app/tenants'),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage/tenants',
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
+        'spaces' => [
+            'driver' => 's3',
+            'key' => env('DO_SPACES_KEY'),
+            'secret' => env('DO_SPACES_SECRET'),
+            'region' => env('DO_SPACES_REGION', 'ams3'),
+            'bucket' => env('DO_SPACES_BUCKET'),
+            'url' => env('DO_SPACES_URL'),
+            'endpoint' => env('DO_SPACES_ENDPOINT'),
+            /* Spaces addresses buckets as subdomains, the way S3 does. */
+            'use_path_style_endpoint' => env('DO_SPACES_PATH_STYLE', false),
+            'visibility' => 'private',
             'throw' => false,
             'report' => false,
         ],

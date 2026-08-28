@@ -215,7 +215,10 @@ function removeConfirmed() {
         </div>
 
         <button type="button" @click="add"
-                class="h-10 px-4 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+                class="styledesk_action">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+            </svg>
             Add another service
         </button>
 

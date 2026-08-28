@@ -410,10 +410,20 @@ window.SD = (function () {
      restore all keep working untouched — only the presentation changes.
      Call it again on a select that has already been upgraded and it is a
      no-op, which makes it safe to run after a list is re-rendered. */
+  var comboSeq = 0;
+
   function combo(select, options) {
     if (!select || select.dataset.comboReady) return null;
     options = options || {};
     select.dataset.comboReady = '1';
+
+    /* The button's id is derived from the select's, and two buttons sharing
+       an id break every `label[for]` and `aria-controls` on the page. Rows
+       added by a repeater have no id of their own, so one is minted here. */
+    if (!select.id) {
+      comboSeq += 1;
+      select.id = 'sd-combo-' + comboSeq;
+    }
 
     var wrap = document.createElement('div');
     wrap.className = 'relative';
@@ -470,6 +480,11 @@ window.SD = (function () {
     var list   = pop.querySelector('.sd-pop__list');
     var shown  = [];
     var active = -1;
+
+    /* A search box over four options is furniture. It stays in the DOM and
+       keeps focus, so typing still filters and the keyboard handling below
+       is unchanged — it is simply not drawn. */
+    if (options.search === false) search.classList.add('sr-only');
 
     function items() {
       return Array.prototype.map.call(select.options, function (o, i) {
@@ -627,7 +642,12 @@ window.SD = (function () {
 
   function dpPad(n) { return (n < 10 ? '0' : '') + n; }
   function dpIso(d) { return d.getFullYear() + '-' + dpPad(d.getMonth() + 1) + '-' + dpPad(d.getDate()); }
-  function dpDisplay(d) { return dpPad(d.getMonth() + 1) + '/' + dpPad(d.getDate()) + '/' + d.getFullYear(); }
+  function dpDisplay(d, order) {
+    var day = dpPad(d.getDate()), month = dpPad(d.getMonth() + 1), year = d.getFullYear();
+    // Day-first for everyone who writes dates that way; the ISO value on
+    // data-value is unaffected either way, so only the reading changes.
+    return order === 'dmy' ? day + '/' + month + '/' + year : month + '/' + day + '/' + year;
+  }
   function dpParse(iso) {
     var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
     if (!m) return null;
@@ -648,6 +668,14 @@ window.SD = (function () {
     var input = root.querySelector('[data-dp-input]');
     var cal = root.querySelector('[data-dp-cal]');
     if (!input || !cal) return null;
+
+    /* Wording is passed in rather than baked in: the app runs in more than
+       one language, and a Spanish form with an English calendar inside it is
+       the kind of seam a business notices immediately. The English defaults
+       stay so the prototype pages, which pass nothing, are unaffected. */
+    var L = options.labels || {};
+    var MONTHS = L.months && L.months.length === 12 ? L.months : DP_MONTHS;
+    var DOW = L.dow && L.dow.length === 7 ? L.dow : DP_DOW;
 
     var today = dpMidnight(new Date());
     var min = options.min ? dpParse(options.min) : null;
@@ -678,7 +706,7 @@ window.SD = (function () {
     function paint() {
       var y = view.getFullYear(), m = view.getMonth();
 
-      var months = DP_MONTHS.map(function (name, i) {
+      var months = MONTHS.map(function (name, i) {
         return '<option value="' + i + '"' + (i === m ? ' selected' : '') + '>' + name + '</option>';
       }).join('');
       var years = '';
@@ -700,8 +728,8 @@ window.SD = (function () {
         var tab = dpSame(d, focusDay) ? '0' : '-1';
         cells += '<button type="button" class="' + cls + '" data-dp-day="' + dpIso(d) + '"' +
           ' tabindex="' + tab + '"' + (disabled ? ' disabled' : '') +
-          ' aria-label="' + DP_MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() +
-          (dpSame(d, today) ? ' (today)' : '') + '"' +
+          ' aria-label="' + MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() +
+          (dpSame(d, today) ? ' (' + (L.today || 'Today') + ')' : '') + '"' +
           (dpSame(d, selected) ? ' aria-current="date"' : '') + '>' + d.getDate() + '</button>';
       }
 
@@ -710,31 +738,51 @@ window.SD = (function () {
 
       cal.innerHTML =
         '<div class="flex items-center gap-1.5 mb-3">' +
-          '<button type="button" class="sd-cal__nav grid" data-dp-nav="-1" aria-label="Previous month"' + (prevOff ? ' disabled' : '') + '>' +
+          '<button type="button" class="sd-cal__nav grid" data-dp-nav="-1" aria-label="' + escapeHtml(L.previousMonth || 'Previous month') + '"' + (prevOff ? ' disabled' : '') + '>' +
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
           '</button>' +
           '<div class="flex-1 min-w-0">' +
-            '<label class="sr-only" for="' + input.id + '-month">Month</label>' +
+            '<label class="sr-only" for="' + input.id + '-month">' + escapeHtml(L.month || 'Month') + '</label>' +
             '<select id="' + input.id + '-month" class="sd-cal__mini" data-dp-month>' + months + '</select>' +
           '</div>' +
           '<div class="w-[92px] shrink-0">' +
-            '<label class="sr-only" for="' + input.id + '-year">Year</label>' +
+            '<label class="sr-only" for="' + input.id + '-year">' + escapeHtml(L.year || 'Year') + '</label>' +
             '<select id="' + input.id + '-year" class="sd-cal__mini" data-dp-year>' + years + '</select>' +
           '</div>' +
-          '<button type="button" class="sd-cal__nav grid" data-dp-nav="1" aria-label="Next month"' + (nextOff ? ' disabled' : '') + '>' +
+          '<button type="button" class="sd-cal__nav grid" data-dp-nav="1" aria-label="' + escapeHtml(L.nextMonth || 'Next month') + '"' + (nextOff ? ' disabled' : '') + '>' +
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
           '</button>' +
         '</div>' +
         '<div class="grid grid-cols-7 gap-0.5 mb-1" aria-hidden="true">' +
-          DP_DOW.map(function (x) { return '<span class="sd-cal__dow">' + x + '</span>'; }).join('') +
+          DOW.map(function (x) { return '<span class="sd-cal__dow">' + escapeHtml(x) + '</span>'; }).join('') +
         '</div>' +
-        '<div class="grid grid-cols-7 gap-0.5" role="group" aria-label="' + DP_MONTHS[m] + ' ' + y + '">' + cells + '</div>' +
+        '<div class="grid grid-cols-7 gap-0.5" role="group" aria-label="' + MONTHS[m] + ' ' + y + '">' + cells + '</div>' +
         (options.clearable === false ? '' :
           '<div class="flex items-center gap-2 mt-3 pt-3 border-t border-line">' +
-            '<button type="button" class="h-8 px-3 rounded-md text-[12px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors" data-dp-clear>Clear</button>' +
+            '<button type="button" class="h-8 px-3 rounded-md text-[12px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors" data-dp-clear>' + escapeHtml(L.clear || 'Clear') + '</button>' +
             (outOfRange(today) ? '' :
-              '<button type="button" class="ml-auto h-8 px-3 rounded-md text-[12px] font-semibold text-brand hover:bg-hover transition-colors" data-dp-today>Today</button>') +
+              '<button type="button" class="ml-auto h-8 px-3 rounded-md text-[12px] font-semibold text-brand hover:bg-hover transition-colors" data-dp-today>' + escapeHtml(L.today || 'Today') + '</button>') +
           '</div>');
+
+      comboHeader();
+    }
+
+    /* Month and year as combos, matching every other dropdown in the app.
+       Re-applied after each paint because the header is rebuilt with the
+       grid; the month list is short enough not to want a search box, while
+       a hundred years is exactly what one is for. */
+    function comboHeader() {
+      var month = cal.querySelector('[data-dp-month]');
+      var year = cal.querySelector('[data-dp-year]');
+
+      if (month) combo(month, { search: false, width: '190px' });
+      if (year) {
+        combo(year, {
+          width: '130px',
+          searchPlaceholder: L.year || 'Year',
+          searchLabel: L.year || 'Year'
+        });
+      }
     }
 
     function moveFocus(days) {
@@ -757,7 +805,7 @@ window.SD = (function () {
     function commit(d) {
       selected = d;
       if (d) {
-        input.value = dpDisplay(d);
+        input.value = dpDisplay(d, options.order);
         input.dataset.value = dpIso(d);
       } else {
         input.value = '';
@@ -831,16 +879,23 @@ window.SD = (function () {
     });
 
     cal.addEventListener('change', function (e) {
+      /* Focus goes back to the control the reader used. Once the select is
+         a combo it is the button that is visible and focusable — focusing
+         the hidden select would leave the ring nowhere. */
+      var refocus = function (selector) {
+        var el = cal.querySelector(selector);
+        if (!el) return;
+        (el.sdCombo ? el.sdCombo.button : el).focus();
+      };
+
       if (e.target.matches('[data-dp-month]')) {
         view = new Date(view.getFullYear(), Number(e.target.value), 1);
         paint();
-        var m = cal.querySelector('[data-dp-month]');
-        if (m) m.focus();
+        refocus('[data-dp-month]');
       } else if (e.target.matches('[data-dp-year]')) {
         view = new Date(Number(e.target.value), view.getMonth(), 1);
         paint();
-        var y = cal.querySelector('[data-dp-year]');
-        if (y) y.focus();
+        refocus('[data-dp-year]');
       }
     });
 
@@ -882,6 +937,36 @@ window.SD = (function () {
     };
     input.sdDatePicker = api;
     return api;
+  }
+
+  /* Upgrades every `[data-datepicker]` inside `root`, reading each field's
+     own options from data-dp-options. Lets a Blade view add a date field by
+     writing markup, with no per-page init script to forget. */
+  function datePickerAll(root) {
+    (root || document).querySelectorAll('[data-datepicker]').forEach(function (el) {
+      var options = {};
+
+      if (el.dataset.dpOptions) {
+        try {
+          options = JSON.parse(el.dataset.dpOptions);
+        } catch (e) {
+          if (window.console) console.error('[styledesk] Invalid data-dp-options JSON.', el, e);
+        }
+      }
+
+      var api = datePicker(el, options);
+      if (!api) return;
+
+      /* The visible field is a display string; the form posts ISO. Keeping
+         them in two inputs means no server code has to parse MM/DD/YYYY, and
+         no screen has to remember which format it drew. */
+      var target = api.input.dataset.dpFor && document.getElementById(api.input.dataset.dpFor);
+      if (!target) return;
+
+      var sync = function () { target.value = api.value(); };
+      api.input.addEventListener('change', sync);
+      sync();
+    });
   }
 
   /* ---------- Account menu (avatar dropdown) ------------------------
@@ -1528,7 +1613,7 @@ window.SD = (function () {
     checkPassword: checkPassword,
     COUNTRIES: COUNTRIES, phoneField: phoneField, formatPhone: formatPhone,
     combo: combo, comboAll: comboAll, comboRefresh: comboRefresh,
-    datePicker: datePicker,
+    datePicker: datePicker, datePickerAll: datePickerAll,
     accountMenu: accountMenu, accountMenuAll: accountMenuAll,
     setError: setError, clearErrors: clearErrors, focusFirstError: focusFirstError,
     renderProgress: renderProgress, guard: guard, trialRemaining: trialRemaining,

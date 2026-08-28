@@ -20,6 +20,7 @@ return [
     'correct_fields' => 'Please correct the highlighted fields and try again.',
 
     'reset' => 'Reset to default branding',
+    'remove_confirm' => 'Remove this image? It is deleted when you save.',
     'reset_confirm' => 'Reset branding to the StyleDesk default? Your logo, favicon and colours are removed.',
 
     'logo' => [

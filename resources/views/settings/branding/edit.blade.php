@@ -21,7 +21,7 @@
         </div>
 
         <a href="{{ route('settings.index') }}"
-           class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+           class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
         </a>
@@ -74,11 +74,14 @@
 
                   <div class="flex flex-wrap items-center gap-2">
                     <label for="logoFile"
-                           class="inline-flex items-center h-9 px-3.5 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold cursor-pointer transition-colors">
+                           class="styledesk_action">
                       {{ $logoUrl ? __('branding.logo.replace') : __('branding.logo.upload') }}
                     </label>
 
                     <button type="button" data-asset-remove="logo" @if (! $logoUrl) hidden @endif
+                            data-confirm-title="{{ __('common.remove') }}"
+                            data-confirm="{{ __('branding.remove_confirm') }}"
+                            data-confirm-label="{{ __('common.remove') }}"
                             class="h-9 px-3 rounded-md text-sub hover:text-danger hover:bg-hover text-[13px] font-semibold transition-colors">
                       {{ __('common.remove') }}
                     </button>
@@ -119,11 +122,14 @@
 
                   <div class="flex flex-wrap items-center gap-2">
                     <label for="faviconFile"
-                           class="inline-flex items-center h-9 px-3.5 rounded-md border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold cursor-pointer transition-colors">
+                           class="styledesk_action">
                       {{ $faviconUrl ? __('branding.favicon.replace') : __('branding.favicon.upload') }}
                     </label>
 
                     <button type="button" data-asset-remove="favicon" @if (! $faviconUrl) hidden @endif
+                            data-confirm-title="{{ __('common.remove') }}"
+                            data-confirm="{{ __('branding.remove_confirm') }}"
+                            data-confirm-label="{{ __('common.remove') }}"
                             class="h-9 px-3 rounded-md text-sub hover:text-danger hover:bg-hover text-[13px] font-semibold transition-colors">
                       {{ __('common.remove') }}
                     </button>
@@ -219,12 +225,15 @@
               </button>
 
               <a href="{{ route('settings.index') }}"
-                 class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+                 class="styledesk_action">
                 {{ __('common.cancel') }}
               </a>
 
               @unless ($isDefault)
                 <button type="button" data-branding-reset
+                        data-confirm-title="{{ __('branding.reset') }}"
+                        data-confirm="{{ __('branding.reset_confirm') }}"
+                        data-confirm-label="{{ __('branding.reset') }}"
                         class="ml-auto h-9 px-3.5 rounded-lg text-danger hover:bg-hover text-[13px] font-semibold transition-colors">
                   {{ __('branding.reset') }}
                 </button>
@@ -470,9 +479,10 @@
 
       /* -------------------------------------------------------- actions */
 
+      /* The question is asked by the shared confirmation dialog off the
+         control's own data-confirm attributes, so by the time this handler
+         runs the reader has already said yes. */
       document.querySelector('[data-branding-reset]')?.addEventListener('click', function () {
-        if (!window.confirm(@json(__('branding.reset_confirm')))) return;
-
         document.getElementById('brandingResetForm').submit();
       });
 

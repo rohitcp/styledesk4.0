@@ -77,7 +77,7 @@
               <h2 class="text-[19px] sm:text-[20px] font-bold text-head tracking-tight">Explore Features</h2>
               <p class="text-[14px] text-sub mt-1.5 max-w-[640px]">Take a minute to view the panels below to guide your next actions and discover what StyleDesk can do for you.</p>
             </div>
-            <button class="h-8 w-8 grid place-items-center rounded-md text-faint hover:bg-hover hover:text-sub shrink-0 transition-colors" data-tip="Dismiss">
+            <button class="h-8 w-8 grid place-items-center rounded-md text-faint hover:bg-hover hover:text-sub shrink-0 transition-colors" data-tip="Dismiss" aria-label="Dismiss">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
             </button>
           </div>
@@ -110,7 +110,7 @@
                 <div class="p-4">
                   <h3 class="text-[15px] font-semibold text-head">Manage Sales Opportunities</h3>
                   <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Stay in control of your sales pipeline and track deals from start to finish.</p>
-                  <button class="mt-4 h-8 px-3.5 rounded-md border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Watch Clip</button>
+                  <button class="styledesk_action mt-4">Watch Clip</button>
                 </div>
               </article>
 
@@ -123,7 +123,7 @@
                 <div class="p-4">
                   <h3 class="text-[15px] font-semibold text-head">Log a Note or Activity</h3>
                   <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Keep your team informed with detailed logs of interactions.</p>
-                  <button class="mt-4 h-8 px-3.5 rounded-md border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Watch Clip</button>
+                  <button class="styledesk_action mt-4">Watch Clip</button>
                 </div>
               </article>
 
@@ -136,7 +136,7 @@
                 <div class="p-4">
                   <h3 class="text-[15px] font-semibold text-head">Comments</h3>
                   <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Leave threaded comments for colleagues, and reply from the app or email.</p>
-                  <button class="mt-4 h-8 px-3.5 rounded-md border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Watch Clip</button>
+                  <button class="styledesk_action mt-4">Watch Clip</button>
                 </div>
               </article>
 
@@ -149,7 +149,7 @@
                 <div class="p-4">
                   <h3 class="text-[15px] font-semibold text-head">Build Workflows</h3>
                   <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Automate the repetitive steps so your team can focus on the work itself.</p>
-                  <button class="mt-4 h-8 px-3.5 rounded-md border border-stroke bg-white text-ink text-[13px] font-semibold hover:bg-hover transition-colors">Watch Clip</button>
+                  <button class="styledesk_action mt-4">Watch Clip</button>
                 </div>
               </article>
 

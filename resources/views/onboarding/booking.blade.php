@@ -17,24 +17,24 @@
             </p>
         </div>
 
-        <label class="flex items-start gap-2.5 cursor-pointer">
+        <label class="styledesk_choice">
             <input type="checkbox" name="is_enabled" value="1" class="sd-check mt-0.5"
                    @checked(old('is_enabled', $settings?->is_enabled ?? true))>
-            <span class="text-[13px] text-ink">Allow clients to book online</span>
+            <span class="styledesk_choice__label">Allow clients to book online</span>
         </label>
 
         <fieldset>
             <legend class="text-[13px] font-medium text-ink mb-2">Who can book</legend>
-            <div class="space-y-2">
-                <label class="flex items-center gap-2.5 cursor-pointer">
+            <div class="styledesk_choicelist">
+                <label class="styledesk_choice">
                     <input type="checkbox" name="allow_new_clients" value="1" class="sd-check"
                            @checked(old('allow_new_clients', $settings?->allow_new_clients ?? true))>
-                    <span class="text-[13px] text-ink">New clients</span>
+                    <span class="styledesk_choice__label">New clients</span>
                 </label>
-                <label class="flex items-center gap-2.5 cursor-pointer">
+                <label class="styledesk_choice">
                     <input type="checkbox" name="allow_existing_clients" value="1" class="sd-check"
                            @checked(old('allow_existing_clients', $settings?->allow_existing_clients ?? true))>
-                    <span class="text-[13px] text-ink">Existing clients</span>
+                    <span class="styledesk_choice__label">Existing clients</span>
                 </label>
             </div>
         </fieldset>
@@ -68,10 +68,10 @@
                     'require_phone' => ['Phone number', false],
                     'require_card' => ['Card on file', false],
                 ] as $field => [$label, $default])
-                    <label class="flex items-center gap-2.5 cursor-pointer">
+                    <label class="styledesk_choice">
                         <input type="checkbox" name="{{ $field }}" value="1" class="sd-check"
                                @checked(old($field, $settings?->{$field} ?? $default))>
-                        <span class="text-[13px] text-ink">{{ $label }}</span>
+                        <span class="styledesk_choice__label">{{ $label }}</span>
                     </label>
                 @endforeach
             </div>
@@ -97,7 +97,7 @@
             {{-- ml-auto: Back sits on the opposite side from Continue, so
                  the button that moves forward stays where the eye lands. --}}
             <a href="{{ route('onboarding.'.$previousStep) }}"
-               class="ml-auto inline-flex items-center gap-1.5 h-11 px-4 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+               class="styledesk_action ml-auto">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Back
             </a>

@@ -23,6 +23,20 @@
     'placeholder' => 'Choose an option',
     'required' => false,
     'hint' => null,
+    /**
+     * More than one value, posted as name[] and shown as chips.
+     *
+     * The same island either way: the search, the panel, the outside-click
+     * handling and the keyboard behaviour are identical, and only the
+     * selection rule differs.
+     */
+    'multiple' => false,
+    /**
+     * Filter mode: the control reports "Location (3)" and the chosen values
+     * are listed as chips below the toolbar. Without it a multiple combo
+     * keeps its chips inside itself, which is what the settings screens want.
+     */
+    'summary' => null,
 ])
 
 @php
@@ -31,11 +45,25 @@
     // includes(), so both sides are normalised here rather than at each call.
     $comboOptions = collect($options)->mapWithKeys(fn ($label, $key) => [(string) $key => $label])->all();
 
+    /**
+     * Whatever the caller passed, normalised to a list of strings: a single
+     * value, an array of them, or nothing at all.
+     */
+    $comboSelected = collect($multiple ? (array) $selected : [$selected])
+        ->filter(fn ($value) => $value !== null && $value !== '')
+        ->map(fn ($value) => (string) $value)
+        ->values()
+        ->all();
+
     $comboProps = [
         'options' => $comboOptions,
-        'modelValue' => ($selected === null || $selected === '') ? [] : [(string) $selected],
+        'modelValue' => $comboSelected,
         'name' => $name,
-        'single' => true,
+        'single' => ! $multiple,
+        // No primary on a filter: the first location chosen does not outrank
+        // the second, and badging it Primary would claim it does.
+        'showPrimary' => false,
+        'summaryLabel' => $summary ?? '',
         'placeholder' => $placeholder,
         'ariaLabel' => $label ?? $placeholder,
     ];

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['first_name', 'last_name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
@@ -199,6 +200,32 @@ class User extends Authenticatable implements MustVerifyEmail
             ->where('tenant_id', $this->tenant_id)
             ->where('user_id', $this->id)
             ->first();
+    }
+
+    /**
+     * Two letters standing in for a face.
+     *
+     * Never blank: a byline with an empty circle beside it reads as a note
+     * nobody wrote, which is the one thing a signed note must not do.
+     */
+    public function initials(): string
+    {
+        $initials = mb_substr($this->first_name ?: '', 0, 1).mb_substr($this->last_name ?: '', 0, 1);
+
+        return $initials === '' ? '?' : mb_strtoupper($initials);
+    }
+
+    /**
+     * Their photo, wherever it was uploaded.
+     *
+     * A person can have an account picture and a staff-record picture; the
+     * account one wins, because it is the one they chose for themselves.
+     */
+    public function avatarUrl(): ?string
+    {
+        $path = $this->avatar_path ?: $this->staffRecord()?->avatar_path;
+
+        return $path ? Storage::disk('brand')->url($path) : null;
     }
 
     /** Backing store for staffRecord(); not an attribute, so it is never saved. */

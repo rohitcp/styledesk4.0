@@ -61,7 +61,15 @@
     </script>
 
 </head>
-<body class="styledesk_shell bg-[#fafbfc] text-ink text-[13px]">
+{{-- `shellClass` lets one page opt into a different shell. The client
+     profile uses it to become a fixed-height workspace whose columns scroll
+     on their own; every other page leaves it empty and scrolls normally. --}}
+{{-- White canvas, set once here rather than per page.
+     The app is one continuous workspace: a grey outer background meant that
+     every screen had to opt into a white card to look finished, and that the
+     colour changed depending on which page you were on. Cards keep their
+     borders and rules, which is what separates them now. --}}
+<body class="styledesk_shell @yield('shellClass') bg-white text-ink text-[13px]">
 
 {{--
     Application shell, ported from the prototype's dashboard.html: the
@@ -150,13 +158,13 @@
           <x-icon name="plus" size="18" />
         </a>
 
-        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions">
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" aria-label="Mentions">
           <x-icon name="at" size="18" />
         </button>
-        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity">
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" aria-label="Activity">
           <x-icon name="wifi" size="18" />
         </button>
-        <a href="#" data-pending-route="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system">
+        <a href="#" data-pending-route="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" aria-label="Design system">
           <x-icon name="circle-question" size="18" />
         </a>
 
@@ -181,6 +189,7 @@
 @include('layouts.partials.nav-drawer')
 
 @include('partials.session-timeout')
+@include('partials.confirm-dialog')
 
 <x-toast />
 

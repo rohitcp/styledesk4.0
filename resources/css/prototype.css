@@ -261,8 +261,11 @@ input.sd-input.is-picker:read-only:focus { outline: 2px solid var(--sd-brand); o
 }
 .sd-navicon:hover { background-color: rgba(255, 255, 255, 0.12); color: #fff; }
 .sd-navicon:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: 2px; }
-.sd-navicon.is-active { background-color: #fff; color: #0f0f10; }
-.sd-navicon.is-active:hover { background-color: #fff; }
+/* Selected reads as hover, held. The pill used to invert to solid white,
+   which made the current section the loudest thing on the bar and looked
+   like a different kind of control from the icon beside it. */
+.sd-navicon.is-active { background-color: rgba(255, 255, 255, 0.12); color: #fff; }
+.sd-navicon.is-active:hover { background-color: rgba(255, 255, 255, 0.18); }
 
 /* Search field on the dark bar — mirrors .sd-input's inset-outline model */
 .sd-input-dark {
@@ -532,48 +535,16 @@ input.sd-input.is-picker:read-only:focus { outline: 2px solid var(--sd-brand); o
 
 /* ------------------------------------------------------------------
    Tooltip — black bubble on hover/focus, for icon-only controls.
-   Pure CSS off [data-tip]; the accessible name still comes from
-   aria-label, so this is decoration and pseudo-elements never reach
-   the a11y tree. Replaces the native title attribute, which is slow
-   to appear and unstyleable.
+   Driven off [data-tip]; the accessible name still comes from
+   aria-label, so the bubble is decoration and never reaches the a11y
+   tree. Replaces the native title attribute, which is slow to appear
+   and unstyleable.
    ------------------------------------------------------------------ */
+/* The bubble itself is now .styledesk_tooltip, drawn on the body by
+   resources/js/tooltip.js so it can escape clipping containers and flip
+   away from the edges of the window. All that is left here is the
+   positioning context the old pseudo-elements needed. */
 .sd-tip { position: relative; }
-.sd-tip::after,
-.sd-tip::before {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.12s ease;
-  z-index: 50;
-}
-.sd-tip::after {
-  content: attr(data-tip);
-  position: absolute;
-  top: calc(100% + 9px);
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 5px 8px;
-  border-radius: 6px;
-  background-color: #0f0f10;        /* head */
-  color: #fff;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.25;
-  white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(15, 15, 16, 0.22);
-}
-.sd-tip::before {
-  content: '';
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
-  border: 5px solid transparent;
-  border-bottom-color: #0f0f10;
-}
-.sd-tip:hover::after,
-.sd-tip:hover::before,
-.sd-tip:focus-visible::after,
-.sd-tip:focus-visible::before { opacity: 1; }
 
 /* ------------------------------------------------------------------
    Nav sub-menu — opens on hover or keyboard focus. The parent icon
@@ -615,10 +586,6 @@ input.sd-input.is-picker:read-only:focus { outline: 2px solid var(--sd-brand); o
 .sd-menu__item:hover,
 .sd-menu__item:focus-visible { background-color: var(--sd-brand); color: #fff; outline: none; }
 
-/* One hint at a time: while the menu is open the tooltip stays down. */
-.sd-menu.is-open .sd-tip::after,
-.sd-menu.is-open .sd-tip::before { opacity: 0; }
-
 /* ==================================================================
    CLIENT MANAGEMENT
    Components introduced for the All Clients directory, the Add Client
@@ -641,7 +608,8 @@ input.sd-input.is-picker:read-only:focus { outline: 2px solid var(--sd-brand); o
 }
 .sd-iconbtn:hover { background-color: #f3f4f6; color: #23272f; }
 .sd-iconbtn:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
-.sd-iconbtn.is-on { background-color: #eef1f4; color: var(--sd-brand); }
+/* Same fill as hover; the brand colour is what says it is on. */
+.sd-iconbtn.is-on { background-color: #f3f4f6; color: var(--sd-brand); }
 .sd-iconbtn:disabled { opacity: 0.4; pointer-events: none; }
 
 /* ------------------------------------------------------------------

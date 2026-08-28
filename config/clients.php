@@ -51,6 +51,36 @@ return [
     ],
 
     /*
+     * What kind of number or address a contact is.
+     *
+     * Deliberately not "primary" and "secondary": which number to ring and
+     * what kind of number it is are two different facts, and folding them
+     * together makes a client with a work mobile unrepresentable. Priority
+     * lives on the row as a flag; this is only the kind.
+     */
+    'phone_types' => [
+        'mobile' => 'Mobile',
+        'home' => 'Home',
+        'work' => 'Work',
+        'other' => 'Other',
+    ],
+
+    'email_types' => [
+        'personal' => 'Personal',
+        'work' => 'Work',
+        'other' => 'Other',
+    ],
+
+    /*
+     * How many of each a client may carry.
+     *
+     * A cap exists so a mistyped paste cannot grow a record without bound;
+     * it is set high enough that no real client meets it.
+     */
+    'max_phones' => 10,
+    'max_emails' => 10,
+
+    /*
      * How a client's name is written, everywhere it appears.
      *
      * One setting rather than each screen deciding, for the same reason money
@@ -209,13 +239,42 @@ return [
         'Books every 4 weeks', 'Books every 6 weeks',
     ],
 
+    /*
+     * The tags a new business starts with.
+     *
+     * Broad enough to cover a salon, a spa, a massage practice or a clinic,
+     * because MVP has one list and every one of those businesses gets it.
+     *
+     * `active` is what separates the ten a business will use on day one from
+     * the ten it might: all twenty exist, and the quieter half is switched
+     * off so the filter dropdown and the client form are not twenty items
+     * long before anyone has classified a single client. Turning one on is a
+     * click; inventing "No-show risk" from scratch is not.
+     */
     'seed_tags' => [
-        'VIP' => 'violet',
-        'New client' => 'blue',
-        'Regular' => 'teal',
-        'Bridal' => 'rose',
-        'Corporate' => 'slate',
-        'High value' => 'amber',
-        'Walk-in' => 'green',
+        // On by default.
+        ['label' => 'VIP', 'color' => 'violet', 'active' => true],
+        ['label' => 'New client', 'color' => 'blue', 'active' => true],
+        ['label' => 'Regular client', 'color' => 'teal', 'active' => true],
+        ['label' => 'Returning client', 'color' => 'teal', 'active' => true],
+        ['label' => 'High value', 'color' => 'amber', 'active' => true],
+        ['label' => 'Walk-in', 'color' => 'green', 'active' => true],
+        ['label' => 'Referral', 'color' => 'green', 'active' => true],
+        ['label' => 'Bridal', 'color' => 'rose', 'active' => true],
+        ['label' => 'Frequent booker', 'color' => 'violet', 'active' => true],
+        ['label' => 'Do not market', 'color' => 'slate', 'active' => true],
+
+        // Ready to switch on.
+        ['label' => 'Corporate', 'color' => 'slate', 'active' => false],
+        ['label' => 'Family', 'color' => 'blue', 'active' => false],
+        ['label' => 'Inactive', 'color' => 'slate', 'active' => false],
+        ['label' => 'No-show risk', 'color' => 'rose', 'active' => false],
+        ['label' => 'Late cancellation', 'color' => 'amber', 'active' => false],
+        ['label' => 'Prefers same staff', 'color' => 'plum', 'active' => false],
+        ['label' => 'Prefers same location', 'color' => 'plum', 'active' => false],
+        ['label' => 'Membership client', 'color' => 'violet', 'active' => false],
+        ['label' => 'Package client', 'color' => 'blue', 'active' => false],
+        ['label' => 'Promotion client', 'color' => 'amber', 'active' => false],
     ],
+
 ];

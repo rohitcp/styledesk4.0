@@ -21,7 +21,7 @@
         </div>
 
         <a href="{{ route('settings.index') }}"
-           class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+           class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
         </a>
@@ -106,7 +106,7 @@
 
                 @can('manageHours', $location)
                   <a href="{{ route('settings.hours.edit', $location) }}"
-                     class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+                     class="styledesk_action shrink-0">
                     <x-icon name="pen-to-square" size="14" />
                     {{ __('hours.edit_hours') }}
                   </a>

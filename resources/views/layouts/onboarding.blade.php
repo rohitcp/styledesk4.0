@@ -128,6 +128,11 @@
     </div>
 </footer>
 
+{{-- The shared confirmation dialog. Without it on the page, confirmAction
+     has nowhere to ask and answers no — so a control carrying data-confirm
+     would quietly do nothing. --}}
+@include('partials.confirm-dialog')
+
 @stack('scripts')
 </body>
 </html>

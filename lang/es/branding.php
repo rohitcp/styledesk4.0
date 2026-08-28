@@ -13,6 +13,7 @@ return [
     'correct_fields' => 'Corrige los campos marcados e inténtalo de nuevo.',
 
     'reset' => 'Restablecer la identidad predeterminada',
+    'remove_confirm' => '¿Quitar esta imagen? Se elimina al guardar.',
     'reset_confirm' => '¿Restablecer la identidad de marca a la de StyleDesk? Se eliminarán tu logotipo, tu favicon y tus colores.',
 
     'logo' => [

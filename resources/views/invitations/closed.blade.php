@@ -22,7 +22,7 @@
         </p>
 
         <a href="{{ route('login') }}"
-           class="inline-flex items-center justify-center h-10 px-4 mt-4 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+           class="styledesk_action mt-4">
             Go to sign in
         </a>
     </div>

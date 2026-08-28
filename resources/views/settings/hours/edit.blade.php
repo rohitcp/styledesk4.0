@@ -8,7 +8,7 @@
          The hours card is the same island on both screens, so a wider column
          here would stretch its rows and push the pickers further from their
          day label — the same component looking like two. --}}
-    <div class="max-w-[760px]">
+    <div class="styledesk_form">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
         <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
@@ -30,7 +30,7 @@
         </div>
 
         <a href="{{ route('settings.hours.index') }}"
-           class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+           class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
         </a>
@@ -53,12 +53,14 @@
               <a href="{{ route('settings.hours.edit', $location) }}" class="text-link hover:underline font-medium">{{ __('hours.future.edit_today') }}</a>
             </p>
 
-            <form method="POST" action="{{ route('settings.hours.schedule.destroy', $location) }}"
-                  onsubmit="return confirm(@js(__('hours.future.discard_confirm')));">
+            <form method="POST" action="{{ route('settings.hours.schedule.destroy', $location) }}">
               @csrf
               @method('DELETE')
               <input type="hidden" name="schedule" value="{{ $schedule }}">
-              <button type="submit" class="text-[13px] font-semibold text-danger hover:underline">{{ __('hours.future.discard') }}</button>
+              <button type="submit" class="text-[13px] font-semibold text-danger hover:underline"
+                      data-confirm-title="{{ __('hours.future.discard') }}"
+                      data-confirm="{{ __('hours.future.discard_confirm') }}"
+                      data-confirm-label="{{ __('hours.future.discard') }}">{{ __('hours.future.discard') }}</button>
             </form>
           </div>
         </div>
@@ -174,10 +176,10 @@
 
             <div class="grid sm:grid-cols-2 gap-x-4 gap-y-2">
               @foreach ($otherLocations as $other)
-                <label class="flex items-center gap-2.5 cursor-pointer">
+                <label class="styledesk_choice">
                   <input type="checkbox" name="apply_to[]" value="{{ $other->id }}" class="sd-check"
                          @checked(in_array((string) $other->id, $chosenApply, true))>
-                  <span class="text-[13px] text-ink">{{ $other->name }}</span>
+                  <span class="styledesk_choice__label">{{ $other->name }}</span>
                 </label>
               @endforeach
             </div>
@@ -197,7 +199,7 @@
             {{ __('hours.save') }}
           </button>
           <a href="{{ route('settings.hours.index') }}"
-             class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+             class="styledesk_action">
             {{ __('common.cancel') }}
           </a>
         </div>
@@ -214,8 +216,8 @@
           </div>
 
           <button type="button" data-closure-add
-                  class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
-            <x-icon name="plus" size="13" />
+                  class="styledesk_action shrink-0">
+            <x-icon name="plus" size="14" />
             {{ __('hours.exceptions.add') }}
           </button>
         </div>
@@ -246,7 +248,7 @@
                 </span>
 
                 <span class="shrink-0 flex items-center gap-2">
-                  <button type="button" class="text-[13px] font-medium text-link hover:underline"
+                  <button type="button" class="styledesk_action styledesk_action--sm"
                           data-closure-edit
                           data-closure="{{ json_encode([
                               'id' => $closure->id,
@@ -263,9 +265,12 @@
                     {{ __('common.edit') }}
                   </button>
 
-                  <button type="button" class="text-[13px] font-medium text-danger hover:underline"
+                  <button type="button" class="styledesk_action styledesk_action--sm styledesk_action--danger"
                           data-closure-delete
                           data-name="{{ $closure->name }}"
+                          data-confirm-title="{{ __('common.delete') }}"
+                          data-confirm="{{ __('hours.exceptions.delete_confirm', ['name' => $closure->name]) }}"
+                          data-confirm-label="{{ __('common.delete') }}"
                           data-action="{{ route('settings.hours.closures.destroy', [$location, $closure]) }}">
                     {{ __('common.delete') }}
                   </button>
@@ -298,7 +303,8 @@
               <label for="closure_type" class="block text-[13px] font-medium text-ink mb-1.5">
                 {{ __('hours.exceptions.type') }} <span class="text-danger">*</span>
               </label>
-              <select id="closure_type" name="type" class="sd-input" data-closure-type>
+              <select id="closure_type" name="type" class="sd-input" data-closure-type
+                      data-combo data-combo-options='{"search":false}'>
                 @foreach (App\Support\ClosureTypes::all() as $value => $meta)
                   <option value="{{ $value }}" data-closes="{{ $meta['closes'] ? '1' : '0' }}"
                           @selected(old('type') === $value)>{{ $meta['label'] }}</option>
@@ -338,10 +344,10 @@
             </div>
 
             <div class="pt-4 border-t border-line space-y-3">
-              <label class="flex items-start gap-2.5 cursor-pointer">
+              <label class="styledesk_choice">
                 <input type="checkbox" name="is_closed_all_day" value="1" class="sd-check mt-0.5"
                        data-closure-closed @checked(old('is_closed_all_day', true))>
-                <span class="min-w-0">
+                <span class="styledesk_choice__label min-w-0">
                   <span class="block text-[13px] font-medium text-ink">{{ __('hours.exceptions.closed_all_day') }}</span>
                   <span class="block text-[12px] text-sub">{{ __('hours.exceptions.closed_all_day_hint') }}</span>
                 </span>
@@ -376,7 +382,7 @@
                 {{ __('hours.exceptions.save') }}
               </button>
               <button type="button" data-closure-close
-                      class="h-9 px-3.5 inline-flex items-center rounded-lg border border-stroke bg-white hover:bg-hover text-ink text-[13px] font-semibold transition-colors">
+                      class="styledesk_action">
                 {{ __('common.cancel') }}
               </button>
             </div>
@@ -482,18 +488,13 @@
         syncTimes();
       @endif
 
-      /* Delete, behind a confirmation that names the entry. */
+      /* Delete. The question is asked by the shared confirmation dialog off
+         the button's own data-confirm attributes, so by the time this handler
+         runs the reader has already said yes. */
       var deleteForm = document.getElementById('closureDeleteForm');
 
       document.querySelectorAll('[data-closure-delete]').forEach(function (button) {
         button.addEventListener('click', function () {
-          /* Built server-side per language: Spanish does not put the name
-             where English does, and string addition cannot express that. */
-          var confirmText = @json(__('hours.exceptions.delete_confirm', ['name' => '__NAME__']))
-            .replace('__NAME__', button.getAttribute('data-name'));
-
-          if (!window.confirm(confirmText)) return;
-
           deleteForm.action = button.getAttribute('data-action');
           deleteForm.submit();
         });

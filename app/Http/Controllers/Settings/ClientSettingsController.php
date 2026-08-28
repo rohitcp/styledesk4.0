@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\BehavioralTag;
 use App\Models\ClientPreference;
 use App\Models\ClientSettings;
 use App\Models\ClientTag;
@@ -14,6 +15,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -37,26 +39,109 @@ class ClientSettingsController extends Controller
         return view('settings.clients.edit', $this->state($tenant));
     }
 
+    /**
+     * What each card on the settings page owns.
+     *
+     * The page is a set of independent sections, each with its own Save, so
+     * a save has to know which columns it is allowed to touch. Without this
+     * map a section would post the fields it shows and silently blank every
+     * switch it does not — an unchecked box and an absent one look identical
+     * in a request.
+     *
+     * @return array<string, array<int, string>>
+     */
+    private function sections(): array
+    {
+        return [
+            'records' => [
+                'default_status', 'default_location_id', 'default_staff_id',
+                'default_communication', 'default_marketing', 'name_format',
+                'fields',
+            ],
+            'notes' => [
+                'notes_enabled', 'notes_multiple', 'notes_in_booking',
+                'notes_important_on_profile', 'notes_allow_important',
+                'notes_staff_can_edit', 'notes_admin_can_delete',
+            ],
+            'booking' => ['booking_panels', 'history_panels', 'creation_sources'],
+            /* "Find a client by" is drawn on this card, so this card owns
+               it: a section may only save what it showed the reader. */
+            'duplicates' => ['duplicate_warning', 'duplicate_show_matches', 'duplicate_rules', 'search_fields'],
+            'communication' => [
+                'comm_email', 'comm_sms', 'comm_phone',
+                'comm_marketing_email', 'comm_marketing_sms',
+            ],
+            'status' => ['allow_booking_inactive', 'archived_in_search'],
+            'privacy' => [
+                'consent_record', 'consent_record_date', 'consent_record_captured_by',
+                'consent_client_can_opt_out', 'consent_show_on_profile',
+            ],
+            'lists' => ['preferences_enabled', 'preferences_multiple', 'tags_enabled'],
+        ];
+    }
+
+    /**
+     * Save one card.
+     *
+     * Only the columns that card owns, so an open form elsewhere on the page
+     * cannot be overwritten by a save the reader made here — and so a switch
+     * this card never showed is not turned off by being absent from the
+     * request.
+     */
     public function update(Request $request): RedirectResponse
     {
         $tenant = $request->user()->tenant;
         $settings = ClientSettings::forTenant($tenant);
 
-        $data = $this->validated($request, $tenant);
+        $sections = $this->sections();
+        $section = $request->input('section');
 
-        $settings->forceFill([
-            ...$this->scalars($data),
-            'fields' => $this->fields($settings, $data['fields'] ?? []),
-            'duplicate_rules' => $data['duplicate_rules'] ?? [],
-            'search_fields' => $data['search_fields'] ?? [],
-            'booking_panels' => $data['booking_panels'] ?? [],
-            'history_panels' => $data['history_panels'] ?? [],
-            'creation_sources' => $data['creation_sources'] ?? [],
-        ])->save();
+        // An unknown section is a request nothing on this page makes.
+        abort_unless($section === null || isset($sections[$section]), 422);
+
+        $owned = $section === null
+            ? array_merge(...array_values($sections))
+            : $sections[$section];
+
+        $data = $this->validated($request, $tenant, $owned);
+
+        $values = [];
+
+        foreach ($owned as $key) {
+            if ($key === 'fields') {
+                $values['fields'] = $this->fields($settings, $data['fields'] ?? []);
+
+                continue;
+            }
+
+            if (in_array($key, $this->switches(), true)) {
+                // Stated explicitly: an unchecked box posts nothing, and
+                // reading the request alone would leave it as it was.
+                $values[$key] = (bool) ($data[$key] ?? false);
+
+                continue;
+            }
+
+            if (in_array($key, $this->sets(), true)) {
+                $values[$key] = $data[$key] ?? [];
+
+                continue;
+            }
+
+            $values[$key] = $data[$key] ?? null;
+        }
+
+        $settings->forceFill($values)->save();
 
         return redirect()
             ->route('settings.clients.show')
             ->with('toast', ['type' => 'success', 'message' => __('clients.saved')]);
+    }
+
+    /** The columns stored as lists rather than single values. */
+    private function sets(): array
+    {
+        return ['duplicate_rules', 'search_fields', 'booking_panels', 'history_panels', 'creation_sources'];
     }
 
     // ---------------------------------------------------------- preferences
@@ -172,12 +257,75 @@ class ClientSettingsController extends Controller
         ]);
     }
 
+    public function reorderTags(Request $request): RedirectResponse
+    {
+        $tenant = $request->user()->tenant;
+
+        $data = $request->validate(['order' => ['required', 'array'], 'order.*' => ['integer']]);
+
+        $this->applyOrder($tenant->clientTags(), $data['order']);
+
+        return back()->with('toast', ['type' => 'success', 'message' => __('clients.order_saved')]);
+    }
+
+    /**
+     * Delete a tag, but only one nobody has used.
+     *
+     * A tag someone has put on a client is part of that client's record, and
+     * removing it would quietly rewrite history on every client carrying it.
+     * The refusal names the alternative rather than just saying no:
+     * deactivating takes the tag out of every list it can be chosen from and
+     * leaves the clients who already carry it alone.
+     */
+    public function destroyTag(Request $request, ClientTag $tag): RedirectResponse
+    {
+        $this->assertOwnedBy($tag->tenant_id, $request->user()->tenant);
+
+        if (! $tag->isDeletable()) {
+            return back()->with('toast', [
+                'type' => 'danger',
+                'message' => __('clients.tags.in_use', [
+                    'label' => $tag->label,
+                    'count' => $tag->clients()->count(),
+                ]),
+            ]);
+        }
+
+        $tag->delete();
+
+        return back()->with('toast', ['type' => 'success', 'message' => __('clients.tags.deleted')]);
+    }
+
+    /**
+     * Switch one behavioural tag on or off for this business.
+     *
+     * The only thing a business may change about them: the label, the
+     * category and the rule are the same everywhere, because the key is what
+     * reporting and the rule engine join on.
+     */
+    public function toggleBehavioralTag(Request $request, BehavioralTag $behavioralTag): RedirectResponse
+    {
+        $this->assertOwnedBy($behavioralTag->tenant_id, $request->user()->tenant);
+
+        $behavioralTag->forceFill(['is_active' => ! $behavioralTag->is_active])->save();
+
+        return back()->with('toast', [
+            'type' => 'success',
+            'message' => $behavioralTag->is_active
+                ? __('clients.behavioral.activated', ['label' => $behavioralTag->label()])
+                : __('clients.behavioral.deactivated', ['label' => $behavioralTag->label()]),
+        ]);
+    }
+
     // -------------------------------------------------------------- helpers
 
     /**
      * @return array<string, mixed>
      */
-    private function validated(Request $request, Tenant $tenant): array
+    /**
+     * @param  array<int, string>|null  $only  The section's own fields.
+     */
+    private function validated(Request $request, Tenant $tenant, ?array $only = null): array
     {
         $sets = [
             'duplicate_rules' => array_keys(config('clients.duplicate_rules')),
@@ -222,6 +370,14 @@ class ClientSettingsController extends Controller
 
         foreach ($this->switches() as $switch) {
             $rules[$switch] = ['nullable', 'boolean'];
+        }
+
+        if ($only !== null) {
+            // Keep a field's own rule and its wildcard — fields.*.enabled
+            // belongs to whoever owns fields.
+            $rules = collect($rules)
+                ->filter(fn ($rule, string $key) => in_array(Str::before($key, '.'), $only, true))
+                ->all();
         }
 
         return $request->validate($rules, [
@@ -341,6 +497,7 @@ class ClientSettingsController extends Controller
             'settings' => ClientSettings::forTenant($tenant),
             'preferences' => $tenant->clientPreferences()->inOrder()->get(),
             'tags' => $tenant->clientTags()->inOrder()->get(),
+            'behavioralTags' => BehavioralTag::groupedFor($tenant),
             'locations' => $tenant->locations()->active()->inDisplayOrder()->get(),
             'staff' => $tenant->staff()->where('is_active', true)->orderBy('first_name')->get(),
         ];
