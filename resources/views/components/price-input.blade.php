@@ -59,111 +59,94 @@
         </span>
     @endif
 
-    @if ($priceCurrencies->count() === 1)
-        @php $only = $priceCurrencies->first(); @endphp
+    {{-- One block per currency, each a row of three fields with its own
+         deposit switch beneath and a rule between blocks. One loop rather
+         than a single-currency branch and a multi-currency branch: the two
+         used to be separate markup and the deposit had to be written twice,
+         which is two places for a field to go missing from. --}}
+    <div class="space-y-4">
+        @foreach ($priceCurrencies as $code)
+            @php $depositOn = (bool) $depositFor($code, 'required', false); @endphp
 
-        <div class="relative max-w-[220px]">
-            {{-- The symbol sits in the field; the code sits beside it. Both,
-                 because the symbol is what makes the field read as money and
-                 the code is what says which money. --}}
-            <span class="styledesk_input__prefix pointer-events-none text-sub" aria-hidden="true">
-                {{ App\Support\Money::symbol($only) }}
-            </span>
+            <div data-deposit-row>
+                {{-- Price, type and amount on one line. items-end so the
+                     three sit on a common baseline whatever their labels do,
+                     and wrap so a narrow window stacks them rather than
+                     squeezing three fields into a phone's width. --}}
+                <div class="flex flex-wrap items-end gap-3">
+                    <div>
+                        <label for="price_{{ $code }}" class="block text-[12px] text-sub mb-1">
+                            {{ $priceCurrencies->count() > 1 ? $code : __('services.price') }}
+                        </label>
 
-            <input type="text" inputmode="decimal"
-                   name="{{ $name }}[{{ $only }}]"
-                   value="{{ $priceValues[$only] }}"
-                   class="sd-input styledesk_input--prefixed"
-                   aria-label="{{ $label ? $label.' — '.$only : $only }}"
-                   autocomplete="off">
-        </div>
+                        <div class="relative w-[160px]">
+                            {{-- The symbol sits in the field; the code sits
+                                 beside it. Both, because the symbol is what
+                                 makes the field read as money and the code is
+                                 what says which money. --}}
+                            <span class="styledesk_input__prefix pointer-events-none text-sub" aria-hidden="true">
+                                {{ App\Support\Money::symbol($code) }}
+                            </span>
 
-        <p class="mt-1.5 text-[12px] text-sub">
-            {{ $only }} · {{ App\Support\Currencies::name($only) }}
-        </p>
-
-        @error($name.'.'.$only)<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
-
-        {{-- The deposit for this price, beside the price it belongs to.
-             Hidden until it is switched on, so a service that takes no
-             deposit is three fields shorter. --}}
-        <div class="mt-2.5" data-deposit-row>
-            <x-toggle :name="'deposit['.$only.'][required]'" :label="__('services.deposit_required')"
-                      :checked="(bool) $depositFor($only, 'required', false)" data-deposit-toggle />
-
-            <div class="mt-2.5 grid sm:grid-cols-2 gap-3 max-w-[420px]" data-deposit-fields
-                 @unless ($depositFor($only, 'required', false)) hidden @endunless>
-                <x-combo :name="'deposit['.$only.'][type]'" :label="__('services.deposit_type')"
-                         :options="['fixed' => __('services.deposit_types.fixed'), 'percent' => __('services.deposit_types.percent')]"
-                         :selected="$depositFor($only, 'type', 'percent')" />
-
-                <div>
-                    <label class="block text-[13px] font-medium text-ink mb-1.5">{{ __('services.deposit_value') }}</label>
-                    <input type="text" inputmode="decimal" class="sd-input"
-                           name="deposit[{{ $only }}][value]"
-                           value="{{ $depositFor($only, 'value') }}"
-                           aria-label="{{ __('services.deposit_value') }}" autocomplete="off">
-                </div>
-            </div>
-
-            @error('deposit.'.$only.'.value')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
-        </div>
-    @else
-        <div class="space-y-2">
-            @foreach ($priceCurrencies as $code)
-                <div class="flex items-center gap-3">
-                    <span class="w-[52px] shrink-0 text-[13px] font-mono text-ink">{{ $code }}</span>
-
-                    <div class="relative w-[180px]">
-                        <span class="styledesk_input__prefix pointer-events-none text-sub" aria-hidden="true">
-                            {{ App\Support\Money::symbol($code) }}
-                        </span>
-
-                        <input type="text" inputmode="decimal"
-                               name="{{ $name }}[{{ $code }}]"
-                               value="{{ $priceValues[$code] }}"
-                               class="sd-input styledesk_input--prefixed"
-                               aria-label="{{ $label ? $label.' — '.$code : $code }}"
-                               autocomplete="off">
+                            <input id="price_{{ $code }}" type="text" inputmode="decimal"
+                                   name="{{ $name }}[{{ $code }}]"
+                                   value="{{ $priceValues[$code] }}"
+                                   class="sd-input styledesk_input--prefixed"
+                                   aria-label="{{ $label ? $label.' — '.$code : $code }}"
+                                   autocomplete="off">
+                        </div>
                     </div>
 
-                    <span class="min-w-0 flex-1 text-[12px] text-sub truncate">
-                        {{ App\Support\Currencies::name($code) }}
-                    </span>
-                </div>
+                    {{-- Hidden until this price's own switch is on, so a
+                         service that takes no deposit is a row of one
+                         field. --}}
+                    <div class="flex flex-wrap items-end gap-3" data-deposit-fields @unless ($depositOn) hidden @endunless>
+                        {{-- The label is written here rather than passed to
+                             the combo: the combo draws a heavier one, and
+                             three fields on a row want three identical
+                             labels or none of them look aligned. --}}
+                        <div class="w-[150px]">
+                            <span class="block text-[12px] text-sub mb-1">{{ __('services.deposit_type') }}</span>
 
-                @error($name.'.'.$code)<p class="text-[12px] text-danger">{{ $message }}</p>@enderror
-
-                {{-- Its own deposit, stored independently: switching one on
-                     must leave every other price alone. --}}
-                <div class="pl-[64px]" data-deposit-row>
-                    <x-toggle :name="'deposit['.$code.'][required]'" :label="__('services.deposit_required')"
-                              :checked="(bool) $depositFor($code, 'required', false)" data-deposit-toggle />
-
-                    <div class="mt-2 grid sm:grid-cols-2 gap-3 max-w-[420px]" data-deposit-fields
-                         @unless ($depositFor($code, 'required', false)) hidden @endunless>
-                        <x-combo :name="'deposit['.$code.'][type]'" :label="__('services.deposit_type')"
-                                 :options="['fixed' => __('services.deposit_types.fixed'), 'percent' => __('services.deposit_types.percent')]"
-                                 :selected="$depositFor($code, 'type', 'percent')" />
+                            <x-combo :name="'deposit['.$code.'][type]'"
+                                     :options="['fixed' => __('services.deposit_types.fixed'), 'percent' => __('services.deposit_types.percent')]"
+                                     :selected="$depositFor($code, 'type', 'percent')"
+                                     :ariaLabel="__('services.deposit_type')" />
+                        </div>
 
                         <div>
-                            <label class="block text-[13px] font-medium text-ink mb-1.5">{{ __('services.deposit_value') }}</label>
-                            <input type="text" inputmode="decimal" class="sd-input"
+                            <label for="deposit_{{ $code }}" class="block text-[12px] text-sub mb-1">{{ __('services.deposit_value') }}</label>
+                            <input id="deposit_{{ $code }}" type="text" inputmode="decimal" class="sd-input w-[130px]"
                                    name="deposit[{{ $code }}][value]"
                                    value="{{ $depositFor($code, 'value') }}"
                                    aria-label="{{ __('services.deposit_value') }}" autocomplete="off">
                         </div>
                     </div>
-
-                    @error('deposit.'.$code.'.value')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
                 </div>
-            @endforeach
-        </div>
 
+                {{-- The switch below the row it governs. --}}
+                <div class="mt-2.5">
+                    <x-toggle :name="'deposit['.$code.'][required]'" :label="__('services.deposit_required')"
+                              :checked="$depositOn" data-deposit-toggle />
+                </div>
+
+                @error($name.'.'.$code)<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+                @error('deposit.'.$code.'.value')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+            </div>
+
+            {{-- Between blocks, never after the last: a rule under the final
+                 row is a line with nothing below it. --}}
+            @unless ($loop->last)
+                <hr class="border-line">
+            @endunless
+        @endforeach
+    </div>
+
+    @if ($priceCurrencies->count() > 1)
         {{-- Said on the field itself, not only in settings. Someone typing
              three numbers is exactly the person who might assume the other two
              will fill themselves in. --}}
-        <p class="mt-2 text-[12px] text-sub">{{ __('currency.no_conversion') }}</p>
+        <p class="mt-3 text-[12px] text-sub">{{ __('currency.no_conversion') }}</p>
     @endif
 
     @if ($hint)

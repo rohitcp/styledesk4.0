@@ -37,6 +37,14 @@
      * keeps its chips inside itself, which is what the settings screens want.
      */
     'summary' => null,
+    /**
+     * The accessible name, when the visible label is drawn by the caller.
+     *
+     * A field on a row of three wants the same small label as its neighbours,
+     * so the caller sometimes writes its own — and the control still has to
+     * announce itself as something other than its placeholder.
+     */
+    'ariaLabel' => null,
 ])
 
 @php
@@ -65,7 +73,7 @@
         'showPrimary' => false,
         'summaryLabel' => $summary ?? '',
         'placeholder' => $placeholder,
-        'ariaLabel' => $label ?? $placeholder,
+        'ariaLabel' => $ariaLabel ?? $label ?? $placeholder,
     ];
 @endphp
 
