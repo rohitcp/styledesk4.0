@@ -1262,6 +1262,22 @@ textarea.sd-input {
 .styledesk_action--icon { width: 2.25rem; padding: 0; }
 .styledesk_action--sm.styledesk_action--icon { width: 2rem; }
 
+/* An icon that keeps its word where there is room and drops it where there
+   is not. The label is the first thing a narrow action row can afford to
+   lose — the arrow already says "back" — and losing it is what keeps the row
+   on one line at 320px instead of wrapping the primary action underneath.
+
+   Written here rather than as `max-sm:px-0` utilities on the element: this
+   stylesheet is last in the cascade, so `.styledesk_action`'s own padding
+   would have beaten a Tailwind utility of equal specificity. */
+.styledesk_action--shrinklabel { width: 2.25rem; padding: 0; }
+.styledesk_action--shrinklabel .styledesk_action__label { display: none; }
+
+@media (min-width: 640px) {
+    .styledesk_action--shrinklabel { width: auto; padding: 0 0.875rem; }
+    .styledesk_action--shrinklabel .styledesk_action__label { display: inline; }
+}
+
 /* Matching an input's height, for a control that sits in a field row. */
 .styledesk_action--tall { height: 2.75rem; }
 .styledesk_action--tall.styledesk_action--icon { width: 2.75rem; }
@@ -3346,39 +3362,30 @@ fieldset:disabled :where(button, input, select, textarea),
 }
 
 /* ------------------------------------------------------------------
-   Page action row
+   Page action cluster
    ------------------------------------------------------------------
-   The actions that belong to the whole record, on a row above the thing
-   they act on. `flex-wrap: nowrap` is the point: leaving, the primary
-   action and the overflow menu are one cluster, and a primary button
-   that has dropped onto its own line reads as belonging to whatever is
-   above it.
+   The actions that belong to the whole record, sitting at the right of
+   the row that names it. `flex-wrap: nowrap` is the point: leaving, the
+   primary action and the overflow menu are one cluster, and a primary
+   button that has dropped onto its own line reads as belonging to
+   whatever is above it.
+
+   The cluster wraps as a whole — its parent decides whether it shares
+   the name's line or takes one below — but never within itself.
    ------------------------------------------------------------------ */
 .styledesk_actionrow {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
     gap: 0.5rem;
-    padding-bottom: 0.5rem;
-}
-
-/* Sticky only where the page itself scrolls.
-
-   Written as a media query rather than an `xl:static` utility on the
-   element: this stylesheet is the last one in the cascade, so a class
-   here beats a Tailwind utility and the element would have stayed sticky
-   inside the three-column layout — where main does not scroll, and a
-   sticky row with a top offset simply pushes itself down the page. */
-@media (max-width: 1279px) {
-    .styledesk_actionrow {
-        position: sticky;
-        top: var(--sd-appbar, 3.5rem);
-        z-index: 20;
-        padding-top: 0.5rem;
-        /* Opaque, or the client's name scrolls through it. */
-        background: #fff;
-        border-bottom: 1px solid var(--color-line);
-    }
+    flex-shrink: 0;
+    /* Never wider than the column it sits in. `flex-shrink: 0` keeps the
+       cluster whole against the name beside it, which also means nothing
+       inside it ever feels the pressure of a column too narrow to hold it —
+       at 320px that was a three-pixel sideways scroll on the whole page. The
+       cap hands that pressure to the one child that can absorb it: the
+       primary action, which truncates its label rather than vanishing. */
+    max-width: 100%;
 }
 
 /* Never a second line, however narrow the window: the label tightens
@@ -3388,4 +3395,94 @@ fieldset:disabled :where(button, input, select, textarea),
         padding-inline: 0.75rem;
         font-size: 12px;
     }
+}
+
+/* ------------------------------------------------------------------
+   Client identity header
+   ------------------------------------------------------------------
+   Two layouts from one markup, decided at 1024px.
+
+   Below it — a phone or a narrow tablet — the actions lead: a centred
+   row of their own at the top of the header, then the photo, then the
+   name, then the chips. A reader on a phone reaches Create booking
+   without scrolling past the identity to find it.
+
+   At and above it the header is a row: photo, name and chips beside it,
+   actions hard right on the name's own line.
+
+   The source order is actions, photo, body — the small layout's order,
+   so that layout needs no reordering at all and the wide one restores
+   the reading order with `order`. Written this way round because the
+   actions must be a sibling of the photo to sit above it, and flexbox
+   cannot lift a nested cluster past an ancestor's sibling.
+   ------------------------------------------------------------------ */
+.styledesk_identity {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+/* Stretched and centred: the three actions sit as a balanced cluster
+   across the header rather than hugging either edge. */
+.styledesk_identity__actions {
+    align-self: stretch;
+    justify-content: center;
+}
+
+/* width, not flex: in a column the body is already full width, and in
+   the row below it is the item that takes the slack. */
+.styledesk_identity__body {
+    min-width: 0;
+    width: 100%;
+}
+
+@media (min-width: 1024px) {
+    .styledesk_identity {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 0.875rem;
+    }
+
+    /* The reading order restored: photo, who they are, what can be done
+       to them. */
+    .styledesk_identity__avatar { order: 1; }
+    .styledesk_identity__body { order: 2; flex: 1 1 auto; width: auto; }
+
+    /* Top of the row, so the cluster stays level with the name however
+       many lines the chips below it wrap onto. */
+    .styledesk_identity__actions {
+        order: 3;
+        align-self: flex-start;
+        justify-content: flex-end;
+        margin-left: auto;
+    }
+}
+
+/* ------------------------------------------------------------------
+   Resource card
+   ------------------------------------------------------------------
+   A card rather than a table row: what a reader wants from a resource is
+   whether it can be booked right now, and the reason it cannot is a
+   sentence that no cell can hold.
+
+   The state is carried by the border, so a wall of cards can be scanned
+   for the one that is out of service.
+   ------------------------------------------------------------------ */
+.styledesk_resource {
+    display: flex;
+    flex-direction: column;
+    padding: 0.875rem;
+    border: 1px solid var(--color-line);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.styledesk_resource--blocked { border-color: #d97706; }
+
+/* Retired resources stay legible but stop competing: they are history,
+   not something to act on. */
+.styledesk_resource--inactive {
+    background: var(--color-hover);
+    border-style: dashed;
 }

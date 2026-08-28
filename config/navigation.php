@@ -51,7 +51,7 @@ return [
                 ['label' => 'Categories', 'pending' => 'service-categories.html'],
                 ['label' => 'Add-ons', 'pending' => 'service-addons.html'],
                 ['separator' => true],
-                ['label' => 'All Resources', 'pending' => 'resources.html'],
+                ['label' => 'All Resources', 'route' => 'resources.index'],
                 ['label' => 'Resource Types', 'pending' => 'resource-types.html'],
                 ['label' => 'Availability', 'pending' => 'resource-availability.html'],
                 ['label' => 'Maintenance', 'pending' => 'resource-maintenance.html'],

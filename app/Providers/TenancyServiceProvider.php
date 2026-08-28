@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Actions\Roles\ProvisionSystemRoles;
 use App\Models\BehavioralTag;
 use App\Models\ClientTag;
+use App\Models\ResourceCategory;
 use App\Models\ServiceCategory;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\Event;
@@ -82,6 +83,18 @@ class TenancyServiceProvider extends ServiceProvider
                  */
                 function (Events\TenantCreated $event) {
                     BehavioralTag::seedDefaultsFor($event->tenant);
+                },
+
+                /**
+                 * The resource categories a salon or spa already has.
+                 *
+                 * "Styling chair" and "treatment room" are not decisions a
+                 * business needs to make — they are the furniture. Seeding
+                 * them means a service can require a chair on day one; a
+                 * business deletes the ones it does not have.
+                 */
+                function (Events\TenantCreated $event) {
+                    ResourceCategory::seedDefaultsFor($event->tenant);
                 },
             ],
             Events\SavingTenant::class => [],

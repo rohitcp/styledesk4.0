@@ -118,14 +118,14 @@ return [
                 [
                     'key' => 'services',
                     'name' => 'Services',
-                    'description' => 'Service defaults, categories and how services behave when booked.',
+                    'description' => 'Service categories, pricing defaults, duration, booking rules, resource requirements, and how services behave when booked.',
                     'icon' => 'tag',
                     'keywords' => ['treatment', 'category', 'duration', 'price'],
                 ],
                 [
                     'key' => 'resources',
                     'name' => 'Resources',
-                    'description' => 'Chairs, rooms, treatment and massage rooms, equipment and other bookables.',
+                    'description' => 'Chairs, rooms, treatment rooms, massage rooms, equipment and other bookable assets, including capacity, availability and assignment rules.',
                     'icon' => 'chair',
                     'keywords' => ['chair', 'room', 'equipment', 'bed', 'station', 'bookable'],
                 ],

@@ -27,43 +27,49 @@
        activity list wraps. --}}
   <main class="w-full px-6 lg:px-8 pt-4 pb-24 xl:pb-0 xl:h-full xl:flex xl:flex-col xl:overflow-hidden">
 
-    {{-- --------------------------------------------------- action row --}}
-    {{-- The three page actions on a row of their own, above the identity.
-         They never wrap: leaving, booking and the overflow menu are one
-         cluster, and a Create booking that has dropped onto its own line
-         reads as belonging to whatever is above it.
-
-         Sticky below the app header on the layouts where the page itself
-         scrolls, so the actions stay reachable without scrolling back to the
-         top. In the three-column layout the page does not scroll at all, so
-         there is nothing to stick to. --}}
-    <div class="styledesk_actionrow">
-      <a href="{{ route('clients.index') }}" data-tip="{{ __('clients.module.workspace.back') }}"
-         aria-label="{{ __('clients.module.workspace.back') }}"
-         class="styledesk_action styledesk_action--icon shrink-0">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
-
-      {{-- The primary action, disabled until there is a booking module to
-           open. A button that looks live and is not costs more than one
-           that admits it is coming. --}}
-      <button type="button" disabled aria-disabled="true"
-              class="h-9 px-4 rounded-lg bg-brand text-white text-[13px] font-semibold opacity-50 cursor-not-allowed shrink-0 truncate">
-        {{ __('clients.module.workspace.quick.create_booking') }}
-      </button>
-
-      @include('clients.partials._actions-menu')
-    </div>
-
     {{-- ---------------------------------------------------- name card --}}
-    {{-- Stacked, not side by side: the photo, then who they are, then the
-         facts about them. Beside the name it took a column of width from the
-         chips and pushed them into wrapping earlier than they needed to. --}}
-    <header class="mt-3 xl:shrink-0">
-      <span class="sd-avatar styledesk_avatar--identity" aria-hidden="true">{{ $client->initials() }}</span>
+    {{-- One markup, two layouts, decided at 1024px by styledesk_identity.
 
-      <div class="min-w-0 mt-2.5">
-        {{-- Name and reference on one row: they are quoted together on the
+         At and above it: the photo beside the name, the actions hard right on
+         the name's own line. Below it: the actions lead as a centred row of
+         their own, then the photo, then the name, then the chips.
+
+         The actions are a sibling of the photo rather than a child of the
+         name row, because that is the only arrangement `order` can rearrange
+         into both — a nested cluster cannot be lifted above an ancestor's
+         sibling however the flexbox is written. --}}
+    <header class="styledesk_identity mt-3 xl:shrink-0">
+      {{-- First in the source, and first on the small layout. On the wide one
+           `order` puts it back at the end of the row, which costs a reader
+           using the keyboard three stops before the name and buys every
+           reader on a phone the actions without a scroll. --}}
+      <div class="styledesk_actionrow styledesk_identity__actions">
+        {{-- Labelled where there is room, a bare arrow where there is not.
+             The accessible name says where it goes either way — "Back" alone
+             is what the eye needs beside an arrow, not what a screen reader
+             needs read out on its own. --}}
+        <a href="{{ route('clients.index') }}" data-tip="{{ __('clients.module.workspace.back') }}"
+           aria-label="{{ __('clients.module.workspace.back') }}"
+           class="styledesk_action styledesk_action--shrinklabel shrink-0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="styledesk_action__label">{{ __('common.back') }}</span>
+        </a>
+
+        {{-- The primary action, disabled until there is a booking module to
+             open. A button that looks live and is not costs more than one
+             that admits it is coming. --}}
+        <button type="button" disabled aria-disabled="true"
+                class="h-9 px-4 rounded-lg bg-brand text-white text-[13px] font-semibold opacity-50 cursor-not-allowed min-w-0 truncate">
+          {{ __('clients.module.workspace.quick.create_booking') }}
+        </button>
+
+        @include('clients.partials._actions-menu')
+      </div>
+
+      <span class="sd-avatar styledesk_avatar--identity styledesk_identity__avatar" aria-hidden="true">{{ $client->initials() }}</span>
+
+      <div class="styledesk_identity__body">
+        {{-- Name and reference together: they are quoted together on the
              phone and printed together on a receipt. --}}
         <div class="flex flex-wrap items-center gap-2.5">
           <h1 class="text-[22px] sm:text-[24px] font-bold text-head tracking-tight leading-tight min-w-0 truncate">{{ $name }}</h1>

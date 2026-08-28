@@ -283,6 +283,133 @@ class ClientProfileTest extends TestCase
         $this->assertSame(Client::STATUS_ACTIVE, $this->client->fresh()->status);
     }
 
+    /**
+     * The header's three actions, on one row, in one order.
+     *
+     * The order is the promise: leaving, the primary action, then everything
+     * else behind the overflow menu. Asserted as a sequence rather than as
+     * three separate assertSee calls, because "all three are somewhere on the
+     * page" is exactly what a wrapped or reordered row would also satisfy.
+     */
+    public function test_the_header_actions_share_one_row_in_order(): void
+    {
+        $response = $this->actingAs($this->owner)
+            ->get(route('clients.show', $this->client))
+            ->assertOk();
+
+        $this->assertMatchesRegularExpression(
+            '#<div class="styledesk_actionrow[^"]*">.*?Back to clients.*?Create booking.*?More actions#s',
+            $response->getContent(),
+        );
+    }
+
+    /**
+     * The header's parts, in the order the small layout reads them.
+     *
+     * Actions, photo, name, chips. That is the source order because it is
+     * the order a phone shows, and the 1024px rule reorders it back to
+     * photo-name-actions with `order` rather than with a second copy of the
+     * markup. The sequence is what a test can hold; which of the two layouts
+     * a viewport gets is the stylesheet's business.
+     */
+    public function test_the_header_is_ordered_for_the_small_layout(): void
+    {
+        $response = $this->actingAs($this->owner)
+            ->get(route('clients.show', $this->client))
+            ->assertOk();
+
+        $this->assertMatchesRegularExpression(
+            '#<header class="styledesk_identity[^"]*">'
+            .'.*?<div class="styledesk_actionrow styledesk_identity__actions">'
+            .'.*?styledesk_identity__avatar'
+            .'.*?<h1[^>]*>Amelia Hart</h1>'
+            .'.*?styledesk_metachip--since#s',
+            $response->getContent(),
+        );
+    }
+
+    /**
+     * The header carries the hooks both layouts are built from.
+     *
+     * The layout itself is two media queries deep, where no request can
+     * reach it; what a request can hold is that every element the
+     * stylesheet reorders is present and named. A renamed or dropped hook
+     * leaves the header stacked in source order at every width — which
+     * looks deliberate enough to ship unnoticed.
+     */
+    public function test_the_header_carries_its_layout_hooks(): void
+    {
+        $this->actingAs($this->owner)
+            ->get(route('clients.show', $this->client))
+            ->assertOk()
+            ->assertSee('class="styledesk_identity ', false)
+            ->assertSee('styledesk_identity__actions', false)
+            ->assertSee('styledesk_identity__avatar', false)
+            ->assertSee('styledesk_identity__body', false);
+    }
+
+    /**
+     * Back keeps a word beside its arrow, and the word is the part that goes
+     * when the cluster runs out of width.
+     *
+     * The narrow state is a stylesheet's job, so what a request can hold is
+     * that the label is rendered at all and carries the class the media
+     * query hides.
+     */
+    public function test_back_is_labelled_and_its_label_is_the_part_that_collapses(): void
+    {
+        $this->actingAs($this->owner)
+            ->get(route('clients.show', $this->client))
+            ->assertOk()
+            ->assertSee('styledesk_action--shrinklabel', false)
+            ->assertSee('<span class="styledesk_action__label">Back</span>', false);
+    }
+
+    /**
+     * The identity chips, in the order the header promises.
+     *
+     * Status first because it changes how the rest is read, then how long
+     * they have been a client, then the facts that are looked up: birthday,
+     * phone, email, where they are seen. The reference is not among them —
+     * it belongs beside the name, and a test that only counted chips would
+     * not notice it drifting down here.
+     */
+    public function test_the_identity_chips_keep_their_order(): void
+    {
+        $location = $this->tenant->locations()->create([
+            'name' => 'Downtown', 'address_line1' => '1 High Street', 'city' => 'Leeds',
+            'postal_code' => 'LS1 1AA', 'country' => 'GB', 'timezone' => 'Europe/London',
+        ]);
+
+        $this->client->forceFill([
+            'date_of_birth' => '1987-08-18',
+            'preferred_location_id' => $location->id,
+        ])->save();
+
+        $tenantId = $this->tenant->getTenantKey();
+        $this->client->phones()->create([
+            'tenant_id' => $tenantId, 'number' => '+1 202-555-1043', 'is_primary' => true,
+        ]);
+        $this->client->emails()->create([
+            'tenant_id' => $tenantId, 'email' => 'amelia@example.test', 'is_primary' => true,
+        ]);
+
+        $response = $this->actingAs($this->owner)
+            ->get(route('clients.show', $this->client))
+            ->assertOk();
+
+        $this->assertMatchesRegularExpression(
+            '#Active.*?Client since.*?18 Aug 1987.*?\+1 202-555-1043.*?amelia@example\.test.*?Downtown#s',
+            $response->getContent(),
+        );
+
+        /* The reference sits with the name, above every chip. */
+        $this->assertMatchesRegularExpression(
+            '#'.preg_quote($this->client->client_ref, '#').'.*?styledesk_metachip--since#s',
+            $response->getContent(),
+        );
+    }
+
     /** A client belonging to another business is not found, not forbidden. */
     public function test_another_business_client_is_not_reachable(): void
     {

@@ -7,6 +7,7 @@ use App\Http\Controllers\ClientNoteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\Settings\BrandingController;
 use App\Http\Controllers\Settings\BusinessHoursController;
@@ -496,6 +497,27 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
     | reading their notes, and `clients.view_notes` / `clients.add_notes`
     | exist precisely so a business can separate the two.
     */
+    /*
+    | Resources — the chairs, rooms and equipment a booking needs as well as
+    | a person.
+    |
+    | An operational area rather than a settings screen: a room goes out for
+    | repair on a Tuesday morning, which is not a decision anyone revisits
+    | once a year. What belongs in App Settings is the defaults; what lives
+    | here is the actual furniture.
+    */
+    Route::controller(ResourceController::class)
+        ->prefix('resources')
+        ->name('resources.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->name('store');
+            Route::patch('{resource}', 'update')->name('update');
+            Route::patch('{resource}/status', 'toggle')->name('toggle');
+            Route::post('{resource}/blocks', 'block')->name('block');
+            Route::delete('{resource}/blocks/{block}', 'unblock')->name('unblock');
+        });
+
     /*
     | A stored file, handed over only to someone who may have it.
     |
