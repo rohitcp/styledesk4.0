@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -23,9 +24,9 @@ class DashboardController extends Controller
 
         $checklist = [
             ['label' => 'Add your first service', 'done' => $tenant->services()->exists()],
-            ['label' => 'Add team members', 'done' => $tenant->staff()->whereNull('user_id')->exists()],
+            ['label' => 'Add team members', 'done' => $this->hasTeam($tenant)],
             ['label' => 'Configure staff schedules', 'done' => false],
-            ['label' => 'Add your first client', 'done' => false],
+            ['label' => 'Add your first client', 'done' => $tenant->clients()->exists()],
             ['label' => 'Customize online booking', 'done' => $tenant->bookingSettings()->exists()],
             ['label' => 'Configure payments', 'done' => false],
             ['label' => 'Configure appointment reminders', 'done' => false],
@@ -42,5 +43,27 @@ class DashboardController extends Controller
                 && $onboarding?->getting_started_dismissed_at === null,
             'canDismissChecklist' => $tenant->owner_user_id === $request->user()->id,
         ]);
+    }
+
+    /**
+     * Whether this business has anybody on it besides the person who made it.
+     *
+     * The owner is seeded as staff by onboarding, so "are there any staff" is
+     * true for every business the moment it exists and would tick this off
+     * before anyone had been added. What the item is asking about is a second
+     * person, so the owner's own row is excluded.
+     *
+     * An invitation that has been sent counts. The action the checklist is
+     * asking for is done — the reader cannot make somebody accept, and an
+     * item that stays open until they do would nag about someone else's
+     * inbox.
+     */
+    private function hasTeam(Tenant $tenant): bool
+    {
+        $others = $tenant->staff()
+            ->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', '!=', $tenant->owner_user_id))
+            ->exists();
+
+        return $others || $tenant->teamInvitations()->pending()->exists();
     }
 }

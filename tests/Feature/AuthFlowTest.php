@@ -5,8 +5,6 @@ namespace Tests\Feature;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
-use Illuminate\Auth\Notifications\VerifyEmail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -61,7 +59,7 @@ class AuthFlowTest extends TestCase
 
         $this->get('http://styledesk.test/email/verify')
             ->assertOk()
-            ->assertSee('Check your email');
+            ->assertSee('Verify your email');
     }
 
     public function test_dashboard_shows_the_tenant_resolved_from_the_user(): void

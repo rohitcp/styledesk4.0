@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import CategoryPicker from './CategoryPicker.vue';
 import CategoryModal from './CategoryModal.vue';
 import ColorPicker from './ColorPicker.vue';
+import ServiceImages from './ServiceImages.vue';
 import ConfirmDialog from './ConfirmDialog.vue';
 import { setCategories } from '../stores/categories';
 import { onboarding } from '../stores/onboarding';
@@ -20,6 +21,13 @@ const props = defineProps({
     currencies: { type: Array, default: () => [] },
     categories: { type: Array, default: () => [] },
     canCreateCategory: { type: Boolean, default: false },
+    /* Passed down to every row's picker rather than looked up inside it: the
+       component holds no routes and no English of its own, so the same one
+       serves the Services module. */
+    imageUploadUrl: { type: String, default: '' },
+    imageDeleteUrl: { type: String, default: '' },
+    imageLabels: { type: Object, default: () => ({}) },
+    maxOtherImages: { type: Number, default: 10 },
 });
 
 // Seed the shared store once; every picker on the page reads from it.
@@ -43,7 +51,18 @@ function onCategoryCreated(category) {
     }
 }
 
+/**
+ * A key that belongs to the row rather than to its position.
+ *
+ * The list used to be keyed by index, which is fine while every field is
+ * v-modelled straight onto the row object. The image picker is not — it keeps
+ * its own uploaded files — so an index key hands row 2's pictures to row 3
+ * the moment row 2 is removed. A key that moves with the row cannot.
+ */
+let nextUid = 0;
+
 const blank = () => ({
+    uid: nextUid++,
     name: '',
     service_category_id: null,
     duration_minutes: 30,
@@ -53,6 +72,8 @@ const blank = () => ({
     online_booking_enabled: true,
     taxable: true,
     color: '#3d348b',
+    images: [],
+    default_image_id: null,
 });
 
 const rows = ref(props.initial.length ? props.initial.map((r) => ({ ...blank(), ...r })) : [blank()]);
@@ -90,19 +111,54 @@ const confirmMessage = computed(() => {
         : `${subject} will be removed. Its name, price and duration are not saved yet, so they cannot be recovered.`;
 });
 
-function confirmRemove(index) {
-    pendingRemoval.value = index;
+/**
+ * Whether this row holds anything a reader would mind losing.
+ *
+ * Duration and colour are deliberately not counted: both arrive filled in, so
+ * counting them would make every row "in progress" from the moment it was
+ * added and put a dialog in front of removing a row nobody had touched.
+ */
+function hasContent(row) {
+    return Boolean(
+        (row.name ?? '').trim()
+        || (row.description ?? '').trim()
+        || row.service_category_id
+        || row.images?.length
+        || Object.values(row.prices ?? {}).some((price) => String(price ?? '').trim()),
+    );
+}
+
+/**
+ * Ask before throwing away work; remove an untouched row on the spot.
+ *
+ * A confirmation for an empty row is a dialog that can only ever be answered
+ * one way — it teaches the reader to dismiss the dialog without reading it,
+ * which is exactly the habit that makes the confirmation on a full row
+ * useless.
+ */
+function requestRemove(index) {
+    if (hasContent(rows.value[index])) {
+        pendingRemoval.value = index;
+
+        return;
+    }
+
+    removeAt(index);
+}
+
+function removeAt(index) {
+    rows.value.splice(index, 1);
+
+    // Never leave the list empty: an empty repeater gives the user nothing
+    // to type into and looks broken.
+    if (!rows.value.length) {
+        rows.value.push(blank());
+    }
 }
 
 function removeConfirmed() {
     if (pendingRemoval.value !== null) {
-        rows.value.splice(pendingRemoval.value, 1);
-
-        // Never leave the list empty: an empty repeater gives the user nothing
-        // to type into and looks broken.
-        if (!rows.value.length) {
-            rows.value.push(blank());
-        }
+        removeAt(pendingRemoval.value);
     }
 
     pendingRemoval.value = null;
@@ -111,7 +167,7 @@ function removeConfirmed() {
 
 <template>
     <div class="space-y-3">
-        <div v-for="(row, i) in rows" :key="i" class="rounded-card border border-line bg-white p-4 space-y-4">
+        <div v-for="(row, i) in rows" :key="row.uid" class="rounded-card border border-line bg-white p-4 space-y-4">
 
             <!-- Name takes the full width: it is the longest value on the card
                  and the one people scan the list by. -->
@@ -206,10 +262,42 @@ function removeConfirmed() {
                 <ColorPicker v-model="row.color" :name="`services[${i}][color]`" />
             </div>
 
+            <!-- The pictures for this row. Its own name prefix, so the ids
+                 arrive alongside the rest of the row rather than in a list
+                 the server would have to match up by position. -->
+            <div class="pt-1 border-t border-line">
+                <!-- The row mirrors what the picker holds, so that removing
+                     the row can ask whether there is anything in it. -->
+                <ServiceImages :name="`services[${i}]`"
+                               :initial="row.images"
+                               :initial-default-id="row.default_image_id"
+                               :max-others="maxOtherImages"
+                               :upload-url="imageUploadUrl"
+                               :delete-url="imageDeleteUrl"
+                               :labels="imageLabels"
+                               @update:images="row.images = $event"
+                               @update:default-id="row.default_image_id = $event" />
+            </div>
+
             <div class="flex justify-end pt-1">
-                <button type="button" @click="confirmRemove(i)"
-                        class="h-8 px-3 rounded-md text-[13px] font-semibold text-sub hover:text-danger hover:bg-hover transition-colors">
-                    Remove
+                <!-- An icon, not the word. The card already carries a lot of
+                     text and "Remove" read as one more field label; a bin in
+                     the corner is where a reader looks to throw a row away.
+
+                     data-tip is picked up by the delegated tooltip handler, so
+                     a control Vue drew needs no registering. aria-label as
+                     well as the tooltip: the tip is a hover affordance, and a
+                     screen reader must not be told the button is called
+                     nothing. -->
+                <button type="button" @click="requestRemove(i)"
+                        :data-tip="(row.name ?? '').trim() ? `Remove ${row.name.trim()}` : 'Remove this service'"
+                        :aria-label="(row.name ?? '').trim() ? `Remove ${row.name.trim()}` : 'Remove this service'"
+                        class="w-8 h-8 grid place-items-center rounded-md text-sub hover:text-danger hover:bg-hover transition-colors">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4.5 7h15M9.5 7V5.5a1 1 0 011-1h3a1 1 0 011 1V7M6.5 7l.8 11.2a1.5 1.5 0 001.5 1.3h6.4a1.5 1.5 0 001.5-1.3L17.5 7"
+                              stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10.5 10.5v6M13.5 10.5v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    </svg>
                 </button>
             </div>
         </div>

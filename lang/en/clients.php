@@ -210,6 +210,7 @@ return [
         'intro' => 'Manage client profiles, preferences, contact details, notes, and booking history.',
 
         'add' => 'Add client',
+        'add_another' => 'Save & add another',
         'add_first' => 'Add your first client',
         'add_title' => 'Add client',
         'edit_title' => 'Edit client',
@@ -554,6 +555,7 @@ return [
             'mobile_required' => 'A phone number is required.',
             'email_required' => 'An email address is required.',
             'first_name_required' => 'First name is required.',
+            'email_taken' => 'A client with this email address already exists.',
             'email_invalid' => 'Enter a valid email address.',
             'dob_past' => 'A date of birth must be in the past.',
         ],

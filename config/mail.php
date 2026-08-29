@@ -122,6 +122,19 @@ return [
 
     'support_address' => env('MAIL_SUPPORT_ADDRESS', 'support@styledesk.app'),
 
+    /*
+    | Who account and security mail comes from.
+    |
+    | Its own address rather than the general one: verification, password
+    | resets and sign-in links are the mail a reader is most likely to check
+    | the sender of, and an address that says "account" is the one they are
+    | looking for. Everything else keeps the default below.
+    */
+    'auth_from' => [
+        'address' => env('MAIL_AUTH_FROM_ADDRESS', 'account@styledesk.dev'),
+        'name' => env('MAIL_AUTH_FROM_NAME', 'StyleDesk'),
+    ],
+
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),

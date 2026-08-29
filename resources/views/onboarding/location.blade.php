@@ -10,8 +10,13 @@
 
         <div>
             <label for="name" class="block text-[13px] font-medium text-ink mb-1.5">Location name</label>
+            {{-- No default. "Main Location" arrived already filled in, so a
+                 business with one salon called something else kept it without
+                 noticing it had been answered for them. The placeholder still
+                 suggests the shape of an answer. --}}
             <input id="name" name="name" type="text" class="sd-input" data-capitalize
-                   value="{{ old('name', $location?->name ?? 'Main Location') }}" required>
+                   placeholder="Main Location"
+                   value="{{ old('name', $location?->name) }}" required>
             @error('name')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
         </div>
 
@@ -44,7 +49,7 @@
                      so the two screens cannot disagree about where the business
                      operates. The value is not posted at all — the server reads
                      it from the tenant. --}}
-                <div class="sd-input flex items-center justify-between text-sub">
+                <div class="sd-input styledesk_readonlyfield text-sub">
                     <span>{{ $countryName }}</span>
                     <a href="{{ route('onboarding.business') }}" class="text-[12px] text-link font-medium hover:underline">Change</a>
                 </div>
@@ -97,15 +102,26 @@
 
         <div>
             <label for="phone" class="block text-[13px] font-medium text-ink mb-1.5">Location phone <span class="text-faint font-normal">(optional)</span></label>
+            {{-- Digits and the punctuation a phone number is written with;
+                 letters are refused as they are typed rather than at submit. --}}
             <input id="phone" name="phone" type="tel" class="sd-input" autocomplete="tel"
+                   inputmode="tel" data-digits-only
                    value="{{ old('phone', $location?->phone) }}">
         </div>
 
         <div>
             <label for="timezone" class="block text-[13px] font-medium text-ink mb-1.5">Timezone</label>
+            {{-- Empty until chosen. It used to arrive as America/New_York,
+                 which is a guess a business outside that zone could accept
+                 without ever seeing it — and every booking and reminder is
+                 scheduled against this. --}}
+            @php $selectedTimezone = old('timezone', $location?->timezone); @endphp
+
             <select id="timezone" name="timezone" class="sd-input" required>
+                <option value="" @selected($selectedTimezone === null || $selectedTimezone === '')>Search or select a timezone</option>
+
                 @foreach ($timezones as $identifier => $label)
-                    <option value="{{ $identifier }}" @selected(old('timezone', $location?->timezone ?? 'America/New_York') === $identifier)>{{ $label }}</option>
+                    <option value="{{ $identifier }}" @selected($selectedTimezone === $identifier)>{{ $label }}</option>
                 @endforeach
             </select>
             <p id="tz-hint" class="mt-1.5 text-[12px] text-sub" role="status" aria-live="polite">
@@ -154,8 +170,11 @@
     </form>
 
     <div class="flex flex-wrap items-center gap-3 pt-6">
-        <button type="submit" form="stepForm"
-                class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+        {{-- Fires once, like every other step. A slow POST shows the reader
+             nothing, so they click again — and a second submit repeats the
+             step. --}}
+        <button type="submit" form="stepForm" data-submit-once data-busy-label="{{ __('common.saving') }}"
+                class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
             Continue
         </button>
 
@@ -180,7 +199,7 @@
     {{-- Mirrors the form. Hidden below lg, so nothing here is the only place a
          value is stated. --}}
     <div class="mt-5 rounded-card border border-line bg-white shadow-sm p-4" aria-hidden="true">
-        <p id="pv-name" class="text-[14px] font-semibold text-head truncate">Main Location</p>
+        <p id="pv-name" class="text-[14px] font-semibold text-head truncate">—</p>
         <p id="pv-addr" class="text-[12px] text-sub mt-1 leading-relaxed">Add your address to see it here.</p>
 
         <div class="mt-4 pt-3.5 border-t border-line">
@@ -243,7 +262,7 @@
         }
 
         function paintPreview() {
-            pv.name.textContent = val('name') || 'Main Location';
+            pv.name.textContent = val('name') || '—';
 
             // state_text is the fallback field for countries without a region
             // list; only one of the two is ever enabled, so reading both and

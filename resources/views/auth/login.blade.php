@@ -4,6 +4,18 @@
 @section('heading', 'Log in to StyleDesk')
 @section('subheading', 'Welcome back. Pick up where you left off.')
 
+{{-- The way out of a page you are on by mistake, where a reader looks for
+     it: the corner. The link at the foot of the form stays — someone who has
+     read to the bottom and found no account should not have to travel back
+     up to the top to make one. --}}
+@section('top-action')
+    {{-- Hidden below sm, where the corner has room for the button and not
+         the sentence. The button says what it does on its own. --}}
+    <span class="hidden sm:inline text-[13px] text-sub">New to StyleDesk?</span>
+
+    <a href="{{ route('register') }}" class="styledesk_action">Create account</a>
+@endsection
+
 @section('form')
     @if (session(\App\Http\Middleware\EnforceSessionTimeout::FLAG))
         {{-- Named, not left to be guessed. Landing on a bare login form reads
@@ -30,28 +42,52 @@
                 data-tip="Magic link sign-in is not available yet">Magic link</button>
     </div>
 
-    <form method="POST" action="{{ route('login.store') }}" class="mt-6">
+    {{-- The same live validation as the sign-up form: the rules sit on the
+         fields and resources/js/live-validation.js reads them, so both pages
+         check at the same moment, in the same words, with the same error
+         styling. --}}
+    @php
+        /* "Incorrect email or password" is one fact about a pair of fields,
+           not two facts about one each — the server cannot say which of them
+           is wrong, and would not say so if it could. So it is stated once,
+           in the alert the layout puts at the top, and both boxes are marked
+           so the reader can see where the correction goes. Printing it under
+           a field as well would be the same sentence twice on one screen. */
+        $credentialsRefused = $errors->has('email') || $errors->has('password');
+    @endphp
+
+    <form method="POST" action="{{ route('login.store') }}" class="mt-6"
+          data-validate-form
+          data-validation-messages='@json(\App\Support\LiveValidation::messages())'>
         @csrf
         <div class="space-y-5">
             <div>
                 <label for="email" class="block text-[13px] font-medium text-ink mb-1.5">Email address</label>
-                <input id="email" name="email" type="email" class="sd-input" autocomplete="username"
+                <input id="email" name="email" type="email" @class(['sd-input', 'is-error' => $credentialsRefused])
+                       autocomplete="username"
+                       data-rules="required|email"
+                       data-message-required="Email address is required."
+                       @if ($credentialsRefused) aria-invalid="true" @endif
                        placeholder="you@example.com" value="{{ old('email') }}" required autofocus>
-                @error('email')
-                    <p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>
-                @enderror
+                {{-- Left for the browser to write into while the reader
+                     types. A refusal from the server is announced once, at the
+                     top, rather than under each of the two fields it is
+                     about. --}}
+                <p data-error-for="email" role="alert" class="mt-1.5 text-[12px] text-danger" hidden></p>
             </div>
 
             <div>
                 <label for="password" class="block text-[13px] font-medium text-ink mb-1.5">Password</label>
                 <div class="relative">
-                    <input id="password" name="password" type="password" class="sd-input has-suffix"
+                    <input id="password" name="password" type="password"
+                           @class(['sd-input', 'has-suffix', 'is-error' => $credentialsRefused])
+                           data-rules="required"
+                           data-message-required="Password is required."
+                           @if ($credentialsRefused) aria-invalid="true" @endif
                            autocomplete="current-password" required>
                     <x-password-toggle for="password" />
                 </div>
-                @error('password')
-                    <p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>
-                @enderror
+                <p data-error-for="password" role="alert" class="mt-1.5 text-[12px] text-danger" hidden></p>
             </div>
 
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -62,7 +98,12 @@
                 <a href="{{ route('password.request') }}" class="ml-auto text-[13px] font-medium text-link hover:underline">Forgot password?</a>
             </div>
 
-            <button type="submit"
+            {{-- Fires once and says so. A slow POST looks like nothing
+                 happening, and a second click is a second sign-in attempt
+                 against a limiter that counts them. Restored on the way back:
+                 a refused attempt is a fresh page, and one restored from the
+                 back/forward cache is re-enabled by submit-once.js. --}}
+            <button type="submit" data-submit-once data-busy-label="Signing in…"
                     class="w-full inline-flex items-center justify-center h-11 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
                 Log In
             </button>

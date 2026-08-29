@@ -20,8 +20,17 @@ return [
     400 => ['title' => 'Bad request', 'description' => 'The request could not be understood, so nothing was changed.'],
     401 => ['title' => 'Please sign in', 'description' => 'This page needs you to be signed in.'],
     402 => ['title' => 'Payment required', 'description' => 'This feature is not included in your current plan or subscription.'],
-    403 => ['title' => 'Access denied', 'description' => 'Your account does not have permission to view this page.'],
-    404 => ['title' => 'Page not found', 'description' => 'The page or resource you were looking for does not exist.'],
+    403 => [
+        'title' => 'You don’t have access to this page',
+        'description' => 'Your current role doesn’t have permission to view this area.',
+        /* A second sentence, and a way to act on it: "access denied" with no
+           route forward leaves the reader stuck at a wall. */
+        'note' => 'If you think you should have access, contact your workspace administrator.',
+    ],
+    404 => [
+        'title' => 'We couldn’t find that page',
+        'description' => 'The page may have been moved, deleted, or the link may be incorrect.',
+    ],
     405 => ['title' => 'Method not allowed', 'description' => 'That address does not accept this kind of request.'],
     408 => ['title' => 'Request timed out', 'description' => 'The request took too long to complete. Please try again.'],
     409 => ['title' => 'Conflict', 'description' => 'This conflicts with data that has changed since you loaded the page.'],

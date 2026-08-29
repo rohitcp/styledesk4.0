@@ -98,6 +98,48 @@ class EnforceSessionTimeout
      */
     public static function timeoutSeconds(): int
     {
-        return (int) config('session.idle_timeout') * 60;
+        return static::timeoutMinutes() * 60;
+    }
+
+    /**
+     * The business's own limit, or the platform's.
+     *
+     * A tenant that has never opened the setting follows StyleDesk's default
+     * — and keeps following it if that default changes, which is why the
+     * column is nullable rather than seeded with 30.
+     *
+     * Only a value the setting actually offers is honoured: a number written
+     * straight into the database cannot widen the window past what an
+     * administrator could have chosen.
+     */
+    public static function timeoutMinutes(): int
+    {
+        $default = (int) config('session.idle_timeout');
+
+        try {
+            $chosen = Auth::user()?->tenant?->session_timeout_minutes;
+        } catch (\Throwable $e) {
+            /* Tenancy may not have resolved — during an error page, a console
+               command, a request that failed before the tenant was known. The
+               platform default is the safe answer. */
+            return $default;
+        }
+
+        $allowed = array_keys(config('business_profile.session_timeouts', []));
+
+        return $chosen !== null && in_array((int) $chosen, $allowed, true)
+            ? (int) $chosen
+            : $default;
+    }
+
+    /**
+     * How long before the end the tab should warn.
+     *
+     * Two minutes, or a fifth of a very short window — a warning longer than
+     * the session it warns about would appear the moment the page loaded.
+     */
+    public static function warningSeconds(): int
+    {
+        return (int) min(120, max(30, static::timeoutSeconds() / 5));
     }
 }

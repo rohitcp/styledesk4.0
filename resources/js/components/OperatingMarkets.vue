@@ -25,7 +25,16 @@ const props = defineProps({
     selectedLanguage: { type: String, default: 'en' },
 });
 
-const countries = ref(props.selectedCountries.length ? [...props.selectedCountries] : ['US']);
+/**
+ * Empty until the business says otherwise.
+ *
+ * These used to arrive as the United States and the US dollar, which is a
+ * guess wearing the clothes of an answer: a salon in Leeds that did not
+ * notice the field had been filled in signed up priced in dollars. A required
+ * field a reader has to answer is slower by one click and right every time.
+ */
+const countries = ref([...props.selectedCountries]);
+
 /**
  * Primary and secondary are held apart, matching the fields.
  *
@@ -33,7 +42,7 @@ const countries = ref(props.selectedCountries.length ? [...props.selectedCountri
  * and re-joining on submit keeps that single source of truth while letting the
  * form say plainly which value is the default.
  */
-const primaryCurrency = ref([props.selectedCurrencies[0] ?? 'USD']);
+const primaryCurrency = ref(props.selectedCurrencies[0] ? [props.selectedCurrencies[0]] : []);
 const secondaryCurrencies = ref(props.selectedCurrencies.slice(1));
 
 const primaryLanguage = ref([props.selectedLanguages[0] ?? props.selectedLanguage ?? 'en']);
@@ -53,7 +62,10 @@ watch(primaryLanguage, ([code]) => {
 // than its own country's currency, and silently undoing that choice is worse
 // than not suggesting at all.
 const currencyTouched = ref(false);
-const hint = ref('Suggested from your primary country — change it if you price differently.');
+/* Neutral until a country has actually suggested something. The field starts
+   empty now, and "Suggested from your primary country" under an empty box
+   describes a suggestion that has not happened. */
+const hint = ref('The currency your services are priced in.');
 
 watch(primaryCurrency, () => { currencyTouched.value = true; }, { deep: true });
 

@@ -235,6 +235,13 @@ textarea.sd-input:read-only:focus { outline: 1px solid #e5e7eb; outline-offset: 
 .sd-combo-btn.is-readonly { background-color: #f3f4f6; color: #6b7280; outline-color: #e5e7eb; cursor: not-allowed; }
 .sd-combo-btn.is-readonly:focus { outline: 1px solid #e5e7eb; outline-offset: -1px; }
 
+/* A field showing a value the reader may not change — the address a reset
+   link was sent to, for instance. Same palette as a read-only combo, so the
+   two read as one idea. Readonly rather than disabled, because a disabled
+   input is left out of the submitted data. */
+input.sd-input.is-readonly { background-color: #f3f4f6; color: #6b7280; outline-color: #e5e7eb; cursor: default; }
+input.sd-input.is-readonly:focus { outline: 1px solid #e5e7eb; outline-offset: -1px; }
+
 /* Date-picker field: readonly (no typing) but keeps the active look */
 input.sd-input.is-picker:read-only { background-color: #fff; color: #23272f; outline-color: #d1d5db; cursor: pointer; }
 input.sd-input.is-picker:read-only:focus { outline: 2px solid var(--sd-brand); outline-offset: -2px; }

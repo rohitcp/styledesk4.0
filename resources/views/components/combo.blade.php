@@ -45,6 +45,12 @@
      * announce itself as something other than its placeholder.
      */
     'ariaLabel' => null,
+    /**
+     * Live-validation rules for the chosen value. Carried into MultiSelect,
+     * which puts them on the hidden input holding the answer — the control
+     * itself is a button, and a button has no value to check.
+     */
+    'rules' => null,
 ])
 
 @php
@@ -74,6 +80,9 @@
         'summaryLabel' => $summary ?? '',
         'placeholder' => $placeholder,
         'ariaLabel' => $ariaLabel ?? $label ?? $placeholder,
+        /* Only meaningful on a single-value combo: a multiple posts name[]
+           and has no one input to hang a rule on. */
+        'rules' => $multiple ? '' : (string) $rules,
     ];
 @endphp
 
@@ -90,5 +99,9 @@
         <p class="mt-1.5 text-[12px] text-sub">{{ $hint }}</p>
     @endif
 
-    @error($name)<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+    {{-- Addressed to the hidden input, which is where the value is and so
+         where SD.setError looks. --}}
+    <p data-error-for="{{ $rules ? $name.'-value' : $name }}" role="alert"
+       class="mt-1.5 text-[12px] text-danger"
+       @unless ($errors->has($name)) hidden @endunless>{{ $errors->first($name) }}</p>
 </div>

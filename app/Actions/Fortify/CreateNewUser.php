@@ -47,7 +47,14 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
             'terms' => ['accepted'],
         ], [
-            'terms.accepted' => 'You must accept the Terms of Service and Privacy Policy.',
+            /* Named plainly rather than left to the framework's "The first
+               name field is required." A form that refuses an answer should
+               say which answer it wanted in the words the label used. */
+            'first_name.required' => 'First name is required.',
+            'last_name.required' => 'Last name is required.',
+            'email.required' => 'Email address is required.',
+            'email.email' => 'Enter a valid email address.',
+            'terms.accepted' => 'You must agree to the Terms of Service and Privacy Policy to continue.',
             // The sign-up view keys its "Log in instead" panel off this wording.
             'email.unique' => 'An account already exists with this email address.',
         ])->validate();

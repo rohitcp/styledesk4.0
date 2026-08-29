@@ -86,14 +86,19 @@
 
     {{-- Sibling form, see services.blade.php. --}}
     <div class="flex flex-wrap items-center gap-3 pt-6">
-        <button type="submit" form="stepForm"
-                class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+        {{-- Fires once, like every other step. A slow POST shows the reader
+             nothing, so they click again — and a second submit repeats the
+             step. --}}
+        <button type="submit" form="stepForm" data-submit-once data-busy-label="{{ __('common.saving') }}"
+                class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
             Continue
         </button>
 
         <form method="POST" action="{{ route('onboarding.skip', 'team') }}">
             @csrf
-            <button type="submit" class="h-11 px-4 rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+            {{-- The skip posts too, so it gets the same guard. --}}
+            <button type="submit" data-submit-once
+                    class="h-11 px-4 rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors disabled:opacity-60 disabled:pointer-events-none">
                 I'll do this later
             </button>
         </form>

@@ -92,9 +92,14 @@
           <label for="{{ $key }}" class="block text-[13px] font-medium text-ink mb-1.5">
             {{ $enabled[$key]['label'] }} {!! $req($key) !!}
           </label>
+          {{-- Rules follow what the business has actually made required, so
+               the browser refuses exactly what the server would and never a
+               field the business chose to leave optional. --}}
           <input id="{{ $key }}" name="{{ $key }}" type="text" class="sd-input" data-capitalize
+                 data-rules="{{ collect([($enabled[$key]['required'] ?? false) ? 'required' : null, 'max:100'])->filter()->implode('|') }}"
                  value="{{ $fieldValue($key) }}" @if ($key === 'first_name') autofocus @endif>
-          @error($key)<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+          <p data-error-for="{{ $key }}" role="alert" class="mt-1.5 text-[12px] text-danger"
+             @unless ($errors->has($key)) hidden @endunless>{{ $errors->first($key) }}</p>
         </div>
       @endif
     @endforeach
@@ -112,6 +117,7 @@
                     :min-year="1910"
                     :max-year="now()->year"
                     open-to="1990-01-01"
+                    :rules="($enabled['date_of_birth']['required'] ?? false) ? 'required|date' : 'date'"
                     :dialog-label="__('clients.module.choose_birth_date')" />
     @endif
 
@@ -120,8 +126,11 @@
         <label for="gender" class="block text-[13px] font-medium text-ink mb-1.5">
           {{ $enabled['gender']['label'] }} {!! $req('gender') !!}
         </label>
-        <input id="gender" name="gender" type="text" class="sd-input" data-capitalize value="{{ $fieldValue('gender') }}">
-        @error('gender')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+        <input id="gender" name="gender" type="text" class="sd-input" data-capitalize
+               data-rules="{{ collect([($enabled['gender']['required'] ?? false) ? 'required' : null, 'max:40'])->filter()->implode('|') }}"
+               value="{{ $fieldValue('gender') }}">
+        <p data-error-for="gender" role="alert" class="mt-1.5 text-[12px] text-danger"
+           @unless ($errors->has('gender')) hidden @endunless>{{ $errors->first('gender') }}</p>
       </div>
     @endif
   </div>
@@ -146,7 +155,11 @@
       @endif
 
       @if ($enabled->has('email'))
+        {{-- The address is checked against this business's clients while it
+             is typed, so "we already have this person" arrives beside the
+             field instead of after a submission the reader has to redo. --}}
         <x-clients.contacts kind="email"
+                            :remote-check="route('clients.email-in-use', array_filter(['ignore' => $client?->id]))"
                             :label="$enabled['email']['label']"
                             :required="$enabled['email']['required'] ?? false"
                             :optional="! ($enabled['email']['required'] ?? false)"
@@ -163,15 +176,17 @@
               {{ $enabled[$key]['label'] }} {!! $req($key) !!}
             </label>
             <input id="{{ $key }}" name="{{ $key }}" type="text" class="sd-input"
+                   data-rules="{{ collect([($enabled[$key]['required'] ?? false) ? 'required' : null, 'max:'.($key === 'postal_code' ? 20 : ($key === 'address' ? 255 : 120))])->filter()->implode('|') }}"
                    @if ($key !== 'postal_code') data-capitalize @endif value="{{ $fieldValue($key) }}">
-            @error($key)<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+            <p data-error-for="{{ $key }}" role="alert" class="mt-1.5 text-[12px] text-danger"
+               @unless ($errors->has($key)) hidden @endunless>{{ $errors->first($key) }}</p>
           </div>
         @endif
       @endforeach
 
       @if ($enabled->has('country'))
         <x-combo name="country" :label="$enabled['country']['label']"
-                 :options="config('locations.countries')"
+                 :options="App\Support\LocationOptions::countries()"
                  :selected="$fieldValue('country', auth()->user()->tenant?->countryCode())"
                  :placeholder="__('locations.placeholders.country')" />
       @endif
@@ -183,7 +198,12 @@
 <section class="bg-white border border-line rounded-card p-5 space-y-4">
   <h2 class="text-[15px] font-semibold text-head">{{ __('clients.module.cards.booking') }}</h2>
 
-  <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
+  {{-- Three across, not two: the card holds exactly three fields, and a
+       two-column grid left the status on a row of its own looking like an
+       afterthought rather than the third of three related answers. Still one
+       column below sm, where three combos would be too narrow to read the
+       selected value in. --}}
+  <div class="grid sm:grid-cols-3 gap-x-4 gap-y-4">
     @if ($enabled->has('preferred_location'))
       <x-combo name="preferred_location" :label="$enabled['preferred_location']['label']"
                :options="$locations->pluck('name', 'id')"
@@ -198,7 +218,7 @@
                :placeholder="__('clients.defaults.none')" />
     @endif
 
-    <x-combo name="status" :label="__('clients.defaults.status')" required
+    <x-combo name="status" :label="__('clients.defaults.status')" required rules="required"
              :options="App\Support\ClientOptions::statuses()"
              :selected="old('status', $client?->status ?? $settings->default_status)" />
   </div>

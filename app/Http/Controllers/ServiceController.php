@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Location;
+use App\Models\Resource;
 use App\Models\Service;
 use App\Models\ServiceCategory;
 use App\Models\Staff;
+use App\Services\ServiceImageSync;
 use App\Support\Currencies;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -243,7 +245,7 @@ class ServiceController extends Controller
         $this->authorizeServices($request, 'services.view', $service);
 
         return view('services.show', [
-            'service' => $service->load(['category', 'staff', 'locations', 'prices']),
+            'service' => $service->load(['category', 'staff', 'locations', 'resources', 'prices']),
             'currencies' => Currencies::enabledFor($request->user()->tenant),
             'canEdit' => $request->user()->hasPermission('services.edit', 'all'),
         ]);
@@ -267,7 +269,7 @@ class ServiceController extends Controller
     {
         $this->authorizeServices($request, 'services.edit', $service);
 
-        $service->load(['staff', 'locations', 'prices']);
+        $service->load(['staff', 'locations', 'resources', 'prices']);
 
         return view('services.edit', $this->formData() + [
             'service' => $service,
@@ -298,10 +300,14 @@ class ServiceController extends Controller
             'categories' => ServiceCategory::query()->assignable()->get(),
             'locations' => Location::query()->orderBy('name')->get(),
             'staff' => Staff::query()->where('is_active', true)->orderBy('first_name')->get(),
+            /* Retired resources are left out: a service cannot be mapped to a
+               room that is no longer in use. One already mapped stays mapped
+               — see the edit form, which adds it back to the list. */
+            'resources' => Resource::query()->active()->inOrder()->get(),
         ];
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, ServiceImageSync $images): RedirectResponse
     {
         $this->authorizeServices($request, 'services.create');
 
@@ -311,7 +317,7 @@ class ServiceController extends Controller
             $this->columns($data) + ['tenant_id' => $request->user()->tenant->getTenantKey()]
         );
 
-        $this->syncRelations($service, $data);
+        $this->syncRelations($service, $data, $images);
 
         /* To the listing, not back: "back" from a form page is the form
            again, which reads as a save that did not take. */
@@ -319,7 +325,7 @@ class ServiceController extends Controller
             ->with('toast', ['type' => 'success', 'message' => __('services.added')]);
     }
 
-    public function update(Request $request, Service $service): RedirectResponse
+    public function update(Request $request, Service $service, ServiceImageSync $images): RedirectResponse
     {
         $this->authorizeServices($request, 'services.edit', $service);
 
@@ -327,7 +333,7 @@ class ServiceController extends Controller
 
         $service->forceFill($this->columns($data))->save();
 
-        $this->syncRelations($service, $data);
+        $this->syncRelations($service, $data, $images);
 
         return redirect()->route('services.index')
             ->with('toast', ['type' => 'success', 'message' => __('services.updated')]);
@@ -348,10 +354,18 @@ class ServiceController extends Controller
         $copy = $service->replicate(['created_at', 'updated_at']);
         $copy->name = __('services.copy_of', ['name' => $service->name]);
         $copy->is_active = false;
+        /* The pictures are not copied. They are stored_files rows pointed at
+           the original, so a replicated image_file_id would leave the copy
+           showing a picture its own gallery does not contain — and the copy
+           opens straight into its form, where the reader adds its own. */
+        $copy->image_file_id = null;
         $copy->save();
+
+        $service->loadMissing(['staff', 'locations', 'resources', 'prices']);
 
         $copy->staff()->sync($service->staff->pluck('id'));
         $copy->locations()->sync($service->locations->pluck('id'));
+        $copy->resources()->sync($service->resources->pluck('id'));
 
         foreach ($service->prices as $price) {
             $copy->prices()->create($price->only(['currency_code', 'price_minor']));
@@ -413,19 +427,27 @@ class ServiceController extends Controller
         /* deposit_required is a summary of the prices, written by syncPrices
            rather than posted: the form has a toggle per price and none for
            the service. */
-        return collect($data)->except(['staff', 'locations', 'price', 'deposit', 'deposit_required'])->all();
+        /* images and default_image_id are not columns either: the gallery is
+           rows in stored_files, and which one leads is written by
+           ServiceImageSync once the service has an id to attach them to. */
+        return collect($data)
+            ->except(['staff', 'locations', 'resources', 'price', 'deposit', 'deposit_required', 'images', 'default_image_id'])
+            ->all();
     }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    private function syncRelations(Service $service, array $data): void
+    private function syncRelations(Service $service, array $data, ServiceImageSync $images): void
     {
         $service->staff()->sync($data['staff'] ?? []);
         $service->locations()->sync($data['locations'] ?? []);
+        $service->resources()->sync($data['resources'] ?? []);
 
         $service->load('prices');
         $service->syncPrices($data['price'] ?? [], $data['deposit'] ?? []);
+
+        $images->sync($service, $data['images'] ?? [], $data['default_image_id'] ?? null);
     }
 
     /**
@@ -464,6 +486,18 @@ class ServiceController extends Controller
             'staff.*' => [Rule::exists('staff', 'id')->where('tenant_id', $request->user()->tenant?->getTenantKey())],
             'locations' => ['array'],
             'locations.*' => [Rule::exists('locations', 'id')->where('tenant_id', $request->user()->tenant?->getTenantKey())],
+
+            /**
+             * The rooms or chairs this service may be performed in.
+             *
+             * Required only while the switch is on. requiredIf rather than a
+             * closure on the array: a closure rule is skipped when the
+             * attribute is absent, and "no resources at all" is exactly the
+             * case this has to catch. required also refuses an empty array,
+             * so the two shapes of nothing are answered the same way.
+             */
+            'resources' => ['array', Rule::requiredIf(fn () => $request->boolean('requires_resource'))],
+            'resources.*' => [Rule::exists('resources', 'id')->where('tenant_id', $request->user()->tenant?->getTenantKey())],
 
             /* Keyed by currency, and only by a currency this business
                actually prices in. Without the second half a request could
@@ -510,6 +544,20 @@ class ServiceController extends Controller
                     }
                 }
             }],
+
+            /**
+             * Ids of pictures already uploaded, not files: the upload happens
+             * as each one is chosen — see ServiceImageController. Ownership,
+             * category and count are checked in ServiceImageSync rather than
+             * here, so this form and the onboarding wizard cannot disagree
+             * about what a service is allowed to carry.
+             */
+            'images' => ['nullable', 'array', 'max:'.ServiceImageSync::MAX_IMAGES],
+            'images.*' => ['integer'],
+            'default_image_id' => ['nullable', 'integer'],
+        ], [
+            'images.max' => __('services.images.too_many', ['max' => ServiceImageSync::MAX_IMAGES - 1]),
+            'resources.required' => __('services.resources_required'),
         ]);
     }
 

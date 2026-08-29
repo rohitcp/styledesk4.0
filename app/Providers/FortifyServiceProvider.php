@@ -8,12 +8,16 @@ use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
+use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
 use Laravel\Fortify\Fortify;
+use Laravel\Fortify\Http\Responses\FailedPasswordResetLinkRequestResponse as FortifyFailedPasswordResetLinkRequestResponse;
+use Laravel\Fortify\Http\Responses\SuccessfulPasswordResetLinkRequestResponse as FortifySuccessfulPasswordResetLinkRequestResponse;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -36,6 +40,31 @@ class FortifyServiceProvider extends ServiceProvider
             {
                 return redirect()->route('login');
             }
+        });
+
+        /**
+         * An address we have no account for is answered exactly like one we
+         * do.
+         *
+         * Fortify's own response refuses it with "we can't find a user with
+         * that email address", which turns this form into a way of asking
+         * which addresses hold StyleDesk accounts, one guess at a time — and
+         * a salon's client-facing email is not hard to guess. The reader who
+         * mistyped their own address is no worse off: they are told to go and
+         * read an email, find none, and try again.
+         *
+         * Throttling is deliberately left alone. "Please wait" is not a fact
+         * about whether an account exists, and hiding it would leave someone
+         * waiting for an email that was never sent.
+         */
+        $this->app->singleton(FailedPasswordResetLinkRequestResponse::class, function ($app, array $parameters) {
+            $status = $parameters['status'] ?? Password::INVALID_USER;
+
+            if ($status === Password::RESET_THROTTLED) {
+                return new FortifyFailedPasswordResetLinkRequestResponse($status);
+            }
+
+            return new FortifySuccessfulPasswordResetLinkRequestResponse(Password::RESET_LINK_SENT);
         });
     }
 
@@ -82,10 +111,42 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by($request->ip());
         });
 
+        /**
+         * Login throttling, answered on the login form rather than with a 429.
+         *
+         * Without the response callback the framework renders its own "Too
+         * Many Requests" page: a dead end with no explanation, no way back to
+         * the form, and no indication that waiting will fix it. Someone who
+         * has simply mistyped their password five times is told the site is
+         * broken. The limit itself is unchanged — only what the reader is
+         * shown when they reach it.
+         *
+         * Retry-After comes from the limiter, so the count in the message is
+         * the real one rather than the window's nominal length.
+         */
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
 
-            return Limit::perMinute(5)->by($throttleKey);
+            return Limit::perMinute(5)->by($throttleKey)->response(function (Request $request, array $headers) {
+                $seconds = (int) ($headers['Retry-After'] ?? 60);
+
+                $message = trans('auth.throttle', [
+                    'seconds' => $seconds,
+                    'minutes' => (int) ceil($seconds / 60),
+                ]);
+
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => $message], 429, $headers);
+                }
+
+                /* The address comes back with it: being made to retype it
+                   after being told to wait is a second small punishment for
+                   the same mistake. The password does not — see the sign-up
+                   form for why a password is never returned to the page. */
+                return back()
+                    ->withInput($request->only(Fortify::username()))
+                    ->withErrors([Fortify::username() => $message]);
+            });
         });
 
         RateLimiter::for('two-factor', function (Request $request) {

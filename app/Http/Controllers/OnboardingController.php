@@ -12,7 +12,9 @@ use App\Models\ServiceCategory;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
+use App\Services\ServiceImageSync;
 use App\Support\InputCase;
+use App\Support\LocationOptions;
 use App\Support\Subdomain;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -76,7 +78,7 @@ class OnboardingController extends Controller
         return view('onboarding.business', [
             'tenant' => $request->user()->tenant,
             'businessTypes' => BusinessType::active()->get(),
-            'countries' => config('locations.countries'),
+            'countries' => LocationOptions::countries(),
             'currencies' => $this->currencyOptions(),
             'countryCurrencies' => config('currencies.country_currencies'),
             'languages' => config('currencies.languages'),
@@ -130,8 +132,30 @@ class OnboardingController extends Controller
             'business_phone' => ['required', 'string', 'max:32'],
             'business_phone_country' => ['nullable', 'string', 'size:2'],
             'business_email' => ['nullable', 'email', 'max:255'],
-            'website_scheme' => ['nullable', 'string', 'max:16'],
-            'website' => ['nullable', 'string', 'max:255'],
+            'website_scheme' => ['nullable', Rule::in(config('business_profile.website_schemes'))],
+            /*
+             * Checked as the whole address, not as the fragment that was
+             * typed: the scheme lives in the dropdown beside it, so "hello
+             * world" used to pass a string rule and be stored as
+             * "https://hello world".
+             */
+            'website' => ['nullable', 'string', 'max:255', function (string $attribute, mixed $value, callable $fail) use ($request) {
+                if (blank($value)) {
+                    return;
+                }
+
+                $host = trim((string) $value);
+                $joined = $this->joinWebsite($request->input('website_scheme'), $host);
+
+                /* Both checks earn their place: filter_var accepts
+                   "https://hello" with no dot in it, and the pattern alone
+                   would accept a string filter_var rejects. */
+                $looksLikeHost = (bool) preg_match('/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}(\/\S*)?$/i', $host);
+
+                if (! $looksLikeHost || filter_var($joined, FILTER_VALIDATE_URL) === false) {
+                    $fail(__('business.validation.url_invalid'));
+                }
+            }],
             'logo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
         ], [
             'business_type_ids.required' => 'Choose at least one business type.',
@@ -327,6 +351,7 @@ class OnboardingController extends Controller
 
         return view('onboarding.services', [
             'services' => $tenant->services()->with(['category', 'prices'])->get(),
+            'maxOtherImages' => ServiceImageSync::MAX_IMAGES - 1,
             /**
              * One price field per configured currency, primary first. Read
              * from the tenant rather than chosen here — the service screen must
@@ -345,7 +370,7 @@ class OnboardingController extends Controller
         ]);
     }
 
-    public function storeServices(Request $request): RedirectResponse
+    public function storeServices(Request $request, ServiceImageSync $images): RedirectResponse
     {
         $tenant = $request->user()->tenant;
 
@@ -375,14 +400,32 @@ class OnboardingController extends Controller
             'services.*.online_booking_enabled' => ['nullable'],
             'services.*.taxable' => ['nullable'],
             'services.*.color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            /**
+             * Ids of pictures already uploaded, not files. The upload happened
+             * as the reader chose each one — see ServiceImageController — so
+             * what arrives here is a list of stored_files ids.
+             *
+             * Not checked against the database by an `exists` rule: ownership,
+             * category and count are all enforced in ServiceImageSync, which
+             * is the one place that has to get it right for both this step and
+             * the Services module.
+             */
+            'services.*.images' => ['nullable', 'array', 'max:'.ServiceImageSync::MAX_IMAGES],
+            'services.*.images.*' => ['integer'],
+            'services.*.default_image_id' => ['nullable', 'integer'],
+        ], [
+            'services.*.images.max' => __('services.images.too_many', ['max' => ServiceImageSync::MAX_IMAGES - 1]),
         ]);
 
         $data = InputCase::apply($data, ['services.*.name']);
 
-        DB::transaction(function () use ($tenant, $data) {
+        DB::transaction(function () use ($tenant, $data, $images) {
             $tenant->services()->delete();
 
             $allowedCurrencies = $tenant->currencies->pluck('currency_code')->all();
+
+            /** @var list<int> ids of every picture a row laid claim to */
+            $claimed = [];
 
             foreach ($data['services'] ?? [] as $row) {
                 $service = Service::create([
@@ -400,7 +443,21 @@ class OnboardingController extends Controller
                         ->only($allowedCurrencies)
                         ->all()
                 );
+
+                $claimed = array_merge($claimed, $images->sync(
+                    $service,
+                    $row['images'] ?? [],
+                    $row['default_image_id'] ?? null,
+                ));
             }
+
+            /**
+             * This step rewrites the whole price list — every service is
+             * deleted and recreated — so a picture the reader took off a row
+             * is now attached to a service that no longer exists. Nothing else
+             * would ever collect it.
+             */
+            $images->pruneUnclaimed($claimed);
 
             $this->onboardingFor($tenant)->update([
                 'services_completed' => true,

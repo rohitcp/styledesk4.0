@@ -479,7 +479,7 @@ class LocationController extends Controller
         return [
             'staffOptions' => $this->assignableStaff($tenant->getTenantKey(), $location),
             'types' => LocationOptions::types(),
-            'countries' => config('locations.countries'),
+            'countries' => LocationOptions::countries(),
             'timezones' => config('locations.timezones'),
             'weekdays' => LocationOptions::weekdays(),
             'hoursByDay' => $location ? $this->hoursByDay($location) : $this->defaultHours(),

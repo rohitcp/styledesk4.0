@@ -9,6 +9,8 @@
         @csrf
 
         @php
+            $storage = app(\App\Contracts\TenantStorageContract::class);
+
             // Built in @php rather than inline in @json(): Blade's directive
             // parser cannot handle a multi-line array argument and fails at
             // compile time with "Unclosed '['".
@@ -19,10 +21,32 @@
                     'duration_minutes' => $s->duration_minutes,
                     'prices' => collect($tenantCurrencies)->mapWithKeys(fn ($c) => [$c['code'] => $s->priceIn($c['code'])])->all(),
                     'description' => $s->description,
+                    /* Already-saved pictures, so re-opening the step shows the
+                       service as it stands rather than as if it had none. */
+                    'images' => $s->orderedImages()->map(fn ($f) => [
+                        'id' => $f->id,
+                        'url' => $storage->url($f),
+                        'name' => $f->original_filename,
+                    ])->all(),
+                    'default_image_id' => $s->image_file_id,
                 ])->all(),
                 'currencies' => $tenantCurrencies,
                 'categories' => $categories,
                 'canCreateCategory' => $canCreateCategory,
+                /* Routes and copy are handed to the island rather than looked
+                   up inside it: a Vue component that knew a URL would be a
+                   second place routes are written down. __ID__ is replaced
+                   with the file's id when one is actually removed. */
+                'imageUploadUrl' => route('services.images.store'),
+                'imageDeleteUrl' => route('services.images.destroy', ['storedFile' => '__ID__']),
+                'maxOtherImages' => $maxOtherImages,
+                /* array_merge, not +: the union operator keeps the left-hand
+                   value for a duplicate key, which would hand the component
+                   the two strings still carrying their :max placeholder. */
+                'imageLabels' => array_merge(__('services.images'), [
+                    'help' => __('services.images.help', ['max' => $maxOtherImages]),
+                    'too_many' => __('services.images.too_many', ['max' => $maxOtherImages + 1]),
+                ]),
             ];
         @endphp
 
@@ -36,14 +60,19 @@
          another is invalid and browsers silently drop the inner one. The
          Continue button reaches its form by id instead. --}}
     <div class="flex flex-wrap items-center gap-3 pt-6">
-        <button type="submit" form="stepForm"
-                class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+        {{-- Fires once, like every other step. A slow POST shows the reader
+             nothing, so they click again — and a second submit repeats the
+             step. --}}
+        <button type="submit" form="stepForm" data-submit-once data-busy-label="{{ __('common.saving') }}"
+                class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
             Continue
         </button>
 
         <form method="POST" action="{{ route('onboarding.skip', 'services') }}">
             @csrf
-            <button type="submit" class="h-11 px-4 rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+            {{-- The skip posts too, so it gets the same guard. --}}
+            <button type="submit" data-submit-once
+                    class="h-11 px-4 rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors disabled:opacity-60 disabled:pointer-events-none">
                 I'll do this later
             </button>
         </form>

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Location;
+use App\Models\Resource;
 use App\Models\Service;
 use App\Models\ServiceCategory;
 use App\Models\Staff;
@@ -68,6 +69,15 @@ class ServicesTest extends TestCase
             'name' => $name,
             'status' => ServiceCategory::STATUS_ACTIVE,
             'display_order' => 1,
+        ]);
+    }
+
+    private function resource(string $name = 'Massage Room 1'): Resource
+    {
+        return Resource::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => $name,
+            'capacity' => 1,
         ]);
     }
 
@@ -419,6 +429,7 @@ class ServicesTest extends TestCase
     {
         $category = $this->category();
         $location = $this->location();
+        $room = $this->resource();
 
         $staff = Staff::withoutGlobalScopes()->create([
             'tenant_id' => $this->tenant->getTenantKey(),
@@ -437,6 +448,7 @@ class ServicesTest extends TestCase
                 'buffer_minutes' => 5,
                 'online_booking_enabled' => 1,
                 'requires_resource' => 1,
+                'resources' => [$room->id],
                 'staff' => [$staff->id],
                 'locations' => [$location->id],
             ])
@@ -851,5 +863,137 @@ class ServicesTest extends TestCase
                 'name' => 'Cut', 'duration_minutes' => 30, 'staff' => [$theirStaff->id],
             ])
             ->assertSessionHasErrors('staff.0');
+    }
+
+    // --------------------------------------------------- resource mapping
+
+    /**
+     * The mapping is to rows, not to the word "room".
+     *
+     * Availability is a question about Massage Room 2 at three on Tuesday,
+     * and only an actual resource can answer it — which is why what is stored
+     * is a set of ids rather than a kind.
+     */
+    public function test_a_service_is_mapped_to_the_resources_that_can_perform_it(): void
+    {
+        $first = $this->resource('Massage Room 1');
+        $second = $this->resource('Massage Room 2');
+        $this->resource('Treatment Room 1');
+
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Swedish Massage',
+                'duration_minutes' => 60,
+                'requires_resource' => 1,
+                'resources' => [$first->id, $second->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $service = Service::withoutGlobalScopes()->where('name', 'Swedish Massage')->firstOrFail();
+
+        $this->assertSame(
+            [$first->id, $second->id],
+            $service->resources->pluck('id')->sort()->values()->all(),
+        );
+    }
+
+    public function test_requiring_a_resource_without_choosing_one_is_refused(): void
+    {
+        $this->actingAs($this->owner)
+            ->from(route('services.create'))
+            ->post(route('services.store'), [
+                'name' => 'Swedish Massage',
+                'duration_minutes' => 60,
+                'requires_resource' => 1,
+            ])
+            ->assertRedirect(route('services.create'))
+            ->assertSessionHasErrors(['resources' => __('services.resources_required')]);
+
+        $this->assertDatabaseMissing('services', ['name' => 'Swedish Massage']);
+    }
+
+    public function test_a_service_that_needs_no_resource_may_name_none(): void
+    {
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Consultation',
+                'duration_minutes' => 15,
+                'requires_resource' => 0,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertFalse(
+            Service::withoutGlobalScopes()->where('name', 'Consultation')->firstOrFail()->requires_resource,
+        );
+    }
+
+    /**
+     * Another business's room cannot be claimed by naming its id. The list on
+     * the form is scoped, so this can only arrive from a hand-made request —
+     * which is exactly why the rule is on the server as well.
+     */
+    public function test_a_resource_belonging_to_another_business_is_refused(): void
+    {
+        $other = Tenant::create(['name' => 'Elsewhere', 'slug' => 'elsewhere']);
+        $theirs = Resource::withoutGlobalScopes()->create([
+            'tenant_id' => $other->getTenantKey(), 'name' => 'Their room', 'capacity' => 1,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->from(route('services.create'))
+            ->post(route('services.store'), [
+                'name' => 'Swedish Massage',
+                'duration_minutes' => 60,
+                'requires_resource' => 1,
+                'resources' => [$theirs->id],
+            ])
+            ->assertSessionHasErrors('resources.0');
+    }
+
+    /**
+     * The switch going off does not throw the list away: turning it back on
+     * must not cost the reader the mapping they built.
+     */
+    public function test_turning_the_requirement_off_keeps_the_mapping(): void
+    {
+        $room = $this->resource();
+        $service = $this->service(['requires_resource' => true]);
+        $service->resources()->sync([$room->id]);
+
+        $this->actingAs($this->owner)
+            ->patch(route('services.update', $service), [
+                'name' => $service->name,
+                'duration_minutes' => 60,
+                'requires_resource' => 0,
+                'resources' => [$room->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $service->refresh()->load('resources');
+
+        $this->assertFalse($service->requires_resource);
+        $this->assertSame([$room->id], $service->resources->pluck('id')->all());
+    }
+
+    public function test_the_form_offers_the_resources_and_the_view_page_names_them(): void
+    {
+        $room = $this->resource('Couples Massage Room');
+        $service = $this->service(['requires_resource' => true]);
+        $service->resources()->sync([$room->id]);
+
+        $this->actingAs($this->owner)
+            ->get(route('services.edit', $service))
+            ->assertOk()
+            ->assertSee('Requires a Resource', false)
+            ->assertSee('data-resource-requirement', false)
+            ->assertSee('Couples Massage Room', false);
+
+        $this->actingAs($this->owner)
+            ->get(route('services.show', $service))
+            ->assertOk()
+            ->assertSee('Couples Massage Room', false);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -20,6 +21,14 @@ class Service extends Model
     use BelongsToTenant, SoftDeletes;
 
     protected $guarded = [];
+
+    /**
+     * The storage category a service picture is filed under.
+     *
+     * Named here rather than written as a string at each call site: it is
+     * also what FileValidator holds the upload to, and the two have to agree.
+     */
+    public const IMAGE_CATEGORY = 'service-image';
 
     protected function casts(): array
     {
@@ -102,6 +111,50 @@ class Service extends Model
         $this->forceFill(['deposit_required' => $this->prices()->where('deposit_required', true)->exists()])->save();
     }
 
+    /**
+     * The image clients see first.
+     *
+     * Nullable and separate from the gallery, because "which one leads" is a
+     * decision about the service, while the pictures themselves are files.
+     */
+    public function imageFile(): BelongsTo
+    {
+        return $this->belongsTo(StoredFile::class, 'image_file_id');
+    }
+
+    /**
+     * Every picture attached to this service, the default among them.
+     *
+     * Not a relation: stored_files is keyed by entity_type/entity_id rather
+     * than by a services_id column, so a hasMany would need a foreign key
+     * that does not exist. The scopes on StoredFile say the same thing.
+     *
+     * @return Collection<int, StoredFile>
+     */
+    public function images(): Collection
+    {
+        return StoredFile::for('service', $this->getKey())
+            ->ofCategory(self::IMAGE_CATEGORY)
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * The gallery in the order it is shown: the default first.
+     *
+     * A service whose default was deleted still shows a picture — the oldest
+     * remaining one leads rather than the card falling back to a blank tile.
+     *
+     * @return Collection<int, StoredFile>
+     */
+    public function orderedImages(): Collection
+    {
+        $images = $this->images();
+        $default = $this->image_file_id;
+
+        return $images->sortBy(fn (StoredFile $file) => $file->getKey() === $default ? 0 : 1)->values();
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(ServiceCategory::class, 'service_category_id');
@@ -123,6 +176,23 @@ class Service extends Model
     public function locations(): BelongsToMany
     {
         return $this->belongsToMany(Location::class);
+    }
+
+    /**
+     * The rooms, chairs or equipment this service may be performed in.
+     *
+     * Actual resource rows, never the word "room": availability is a question
+     * about Massage Room 2 on Tuesday at three, and a generic kind cannot
+     * answer it. Any one of them will do — the booking engine needs one free,
+     * not all of them — which is why this is a set rather than a column.
+     *
+     * Only meaningful while requires_resource is on. The mapping is kept when
+     * the switch goes off, so turning it back on does not cost the reader the
+     * list they built.
+     */
+    public function resources(): BelongsToMany
+    {
+        return $this->belongsToMany(Resource::class);
     }
 
     /** Price in the tenant's primary currency, for display. */

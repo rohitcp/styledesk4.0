@@ -79,6 +79,34 @@
           </x-settings.field>
         </x-settings.card>
 
+        {{-- The gallery, read-only. The default leads, marked, because which
+             picture a client meets first is a decision this page has to be
+             able to answer without opening the form. Rendered only when there
+             is something to show: an empty card is a question about whether
+             the feature is broken. --}}
+        @php($serviceImages = $service->orderedImages())
+        @if ($serviceImages->isNotEmpty())
+          @php($storage = app(\App\Contracts\TenantStorageContract::class))
+          <x-settings.card title="{{ __('services.images.label') }}">
+            <ul class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+              @foreach ($serviceImages as $image)
+                <li class="relative">
+                  <div class="aspect-square rounded-lg overflow-hidden border bg-hover
+                              {{ $image->id === $service->image_file_id ? 'border-brand ring-1 ring-brand' : 'border-line' }}">
+                    <img src="{{ $storage->url($image) }}" alt="{{ $image->original_filename }}"
+                         class="w-full h-full object-cover" loading="lazy">
+                  </div>
+                  @if ($image->id === $service->image_file_id)
+                    <span class="absolute top-1 left-1 px-1.5 h-5 inline-flex items-center rounded bg-brand text-white text-[10px] font-semibold">
+                      {{ __('services.images.default') }}
+                    </span>
+                  @endif
+                </li>
+              @endforeach
+            </ul>
+          </x-settings.card>
+        @endif
+
         <x-settings.card title="{{ __('services.section.price') }}">
           {{-- A row per currency the business prices in, rather than one
                number and a guess at which money it is. --}}
@@ -146,9 +174,27 @@
         </x-settings.card>
 
         <x-settings.card title="{{ __('services.columns.resource') }}"
-                         description="{{ __('services.resource_mapping_pending') }}">
+                         description="{{ __('services.requires_resource_hint') }}">
           <x-settings.field label="{{ __('services.requires_resource') }}"
                             :value="$service->requires_resource ? __('services.resource_required') : __('services.resource_not_required')" />
+
+          {{-- The rooms themselves, named. Only while the switch is on: a
+               list of resources under "does not need one" reads as a
+               contradiction, and the mapping is kept precisely so it can be
+               left alone. Chips, as the locations above are. --}}
+          @if ($service->requires_resource)
+            <x-settings.field label="{{ __('services.resources') }}">
+              @if ($service->resources->isEmpty())
+                {{ __('services.resources_none') }}
+              @else
+                <span class="flex flex-wrap gap-1.5">
+                  @foreach ($service->resources as $resource)
+                    <span class="styledesk_metachip">{{ $resource->name }}</span>
+                  @endforeach
+                </span>
+              @endif
+            </x-settings.field>
+          @endif
         </x-settings.card>
       </div>
     </div>

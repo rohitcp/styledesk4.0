@@ -52,7 +52,14 @@ return [
     |
     */
 
-    'idle_timeout' => (int) env('SESSION_IDLE_TIMEOUT', 120),
+    /*
+    | The platform default, in minutes, for a business that has not chosen
+    | its own. Thirty: long enough not to interrupt a task, short enough that
+    | a machine left on a salon counter does not stay signed in all night.
+    |
+    | A tenant's own setting overrides this — see EnforceSessionTimeout.
+    */
+    'idle_timeout' => (int) env('SESSION_IDLE_TIMEOUT', 30),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 

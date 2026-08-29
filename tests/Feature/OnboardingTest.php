@@ -8,6 +8,7 @@ use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
+use App\Support\LocationOptions;
 use App\Support\Subdomain;
 use Database\Seeders\BusinessTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -595,6 +596,43 @@ class OnboardingTest extends TestCase
         $this->assertStringNotContainsString('splitPeriods', $content);
     }
 
+    /**
+     * The location step's fields answer nothing on the reader's behalf.
+     *
+     * The name arrived as "Main Location" and the timezone as New York —
+     * both plausible enough to be accepted without being read, and every
+     * booking and reminder is scheduled against the second one.
+     */
+    public function test_the_location_step_prefills_nothing_and_guards_its_continue(): void
+    {
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Nadia Hair Studio', 'slug' => 'nadia', 'country_code' => 'US']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'location']);
+
+        $content = $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/onboarding/location')
+            ->assertOk()
+            ->getContent();
+
+        /* The name is a placeholder, not a value. */
+        $this->assertStringContainsString('placeholder="Main Location"', $content);
+        $this->assertStringNotContainsString('value="Main Location"', $content);
+
+        /* No timezone chosen, and the empty option is the selected one. */
+        $this->assertStringNotContainsString('value="America/New_York" selected', $content);
+        $this->assertStringContainsString('Search or select a timezone', $content);
+
+        /* Continue fires once, and the phone refuses letters as they land. */
+        $this->assertStringContainsString('data-submit-once', $content);
+        $this->assertStringContainsString('data-digits-only', $content);
+
+        /* The read-only country sits centred in its field rather than
+           against the top of it — the flex utility loses to prototype.css. */
+        $this->assertStringContainsString('styledesk_readonlyfield', $content);
+    }
+
     public function test_the_location_step_uses_the_country_from_the_business_step(): void
     {
         // The country must not be re-asked or accepted from the request: the
@@ -849,6 +887,164 @@ class OnboardingTest extends TestCase
             ->get('http://styledesk.test/onboarding/business')
             ->assertOk()
             ->assertSee(__('onboarding.business.types.none'));
+    }
+
+    /**
+     * Country and currency start empty.
+     *
+     * They used to arrive as the United States and the US dollar — a guess
+     * wearing the clothes of an answer, which a salon in Leeds could sign up
+     * without ever noticing. Both are required, so the step cannot be passed
+     * without a deliberate choice.
+     */
+    public function test_the_step_offers_no_country_or_currency_by_default(): void
+    {
+        $content = $this->actingAs($this->user())
+            ->get('http://styledesk.test/onboarding/business')
+            ->assertOk()
+            ->getContent();
+
+        /* The island is handed its selection as props; nothing preselected
+           means both lists reach it empty. */
+        $this->assertStringContainsString('"selectedCountries":[]', $content);
+        $this->assertStringContainsString('"selectedCurrencies":[]', $content);
+    }
+
+    /** And the server refuses a submission that leaves them unanswered. */
+    public function test_the_step_cannot_be_passed_without_a_country_and_currency(): void
+    {
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Bella Beauty',
+                'business_phone' => '555 0100',
+                'default_language' => 'en',
+                'business_type_ids' => [$type->id],
+            ])
+            ->assertSessionHasErrors(['country_codes', 'currency_code']);
+    }
+
+    /**
+     * The countries most businesses pick, offered first.
+     *
+     * Alphabetically the list runs Argentina to United States, which puts the
+     * likeliest answers at the bottom of thirty-three. Presentation only —
+     * validation still reads the config, so promoting a country cannot
+     * narrow what is accepted.
+     */
+    public function test_the_likeliest_countries_are_offered_first(): void
+    {
+        $offered = array_keys(LocationOptions::countries());
+
+        $this->assertSame(
+            ['US', 'GB', 'CA', 'AU', 'ES', 'MX'],
+            array_slice($offered, 0, 6),
+        );
+
+        /* The rest keep their alphabetical order, and nothing is lost or
+           repeated on the way. */
+        $this->assertSame('AR', $offered[6]);
+        $this->assertSame(count(config('locations.countries')), count($offered));
+        $this->assertSame($offered, array_unique($offered));
+    }
+
+    /** A country promoted in config but absent from the list is ignored. */
+    public function test_a_promotion_cannot_invent_a_country(): void
+    {
+        config()->set('locations.countries_first', ['US', 'ZZ']);
+
+        $offered = array_keys(LocationOptions::countries());
+
+        $this->assertSame('US', $offered[0]);
+        $this->assertNotContains('ZZ', $offered);
+        $this->assertSame(count(config('locations.countries')), count($offered));
+    }
+
+    /**
+     * The website is checked as the whole address.
+     *
+     * The scheme lives in a dropdown beside the field, so a plain string rule
+     * on what was typed accepted "hello world" and stored it as
+     * "https://hello world".
+     */
+    public function test_a_website_that_is_not_an_address_is_refused(): void
+    {
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
+
+        $user = $this->user();
+
+        foreach (['hello world', 'bellabeauty', 'https://'] as $bad) {
+            $this->actingAs($user)
+                ->post('http://styledesk.test/onboarding/business', [
+                    'name' => 'Bella Beauty', 'business_phone' => '555 0100',
+                    'country_codes' => ['US'], 'currency_code' => 'USD', 'default_language' => 'en',
+                    'business_type_ids' => [$type->id],
+                    'website_scheme' => 'https://www.', 'website' => $bad,
+                ])
+                ->assertSessionHasErrors('website');
+        }
+    }
+
+    /** A real address is kept, joined to the scheme beside it. */
+    public function test_a_valid_website_is_stored_with_its_scheme(): void
+    {
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
+        $user = $this->user();
+
+        $this->actingAs($user)
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Bella Beauty', 'business_phone' => '555 0100',
+                'country_codes' => ['US'], 'currency_code' => 'USD', 'default_language' => 'en',
+                'business_type_ids' => [$type->id],
+                'website_scheme' => 'https://www.', 'website' => 'bellabeauty.com',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('https://www.bellabeauty.com', $user->fresh()->tenant->website);
+    }
+
+    /** A scheme that is not one of the offered four is refused. */
+    public function test_an_invented_scheme_is_refused(): void
+    {
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Bella Beauty', 'business_phone' => '555 0100',
+                'country_codes' => ['US'], 'currency_code' => 'USD', 'default_language' => 'en',
+                'business_type_ids' => [$type->id],
+                'website_scheme' => 'javascript:', 'website' => 'bellabeauty.com',
+            ])
+            ->assertSessionHasErrors('website_scheme');
+    }
+
+    /** The field is checked as it is typed, not only on submit. */
+    public function test_the_website_field_is_wired_for_live_checking(): void
+    {
+        $this->actingAs($this->user())
+            ->get('http://styledesk.test/onboarding/business')
+            ->assertOk()
+            ->assertSee('data-website-field', false)
+            ->assertSee('data-website-scheme', false)
+            ->assertSee(__('business.validation.url_invalid'), false);
+    }
+
+    /**
+     * Continue fires once.
+     *
+     * A slow POST gives the reader nothing to look at, so they click again —
+     * and a second submit on this step is a second tenant. Bound to the
+     * form's submit rather than the button's click, so a form the browser
+     * refuses never disables the button the reader still needs.
+     */
+    public function test_the_continue_button_cannot_be_submitted_twice(): void
+    {
+        $this->actingAs($this->user())
+            ->get('http://styledesk.test/onboarding/business')
+            ->assertOk()
+            ->assertSee('data-submit-once', false)
+            ->assertSee('data-busy-label="'.e(__('common.saving')).'"', false);
     }
 
     public function test_reserved_slugs_are_rejected(): void

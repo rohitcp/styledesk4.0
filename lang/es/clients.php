@@ -194,6 +194,7 @@ return [
         'intro' => 'Gestiona las fichas de clientes, sus preferencias, sus datos de contacto, sus notas y su historial de reservas.',
 
         'add' => 'Añadir cliente',
+        'add_another' => 'Guardar y añadir otro',
         'add_first' => 'Añade tu primer cliente',
         'add_title' => 'Añadir cliente',
         'edit_title' => 'Editar cliente',
@@ -513,6 +514,7 @@ return [
             'mobile_required' => 'Se requiere un número de teléfono.',
             'email_required' => 'Se requiere una dirección de correo electrónico.',
             'first_name_required' => 'El nombre es obligatorio.',
+            'email_taken' => 'Ya existe un cliente con esta dirección de correo.',
             'email_invalid' => 'Introduce una dirección de correo válida.',
             'dob_past' => 'La fecha de nacimiento debe ser anterior a hoy.',
         ],

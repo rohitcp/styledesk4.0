@@ -91,6 +91,13 @@
             margin-bottom: 1rem;
         }
 
+        .sd-error__note {
+            margin: 0.75rem 0 0 0;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--sd-sub);
+        }
+
         .sd-error__title {
             margin: 0;
             font-size: 28px;
@@ -152,19 +159,22 @@
 </head>
 <body>
     <main class="sd-error">
+        {{-- The wordmark, via asset() rather than @vite: the Vite helper
+             throws when the build manifest is missing, which would turn an
+             error page into a second, uglier error. --}}
         <a class="sd-error__brand" href="{{ $home }}">
-            <svg width="26" height="26" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
-                <path d="M6.5 21.5 L14 6 L18.5 6 L11 21.5 Z"/>
-                <path d="M14.5 21.5 L22 6 L26.5 6 L19 21.5 Z"/>
-                <rect x="4" y="24.6" width="24" height="3.6" rx="1.8"/>
-            </svg>
-            <span>StyleDesk</span>
+            <img src="{{ asset('images/styledesk-logo.svg') }}" alt="StyleDesk"
+                 width="124" height="31" style="display:block;width:124px;height:31px;">
         </a>
 
         <p class="sd-error__code">Error {{ $code }}</p>
 
         <h1 class="sd-error__title">{{ $meta['title'] }}</h1>
         <p class="sd-error__body">{{ $meta['description'] }}</p>
+
+        @if (! empty($meta['note']))
+            <p class="sd-error__note">{{ $meta['note'] }}</p>
+        @endif
 
         <div class="sd-error__actions">
             @if ($code === 401)
@@ -173,7 +183,7 @@
                 <a class="sd-error__btn sd-error__btn--primary" href="{{ url()->current() }}">Reload the page</a>
             @else
                 <a class="sd-error__btn sd-error__btn--primary" href="{{ $home }}">
-                    {{ $signedIn ? 'Back to dashboard' : 'Back to StyleDesk' }}
+                    {{ $signedIn ? 'Go to dashboard' : 'Go to StyleDesk' }}
                 </a>
             @endif
 

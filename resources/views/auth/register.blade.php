@@ -8,6 +8,16 @@
 @section('heading-class', 'text-[26px] sm:text-[28px]')
 @section('subheading', 'Set up your business and start managing bookings, clients, staff, and services.')
 
+{{-- The mirror of the login page's corner action: the way out of a page you
+     are on by mistake, where a reader looks for it. --}}
+@section('top-action')
+    {{-- Hidden below sm, where the corner has room for the button and not the
+         sentence. The button says what it does on its own. --}}
+    <span class="hidden sm:inline text-[13px] text-sub">Already have an account?</span>
+
+    <a href="{{ route('login') }}" class="styledesk_action">Log in</a>
+@endsection
+
 @section('form')
     {{-- Duplicate address. Shown instead of creating a second account, with a
          way straight to the thing the user probably wanted. This only ever
@@ -26,29 +36,46 @@
         </div>
     @endif
 
-    <form id="signup" method="POST" action="{{ route('register.store') }}" class="mt-8 space-y-5">
+    {{-- The rules that used to be a list inside this page's own script now
+         live on the fields, read by the shared live-validation module. The
+         behaviour is the one this page always had; it is simply no longer
+         written here, so the client form and every form after it get the same
+         timing, the same error styling and the same wording. --}}
+    <form id="signup" method="POST" action="{{ route('register.store') }}" class="mt-8 space-y-5"
+          data-validate-form
+          data-validation-messages='@json(\App\Support\LiveValidation::messages([
+              'required' => ':field is required.',
+              'email' => 'Enter a valid email address.',
+          ]))'>
         @csrf
 
         <div class="grid sm:grid-cols-2 gap-x-4 gap-y-5">
             <div>
                 <label for="first_name" class="block text-[13px] font-medium text-ink mb-1.5">First name</label>
                 <input id="first_name" name="first_name" type="text" autocomplete="given-name" class="sd-input" data-capitalize
+                       data-rules="required|max:100"
                        value="{{ old('first_name') }}" required autofocus>
-                @error('first_name')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+                <p id="first_name-error" data-error-for="first_name" role="alert" class="mt-1.5 text-[12px] text-danger"
+                       @unless ($errors->has('first_name')) hidden @endunless>{{ $errors->first('first_name') }}</p>
             </div>
             <div>
                 <label for="last_name" class="block text-[13px] font-medium text-ink mb-1.5">Last name</label>
                 <input id="last_name" name="last_name" type="text" autocomplete="family-name" class="sd-input" data-capitalize
+                       data-rules="required|max:100"
                        value="{{ old('last_name') }}" required>
-                @error('last_name')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+                <p id="last_name-error" data-error-for="last_name" role="alert" class="mt-1.5 text-[12px] text-danger"
+                       @unless ($errors->has('last_name')) hidden @endunless>{{ $errors->first('last_name') }}</p>
             </div>
         </div>
 
         <div>
             <label for="email" class="block text-[13px] font-medium text-ink mb-1.5">Email</label>
             <input id="email" name="email" type="email" autocomplete="email" placeholder="name@yourbusiness.com"
-                   class="sd-input" value="{{ old('email') }}" required>
-            @error('email')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+                   class="sd-input" data-rules="required|email|max:255"
+                   data-message-required="Email address is required."
+                   value="{{ old('email') }}" required>
+            <p id="email-error" data-error-for="email" role="alert" class="mt-1.5 text-[12px] text-danger"
+                       @unless ($errors->has('email')) hidden @endunless>{{ $errors->first('email') }}</p>
         </div>
 
         <div>
@@ -58,7 +85,8 @@
                        class="sd-input has-suffix" required>
                 <x-password-toggle for="password" class="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-faint hover:text-sub hover:bg-hover transition-colors" />
             </div>
-            @error('password')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+            <p id="password-error" data-error-for="password" role="alert" class="mt-1.5 text-[12px] text-danger"
+                       @unless ($errors->has('password')) hidden @endunless>{{ $errors->first('password') }}</p>
 
             {{-- Strength: bar plus text. The word carries the meaning and the
                  bar only reinforces it, so nothing depends on colour alone. --}}
@@ -80,16 +108,26 @@
                        autocomplete="new-password" class="sd-input has-suffix" required>
                 <x-password-toggle for="password_confirmation" class="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-faint hover:text-sub hover:bg-hover transition-colors" />
             </div>
+
+            {{-- Its own message box. The mismatch is only ever noticed in the
+                 browser — the server never sees two different values, because
+                 the form does not submit until they agree. --}}
+            <p id="password_confirmation-error" data-error-for="password_confirmation" role="alert"
+               class="mt-1.5 text-[12px] text-danger" hidden></p>
         </div>
 
         {{-- Explicit acceptance, not consent implied by pressing the button.
              CreateNewUser records the timestamp. --}}
         <div>
             <label class="flex items-start gap-2.5 text-[13px] text-ink cursor-pointer leading-relaxed">
-                <input id="terms" name="terms" type="checkbox" value="1" class="sd-check mt-0.5" @checked(old('terms'))>
+                <input id="terms" name="terms" type="checkbox" value="1" class="sd-check mt-0.5"
+                       data-rules="required"
+                       data-message-required="You must agree to the Terms of Service and Privacy Policy to continue."
+                       @checked(old('terms'))>
                 <span>I agree to the StyleDesk <a href="#" class="text-link font-medium hover:underline">Terms of Service</a> and <a href="#" class="text-link font-medium hover:underline">Privacy Policy</a>.</span>
             </label>
-            @error('terms')<p class="mt-1.5 ml-[26px] text-[12px] text-danger">{{ $message }}</p>@enderror
+            <p id="terms-error" data-error-for="terms" role="alert" class="mt-1.5 text-[12px] text-danger ml-[26px]"
+                       @unless ($errors->has('terms')) hidden @endunless>{{ $errors->first('terms') }}</p>
         </div>
 
         <button type="submit"
@@ -230,6 +268,38 @@
         });
 
         if (confirm) confirm.addEventListener('input', matchCheck);
+
+        /* ---- The rest of the fields ------------------------------------
+           Handled by the shared live-validation module, which reads the rules
+           off the fields themselves — see resources/js/live-validation.js.
+           This page keeps only the two checks that are its own: the password
+           against the rule list below it, and the confirmation against the
+           password. */
+        var form = password.form;
+
+        form.addEventListener('submit', function (e) {
+            var ok = true;
+
+            /* The password has its own rules and its own list; the summary
+               here only says that the list is not satisfied. */
+            var graded = SD.checkPassword(password.value);
+
+            if (graded.rules.some(function (r) { return !r.pass; })) {
+                SD.setError(password, 'Your password does not meet the requirements below.');
+                ok = false;
+            } else {
+                SD.setError(password, '');
+            }
+
+            if (!matchCheck()) ok = false;
+
+            if (!ok) {
+                e.preventDefault();
+                /* Taken to the first thing that is wrong, rather than left to
+                   hunt for it in a form this long. */
+                SD.focusFirstError(form);
+            }
+        });
 
         // Repaint on load so a browser-restored value is graded, not left blank.
         if (password.value) paintPassword();

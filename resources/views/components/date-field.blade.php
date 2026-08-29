@@ -34,6 +34,8 @@
     'placeholder' => null,
     'dialogLabel' => null,
     'id' => null,
+    /** Live-validation rules, applied to the hidden input the form posts. */
+    'rules' => null,
 ])
 
 @php
@@ -120,11 +122,14 @@
     </div>
 
     {{-- What the form actually posts. --}}
-    <input type="hidden" id="{{ $dateId }}_value" name="{{ $name }}" value="{{ $dateValue }}">
+    <input type="hidden" id="{{ $dateId }}_value" name="{{ $name }}" value="{{ $dateValue }}"
+           @if ($rules) data-rules="{{ $rules }}" @endif>
 
     @if ($hint)
         <p id="{{ $dateId }}-hint" class="mt-1.5 text-[12px] text-sub">{{ $hint }}</p>
     @endif
 
-    @error($name)<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+    <p data-error-for="{{ $rules ? $dateId.'_value' : $name }}" role="alert"
+       class="mt-1.5 text-[12px] text-danger"
+       @unless ($errors->has($name)) hidden @endunless>{{ $errors->first($name) }}</p>
 </div>

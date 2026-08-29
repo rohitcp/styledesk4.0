@@ -17,6 +17,32 @@ declare(strict_types=1);
 return [
 
     /*
+    | How long a signed-in person may sit idle.
+    |
+    | Minutes, offered as a dropdown in Business Settings. There is
+    | deliberately no "never": a session that never ends is a shared
+    | front-desk machine left signed in overnight.
+    */
+    'session_timeouts' => [
+        15 => '15 minutes',
+        30 => '30 minutes (recommended)',
+        60 => '1 hour',
+        120 => '2 hours',
+        240 => '4 hours',
+        480 => '8 hours',
+    ],
+
+    /*
+    | The schemes a business website may be entered under.
+    |
+    | Offered as a dropdown beside the address rather than typed, because a
+    | reader who types the scheme themselves types it wrong: "www.example.com"
+    | with no protocol, or "https//" with the colon missing. One list, read by
+    | both the field and the rule that validates it.
+    */
+    'website_schemes' => ['https://www.', 'https://', 'http://www.', 'http://'],
+
+    /*
     | Date formats, keyed by the PHP format string that is actually stored.
     | The label carries a live example, which is the only way most people can
     | tell d/m/Y from m/d/Y.

@@ -19,10 +19,26 @@
 return [
 
     /*
+     * The countries most businesses choose, lifted to the top of the list.
+     *
+     * A dropdown of thirty-three in alphabetical order puts Argentina first
+     * and the United States last, which is the wrong way round for almost
+     * everyone who opens it. The rest keep their alphabetical order below.
+     *
+     * Codes only: the names come from the list underneath, so a country
+     * cannot be promoted here and spelled differently there.
+     */
+    'countries_first' => ['US', 'GB', 'CA', 'AU', 'ES', 'MX'],
+
+    /*
      * The countries a business can be based in.
      *
      * Matches the set the phone widget offers, so the two controls cannot
      * disagree about which countries exist.
+     *
+     * Alphabetical, and read in that order everywhere a country is validated.
+     * Use App\Support\LocationOptions::countries() to render one, which
+     * applies the promotion above.
      */
     'countries' => [
         'AR' => 'Argentina', 'AU' => 'Australia', 'AT' => 'Austria', 'BE' => 'Belgium',

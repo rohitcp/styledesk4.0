@@ -10,6 +10,7 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\ServiceImageController;
 use App\Http\Controllers\Settings\BrandingController;
 use App\Http\Controllers\Settings\BusinessHoursController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\Settings\StaffController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
 use App\Http\Controllers\VerificationEmailController;
+use App\Http\Controllers\VerifyEmailLinkController;
 use App\Models\StoredFile;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Route;
@@ -68,12 +70,44 @@ Route::middleware(['tenant.route'])->get('book/{tenant}', function (Tenant $tena
 })->name('booking.path');
 
 /*
-| Correcting a mistyped sign-up address. Sits behind auth but deliberately
-| outside the `verified` gate — the whole point is that this user cannot
-| verify yet.
+| The verification screen's own actions: resend, enter the code, correct the
+| address. Behind auth but deliberately outside the `verified` gate — the
+| whole point is that this user cannot verify yet.
+|
+| Throttled on top of the resend cooldown, which is a courtesy to the reader
+| rather than a defence: the cooldown lives in the session and a client that
+| discards its cookie discards it too. `code` is throttled because six digits
+| are guessable at network speed and nothing else limits the attempts.
 */
-Route::middleware('auth')->patch('email/verify/update', [VerificationEmailController::class, 'update'])
-    ->name('verification.email.update');
+Route::middleware(['auth', 'throttle:10,1'])
+    ->controller(VerificationEmailController::class)
+    ->group(function () {
+        Route::patch('email/verify/update', 'update')->name('verification.email.update');
+        Route::post('email/verify/resend', 'resend')->name('verification.resend');
+        Route::post('email/verify/code', 'code')->name('verification.code');
+
+        /* Fortify's own resend URL, pointed at the same action. Left to
+           Fortify it would send an email without the cooldown — the same
+           button by another address, and a way around the wait. */
+        Route::post('email/verification-notification', 'resend')->name('verification.send');
+    });
+
+/*
+| The link in the email.
+|
+| Registered here rather than left to Fortify's identical route so a reader
+| whose mail client opened it in another browser is signed in rather than
+| shown a login form, and so an expired link explains itself instead of
+| answering 403. routes/web.php is registered before Fortify's routes, so this
+| definition is the one that matches — VerifyEmailLinkController says what it
+| does differently and why.
+|
+| No `signed` middleware: the signature is checked inside the controller, so
+| the failure is a page with a resend button on it rather than an error page.
+*/
+Route::middleware('throttle:10,1')
+    ->get('email/verify/{id}/{hash}', VerifyEmailLinkController::class)
+    ->name('verification.verify');
 
 /*
 | Team invitations — the invited person's side.
@@ -113,6 +147,23 @@ Route::middleware(['auth', 'verified', 'tenant.user'])
         Route::post('/', 'store')->name('store');
         Route::post('{invitation}/resend', 'resend')->name('resend');
         Route::delete('{invitation}', 'revoke')->name('revoke');
+    });
+
+/*
+| Service pictures.
+|
+| Outside the `onboarded` gate on purpose, and so above the services module:
+| step 3 of the wizard is where a business adds its first service picture, and
+| a business in the wizard has not finished setup by definition. The upload
+| lands unattached and is claimed when the service is saved.
+*/
+Route::middleware(['auth', 'verified', 'tenant.user'])
+    ->prefix('services/images')
+    ->name('services.images.')
+    ->controller(ServiceImageController::class)
+    ->group(function () {
+        Route::post('/', 'store')->name('store');
+        Route::delete('{storedFile}', 'destroy')->name('destroy');
     });
 
 /*
@@ -493,6 +544,17 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             | shape it returns them in.
             */
             Route::get('data', 'data')->name('data');
+
+            /*
+            | "Do we already have this address?", asked while the form is
+            | still being filled in. Before {client} for the same reason as
+            | `data`, and throttled because it answers yes-or-no about an
+            | address — which is a question worth asking slowly.
+            */
+            Route::get('email-in-use', 'emailInUse')
+                ->middleware('throttle:60,1')
+                ->name('email-in-use');
+
             Route::post('/', 'store')->name('store');
 
             // Bound last: a literal segment must win over {client}, or

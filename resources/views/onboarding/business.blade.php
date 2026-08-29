@@ -202,21 +202,27 @@
                 </div>
             </div>
 
-            <div>
+            {{-- Checked as it is typed. The wrapper carries the message the
+                 script says, so the wording lives with the rest of the copy
+                 rather than inside a bundle. --}}
+            <div data-website data-invalid-message="{{ __('business.validation.url_invalid') }}">
                 <label for="bizSite" class="block text-[13px] font-medium text-ink mb-1.5">
                     Website <span class="font-normal text-faint">Optional</span>
                 </label>
                 <div class="sd-group">
                     <label class="sr-only" for="bizScheme">URL scheme</label>
-                    <select id="bizScheme" name="website_scheme" class="sd-group__scheme">
-                        @foreach (['https://www.', 'https://', 'http://www.', 'http://'] as $scheme)
+                    <select id="bizScheme" name="website_scheme" class="sd-group__scheme" data-website-scheme>
+                        @foreach (config('business_profile.website_schemes') as $scheme)
                             <option value="{{ $scheme }}" @selected(old('website_scheme') === $scheme)>{{ $scheme }}</option>
                         @endforeach
                     </select>
                     <input id="bizSite" name="website" type="text" class="sd-group__field" placeholder="bellabeauty.com"
-                           autocomplete="url"
+                           autocomplete="url" spellcheck="false" autocapitalize="none" data-website-field
                            value="{{ old('website', $tenant?->website ? preg_replace('#^https?://(www\.)?#', '', $tenant->website) : '') }}">
                 </div>
+
+                <p id="bizSite-error" data-error-for="bizSite" role="alert" class="mt-1.5 text-[12px] text-danger"
+                   @unless ($errors->has('website')) hidden @endunless>{{ $errors->first('website') }}</p>
             </div>
         </section>
 
@@ -283,8 +289,10 @@
     </form>
 
     <div class="flex flex-wrap items-center gap-3 pt-6">
-        <button type="submit" form="stepForm"
-                class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+        {{-- Fires once. A slow POST gives the reader nothing to look at, so
+             they click again — and a second submit here is a second tenant. --}}
+        <button type="submit" form="stepForm" data-submit-once data-busy-label="{{ __('common.saving') }}"
+                class="h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
             Continue
         </button>
     </div>

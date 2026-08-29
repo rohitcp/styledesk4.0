@@ -72,4 +72,23 @@ return [
         'remove_behavioral_title' => '¿Quitar la etiqueta de comportamiento?',
         'remove_behavioral' => '¿Quitar “:label” de este cliente?',
     ],
+
+    /*
+    | Los mensajes que el navegador escribe mientras se rellena un formulario.
+    | Redactados igual que los del servidor, para que corregir un campo antes
+    | de enviar y corregirlo después se lean igual. :field es la etiqueta.
+    */
+    'validation' => [
+        'required' => ':field es obligatorio.',
+        'email' => 'Introduce una dirección de correo válida.',
+        'phone' => 'Introduce un número de teléfono válido.',
+        'date' => 'Introduce una fecha válida.',
+        'numeric' => ':field debe ser un número.',
+        'integer' => ':field debe ser un número entero.',
+        'min' => ':field debe tener al menos :min caracteres.',
+        'max' => ':field debe tener :max caracteres o menos.',
+        'min_value' => ':field debe ser :min o más.',
+        'max_value' => ':field debe ser :max o menos.',
+        'taken' => 'Ese valor ya está en uso.',
+    ],
 ];

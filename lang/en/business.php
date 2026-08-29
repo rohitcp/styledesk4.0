@@ -27,6 +27,7 @@ return [
         'address_hint' => 'Your primary address. :count locations in total.',
         'regional' => 'Regional settings',
         'regional_hint' => 'Configured in their own modules; shown here for context.',
+        'security' => 'Security',
         'defaults' => 'Business defaults',
         'defaults_hint' => 'Starting points for new bookings and services.',
         'presence' => 'Business presence',
@@ -70,6 +71,7 @@ return [
         'default_booking_duration' => 'Default booking duration',
         'default_appointment_interval' => 'Default appointment interval',
         'default_tax_behavior' => 'Default tax behaviour',
+        'session_timeout' => 'Session timeout',
         'default_staff_assignment' => 'Default staff assignment',
         'allow_online_booking' => 'Allow online booking',
         'guest_booking' => 'Guest booking enabled',
@@ -153,6 +155,7 @@ return [
 
     'hints' => [
         'inactive' => 'An inactive business is hidden from public booking.',
+        'session_timeout' => 'Automatically sign users out after a period of inactivity.',
         'interval' => 'The grid booking start times snap to.',
         'regional' => 'Languages, currencies and time zone are set in their own modules.',
     ],
@@ -170,6 +173,7 @@ return [
         'duration' => 'Choose a duration',
         'interval' => 'Choose an interval',
         'tax' => 'Choose tax behaviour',
+        'session_timeout' => 'Choose a timeout',
         'assignment' => 'Choose an assignment rule',
     ],
 
@@ -197,5 +201,14 @@ return [
         'wellness' => 'Wellness',
         'fitness' => 'Fitness',
         'other' => 'Other',
+    ],
+
+    'session_timeouts' => [
+        15 => '15 minutes',
+        30 => '30 minutes (recommended)',
+        60 => '1 hour',
+        120 => '2 hours',
+        240 => '4 hours',
+        480 => '8 hours',
     ],
 ];

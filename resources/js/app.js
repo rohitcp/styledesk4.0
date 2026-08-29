@@ -15,7 +15,7 @@ import './prototype/branding';
 import './prototype/account';
 
 import { capitalizeFirst, initCapitalization } from './capitalize';
-import { initPhoneFields } from './phone';
+import { initDigitsOnly, initPhoneFields } from './phone';
 import { initClientContacts } from './client-contacts';
 import { initListingFilters } from './listing-filters';
 import { initDataGrid } from './data-grid';
@@ -23,6 +23,12 @@ import { initNavMenus } from './nav-menu';
 import { initColorPickers, initDepositToggles } from './color-picker';
 import { initRowMenus } from './row-menu';
 import { initSubdomainFields } from './subdomain';
+import { initWebsiteFields } from './website-field';
+import { initLiveValidation } from './live-validation';
+import { initResourceRequirement } from './service-resources';
+import { initSubmitOnce } from './submit-once';
+import { initResendCooldown, initVerificationCode } from './verification-code';
+import { initSessionTimeout } from './session-timeout';
 import { initCombos } from './combos';
 import { initTooltips } from './tooltip';
 import { initNoteComposer, initNoteReveal } from './note-composer';
@@ -137,6 +143,7 @@ function initDateFields(root = document) {
 document.addEventListener('DOMContentLoaded', () => {
     mountVueIslands();
     initPhoneFields();
+    initDigitsOnly();
     initCapitalization();
     initCombos();
     initTooltips();
@@ -150,6 +157,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initDepositToggles();
     initRowMenus();
     initSubdomainFields();
+    initWebsiteFields();
+    initLiveValidation();
+    initResourceRequirement();
+    initSubmitOnce();
+    initVerificationCode();
+    initResendCooldown();
+    initSessionTimeout();
     initListingFilters();
 });
 

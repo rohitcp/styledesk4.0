@@ -1,40 +1,42 @@
 {{--
-    Warns before an idle session ends, and leaves when it does.
+    Warns before an idle session ends, and blocks the page when it has.
 
-    Without this a tab sits looking signed in until the next click, which then
-    lands on a login screen and loses whatever was typed. The countdown runs on
-    the same config('session.lifetime') the server enforces, so the two cannot
-    disagree about when it happens.
+    Two dialogs and one deadline. The deadline is a wall-clock timestamp, not
+    a countdown: a long setTimeout is throttled in a background tab and does
+    not run at all while the machine is asleep, which is how a tab left open
+    overnight could still look signed in the next morning. Comparing "what
+    time is it now" against "when does this expire" is immune to both — the
+    tab notices the moment it wakes.
 
-    The server is still the authority; this only decides what an untouched tab
-    does in the meantime.
+    The server is still the authority. This only decides what an untouched tab
+    shows in the meantime, and what it does when a request comes back 401.
 --}}
 @auth
     @php
         $timeoutSeconds = \App\Http\Middleware\EnforceSessionTimeout::timeoutSeconds();
-
-        // Two minutes, or a fifth of a very short lifetime: a warning longer
-        // than the session it warns about would appear immediately.
-        $warnSeconds = (int) min(120, max(30, $timeoutSeconds / 5));
+        $warnSeconds = \App\Http\Middleware\EnforceSessionTimeout::warningSeconds();
     @endphp
 
+    {{-- About to expire: dismissible, because there is still a session to
+         keep and the reader may want to get back to it. --}}
     <div id="sd-timeout" class="styledesk_modal" role="dialog" aria-modal="true"
          aria-labelledby="sd-timeout-title" hidden>
-        <div class="styledesk_modal__dialog" style="max-width: 400px">
+        <div class="styledesk_modal__dialog" style="max-width: 420px">
             <div class="styledesk_modal__head">
-                <h2 id="sd-timeout-title" class="styledesk_modal__title">Still there?</h2>
+                <h2 id="sd-timeout-title" class="styledesk_modal__title">Your session is about to expire</h2>
             </div>
             <div class="styledesk_modal__body">
                 <p class="text-[13px] text-sub leading-relaxed">
-                    You will be signed out in
-                    <strong id="sd-timeout-count" class="text-ink">{{ $warnSeconds }}</strong>
-                    seconds because this tab has been idle. Anything unsaved will be lost.
+                    For your security, you will be signed out because there has been no activity.
+                </p>
+                <p class="text-[13px] text-ink mt-3">
+                    Session expires in <strong id="sd-timeout-count" class="tabular-nums">02:00</strong>
                 </p>
             </div>
             <div class="styledesk_modal__foot">
                 <button type="button" data-timeout-signout
                         class="h-9 px-4 rounded-md text-[13px] font-semibold text-sub hover:bg-hover transition-colors">
-                    Sign out now
+                    Sign out
                 </button>
                 <button type="button" data-timeout-stay
                         class="h-9 px-4 rounded-md bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
@@ -44,95 +46,37 @@
         </div>
     </div>
 
+    {{-- Already expired: no close, no scrim click, no Escape. Dismissing it
+         would leave the reader looking at a page they can no longer use, and
+         every action behind it would fail. --}}
+    <div id="sd-expired" class="styledesk_modal" role="alertdialog" aria-modal="true"
+         aria-labelledby="sd-expired-title" hidden>
+        <div class="styledesk_modal__dialog" style="max-width: 420px">
+            <div class="styledesk_modal__head">
+                <h2 id="sd-expired-title" class="styledesk_modal__title">Your session has expired</h2>
+            </div>
+            <div class="styledesk_modal__body">
+                <p class="text-[13px] text-sub leading-relaxed">
+                    Your session ended because there was no activity. Sign in again to continue.
+                </p>
+            </div>
+            <div class="styledesk_modal__foot">
+                <button type="button" data-timeout-signin
+                        class="h-9 px-4 rounded-md bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+                    Sign in
+                </button>
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
         <script>
-            (function () {
-                var TIMEOUT_MS = {{ $timeoutSeconds * 1000 }};
-                var WARN_MS = {{ $warnSeconds * 1000 }};
-                var LOGIN_URL = @json(route('login'));
-                var KEEP_ALIVE_URL = @json(route('session.keep-alive'));
-
-                if (!TIMEOUT_MS) return;
-
-                var dialog = document.getElementById('sd-timeout');
-                var countEl = document.getElementById('sd-timeout-count');
-                if (!dialog) return;
-
-                var warnTimer = null;
-                var endTimer = null;
-                var tickTimer = null;
-
-                function signOut() {
-                    var form = document.getElementById('sd-logout-form');
-                    if (form) { form.submit(); return; }
-                    window.location.href = LOGIN_URL;
-                }
-
-                function hide() {
-                    dialog.hidden = true;
-                    window.clearInterval(tickTimer);
-                }
-
-                function warn() {
-                    dialog.hidden = false;
-
-                    var remaining = Math.round(WARN_MS / 1000);
-                    countEl.textContent = remaining;
-
-                    tickTimer = window.setInterval(function () {
-                        remaining -= 1;
-                        countEl.textContent = Math.max(0, remaining);
-                    }, 1000);
-                }
-
-                function schedule() {
-                    window.clearTimeout(warnTimer);
-                    window.clearTimeout(endTimer);
-                    hide();
-
-                    warnTimer = window.setTimeout(warn, Math.max(0, TIMEOUT_MS - WARN_MS));
-
-                    /* A second past the server's limit, so the server has
-                       always already decided by the time the tab acts. */
-                    endTimer = window.setTimeout(signOut, TIMEOUT_MS + 1000);
-                }
-
-                /* Real interaction only. Deliberately not scroll or mousemove:
-                   a trackpad nudge or a phone in a pocket would keep a session
-                   alive forever, which is the opposite of a timeout. */
-                ['click', 'keydown', 'submit'].forEach(function (event) {
-                    document.addEventListener(event, function () {
-                        if (dialog.hidden) schedule();
-                    }, true);
-                });
-
-                dialog.addEventListener('click', function (e) {
-                    if (e.target.closest('[data-timeout-signout]')) {
-                        signOut();
-
-                        return;
-                    }
-
-                    if (e.target.closest('[data-timeout-stay]')) {
-                        /* Touch the server as well. Dismissing the dialog on
-                           its own would restart this countdown while the
-                           server's kept running, and the next click would land
-                           on a login screen anyway. */
-                        var token = document.querySelector('meta[name=csrf-token]');
-
-                        fetch(KEEP_ALIVE_URL, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': token ? token.getAttribute('content') : '',
-                                'Accept': 'application/json'
-                            },
-                            credentials: 'same-origin'
-                        }).finally(schedule);
-                    }
-                });
-
-                schedule();
-            }());
+            window.styledeskSession = {
+                timeoutMs: {{ $timeoutSeconds * 1000 }},
+                warnMs: {{ $warnSeconds * 1000 }},
+                loginUrl: @json(route('login')),
+                keepAliveUrl: @json(route('session.keep-alive'))
+            };
         </script>
     @endpush
 @endauth

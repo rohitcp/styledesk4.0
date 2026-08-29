@@ -89,6 +89,19 @@ class BusinessProfile
     }
 
     /**
+     * The idle windows a business may choose.
+     *
+     * No "never": a session that never ends is a shared front-desk machine
+     * left signed in overnight, which is the thing the timeout exists for.
+     *
+     * @return array<int, string>
+     */
+    public static function sessionTimeouts(): array
+    {
+        return self::translate('business_profile.session_timeouts', 'business.session_timeouts');
+    }
+
+    /**
      * One option's label, for a screen showing a stored value rather than a
      * list of choices.
      */

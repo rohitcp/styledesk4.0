@@ -21,6 +21,7 @@ return [
         'address_hint' => 'Tu dirección principal. :count ubicaciones en total.',
         'regional' => 'Ajustes regionales',
         'regional_hint' => 'Se configuran en sus propios módulos; aquí se muestran como referencia.',
+        'security' => 'Seguridad',
         'defaults' => 'Valores predeterminados',
         'defaults_hint' => 'Punto de partida para las nuevas reservas y servicios.',
         'presence' => 'Presencia del negocio',
@@ -64,6 +65,7 @@ return [
         'default_booking_duration' => 'Duración de reserva predeterminada',
         'default_appointment_interval' => 'Intervalo de citas predeterminado',
         'default_tax_behavior' => 'Tratamiento fiscal predeterminado',
+        'session_timeout' => 'Tiempo de sesión',
         'default_staff_assignment' => 'Asignación de personal predeterminada',
         'allow_online_booking' => 'Permitir reserva online',
         'guest_booking' => 'Reserva de invitados activada',
@@ -128,6 +130,7 @@ return [
 
     'hints' => [
         'inactive' => 'Un negocio inactivo no aparece en la reserva pública.',
+        'session_timeout' => 'Cierra la sesión automáticamente tras un periodo de inactividad.',
         'interval' => 'La cuadrícula a la que se ajustan las horas de inicio.',
         'regional' => 'Los idiomas, las monedas y la zona horaria se definen en sus propios módulos.',
     ],
@@ -145,6 +148,7 @@ return [
         'duration' => 'Elige una duración',
         'interval' => 'Elige un intervalo',
         'tax' => 'Elige el tratamiento fiscal',
+        'session_timeout' => 'Elige un tiempo',
         'assignment' => 'Elige una regla de asignación',
     ],
 
@@ -162,5 +166,14 @@ return [
         'wellness' => 'Bienestar',
         'fitness' => 'Fitness',
         'other' => 'Otro',
+    ],
+
+    'session_timeouts' => [
+        15 => '15 minutos',
+        30 => '30 minutos (recomendado)',
+        60 => '1 hora',
+        120 => '2 horas',
+        240 => '4 horas',
+        480 => '8 horas',
     ],
 ];

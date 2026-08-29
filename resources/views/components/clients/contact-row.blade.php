@@ -4,11 +4,26 @@
     template that had quietly fallen behind the rendered rows would produce
     fields that post under names the server no longer reads.
 --}}
-@props(['kind', 'group', 'key', 'row', 'types', 'checked' => false, 'country' => 'US'])
+@props([
+    'kind', 'group', 'key', 'row', 'types', 'checked' => false, 'country' => 'US',
+    /** Where the browser may ask whether an address is already on a client. */
+    'remoteCheck' => null,
+])
 
-@php $isPhone = $kind === 'phone'; @endphp
+@php
+    $isPhone = $kind === 'phone';
 
-<div class="flex flex-wrap items-center gap-2" data-contact-row data-key="{{ $key }}">
+    /* Every row needs an id of its own: the shared validator addresses a
+       message to the id of the field it is about, and these rows are cloned
+       from a template where the key is a placeholder. __KEY__ is rewritten
+       with the rest of the row's names when a row is added. */
+    $rowId = $group.'_'.$key.'_'.($isPhone ? 'number' : 'email');
+@endphp
+
+{{-- A column, so the row's message sits under the row rather than beside the
+     next control on it. --}}
+<div class="flex flex-col gap-1" data-contact-row data-key="{{ $key }}">
+<div class="flex flex-wrap items-center gap-2">
     @if ($isPhone)
         <div class="relative flex-1 min-w-[200px]"
              data-phone data-phone-country="{{ $row['country'] ?: $country }}">
@@ -19,8 +34,8 @@
                     <span class="sd-phone__flag" data-phone-flag>&#127482;&#127480;</span>
                     <span class="font-medium" data-phone-code>+1</span>
                 </button>
-                <input name="{{ $group }}[{{ $key }}][number]" type="tel" class="sd-phone__field"
-                       data-phone-input autocomplete="tel-national"
+                <input id="{{ $rowId }}" name="{{ $group }}[{{ $key }}][number]" type="tel" class="sd-phone__field"
+                       data-phone-input autocomplete="tel-national" data-rules="phone"
                        aria-label="{{ __('clients.module.contacts.phone_number') }}"
                        value="{{ $row['number'] }}">
             </div>
@@ -29,8 +44,11 @@
                    value="{{ $row['country'] ?: $country }}">
         </div>
     @else
-        <input name="{{ $group }}[{{ $key }}][email]" type="email" class="sd-input flex-1 !w-auto min-w-[180px]"
+        <input id="{{ $rowId }}" name="{{ $group }}[{{ $key }}][email]" type="email"
+               class="sd-input flex-1 !w-auto min-w-[180px]"
                aria-label="{{ __('clients.module.contacts.email_address') }}"
+               data-rules="email|max:255"
+               @if ($remoteCheck) data-remote-check="{{ $remoteCheck }}" @endif
                value="{{ $row['email'] }}">
     @endif
 
@@ -58,4 +76,9 @@
             aria-label="{{ __('clients.module.contacts.remove') }}">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 7h12M10 7V5.5a1 1 0 011-1h2a1 1 0 011 1V7M8 7l.7 12a1 1 0 001 1h4.6a1 1 0 001-1L16 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
+</div>
+
+{{-- The row's own message. Addressed to the field it is about, so a form with
+     three numbers on it says which one it means. --}}
+<p data-error-for="{{ $rowId }}" role="alert" class="text-[12px] text-danger" hidden></p>
 </div>

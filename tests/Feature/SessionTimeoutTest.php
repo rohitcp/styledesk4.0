@@ -33,6 +33,58 @@ class SessionTimeoutTest extends TestCase
         return $user->fresh();
     }
 
+    /** The business form's other required fields, so a save can reach them. */
+    private function businessPayload(User $user, array $overrides = []): array
+    {
+        return $overrides + [
+            'name' => $user->tenant->name,
+            'status' => 'active',
+            'business_email' => 'hello@acme.test',
+        ];
+    }
+
+    /**
+     * A stale clock from an earlier visit does not end a new session.
+     *
+     * Regenerating the session on login keeps its data, so the stamp an
+     * earlier signed-in visit left in this browser arrives in the new session
+     * with it. Left alone it measured a session seconds old against activity
+     * hours old and signed the reader straight back out — which, on the
+     * sign-up form, looked like registering and being sent to the login page.
+     */
+    public function test_signing_in_starts_the_idle_clock_again(): void
+    {
+        $user = $this->signedInUser();
+
+        $this->withSession([EnforceSessionTimeout::KEY => now()->subHours(2)->getTimestamp()])
+            ->post('http://styledesk.test/login', [
+                'email' => $user->email,
+                'password' => 'Str0ng!Pass',
+            ])
+            ->assertRedirect('http://styledesk.test/dashboard');
+
+        $this->get('http://styledesk.test/dashboard')->assertOk();
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_signing_up_on_a_tab_that_has_been_open_a_while_still_reaches_verification(): void
+    {
+        $this->withSession([EnforceSessionTimeout::KEY => now()->subHours(2)->getTimestamp()])
+            ->post('http://styledesk.test/signup', [
+                'first_name' => 'Rohit',
+                'last_name' => 'Philip',
+                'email' => 'rohit@styledesk.test',
+                'password' => 'Str0ng!Pass',
+                'password_confirmation' => 'Str0ng!Pass',
+                'terms' => '1',
+            ]);
+
+        $this->get('http://styledesk.test/dashboard')
+            ->assertRedirect(route('verification.notice'));
+
+        $this->assertAuthenticated();
+    }
+
     // ------------------------------------------------------------ sign out
 
     public function test_signing_out_lands_on_the_login_page(): void
@@ -70,6 +122,25 @@ class SessionTimeoutTest extends TestCase
 
         $this->get('http://styledesk.test/dashboard')->assertRedirect(route('login'));
 
+        $this->assertGuest();
+    }
+
+    /**
+     * The reported case: a tab left open overnight.
+     *
+     * Written to reproduce a bug report — "left open ~24 hours and I was
+     * still signed in" — so that whatever the browser did or failed to do,
+     * the server's answer is on the record.
+     */
+    public function test_a_session_left_overnight_is_refused(): void
+    {
+        $user = $this->signedInUser();
+
+        $this->actingAs($user)->get('http://styledesk.test/dashboard')->assertOk();
+
+        $this->travel(24)->hours();
+
+        $this->get('http://styledesk.test/dashboard')->assertRedirect(route('login'));
         $this->assertGuest();
     }
 
@@ -140,7 +211,7 @@ class SessionTimeoutTest extends TestCase
             ->get('http://styledesk.test/dashboard')
             ->assertOk()
             ->assertSee('id="sd-timeout"', false)
-            ->assertSee('Still there?');
+            ->assertSee('Your session is about to expire');
 
         // A guest has no session to lose. Signed out first, or Fortify
         // redirects an authenticated visitor away from the login screen and
@@ -162,5 +233,120 @@ class SessionTimeoutTest extends TestCase
         $this->actingAs($this->signedInUser())
             ->get('http://styledesk.test/dashboard')
             ->assertSee((string) (config('session.idle_timeout') * 60 * 1000), false);
+    }
+
+    /**
+     * The business sets the window, not the deployment.
+     *
+     * A salon with a shared front-desk machine wants a short one; a solo
+     * practitioner does not. Null means "follow StyleDesk", so a business
+     * that never opened the setting keeps following the platform default
+     * when it changes.
+     */
+    public function test_a_business_can_choose_its_own_idle_window(): void
+    {
+        $user = $this->signedInUser();
+
+        $this->assertSame((int) config('session.idle_timeout'), EnforceSessionTimeout::timeoutMinutes());
+
+        $this->actingAs($user);
+        $user->tenant->forceFill(['session_timeout_minutes' => 15])->save();
+
+        $this->assertSame(15, EnforceSessionTimeout::timeoutMinutes());
+    }
+
+    /**
+     * A number written straight into the database cannot widen the window
+     * past anything an administrator could have chosen.
+     */
+    public function test_a_window_the_dropdown_never_offered_is_ignored(): void
+    {
+        $user = $this->signedInUser();
+
+        $this->actingAs($user);
+        $user->tenant->forceFill(['session_timeout_minutes' => 10080])->save();
+
+        $this->assertSame((int) config('session.idle_timeout'), EnforceSessionTimeout::timeoutMinutes());
+    }
+
+    /** The business's own window is what actually ends the session. */
+    public function test_the_business_window_is_enforced_by_the_server(): void
+    {
+        $user = $this->signedInUser();
+        $user->tenant->forceFill(['session_timeout_minutes' => 15])->save();
+
+        $this->actingAs($user->fresh())->get('http://styledesk.test/dashboard')->assertOk();
+
+        $this->travel(16)->minutes();
+
+        $this->get('http://styledesk.test/dashboard')->assertRedirect(route('login'));
+        $this->assertGuest();
+    }
+
+    /**
+     * The expired dialog cannot be dismissed.
+     *
+     * Behind it is a page whose every action would now fail, so it offers one
+     * way out: sign in again.
+     */
+    public function test_the_shell_carries_a_blocking_expired_dialog(): void
+    {
+        $this->actingAs($this->signedInUser())
+            ->get('http://styledesk.test/dashboard')
+            ->assertOk()
+            ->assertSee('id="sd-expired"', false)
+            ->assertSee('Your session has expired')
+            ->assertSee('Your session ended because there was no activity.')
+            /* No close control, no scrim to click. */
+            ->assertDontSee('data-expired-close', false);
+    }
+
+    /** And the warning says what it says, with both of its actions. */
+    public function test_the_warning_offers_staying_signed_in_or_signing_out(): void
+    {
+        $this->actingAs($this->signedInUser())
+            ->get('http://styledesk.test/dashboard')
+            ->assertOk()
+            ->assertSee('Your session is about to expire')
+            ->assertSee('data-timeout-stay', false)
+            ->assertSee('data-timeout-signout', false);
+    }
+
+    /** The setting is offered in Business Settings, and never as "never". */
+    public function test_business_settings_offers_the_timeout_without_a_never_option(): void
+    {
+        $this->actingAs($this->signedInUser())
+            ->get('http://styledesk.test/settings/business/edit')
+            ->assertOk()
+            ->assertSee(__('business.cards.security'))
+            ->assertSee(__('business.fields.session_timeout'))
+            ->assertSee(__('business.hints.session_timeout'));
+
+        $this->assertArrayNotHasKey('never', config('business_profile.session_timeouts'));
+        $this->assertSame([15, 30, 60, 120, 240, 480], array_keys(config('business_profile.session_timeouts')));
+    }
+
+    public function test_the_timeout_can_be_saved_from_business_settings(): void
+    {
+        $user = $this->signedInUser();
+
+        $this->actingAs($user)
+            ->patch('http://styledesk.test/settings/business', $this->businessPayload($user, [
+                'session_timeout_minutes' => 60,
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(60, (int) $user->tenant->fresh()->session_timeout_minutes);
+    }
+
+    public function test_a_timeout_outside_the_offered_list_is_refused(): void
+    {
+        $user = $this->signedInUser();
+
+        $this->actingAs($user)
+            ->patch('http://styledesk.test/settings/business', $this->businessPayload($user, [
+                'session_timeout_minutes' => 99999,
+            ]))
+            ->assertSessionHasErrors('session_timeout_minutes');
     }
 }

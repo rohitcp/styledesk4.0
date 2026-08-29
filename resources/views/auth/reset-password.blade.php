@@ -8,7 +8,20 @@
     <form method="POST" action="{{ route('password.update') }}" class="mt-8 space-y-5">
         @csrf
         <input type="hidden" name="token" value="{{ $request->route('token') }}">
-        <input type="hidden" name="email" value="{{ $request->email }}">
+
+        {{-- The account this link is for, shown rather than hidden.
+             Somebody who has two StyleDesk logins, or who followed a link from
+             an old email, has no other way of knowing which password they are
+             about to change.
+
+             Read-only, not merely hidden: the address is what the token is
+             issued against, so letting it be edited would only ever produce a
+             refusal. Still posted, because readonly fields are — which is why
+             it replaces the hidden input rather than joining it. --}}
+        <x-text-field name="email" label="Email address" type="email"
+                      autocomplete="username" readonly
+                      :value="$request->email"
+                      hint="Your new password will be set for this account." />
 
         <x-text-field name="password" label="New password" type="password" autocomplete="new-password" required autofocus />
         <x-text-field name="password_confirmation" label="Confirm password" type="password" autocomplete="new-password" required />

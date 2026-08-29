@@ -85,6 +85,11 @@ class BusinessSettingsController extends Controller
             'default_appointment_interval' => ['nullable', Rule::in(array_keys(config('business_profile.appointment_intervals')))],
             'default_tax_behavior' => ['nullable', Rule::in(array_keys(config('business_profile.tax_behaviors')))],
             'default_staff_assignment' => ['nullable', Rule::in(array_keys(config('business_profile.staff_assignment')))],
+
+            /* Only a window the dropdown offers. Null means "follow the
+               StyleDesk default", which is what a business that has never
+               opened this setting has. */
+            'session_timeout_minutes' => ['nullable', Rule::in(array_keys(config('business_profile.session_timeouts')))],
         ], [
             /**
              * Written as instructions rather than as descriptions of a rule.

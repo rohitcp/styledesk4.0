@@ -144,3 +144,37 @@ export function initPhoneFields(root = document) {
         });
     });
 }
+
+
+/**
+ * A plain phone input that refuses letters.
+ *
+ * Not the country-code widget above — this is the single field a location
+ * carries. Digits and the punctuation a number is actually written with are
+ * kept; everything else is dropped as it is typed, with the caret put back
+ * where it was so the field does not jump to the end on every correction.
+ */
+export function initDigitsOnly(root = document) {
+    root.querySelectorAll('[data-digits-only]').forEach((field) => {
+        if (field.dataset.digitsOnlyReady) {
+            return;
+        }
+
+        field.dataset.digitsOnlyReady = '1';
+
+        field.addEventListener('input', () => {
+            const before = field.value;
+            const caret = field.selectionStart ?? before.length;
+            const cleaned = before.replace(/[^0-9+()\-.\s]/g, '');
+
+            if (cleaned === before) {
+                return;
+            }
+
+            const shift = before.length - cleaned.length;
+
+            field.value = cleaned;
+            field.setSelectionRange(Math.max(0, caret - shift), Math.max(0, caret - shift));
+        });
+    });
+}

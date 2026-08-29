@@ -82,4 +82,24 @@ return [
         'remove_behavioral_title' => 'Remove behavioural tag?',
         'remove_behavioral' => 'Remove “:label” from this client?',
     ],
+
+    /*
+    | The live-validation messages the browser writes while a form is being
+    | filled in. Worded to match what the server says when it refuses the same
+    | value, so correcting a field before submitting and correcting it after
+    | read identically. :field is the field's own label.
+    */
+    'validation' => [
+        'required' => ':field is required.',
+        'email' => 'Enter a valid email address.',
+        'phone' => 'Enter a valid phone number.',
+        'date' => 'Enter a valid date.',
+        'numeric' => ':field must be a number.',
+        'integer' => ':field must be a whole number.',
+        'min' => ':field must be at least :min characters.',
+        'max' => ':field must be :max characters or fewer.',
+        'min_value' => ':field must be :min or more.',
+        'max_value' => ':field must be :max or less.',
+        'taken' => 'That value is already in use.',
+    ],
 ];

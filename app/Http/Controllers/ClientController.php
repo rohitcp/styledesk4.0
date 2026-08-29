@@ -351,6 +351,11 @@ class ClientController extends Controller
             if ($matches->isNotEmpty()) {
                 return back()
                     ->withInput()
+                    /* Where the reader was heading, kept for one request so
+                       that confirming a duplicate does not quietly move them
+                       off the "add another" path they were on. The confirm
+                       button sends no after_save of its own. */
+                    ->with('after_save', $request->input('after_save'))
                     ->with('duplicates', $matches->map(fn (Client $c) => [
                         'id' => $c->id,
                         'name' => $c->displayName($settings->name_format),
@@ -376,15 +381,44 @@ class ClientController extends Controller
             return $client;
         });
 
+        $toast = ['type' => 'success', 'message' => __('clients.module.created')];
+
+        /**
+         * Back to an empty form for someone working through a stack of
+         * registration cards.
+         *
+         * A redirect rather than re-rendering the view: it is what empties the
+         * form. Nothing is passed back through withInput, so the new page is
+         * built from nothing at all — which is the only way of clearing a form
+         * that cannot leave a stray value behind from the client just saved.
+         */
+        if ($this->addAnother($request)) {
+            return redirect()->route('clients.create')->with('toast', $toast);
+        }
+
         /**
          * To the profile, per §Once the First Client Is Added.
          *
          * The person who just typed a client's details wants to see them, not
          * to find them again in a list.
          */
-        return redirect()
-            ->route('clients.show', $client)
-            ->with('toast', ['type' => 'success', 'message' => __('clients.module.created')]);
+        return redirect()->route('clients.show', $client)->with('toast', $toast);
+    }
+
+    /**
+     * Whether the reader asked to be given a fresh form.
+     *
+     * The request's own answer wins wherever it has one: both save buttons
+     * carry `after_save`, so anything arriving without it is the duplicate
+     * confirmation, which has no opinion of its own and inherits the intent
+     * flashed with the warning it is answering.
+     */
+    private function addAnother(Request $request): bool
+    {
+        /* filled(), not input()'s default: a key that is present but empty is
+           not an answer, and input() hands back that empty value rather than
+           falling through to the default. */
+        return ($request->filled('after_save') ? $request->input('after_save') : session('after_save')) === 'another';
     }
 
     /**
@@ -1055,6 +1089,44 @@ class ClientController extends Controller
      * them the job. Which *records* a scope reaches is a separate question,
      * answered by the query — this only answers whether the door opens.
      */
+    /**
+     * Is this address already on one of this business's clients?
+     *
+     * Answered while the reader is still typing, so that "we already have
+     * this person" arrives beside the field rather than after a submission
+     * they have to redo. The duplicate warning on save is unchanged and still
+     * has the final word — this only brings the same news earlier.
+     *
+     * Says whether, never who. A page that named the matching client would
+     * turn a form anyone with clients.create can open into a way of asking
+     * the address book about an address, one guess at a time.
+     */
+    public function emailInUse(Request $request): JsonResponse
+    {
+        $this->authorizeClients($request, 'clients.create');
+
+        $email = mb_strtolower(trim((string) $request->query('value')));
+
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return response()->json(['ok' => true]);
+        }
+
+        $tenant = $request->user()->tenant;
+
+        $taken = Client::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->getTenantKey())
+            /* The client being edited is not a duplicate of itself. */
+            ->when($request->query('ignore'), fn ($q, $id) => $q->whereKeyNot($id))
+            ->where(fn ($q) => $q
+                ->whereRaw('lower(email) = ?', [$email])
+                ->orWhereHas('emails', fn ($e) => $e->whereRaw('lower(email) = ?', [$email])))
+            ->exists();
+
+        return response()->json($taken
+            ? ['ok' => false, 'message' => __('clients.module.validation.email_taken')]
+            : ['ok' => true]);
+    }
+
     private function authorizeClients(Request $request, string $permission, string $scope = 'own'): void
     {
         abort_unless($request->user()->hasPermission($permission, $scope), 403);

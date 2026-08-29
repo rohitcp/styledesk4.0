@@ -3415,6 +3415,25 @@ fieldset:disabled :where(button, input, select, textarea),
 }
 
 /* ------------------------------------------------------------------
+   Read-only field
+   ------------------------------------------------------------------
+   A value the reader may see but not change, drawn as a field so it
+   sits in a form without looking like a hole in it.
+
+   `display: flex` is stated here rather than as a `flex` utility on the
+   element: prototype.css is imported after Tailwind, so its
+   `.sd-input { display: block }` wins on source order and the utility
+   silently loses. That is why the country on the location step used to
+   sit against the top of its box instead of centred in it.
+   ------------------------------------------------------------------ */
+.styledesk_readonlyfield {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+/* ------------------------------------------------------------------
    Client identity header
    ------------------------------------------------------------------
    Two layouts from one markup, decided at 1024px.

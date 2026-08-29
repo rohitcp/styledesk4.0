@@ -30,6 +30,31 @@ class LocationOptions
     }
 
     /**
+     * The countries a business can choose, in the order to offer them.
+     *
+     * The handful most businesses pick first, then the rest alphabetically.
+     * A dropdown of thirty-three sorted from Argentina puts the likeliest
+     * answers last, which is a scroll every reader pays for.
+     *
+     * Only presentation: validation still reads the config directly, so
+     * promoting a country cannot accidentally narrow what is accepted.
+     *
+     * @return array<string, string>
+     */
+    public static function countries(): array
+    {
+        $countries = config('locations.countries');
+
+        $promoted = collect(config('locations.countries_first', []))
+            /* Ignoring any code that is not in the list, so a typo in the
+               promotion list cannot invent a country. */
+            ->filter(fn (string $code) => isset($countries[$code]))
+            ->mapWithKeys(fn (string $code) => [$code => $countries[$code]]);
+
+        return $promoted->union(collect($countries))->all();
+    }
+
+    /**
      * Weekday names, keyed by the integer stored in location_hours.
      *
      * @return array<int, string>

@@ -32,7 +32,14 @@
         </div>
       @endif
 
-      <form id="clientForm" method="POST" action="{{ route('clients.update', $client) }}" class="mt-6 space-y-5">
+      <form id="clientForm" method="POST" action="{{ route('clients.update', $client) }}"
+            {{-- Live validation, the same module and the same messages as the
+                 sign-up form. The rules live on the fields; this only says
+                 which words to refuse them in. --}}
+            data-validate-form
+            data-validation-messages='@json(\App\Support\LiveValidation::messages([
+                "taken" => __("clients.module.validation.email_taken"),
+            ]))' class="mt-6 space-y-5">
         @csrf
         @method('PATCH')
 

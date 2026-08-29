@@ -52,6 +52,12 @@ const props = defineProps({
      * onboarding and settings screens want.
      */
     summaryLabel: { type: String, default: '' },
+    /**
+     * Validation rules for the value this control posts, in the shared
+     * live-validation syntax. Carried on the hidden input because that is the
+     * thing that holds the answer — see resources/js/live-validation.js.
+     */
+    rules: { type: String, default: '' },
 });
 
 const emit = defineEmits(['update:modelValue', 'primary-changed']);
@@ -111,8 +117,18 @@ function remove(code) {
     selected.value = selected.value.filter((c) => c !== code);
 }
 
+const valueInput = ref(null);
+
 watch(selected, (value) => {
     emit('update:modelValue', [...value]);
+
+    /* A DOM event as well as the Vue one: this control's answer lives in a
+       hidden input nobody can focus or blur, so the shared validator has
+       nothing else to tell it that a required choice has now been made.
+       Bubbles, because the listener is on the form. */
+    nextTick(() => {
+        valueInput.value?.dispatchEvent(new CustomEvent('sd:combo-change', { bubbles: true }));
+    });
 
     /**
      * Announced on the DOM as well as to Vue, so the parts of the page that
@@ -264,7 +280,8 @@ onBeforeUnmount(() => {
     <div ref="root" class="styledesk_timepicker">
         <!-- Single mode posts one value; multi posts an array whose order
              matters, because the server treats the first as primary. -->
-        <input v-if="single" type="hidden" :name="name" :value="selected[0] ?? ''">
+        <input v-if="single" ref="valueInput" type="hidden" :id="rules ? `${name}-value` : null"
+               :name="name" :value="selected[0] ?? ''" :data-rules="rules || null">
         <template v-else>
             <input v-for="code in selected" :key="code" type="hidden" :name="`${name}[]`" :value="code">
         </template>

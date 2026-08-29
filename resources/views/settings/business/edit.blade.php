@@ -54,6 +54,7 @@
           $intervalProps = $combo('default_appointment_interval', $profile::appointmentIntervals(), old('default_appointment_interval', $tenant->default_appointment_interval), __('business.choose.interval'));
           $taxProps = $combo('default_tax_behavior', $profile::taxBehaviors(), old('default_tax_behavior', $tenant->default_tax_behavior), __('business.choose.tax'));
           $assignmentProps = $combo('default_staff_assignment', $profile::staffAssignment(), old('default_staff_assignment', $tenant->default_staff_assignment), __('business.choose.assignment'));
+          $sessionProps = $combo('session_timeout_minutes', $profile::sessionTimeouts(), old('session_timeout_minutes', $tenant->session_timeout_minutes), __('business.choose.session_timeout'));
       @endphp
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
@@ -252,6 +253,19 @@
               <div>
                 <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('business.fields.default_staff_assignment') }}</span>
                 <div data-vue-component="MultiSelect" data-props='@json($assignmentProps)'></div>
+              </div>
+            </section>
+
+            {{-- Security. One setting today; it is a card of its own because
+                 a session policy is not a booking default and would be looked
+                 for under neither. --}}
+            <section class="bg-white border border-line rounded-card p-5 space-y-4">
+              <h2 class="text-[15px] font-semibold text-head">{{ __('business.cards.security') }}</h2>
+
+              <div>
+                <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('business.fields.session_timeout') }}</span>
+                <div data-vue-component="MultiSelect" data-props='@json($sessionProps)'></div>
+                <p class="mt-1.5 text-[12px] text-sub">{{ __('business.hints.session_timeout') }}</p>
               </div>
             </section>
 

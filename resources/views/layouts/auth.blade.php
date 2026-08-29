@@ -7,6 +7,12 @@
 
     <title>@yield('title') — StyleDesk</title>
 
+    {{-- The house mark. These pages belong to StyleDesk rather than to any
+         one business — nobody is signed in yet — so there is no tenant
+         favicon to prefer over it. --}}
+    <link rel="icon" href="{{ asset('images/styledesk-favicon.svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ asset('images/styledesk-favicon.svg') }}">
+
     {{--
         Brand bootstrap. Runs before the body paints, which is the whole point:
         reading the saved palette from branding.js at the bottom of the page
@@ -67,19 +73,42 @@
 </head>
 <body class="bg-white text-ink text-[13px]">
 
-<div class="min-h-screen lg:grid lg:grid-cols-2">
+<div class="relative min-h-screen lg:grid lg:grid-cols-2">
+
+    {{-- The page's own top-right action, offered by the pages that have one.
+
+         A slot rather than markup in the layout: this file is shared by every
+         auth screen, and a "Create account" button hard-coded here would
+         appear on the sign-up page pointing at itself.
+
+         Positioned against the page rather than the form column, so it lands
+         in the corner on a desktop where the right half is the value panel —
+         which centres its own content vertically, leaving the corner free. --}}
+    @hasSection('top-action')
+        <div class="absolute top-5 right-5 sm:top-6 sm:right-6 lg:right-8 z-10 flex items-center gap-3">
+            @yield('top-action')
+        </div>
+    @endif
 
     {{-- ===================== Form ===================== --}}
     <div class="flex items-center justify-center px-5 sm:px-8 py-10 sm:py-14">
         <div class="w-full max-w-[420px]">
 
-            <a href="{{ url('/') }}" class="inline-flex items-center gap-2.5 text-head mb-10">
-                <svg width="26" height="26" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
-                    <path d="M6.5 21.5 L14 6 L18.5 6 L11 21.5 Z"/>
-                    <path d="M14.5 21.5 L22 6 L26.5 6 L19 21.5 Z"/>
-                    <rect x="4" y="24.6" width="24" height="3.6" rx="1.8"/>
-                </svg>
-                <span class="text-[18px] font-bold tracking-tight">StyleDesk</span>
+            {{-- The wordmark itself, rather than a drawn glyph beside the
+                 word: it is one asset and it is the brand's own drawing of
+                 its name. The alt text carries the name, so the link is not
+                 announced as an image. --}}
+            {{-- Half the gap it used to keep. The mark and the heading below
+                 it are one introduction — "styledesk" then "Log in to
+                 StyleDesk" — and 40px read as two unrelated things stacked. --}}
+            <a href="{{ url('/') }}" class="inline-block mb-5">
+                {{-- 34px rather than a Tailwind step: 28 was a touch small
+                     against the 32px heading below it, and h-8 / h-9 land
+                     either side of where it wants to be. width and height are
+                     the drawn size at that height (the mark is 403.5 × 100),
+                     so the space is reserved before the SVG arrives. --}}
+                <img src="{{ asset('images/styledesk-logo.svg') }}" alt="StyleDesk"
+                     class="h-[34px] w-auto" width="137" height="34">
             </a>
 
             {{-- Size is overridable because the headings differ in length:

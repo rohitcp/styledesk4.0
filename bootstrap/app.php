@@ -11,9 +11,12 @@ use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Stancl\Tenancy\Middleware\InitializeTenancyBySubdomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -96,4 +99,43 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        /**
+         * A sign-in that breaks says so on the form it broke on.
+         *
+         * A refused password is a ValidationException and already answers
+         * itself. Everything else — a mail driver throwing while the
+         * verification notice goes out, a database that has gone away
+         * mid-attempt, a listener that fails — would otherwise render the
+         * 500 page. From the login screen that reads as the form having
+         * ignored the click: no message, nothing to act on, and no hint that
+         * trying again is worth doing.
+         *
+         * Rendered, not reported: the handler still logs the exception with
+         * its stack trace, which is where the technical detail belongs.
+         *
+         * Deliberately not keyed to a field. Nothing the reader typed is
+         * wrong, so nothing they typed is marked — the message is the
+         * layout's alert, and the address comes back with it.
+         */
+        $exceptions->render(function (Throwable $failure, Request $request) {
+            /* The refusals that already carry their own answer: a wrong
+               password (ValidationException), and the throttle, which the
+               limiter hands back as a response wrapped in an exception. */
+            $isOrdinaryRefusal = $failure instanceof ValidationException
+                || $failure instanceof HttpResponseException
+                || $failure instanceof HttpExceptionInterface;
+
+            if ($isOrdinaryRefusal || ! $request->isMethod('POST') || ! $request->routeIs('login.store')) {
+                return null;
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => __('auth.unavailable')], 500);
+            }
+
+            return redirect()->route('login')
+                ->withInput($request->only('email'))
+                ->withErrors(['signin' => __('auth.unavailable')]);
+        });
     })->create();

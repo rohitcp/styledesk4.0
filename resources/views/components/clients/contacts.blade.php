@@ -15,6 +15,8 @@
     marked primary.
 --}}
 @props([
+    /** Where the browser may ask whether an address is already on a client. */
+    'remoteCheck' => null,
     'kind',
     'label',
     'rows',
@@ -56,6 +58,7 @@
     <div class="space-y-2" data-contact-rows>
         @foreach ($rows as $key => $row)
             <x-clients.contact-row :kind="$kind" :group="$group" :key="$key" :row="$row" :types="$types" :country="$country"
+                                   :remote-check="$remoteCheck"
                                    :checked="(string) $primary === (string) $key" />
         @endforeach
     </div>
@@ -63,7 +66,8 @@
     {{-- The blank row a new one is cloned from. Rendered by the same
          component as the real rows so the two cannot drift apart. --}}
     <template data-contact-template>
-        <x-clients.contact-row :kind="$kind" :group="$group" key="__KEY__" :row="$blank" :types="$types" :country="$country" />
+        <x-clients.contact-row :kind="$kind" :group="$group" key="__KEY__" :row="$blank" :types="$types"
+                               :country="$country" :remote-check="$remoteCheck" />
     </template>
 
     {{-- Small and filled: adding a second number is a minor action beside the

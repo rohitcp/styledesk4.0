@@ -94,6 +94,43 @@
     </div>
 </section>
 
+{{-- Pictures. Its own card rather than a field inside another, because the
+     gallery is the tallest thing on the form and reads as a section of its
+     own — and because the same island serves the onboarding wizard, where it
+     sits in a repeater row. --}}
+<section class="bg-white border border-line rounded-card p-5">
+    <h2 class="text-[15px] font-semibold text-head">{{ __('services.images.label') }}</h2>
+
+    @php
+        $storage = app(\App\Contracts\TenantStorageContract::class);
+        $maxOtherImages = \App\Services\ServiceImageSync::MAX_IMAGES - 1;
+
+        $imageProps = [
+            'name' => '',
+            'initial' => $service?->orderedImages()->map(fn ($f) => [
+                'id' => $f->id,
+                'url' => $storage->url($f),
+                'name' => $f->original_filename,
+            ])->all() ?? [],
+            'initialDefaultId' => $service?->image_file_id,
+            'maxOthers' => $maxOtherImages,
+            'uploadUrl' => route('services.images.store'),
+            'deleteUrl' => route('services.images.destroy', ['storedFile' => '__ID__']),
+            /* array_merge, not +: the union operator keeps the left-hand value
+               for a duplicate key, which would hand the component the strings
+               still carrying their :max placeholder. */
+            'labels' => array_merge(__('services.images'), [
+                'help' => __('services.images.help', ['max' => $maxOtherImages]),
+                'too_many' => __('services.images.too_many', ['max' => $maxOtherImages + 1]),
+            ]),
+        ];
+    @endphp
+
+    {{-- An empty name prefix: on this form the ids post as plain images[] and
+         default_image_id, where the wizard needs them nested per row. --}}
+    <div class="mt-4" data-vue-component="ServiceImages" data-props='@json($imageProps)'></div>
+</section>
+
 <section class="bg-white border border-line rounded-card p-5">
     <h2 class="text-[15px] font-semibold text-head">{{ __('services.section.booking') }}</h2>
 
@@ -110,9 +147,42 @@
                       :hint="__('services.online_booking_hint')"
                       :checked="(bool) old('online_booking_enabled', $service?->online_booking_enabled ?? true)" />
 
-            <x-toggle name="requires_resource" :label="__('services.requires_resource')"
-                      :hint="__('services.requires_resource_hint')"
-                      :checked="(bool) old('requires_resource', $service?->requires_resource ?? false)" />
+            {{-- The switch and the list it governs, in one container.
+
+                 Together rather than as two settings in a row: the list is
+                 not a separate question but the rest of this one, and a
+                 reader who turns the switch on has not finished answering
+                 until they have said which rooms will do.
+
+                 The list keeps posting while it is hidden — the inputs are
+                 still in the form — so switching off and on again does not
+                 cost somebody the mapping they built. --}}
+            @php
+                $requiresResource = (bool) old('requires_resource', $service?->requires_resource ?? false);
+                $mappedResources = old('resources', $service?->resources->pluck('id')->all() ?? []);
+
+                /* The list offers the resources in use, plus any this service
+                   is already mapped to. Without the second half a room
+                   retired since the mapping was made would be missing from
+                   the options, and the chip for it would show a bare id. */
+                $resourceOptions = $resources->pluck('name', 'id')
+                    ->union($service?->resources->pluck('name', 'id') ?? collect());
+            @endphp
+
+            <div data-resource-requirement data-resource-message="{{ __('services.resources_required') }}">
+                <x-toggle name="requires_resource" :label="__('services.requires_resource')"
+                          :hint="__('services.requires_resource_hint')"
+                          :checked="$requiresResource" data-resource-toggle />
+
+                <div class="mt-3 pl-[3.25rem]" data-resource-fields @unless ($requiresResource) hidden @endunless>
+                    <x-combo name="resources" multiple required
+                             :label="__('services.resources')"
+                             :hint="__('services.resources_hint')"
+                             :placeholder="__('services.resources_placeholder')"
+                             :selected="$mappedResources"
+                             :options="$resourceOptions" />
+                </div>
+            </div>
 
             <x-toggle name="deposit_required" :label="__('services.deposit_required')"
                       :hint="__('services.deposit_required_hint')"

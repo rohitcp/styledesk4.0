@@ -55,31 +55,60 @@
         </div>
       @endif
 
-      <form id="clientForm" method="POST" action="{{ route('clients.store') }}" class="mt-6 space-y-5">
+      <form id="clientForm" method="POST" action="{{ route('clients.store') }}"
+            {{-- Live validation, the same module and the same messages as the
+                 sign-up form. The rules live on the fields; this only says
+                 which words to refuse them in. --}}
+            data-validate-form
+            data-validation-messages='@json(\App\Support\LiveValidation::messages([
+                "taken" => __("clients.module.validation.email_taken"),
+            ]))' class="mt-6 space-y-5">
         @csrf
 
         @include('clients._form', ['client' => null])
 
-        <div class="flex flex-wrap items-center gap-3">
-          <button type="submit" id="clientSave"
-                  class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
-            {{ __('clients.module.add') }}
-          </button>
+        {{-- The two ways of saving first and kept together — they are the
+             same decision, "this client is finished", differing only in where
+             the reader goes next — and then Cancel, which is not a save at
+             all and sits apart from the pair.
 
-          @if (session('duplicates'))
-            {{-- Only offered once a warning has been shown. Before that there
-                 is nothing to confirm, and a standing "add anyway" would let
-                 someone skip a check they never saw. --}}
-            <button type="submit" name="confirm_duplicate" value="1"
-                    class="styledesk_action">
-              {{ __('clients.module.duplicates_confirm') }}
+             Both saves carry `after_save` as their own name and value, so the
+             server learns which was pressed without a line of JavaScript. --}}
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="submit" id="clientSave" name="after_save" value="show"
+                    class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
+              {{ __('clients.module.add') }}
             </button>
-          @endif
+
+            {{-- Secondary: adding a run of clients in one sitting is the less
+                 common errand, and the reader who wants it is looking for it.
+                 The reader who is not must not have to read past it. --}}
+            <button type="submit" name="after_save" value="another"
+                    class="styledesk_action">
+              {{ __('clients.module.add_another') }}
+            </button>
+          </div>
 
           <a href="{{ route('clients.index') }}"
              class="styledesk_action">
             {{ __('common.cancel') }}
           </a>
+
+          @if (session('duplicates'))
+            {{-- Only offered once a warning has been shown. Before that there
+                 is nothing to confirm, and a standing "add anyway" would let
+                 someone skip a check they never saw.
+
+                 It sends no `after_save` of its own, deliberately: the server
+                 falls back to the intent flashed alongside the warning, so
+                 confirming a duplicate keeps the reader on whichever path
+                 they were already on. --}}
+            <button type="submit" name="confirm_duplicate" value="1"
+                    class="styledesk_action">
+              {{ __('clients.module.duplicates_confirm') }}
+            </button>
+          @endif
         </div>
       </form>
     </div>
@@ -90,20 +119,59 @@
   <script>
     /* One submission. A second POST would create a second client with the
        same details — which is exactly what the duplicate warning exists to
-       prevent. */
+       prevent.
+
+       Every submit button is disabled, not just the primary one: there are
+       three of them now, and guarding one leaves the other two able to post
+       the form again while the first request is still in flight. */
     (function () {
       var form = document.getElementById('clientForm');
       if (!form) return;
 
       var saving = false;
+      var busyLabel = @json(__('common.saving'));
 
       form.addEventListener('submit', function (e) {
         if (saving) { e.preventDefault(); return; }
         saving = true;
 
-        var save = document.getElementById('clientSave');
-        save.disabled = true;
-        save.textContent = @json(__('common.saving'));
+        var pressed = e.submitter;
+        var buttons = form.querySelectorAll('button[type="submit"]');
+
+        /* On the next tick, not this one. A disabled control is left out of
+           the submitted data, and these buttons carry the name and value that
+           tell the server which one was pressed — disabling them here would
+           post a form that no longer says where the reader wanted to go.
+
+           The delay is also what lets this ask whether the submit actually
+           went ahead: live validation runs after this handler and cancels the
+           event when a field is wrong, and a form that was never sent must not
+           be left with three dead buttons. */
+        window.setTimeout(function () {
+          if (e.defaultPrevented) {
+            saving = false;
+
+            return;
+          }
+
+          for (var i = 0; i < buttons.length; i++) {
+            buttons[i].disabled = true;
+          }
+
+          if (pressed) { pressed.textContent = busyLabel; }
+        }, 0);
+      });
+
+      /* A page restored from the back/forward cache keeps the DOM it was
+         unloaded with, buttons included. Without this the reader comes back
+         to a form they cannot submit. */
+      window.addEventListener('pageshow', function (event) {
+        if (!event.persisted) return;
+
+        saving = false;
+        form.querySelectorAll('button[type="submit"]').forEach(function (button) {
+          button.disabled = false;
+        });
       });
     }());
   </script>

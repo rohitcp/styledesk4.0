@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Http\Middleware\EnsureCanManageSettings;
+use App\Notifications\VerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,10 +13,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['first_name', 'last_name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'email_verification_code'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -30,6 +32,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'email_verification_code_expires_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
@@ -46,6 +49,79 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function name(): Attribute
     {
         return Attribute::get(fn () => trim($this->first_name.' '.$this->last_name));
+    }
+
+    /**
+     * Send the verification email, minting the code that goes in it.
+     *
+     * Overridden rather than left to the framework because the email carries
+     * a six-digit code as well as a link, and the code has to exist before
+     * the message is built. Every send issues a fresh one, so the code in the
+     * newest email is the only one that works — a resend silently invalidates
+     * the code in the email before it, which is what a reader who asked for a
+     * new email expects.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmail(
+            $this->issueEmailVerificationCode(),
+            (int) config('auth.verification.expire', 60),
+        ));
+    }
+
+    /**
+     * Mint a code, store its hash, and return the plain digits to be mailed.
+     *
+     * Six digits with a leading zero preserved: str_pad rather than a plain
+     * random_int, or one code in ten would arrive as five characters and not
+     * fit the boxes on the page.
+     */
+    public function issueEmailVerificationCode(): string
+    {
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        $this->forceFill([
+            'email_verification_code' => Hash::make($code),
+            'email_verification_code_expires_at' => now()->addMinutes(
+                (int) config('auth.verification.expire', 60)
+            ),
+        ])->save();
+
+        return $code;
+    }
+
+    /**
+     * Whether these digits are the live code for this account.
+     *
+     * Expiry is checked before the hash so that an expired code cannot be
+     * distinguished from a wrong one by how long the answer takes.
+     */
+    public function emailVerificationCodeMatches(string $code): bool
+    {
+        if ($this->email_verification_code === null || $this->email_verification_code_expires_at === null) {
+            return false;
+        }
+
+        if ($this->email_verification_code_expires_at->isPast()) {
+            return false;
+        }
+
+        return Hash::check($code, $this->email_verification_code);
+    }
+
+    /**
+     * Retire the code.
+     *
+     * Called once the address is verified, whether that happened through the
+     * code or through the link: a code that still works after the account is
+     * verified is a credential nobody needs any more.
+     */
+    public function clearEmailVerificationCode(): void
+    {
+        $this->forceFill([
+            'email_verification_code' => null,
+            'email_verification_code_expires_at' => null,
+        ])->save();
     }
 
     /**

@@ -25,9 +25,12 @@
     --}}
     <style>{!! App\Support\BrandPalette::forTenant(auth()->user()?->tenant)->css() !!}</style>
 
-    @if ($faviconUrl = App\Support\Branding::faviconUrl(auth()->user()?->tenant))
-        <link rel="icon" href="{{ $faviconUrl }}">
-    @endif
+    {{-- A business's own favicon when it has uploaded one, the house mark
+         otherwise. There used to be no fallback at all: public/favicon.ico is
+         an empty file, so a tenant without a logo got the browser's blank
+         page icon. --}}
+    <link rel="icon"
+          href="{{ App\Support\Branding::faviconUrl(auth()->user()?->tenant) ?? asset('images/styledesk-favicon.svg') }}">
 
     {{--
         Stale-asset guard.
