@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureOnboardingIsComplete;
 use App\Http\Middleware\InitializeTenancyFromRoute;
 use App\Http\Middleware\InitializeTenancyFromUser;
 use App\Http\Middleware\RedirectIfOnboarded;
+use App\Http\Middleware\RequireAccessCode;
 use App\Http\Middleware\SetApplicationLocale;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
@@ -63,6 +64,15 @@ return Application::configure(basePath: dirname(__DIR__))
          */
         $middleware->web(append: [
             EnforceSessionTimeout::class,
+
+            /**
+             * The closed door in front of sign-in and sign-up.
+             *
+             * In the group rather than on the routes because Fortify registers
+             * login and signup from inside the package; the middleware names
+             * the routes it gates itself.
+             */
+            RequireAccessCode::class,
 
             /**
              * Applied to every web request, not to a group.

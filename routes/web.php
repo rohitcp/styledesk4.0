@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\TenantStorageContract;
+use App\Http\Controllers\AccessCodeController;
 use App\Http\Controllers\AppSettingsController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingLeadController;
@@ -32,8 +33,11 @@ use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
 use App\Http\Controllers\VerificationEmailController;
 use App\Http\Controllers\VerifyEmailLinkController;
+use App\Http\Middleware\RequireAccessCode;
 use App\Models\StoredFile;
 use App\Models\Tenant;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -47,9 +51,30 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+/*
+| The front door.
+|
+| StyleDesk is invitation only for now, so the address itself lands on the
+| access-code screen rather than on a marketing page — there is nothing to
+| market to somebody who cannot get in, and a visitor with a code should not
+| have to find the way to the form.
+|
+| Three answers, one hop each: somebody already signed in goes to their
+| dashboard, somebody who has answered the gate on this machine goes to the
+| login form, and everybody else is asked for a code.
+|
+| resources/views/welcome.blade.php is kept, not deleted. It is what this
+| route goes back to serving on the day the product opens.
+*/
+Route::get('/', function (Request $request) {
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+
+    return redirect()->route(
+        RequireAccessCode::hasPassed($request) ? 'login' : 'access-code.show'
+    );
+})->name('home');
 
 /*
 | The authenticated staff application.
@@ -74,6 +99,26 @@ Route::get('/', function () {
 Route::middleware(['tenant.route'])->get('book/{tenant}', function (Tenant $tenant) {
     return 'Public booking site for '.$tenant->name.' ('.$tenant->getTenantKey().')';
 })->name('booking.path');
+
+/*
+| The access-code gate.
+|
+| StyleDesk is not open to the public yet, so the sign-in and sign-up screens
+| sit behind a code. This is the screen that asks for it; RequireAccessCode,
+| appended to the web group, is what sends people here.
+|
+| Outside every auth and tenancy middleware on purpose: the visitor has no
+| account, no session worth the name and no tenant to resolve from.
+|
+| Throttled because a short numeric code is guessable at network speed and
+| nothing else limits the attempts.
+*/
+Route::middleware('throttle:10,1')
+    ->controller(AccessCodeController::class)
+    ->group(function () {
+        Route::get('access', 'show')->name('access-code.show');
+        Route::post('access', 'store')->name('access-code.store');
+    });
 
 /*
 | The verification screen's own actions: resend, enter the code, correct the
