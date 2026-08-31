@@ -91,4 +91,5 @@ return [
         'max_value' => ':field debe ser :max o menos.',
         'taken' => 'Ese valor ya está en uso.',
     ],
+    'type_a_time' => 'Escribe una hora, p. ej. 2:30 PM',
 ];

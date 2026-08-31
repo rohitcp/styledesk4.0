@@ -12,6 +12,15 @@ return [
     'pending_note' => 'Los ajustes que describen las pantallas de reserva y las fichas de cliente se guardan ahora y se aplicarán cuando esas pantallas existan.',
 
     'sections' => 'Secciones de esta página',
+    'insights' => [
+        'cadence' => '{1} Suele reservar cada semana|[2,*] Suele reservar cada :count semanas',
+        'service' => 'Reserva sobre todo :service',
+        'staff' => 'Suele reservar con :name',
+        'value' => 'Valor medio por reserva :amount',
+        'window' => 'Prefiere citas por la :window',
+        'attendance' => 'Últimas :count visitas cumplidas, ninguna cancelada',
+    ],
+
     'behavioral' => [
         'title' => 'Etiquetas de comportamiento',
         'intro' => 'Etiquetas que StyleDesk deduce por su cuenta a partir de las reservas, la asistencia, el gasto y la interacción, a diferencia de las que pone tu equipo a mano.',
@@ -312,6 +321,15 @@ return [
             'other_emails' => 'Otras direcciones',
         ],
 
+        'booking_preferences' => [
+            'title' => 'Preferencias de reserva',
+            'none' => 'Todavía no hay nada anotado.',
+            'add' => 'Añadir una preferencia de reserva',
+            'placeholder' => 'Prefiere citas por la tarde',
+            'remove' => 'Quitar «:label»',
+            'added' => 'Preferencia de reserva añadida.',
+            'removed' => 'Preferencia de reserva eliminada.',
+        ],
         'workspace' => [
             'back' => 'Volver a clientes',
             'dob' => 'Nac.: :date',
@@ -324,6 +342,7 @@ return [
                 'awaiting_bookings' => 'Los recuentos aparecen cuando lleguen las reservas.',
             ],
             'tabs' => [
+                'leads' => 'Iniciadas',
                 'activity' => 'Actividad',
                 'bookings' => 'Reservas',
                 'notes' => 'Notas',
@@ -412,6 +431,14 @@ return [
                 'pending_modules' => 'Las reservas, los mensajes y los pagos se sumarán a esta cronología a medida que lleguen esas partes de StyleDesk.',
             ],
             'bookings' => [
+                'all_dates' => 'Todas las fechas',
+                'with' => 'con :name',
+                'view_upcoming' => 'Ver próximas citas',
+                'all_years' => 'Todos los años',
+                'all_months' => 'Todos los meses',
+                'all_services' => 'Todos los servicios',
+                'none_match' => 'Ninguna reserva coincide con estos filtros.',
+                'view_full' => 'Ver la reserva completa',
                 'upcoming' => 'Próximas',
                 'previous' => 'Visitas anteriores',
                 'none_upcoming' => 'No hay citas próximas.',

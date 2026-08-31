@@ -66,13 +66,27 @@ class StaffDirectoryTest extends TestCase
         ], $attributes));
     }
 
+    /**
+     * The rows, read from where the page now reads them.
+     *
+     * The directory draws itself with the shared listing grid, which fetches
+     * its rows from /staff/data — so the search, the filters, the order and
+     * the paging are all asserted against that response rather than against
+     * scraped markup. Same behaviour, one hop closer to it.
+     *
+     * @return array<string, mixed>
+     */
+    private function payload(string $query = ''): array
+    {
+        return $this->get('http://styledesk.test/settings/staff/data?'.$query)
+            ->assertOk()
+            ->json();
+    }
+
+    /** @return array<int, string> */
     private function names(string $query = ''): array
     {
-        $content = $this->get('http://styledesk.test/settings/staff?'.$query)->getContent();
-
-        preg_match_all('/font-semibold text-head truncate">([^<]+)</', $content, $matches);
-
-        return array_map('trim', $matches[1]);
+        return array_column($this->payload($query)['data'], 'name');
     }
 
     public function test_the_directory_lists_the_business_s_staff(): void
@@ -82,13 +96,21 @@ class StaffDirectoryTest extends TestCase
         $this->staff('Amara', 'manager', ['job_title' => 'Salon Manager']);
         $this->staff('Priya', 'service-provider', ['job_title' => 'Senior Colourist']);
 
-        $response = $this->get('http://styledesk.test/settings/staff');
+        /* The page itself is the frame — heading, toolbar and grid; the rows
+           arrive from the endpoint the grid reads. Both are asserted, because
+           a page that renders without its grid is a page with no directory. */
+        $this->get('http://styledesk.test/settings/staff')
+            ->assertOk()
+            ->assertSee('data-grid', false)
+            ->assertSee('staff/data', false);
 
-        $response->assertOk()
-            ->assertSee('Amara Person')
-            ->assertSee('Salon Manager')
-            ->assertSee('Manager')
-            ->assertSee('Riverside');
+        $rows = collect($this->payload()['data']);
+
+        $this->assertSame(['Amara Person', 'Priya Person'], $rows->pluck('name')->all());
+        /* Job title where there is one, and the role where there is not: a
+           dash would read as "this person has no role". */
+        $this->assertSame(['Salon Manager', 'Senior Colourist'], $rows->pluck('role')->all());
+        $this->assertSame(['Riverside', 'Riverside'], $rows->pluck('location')->all());
     }
 
     /**
@@ -127,27 +149,30 @@ class StaffDirectoryTest extends TestCase
     }
 
     /**
-     * The row menu is fixed rather than absolute.
+     * Each row carries its own actions.
      *
-     * The table scrolls sideways and a scroll container clips anything
-     * absolutely positioned inside it, so the menu on the last column was cut
-     * off at the table's edge.
+     * Decided on the server, in the reader's language: which entries a row
+     * offers is a permission question, and a grid that assembled the menu
+     * itself would be a second place for that rule to live. The panel's own
+     * behaviour — fixed rather than absolute, so a sideways-scrolling table
+     * cannot clip it — belongs to resources/js/data-grid.js now.
      */
-    public function test_the_row_menu_escapes_the_scrolling_table(): void
+    public function test_each_row_carries_the_actions_the_reader_may_take(): void
     {
         $this->actingAs($this->owner());
         $this->staff('Amara', 'manager');
 
-        $content = $this->get('http://styledesk.test/settings/staff')->getContent();
+        $menu = $this->payload()['data'][0]['menu'];
+        $labels = array_column($menu, 'label');
 
-        // The hooks the shared row-menu module binds to. The behaviour that
-        // used to be asserted here — positioned against the button, closed on
-        // scroll, because a fixed panel cannot follow what it is anchored to —
-        // moved into resources/js/row-menu.js when the third copy of it
-        // appeared. What a rendered page can still promise is that the menu is
-        // marked up for that module to find.
-        $this->assertStringContainsString('data-rowmenu-pop', $content);
-        $this->assertStringContainsString('data-rowmenu-button', $content);
+        $this->assertContains('View staff', $labels);
+        $this->assertContains('Edit', $labels);
+        $this->assertContains('Deactivate', $labels);
+
+        /* Designed, not built. Shown disabled rather than hidden: an entry
+           that quietly disappears reads as a permission the reader lacks. */
+        $scheduling = collect($menu)->firstWhere('label', 'Manage schedule');
+        $this->assertTrue($scheduling['disabled']);
     }
 
     public function test_search_covers_name_email_phone_and_job_title(): void
@@ -287,11 +312,11 @@ class StaffDirectoryTest extends TestCase
         // Simulate the broken state: a role name with no link.
         $staff->forceFill(['role_id' => null])->save();
 
-        $content = $this->get('http://styledesk.test/settings/staff')->getContent();
-
         // A dash would read as "this person has no role" when what happened
         // is that a link was never made.
-        $this->assertStringContainsString('Manager', $content);
+        $roles = array_column($this->payload()['data'], 'role');
+
+        $this->assertContains('Manager', $roles);
     }
 
     // ------------------------------------------------------ pagination
@@ -306,32 +331,24 @@ class StaffDirectoryTest extends TestCase
             ]);
         }
 
-        $first = $this->get('http://styledesk.test/settings/staff');
+        $first = $this->payload('size=25');
 
-        $first->assertOk()
-            ->assertSee('Showing')
-            ->assertSee('25')
-            ->assertSee('27')
-            // The page link exists, so there is a way to the rest.
-            ->assertSee('page=2', false);
+        $this->assertCount(25, $first['data']);
+        /* The total counts everything that matched, not the page — the grid's
+           counter reads it, and a rounded-up figure would say "of 50". */
+        $this->assertSame(27, $first['total']);
+        $this->assertSame(2, $first['last_page']);
 
-        $this->assertCount(25, $this->namesFrom($first->getContent()));
-
-        $second = $this->get('http://styledesk.test/settings/staff?page=2');
-
-        $second->assertOk()->assertSee('26');
-        $this->assertCount(2, $this->namesFrom($second->getContent()));
+        $this->assertCount(2, $this->names('size=25&page=2'));
     }
 
-    public function test_a_directory_that_fits_on_one_page_shows_no_pager(): void
+    public function test_a_directory_that_fits_on_one_page_says_so(): void
     {
         $this->actingAs($this->owner());
         $this->staff('Amara', 'manager');
 
-        // A pager under a list that fits is furniture describing nothing.
-        $this->get('http://styledesk.test/settings/staff')
-            ->assertOk()
-            ->assertDontSee('Showing');
+        // One page, so the grid has nothing to page to.
+        $this->assertSame(1, $this->payload()['last_page']);
     }
 
     /**
@@ -348,13 +365,16 @@ class StaffDirectoryTest extends TestCase
 
         $this->staff('Excluded', 'front-desk', ['email' => 'nope@acme.test']);
 
-        $response = $this->get('http://styledesk.test/settings/staff?role=manager');
+        /* The filter is carried into the URL the grid fetches from, so every
+           page it asks for is still the filtered list. */
+        $this->get('http://styledesk.test/settings/staff')
+            ->assertOk();
 
-        $response->assertOk()->assertSee('Showing');
-        $this->assertStringContainsString('role=manager', $response->getContent());
+        $this->get('http://styledesk.test/settings/staff?role=manager')
+            ->assertOk()
+            ->assertSee('role=manager', false);
 
-        $page2 = $this->get('http://styledesk.test/settings/staff?role=manager&page=2');
-        $names = $this->namesFrom($page2->getContent());
+        $names = $this->names('role=manager&size=25&page=2');
 
         $this->assertCount(1, $names);
         $this->assertStringNotContainsString('Excluded', implode(' ', $names));
@@ -372,17 +392,9 @@ class StaffDirectoryTest extends TestCase
             $this->staff('Person'.$i, 'manager', ['email' => 'p'.$i.'@acme.test']);
         }
 
-        $this->get('http://styledesk.test/settings/staff?page=2')
+        $this->get('http://styledesk.test/settings/staff')
             ->assertOk()
             ->assertSee('27 active members');
-    }
-
-    /** @return array<int, string> */
-    private function namesFrom(string $content): array
-    {
-        preg_match_all('/font-semibold text-head truncate">([^<]+)</', $content, $matches);
-
-        return array_map('trim', $matches[1]);
     }
 
     // ---------------------------------------------------------- access
@@ -434,23 +446,32 @@ class StaffDirectoryTest extends TestCase
         // Every dropdown in the app is the same searchable control; a native
         // select here would be the one place that looked and behaved apart.
         $this->assertStringNotContainsString('<select', $content);
-        $this->assertSame(7, substr_count($content, 'data-vue-component="MultiSelect"'));
+
+        // Status, location, role and service — the same four the clients
+        // listing offers, in the same control.
+        $this->assertSame(4, substr_count($content, 'data-vue-component="MultiSelect"'));
     }
 
     /**
-     * The panel is hidden until asked for, but open when something is
-     * filtering — a shared URL must not hide the reason the list is short.
+     * A shared URL must not hide the reason the list is short.
+     *
+     * The filters are in the open now, as they are on the clients listing,
+     * and what carries them is the address the grid fetches from — so a
+     * bookmarked filtered URL draws a filtered grid.
      */
-    public function test_the_filter_panel_opens_itself_when_a_filter_is_active(): void
+    public function test_a_filtered_url_reaches_the_grid(): void
     {
         $this->actingAs($this->owner());
         $this->staff('Amara', 'manager');
 
-        $closed = $this->get('http://styledesk.test/settings/staff')->getContent();
-        $this->assertMatchesRegularExpression('/id="staff-filters"[^>]*hidden/', $closed);
+        $this->get('http://styledesk.test/settings/staff')
+            ->assertOk()
+            ->assertDontSee('role=manager', false);
 
-        $open = $this->get('http://styledesk.test/settings/staff?role=manager')->getContent();
-        $this->assertDoesNotMatchRegularExpression('/id="staff-filters"[^>]*hidden/', $open);
+        $this->get('http://styledesk.test/settings/staff?role=manager')
+            ->assertOk()
+            ->assertSee('data-active-filters', false)
+            ->assertSee('role=manager', false);
     }
 
     public function test_the_settings_card_opens_the_directory(): void

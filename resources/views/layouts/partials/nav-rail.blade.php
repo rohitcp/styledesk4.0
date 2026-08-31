@@ -1,17 +1,33 @@
 {{-- The desktop icon rail. Hidden below lg, where the drawer takes over. --}}
+@php
+    /* Handed down by the layout rather than looked up here: the drawer
+       renders the same config and would otherwise repeat every query. */
+    $navCounts = $navCounts ?? [];
+@endphp
 <nav class="hidden lg:flex self-stretch items-center gap-1 shrink-0" aria-label="Primary">
   @foreach (config('navigation.primary') as $item)
     @php $active = \App\Support\Nav::isActive($item); @endphp
 
     @if (! empty($item['children']))
+      @php $count = $navCounts[$item['count'] ?? ''] ?? null; @endphp
+
       <div class="sd-menu" data-menu>
+        {{-- The number rides on the tooltip as well as on the icon: the rail
+             draws no labels, so "Staff · 12" is the only place the badge is
+             actually explained. --}}
         <a href="{{ \App\Support\Nav::href($item) }}" {!! \App\Support\Nav::pending($item) !!}
-           class="sd-navicon grid sd-tip @if ($active) is-active @endif"
-           data-tip="{{ App\Support\Nav::label($item) }}" data-tip-placement="right"
-           aria-label="{{ $item['aria'] ?? App\Support\Nav::label($item) }}"
+           class="sd-navicon grid sd-tip relative @if ($active) is-active @endif"
+           data-tip="{{ App\Support\Nav::label($item) }}@if ($count !== null) · {{ $count }}@endif" data-tip-placement="right"
+           aria-label="{{ $item['aria'] ?? App\Support\Nav::label($item) }}@if ($count !== null), {{ trans_choice('navigation.active_staff', $count, ['count' => $count]) }}@endif"
            aria-haspopup="true" aria-expanded="false"
            @if ($active) aria-current="page" @endif>
           <x-icon :name="$item['icon']" size="18" />
+
+          @if ($count !== null)
+            {{-- aria-hidden: the accessible name above already carries the
+                 number, and announcing it twice reads as two facts. --}}
+            <span class="sd-navicon__count" aria-hidden="true">{{ $count }}</span>
+          @endif
         </a>
         <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="{{ $item['aria'] ?? $item['label'] }} menu">
           @foreach ($item['children'] as $child)
@@ -25,18 +41,38 @@
               <div class="sd-menu__section" role="presentation">{{ $child['section'] }}</div>
             @else
               @php $childActive = \App\Support\Nav::isCurrent($child); @endphp
-              <a href="{{ \App\Support\Nav::href($child) }}" {!! \App\Support\Nav::pending($child) !!}
-                 class="sd-menu__item @if ($childActive) is-active @endif" role="menuitem"
-                 @if ($childActive) aria-current="page" @endif>{{ $child['label'] }}</a>
+
+              @if (\App\Support\Nav::isPending($child))
+                {{-- Not a link. A screen that does not exist yet must not
+                     look like one you can open: clicking it did nothing,
+                     which reads as the product being broken rather than as
+                     work still to come. --}}
+                <span class="sd-menu__item sd-menu__item--soon" role="menuitem"
+                      aria-disabled="true" {!! \App\Support\Nav::pending($child) !!}>
+                  {{ $child['label'] }}
+                  <span class="sd-menu__soon">{{ __('navigation.coming_soon') }}</span>
+                </span>
+              @else
+                <a href="{{ \App\Support\Nav::href($child) }}"
+                   class="sd-menu__item @if ($childActive) is-active @endif" role="menuitem"
+                   @if ($childActive) aria-current="page" @endif>{{ $child['label'] }}</a>
+              @endif
             @endif
           @endforeach
         </div>
       </div>
     @else
-      <a href="{{ \App\Support\Nav::href($item) }}" {!! \App\Support\Nav::pending($item) !!}
-         class="sd-navicon grid sd-tip @if ($active) is-active @endif"
-         data-tip="{{ App\Support\Nav::label($item) }}" data-tip-placement="right"
+      @php $itemPending = \App\Support\Nav::isPending($item); @endphp
+
+      {{-- A section with nowhere to go says so in its tooltip and does not
+           pretend to be a link. --}}
+      <a @if (! $itemPending) href="{{ \App\Support\Nav::href($item) }}" @endif
+         {!! \App\Support\Nav::pending($item) !!}
+         @class(['sd-navicon grid sd-tip', 'is-active' => $active, 'sd-navicon--soon' => $itemPending])
+         data-tip="{{ App\Support\Nav::label($item) }}@if ($itemPending) · {{ __('navigation.coming_soon') }}@endif"
+         data-tip-placement="right"
          aria-label="{{ $item['aria'] ?? App\Support\Nav::label($item) }}"
+         @if ($itemPending) aria-disabled="true" @endif
          @if ($active) aria-current="page" @endif>
         <x-icon :name="$item['icon']" size="18" />
       </a>

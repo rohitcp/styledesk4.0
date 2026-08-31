@@ -13,6 +13,7 @@ return [
     'add_title' => 'Añadir miembro del personal',
     'add_intro' => 'Sus datos y su rol. El horario, la disponibilidad y los ajustes por servicio se configuran una vez creada la ficha.',
     'adding' => 'Añadiendo…',
+    'save_and_add_another' => 'Guardar y añadir otro',
     'edit' => 'Editar',
     'edit_person' => 'Editar a :name',
     'edit_title' => 'Editar miembro del personal',
@@ -28,6 +29,26 @@ return [
     'save_failed' => 'No hemos podido guardar los cambios. Revisa la información e inténtalo de nuevo.',
     'correct_fields' => 'Corrige los campos marcados e inténtalo de nuevo.',
     'delete_confirm' => '¿Eliminar a :name de tu equipo? Se borra su ficha y, si tenía acceso, lo pierde.',
+
+    'view' => 'Ver personal',
+    'manage_schedule' => 'Gestionar horario',
+    'set_time_off' => 'Registrar ausencia',
+    'activate' => 'Activar',
+    'deactivate' => 'Desactivar',
+    'deactivate_confirm' => '¿Desactivar a :name? Conserva su ficha, servicios y salas, pero deja de ofrecerse para reservas.',
+    'activated_person' => ':name vuelve a estar activo.',
+    'deactivated_person' => ':name ya no está activo.',
+    'add_schedule' => 'Añadir horario',
+    'results' => [
+        'zero' => 'No se ha encontrado personal',
+        'one' => '1 miembro del personal encontrado',
+        'many' => ':count miembros del personal encontrados',
+        'empty' => 'Ningún miembro del personal coincide con tu búsqueda o filtros.',
+        'clear' => 'Quitar filtros',
+    ],
+    'showing' => 'Mostrando :from–:to de :total',
+    'none_yet' => 'Todavía no hay personal',
+    'none_yet_hint' => 'Añade personal para gestionar horarios, servicios, ubicaciones y disponibilidad de citas.',
 
     'search_placeholder' => 'Busca por nombre, correo, teléfono o puesto',
     'search_label' => 'Buscar personal',
@@ -67,6 +88,8 @@ return [
     'actions_for' => 'Acciones para :name',
 
     'cards' => [
+        'shift_rule' => 'Regla de turno',
+        'shift_rule_hint' => 'Asigna una regla de turno reutilizable a esta persona. Se usará al generar su horario.',
         'basic' => 'Información básica',
         'contact' => 'Datos de contacto',
         'employment' => 'Rol y contratación',
@@ -75,6 +98,8 @@ return [
     ],
 
     'fields' => [
+        'shift_rule' => 'Regla de turno',
+        'no_shift_rule' => 'Sin regla de turno asignada',
         'first_name' => 'Nombre',
         'last_name' => 'Apellidos',
         'middle_name' => 'Segundo nombre',
@@ -110,6 +135,12 @@ return [
         'specialities' => 'Especialidades',
         'services' => 'Servicios que presta',
         'services_hint' => 'Quien tenga servicios asignados puede recibir reservas por su nombre.',
+        'services_placeholder' => 'Busca o selecciona servicios',
+        'resources' => 'Recursos en los que trabaja',
+        'resources_hint' => 'Las sillas, salas o puestos que usa esta persona. Déjalo vacío si vale cualquiera.',
+        'resources_placeholder' => 'Busca o selecciona recursos',
+        'date_of_birth' => 'Fecha de nacimiento',
+        'started_on' => 'Fecha de inicio',
 
         'account_status' => 'Estado de la cuenta',
         'account_status_hint' => 'Un miembro inactivo no puede recibir reservas ni nuevas citas.',
@@ -124,6 +155,7 @@ return [
     'not_specified' => 'Sin especificar',
 
     'validation' => [
+        'shift_rule_unavailable' => 'Esta regla de turno no está disponible para la ubicación seleccionada. Elige otra.',
         'first_name_required' => 'El nombre es obligatorio.',
         'last_name_required' => 'Los apellidos son obligatorios.',
         'email_required' => 'El correo principal es obligatorio.',
@@ -182,5 +214,71 @@ return [
         'summary_email' => 'Correo',
         'summary_phone' => 'Teléfono',
         'summary_location' => 'Ubicación',
+    ],
+
+    'edit_staff' => 'Editar personal',
+    'more_actions' => 'Más',
+    'set_on_leave' => 'Marcar de permiso',
+    'on_leave_person' => ':name está de permiso.',
+    'services_added' => '{1} :count servicio añadido.|[2,*] :count servicios añadidos.',
+    'service_removed' => ':name quitado. El servicio en sí no cambia.',
+    'shift_rule_assigned' => 'Asignada la regla :name.',
+    'shift_rule_cleared' => 'Regla de turno quitada.',
+
+    'tabs' => [
+        'overview' => 'Resumen',
+        'schedule' => 'Horario',
+        'services' => 'Servicios',
+        'notes' => 'Notas',
+    ],
+
+    'report' => [
+        'shifts_this_week' => 'Turnos esta semana',
+        'hours_this_week' => 'Horas esta semana',
+        'shifts_this_month' => 'Turnos este mes',
+        'hours_this_month' => 'Horas este mes',
+        'upcoming_shifts' => 'Turnos próximos',
+        'services' => 'Servicios',
+    ],
+
+    'schedule_tab' => [
+        'shift_rule' => 'Regla de turno',
+        'current_rule' => 'Regla de turno actual',
+        'remove_rule' => 'Quitar regla de turno',
+        'remove_rule_confirm' => '¿Quitar :rule a :name? Los turnos que ya están en su horario no cambian; solo se retira el patrón que hay detrás.',
+        'no_rule' => 'Sin regla de turno asignada.',
+        'assign_rule' => 'Asignar regla de turno',
+        'change_rule' => 'Cambiar regla de turno',
+        'working_schedule' => 'Horario de trabajo',
+        'weeks' => '{1} 1 semana|[2,*] :count semanas',
+        'previous' => 'Anterior',
+        'today' => 'Hoy',
+        'next' => 'Siguiente',
+        'not_working' => 'No trabaja',
+    ],
+
+    'services_tab' => [
+        'title' => 'Servicios que puede realizar',
+        'intro' => 'Para qué se puede reservar a esta persona. Quitar uno le retira la posibilidad de ser reservada para él; el servicio en sí no cambia.',
+        'add' => 'Añadir servicios',
+        'choose' => 'Servicios a añadir',
+        'remove' => 'Quitar',
+        'remove_confirm' => '¿Quitar :service a :name? Dejará de poder reservarse para ese servicio. El servicio en sí no cambia.',
+        'none' => 'Sin servicios asignados',
+        'none_hint' => 'No se puede reservar a :name por nombre hasta que tenga al menos un servicio asignado.',
+    ],
+
+    'notes' => [
+        'title' => 'Notas internas',
+        'intro' => 'Notas que el negocio guarda sobre esta persona: horarios, formación, disponibilidad. Nunca se muestran a un cliente ni en las páginas de reserva.',
+        'body' => 'Nota',
+        'placeholder' => 'Lo que el equipo deba saber.',
+        'add' => 'Añadir nota',
+        'added' => 'Nota añadida.',
+        'deleted' => 'Nota eliminada.',
+        'delete_confirm' => '¿Eliminar esta nota? No se puede recuperar.',
+        'body_required' => 'Escribe algo antes de añadir la nota.',
+        'none' => 'Todavía no hay notas.',
+        'someone' => 'Alguien',
     ],
 ];

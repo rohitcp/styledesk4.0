@@ -7,9 +7,15 @@
     <div class="styledesk_form">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
-        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
-        <span class="mx-1.5 text-faint">/</span>
-        <a href="{{ route('settings.staff.index') }}" class="hover:text-ink transition-colors">{{ __('staff.title') }}</a>
+        {{-- Only in App Settings. The same screens are reached from the
+             Staff module, where the trail does not run through a section the
+             reader was never in — and where a link into an administrator-only
+             area would be one they cannot open. --}}
+        @if (\App\Support\StaffSection::isSettings())
+          <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
+          <span class="mx-1.5 text-faint">/</span>
+        @endif
+        <a href="{{ \App\Support\StaffSection::route('index') }}" class="hover:text-ink transition-colors">{{ __('staff.title') }}</a>
         <span class="mx-1.5 text-faint">/</span>
         <span class="text-ink">{{ __('common.add') }}</span>
       </nav>
@@ -22,7 +28,7 @@
           </p>
         </div>
 
-        <a href="{{ route('settings.staff.index') }}" data-back
+        <a href="{{ \App\Support\StaffSection::route('index') }}" data-back
            class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
@@ -35,18 +41,30 @@
         </div>
       @endif
 
-      <form id="staffForm" method="POST" action="{{ route('settings.staff.store') }}"
+      <form id="staffForm" method="POST" action="{{ \App\Support\StaffSection::route('store') }}"
             enctype="multipart/form-data" class="mt-6 space-y-5">
         @csrf
 
         @include('settings.staff._form', ['staff' => null])
 
+        {{-- Two ways to save, one form. The second posts the same body with
+             after_save set, so the difference is where the reader is put down
+             afterwards rather than a second code path through the save. --}}
         <div class="flex flex-wrap items-center gap-3">
-          <button type="submit" id="staffSave"
+          <button type="submit" id="staffSave" name="after_save" value="index"
                   class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
             {{ __('staff.add') }}
           </button>
-          <a href="{{ route('settings.staff.index') }}"
+
+          {{-- For the morning somebody sits down to enter the whole team.
+               Returning to the directory between each one costs a page load
+               and a scroll to find the button again. --}}
+          <button type="submit" name="after_save" value="add_another"
+                  class="styledesk_action">
+            {{ __('staff.save_and_add_another') }}
+          </button>
+
+          <a href="{{ \App\Support\StaffSection::route('index') }}"
              class="styledesk_action">
             {{ __('common.cancel') }}
           </a>
@@ -76,8 +94,9 @@
       }
 
       /* One submission. Creating a staff member sends an email, and a double
-         click would send two. */
-      var save = document.getElementById('staffSave');
+         click would send two. Both buttons are stopped, and the one that was
+         actually pressed is the one that reports progress — "Adding…" on the
+         button nobody clicked reads as the wrong thing happening. */
       var saving = false;
 
       form.addEventListener('submit', function (e) {
@@ -86,8 +105,22 @@
           return;
         }
         saving = true;
-        save.disabled = true;
-        save.textContent = @json(__('staff.adding'));
+
+        var pressed = e.submitter;
+
+        /* On the next tick, not this one: a disabled control is left out of
+           the submitted data, and after_save lives on the button that was
+           pressed — disabling it here would post without it. */
+        window.setTimeout(function () {
+          form.querySelectorAll('button[type="submit"]').forEach(function (button) {
+            button.disabled = true;
+            button.classList.add('opacity-60', 'pointer-events-none');
+          });
+
+          if (pressed) {
+            pressed.textContent = @json(__('staff.adding'));
+          }
+        }, 0);
       });
     }());
   </script>

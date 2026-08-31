@@ -84,6 +84,19 @@ class BusinessSettingsController extends Controller
             'default_booking_duration' => ['nullable', Rule::in(array_keys(config('business_profile.booking_durations')))],
             'default_appointment_interval' => ['nullable', Rule::in(array_keys(config('business_profile.appointment_intervals')))],
             'default_tax_behavior' => ['nullable', Rule::in(array_keys(config('business_profile.tax_behaviors')))],
+            /* A percentage, not a fraction: 8.5 is how a rate is published,
+               and a field that quietly wanted 0.085 would be filled in wrong
+               by everybody who read its label. */
+            'default_tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+
+            /* Where money is asked for when it is not handed over at the
+               desk. Free text, because a Zelle is an email or a phone number
+               and a Venmo is a handle, and validating one shape would reject
+               three of the four. */
+            'paypal_handle' => ['nullable', 'string', 'max:255'],
+            'zelle_handle' => ['nullable', 'string', 'max:255'],
+            'cash_app_handle' => ['nullable', 'string', 'max:255'],
+            'venmo_handle' => ['nullable', 'string', 'max:255'],
             'default_staff_assignment' => ['nullable', Rule::in(array_keys(config('business_profile.staff_assignment')))],
 
             /* Only a window the dropdown offers. Null means "follow the

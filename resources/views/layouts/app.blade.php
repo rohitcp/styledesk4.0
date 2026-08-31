@@ -128,7 +128,7 @@
       </button>
 
       <!-- Primary icon rail -->
-      @include('layouts.partials.nav-rail')
+      @include('layouts.partials.nav-rail', ['navCounts' => \App\Support\Nav::counts()])
 
       <!-- Search — centred between the rail and the account cluster -->
       <div class="flex-1 min-w-0 flex justify-center">
@@ -151,13 +151,20 @@
             <x-icon name="plus" size="14" />
           </button>
           <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
-            <a href="#" data-pending-route="add-booking.html" class="sd-menu__item" role="menuitem">Add booking</a>
-            <a href="add-booking.html?walkin=1" class="sd-menu__item" role="menuitem">Walk-in</a>
+            <a href="{{ route('clients.create') }}" class="sd-menu__item" role="menuitem">{{ __('bookings.add.client') }}</a>
+            <a href="{{ route('bookings.create') }}" class="sd-menu__item" role="menuitem">{{ __('bookings.add.booking') }}</a>
+            <a href="{{ route('bookings.create', ['walk-in' => 1]) }}" class="sd-menu__item" role="menuitem">{{ __('bookings.add.walk_in') }}</a>
             <div class="sd-menu__rule" role="separator"></div>
-            <a href="#" data-pending-route="add-client.html" class="sd-menu__item" role="menuitem">Add contact</a>
+            {{-- Not a link. Leave is designed and not built, and an entry
+                 that looks like every other one and then does nothing reads
+                 as a broken product rather than as work still to come. --}}
+            <span class="sd-menu__item sd-menu__item--soon" role="menuitem" aria-disabled="true"
+                  data-pending-route="add-leave.html">{{ __('bookings.add.leave') }} <span class="sd-menu__soon">{{ __('navigation.coming_soon') }}</span></span>
           </div>
         </div>
-        <a href="#" data-pending-route="add-booking.html" class="sd-navicon grid sd-tip sm:hidden" data-tip="Add booking" data-tip-placement="right" aria-label="Add booking">
+        <a href="{{ route('bookings.create') }}" class="sd-navicon grid sd-tip sm:hidden"
+           data-tip="{{ __('bookings.add.booking') }}" data-tip-placement="right"
+           aria-label="{{ __('bookings.add.booking') }}">
           <x-icon name="plus" size="18" />
         </a>
 
@@ -167,9 +174,11 @@
         <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" data-tip-placement="right" aria-label="Activity">
           <x-icon name="wifi" size="18" />
         </button>
-        <a href="#" data-pending-route="designsystem.html" class="sd-navicon sd-tip hidden sm:grid" data-tip="Design system" data-tip-placement="right" aria-label="Design system">
+        <span class="sd-navicon sd-navicon--soon sd-tip hidden sm:grid" data-pending-route="designsystem.html"
+              data-tip="Design system · {{ __('navigation.coming_soon') }}" data-tip-placement="right"
+              role="img" aria-label="Design system" aria-disabled="true">
           <x-icon name="circle-question" size="18" />
-        </a>
+        </span>
 
         @include('layouts.partials.language-selector')
 
@@ -189,7 +198,7 @@
     </div>
   </header>
 
-@include('layouts.partials.nav-drawer')
+@include('layouts.partials.nav-drawer', ['navCounts' => \App\Support\Nav::counts()])
 
 @include('partials.session-timeout')
 @include('partials.confirm-dialog')

@@ -24,4 +24,7 @@ return [
     'sign_out' => 'Cerrar sesión',
     'invite_team_members' => 'Invitar al equipo',
     'add' => 'Añadir',
+
+    'active_staff' => '{0} Sin personal activo|{1} :count miembro del personal activo|[2,*] :count miembros del personal activos',
+    'coming_soon' => 'Pronto',
 ];

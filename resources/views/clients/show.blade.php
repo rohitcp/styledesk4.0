@@ -180,6 +180,7 @@
           <div class="order-4 lg:order-none py-5 border-t border-line">@include('clients.partials._contact')</div>
           <div class="order-5 lg:order-none py-5 border-t border-line">@include('clients.partials._preferred')</div>
           <div class="order-6 lg:order-none py-5 border-t border-line">@include('clients.partials._client-preferences')</div>
+          <div class="order-7 lg:order-none py-5 border-t border-line">@include('clients.partials._booking-preferences')</div>
         </div>
       </aside>
 
@@ -213,6 +214,46 @@
         <div class="xl:pb-6">
           @include('clients.partials._context')
         </div>
+      </aside>
+    </div>
+
+    {{-- The booking (or lead) this client's panel opens over the profile.
+         The same floating panel the leads screen uses, and for the same
+         reason: a receptionist checking three appointments while somebody
+         is on hold should not lose the tab, the filters or their place. --}}
+    <div class="styledesk_sheet" data-booking-sheet hidden>
+      <aside class="styledesk_sheet__panel" role="dialog" aria-modal="true" aria-labelledby="bookingSheetName">
+        <header class="styledesk_sheet__head">
+          <div class="min-w-0">
+            <p id="bookingSheetName" class="text-[15px] font-bold text-head truncate" data-sheet-name></p>
+            <p class="text-[12px] font-medium text-sub font-mono" data-sheet-reference></p>
+          </div>
+
+          <div class="ml-auto shrink-0 text-right">
+            <span class="styledesk_badge" data-sheet-status></span>
+            <span class="block text-[11.5px] text-sub mt-1" data-sheet-step></span>
+          </div>
+
+          <button type="button" class="styledesk_sheet__close" data-sheet-close
+                  aria-label="{{ __('leads.drawer.close') }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </header>
+
+        <div class="styledesk_sheet__body" data-sheet-body></div>
+
+        <footer class="styledesk_sheet__foot">
+          <a class="styledesk_sheet__cta" data-sheet-primary></a>
+
+          {{-- Cancelling changes the diary and that flow does not exist yet.
+               Disabled with the reason rather than missing. --}}
+          <button type="button" class="styledesk_action justify-center" disabled>
+            {{ __('bookings.detail.cancel_booking') }}
+            <span class="styledesk_badge styledesk_badge--soon">{{ __('leads.drawer.soon') }}</span>
+          </button>
+        </footer>
       </aside>
     </div>
   </main>

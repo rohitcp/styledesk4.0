@@ -95,6 +95,9 @@ return [
     'statuses' => [
         'active' => ['label' => 'Active', 'class' => 'styledesk_badge--active'],
         'inactive' => ['label' => 'Inactive', 'class' => 'styledesk_badge--soon'],
+        // Away and coming back. Its own badge because a rota has to tell it
+        // apart from someone who has left.
+        'on-leave' => ['label' => 'On Leave', 'class' => 'styledesk_badge--setup'],
         'pending-invite' => ['label' => 'Pending invite', 'class' => 'styledesk_badge--setup'],
         // Queued but not yet handed to the mail provider. Almost always means
         // no queue worker is running.

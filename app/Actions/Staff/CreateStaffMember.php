@@ -45,6 +45,8 @@ class CreateStaffMember
                 'last_name' => $data['last_name'],
                 'preferred_name' => $data['preferred_name'] ?? null,
                 'pronouns' => $data['pronouns'] ?? null,
+                'date_of_birth' => $data['date_of_birth'] ?? null,
+                'started_on' => $data['started_on'] ?? null,
                 'job_title' => $data['job_title'] ?? null,
                 'employee_ref' => $data['employee_ref'] ?? null,
                 'bio' => $data['bio'] ?? null,
@@ -66,11 +68,17 @@ class CreateStaffMember
                 'role_id' => $role->id,
 
                 'location_id' => $data['location_id'] ?? null,
+                /* The template their schedule will be generated from, not a
+                   schedule — see Staff → Staff Schedule for that. */
+                'shift_rule_id' => $data['shift_rule_id'] ?? null,
                 'employment_type' => $data['employment_type'] ?? null,
                 'provider_type' => $data['provider_type'] ?? null,
                 'specialities' => $data['specialities'] ?? null,
                 'provides_services' => ($data['provider_type'] ?? null) !== 'front-desk',
 
+                /* Someone on leave is not available to be booked, so they
+                   are not active — but membership_status keeps the reason,
+                   which is what tells "away" apart from "gone". */
                 'is_active' => ($data['account_status'] ?? 'active') === 'active',
                 'membership_status' => $data['account_status'] ?? 'active',
                 'login_enabled' => (bool) ($data['login_enabled'] ?? false),
@@ -79,6 +87,10 @@ class CreateStaffMember
 
             if (! empty($data['service_ids'])) {
                 $staff->services()->sync($data['service_ids']);
+            }
+
+            if (! empty($data['resource_ids'])) {
+                $staff->resources()->sync($data['resource_ids']);
             }
 
             AuditLog::record('staff.created', $actor, $staff, [], [

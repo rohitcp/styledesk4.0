@@ -48,6 +48,7 @@ class Tenant extends BaseTenant
         return [
             'trial_started_at' => 'datetime',
             'trial_ends_at' => 'datetime',
+            'shift_rules_enabled' => 'boolean',
         ];
     }
 
@@ -92,11 +93,26 @@ class Tenant extends BaseTenant
             'default_booking_duration',
             'default_appointment_interval',
             'default_tax_behavior',
+            'default_tax_rate',
             'default_staff_assignment',
             'instagram_url',
             'facebook_url',
             'tiktok_url',
             'google_business_url',
+
+            // Where money is asked for when it is not handed over at the
+            // desk. Same rule as above: a column left off this list is
+            // written into the `data` blob and the field reads back empty.
+            'paypal_handle',
+            'zelle_handle',
+            'cash_app_handle',
+            'venmo_handle',
+
+            // Whether this business uses shift rules. Listed for the reason
+            // above: left out, the switch would be written into the `data`
+            // blob while the real column stayed at its default, and turning
+            // the feature off would appear to do nothing.
+            'shift_rules_enabled',
 
             // Branding. Same rule as above — the palette is read on every
             // render, so it must be columns rather than JSON keys, and it is

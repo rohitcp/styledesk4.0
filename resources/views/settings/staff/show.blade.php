@@ -3,127 +3,49 @@
 @section('title', $staff->displayName())
 
 @section('content')
-  <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
-    <div class="max-w-[860px]">
+  {{-- The full-width container the clients screens use: the same padding,
+       the same breakpoints, no narrow column of its own. A workspace that
+       sat in 1080px while every other screen filled the window would read
+       as a different application. --}}
+  <main class="w-full px-6 lg:px-8 pt-4 pb-[100px]">
 
       @php
-          $opts = config('staff');
-          $avatarUrl = $staff->avatar_path ? Storage::disk('brand')->url($staff->avatar_path) : null;
-
           $specialities = collect($staff->specialities ?? [])
               ->map(fn ($s) => App\Support\StaffOptions::label('specialities', $s) ?? $s);
       @endphp
 
-      <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
-        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
-        <span class="mx-1.5 text-faint">/</span>
-        <a href="{{ route('settings.staff.index') }}" class="hover:text-ink transition-colors">{{ __('staff.title') }}</a>
-        <span class="mx-1.5 text-faint">/</span>
-        <span class="text-ink">{{ $staff->displayName() }}</span>
-      </nav>
+      @include('settings.staff._header', ['tab' => 'show'])
 
-      {{-- ===================== Header =====================
-           Two bands stacked: who this is, then how to reach them. The strip
-           is a sibling of the identity row rather than a child of its text
-           column, which is what lets its divider run the full width of the
-           card instead of starting where the avatar ends. --}}
-      <div class="styledesk_profile mt-3">
+      {{-- A small report, from the data that exists.
 
-        <div class="styledesk_profile__top">
-          <span class="styledesk_profile__avatar" aria-hidden="true">
-            @if ($avatarUrl)
-              <img src="{{ $avatarUrl }}" alt="">
-            @else
-              {{ $staff->initials() }}
-            @endif
+           The appointment figures the brief also asks for need a booking
+           module; a card reading "—" is a card that teaches the reader to
+           ignore the row, so they are left out until there is something to
+           put in them. The row is a list rather than four hand-placed cards,
+           which is what lets the rest slot in beside these later. --}}
+      <div class="mt-5 styledesk_statrow styledesk_scroll">
+        @foreach ($staff->scheduleSummary() as $metric)
+          <span class="styledesk_statcard styledesk_statcard--{{ ['blue', 'violet', 'green', 'amber'][$loop->index % 4] }}">
+            <span class="min-w-0">
+              <span class="styledesk_label block">{{ __('staff.report.'.$metric['key']) }}</span>
+              <span class="block text-[20px] font-bold text-head leading-tight mt-0.5">{{ $metric['value'] }}</span>
+            </span>
           </span>
-
-          <div class="min-w-0 flex-1">
-            <h1 class="text-[22px] sm:text-[26px] font-bold text-head tracking-tight leading-tight">
-              {{ $staff->displayName() }}
-            </h1>
-
-            <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-sub">
-              @if ($staff->job_title)<span>{{ $staff->job_title }}</span>@endif
-              @if ($staff->job_title && $staff->roleRecord)<span class="text-faint">&middot;</span>@endif
-              @if ($staff->roleRecord)<span>{{ $staff->roleRecord->name }}</span>@endif
-
-              {{-- Only when it differs, or someone whose preferred name is
-                   their first name reads their own name twice. --}}
-              @php $legalName = trim($staff->first_name.' '.$staff->last_name); @endphp
-              @if ($legalName !== $staff->displayName())
-                <span class="text-faint">&middot;</span>
-                <span class="text-faint">{{ $legalName }}</span>
-              @endif
-
-              @if ($staff->pronouns)
-                <span class="text-faint">&middot;</span>
-                <span>{{ $opts['pronouns'][$staff->pronouns] ?? $staff->pronouns }}</span>
-              @endif
-            </p>
-
-            <p class="mt-2.5 flex flex-wrap items-center gap-1.5">
-              <span class="styledesk_badge {{ $staff->statusClass() }}">{{ $staff->statusLabel() }}</span>
-              @if ($staff->provides_services)
-                <span class="styledesk_badge styledesk_badge--soon">{{ __('staff.profile.bookable') }}</span>
-              @endif
-              @if (! $staff->login_enabled)
-                <span class="styledesk_badge styledesk_badge--soon">{{ __('staff.profile.no_login') }}</span>
-              @endif
-            </p>
-          </div>
-
-          <div class="shrink-0 flex items-center gap-2">
-            <a href="{{ route('settings.staff.index') }}"
-               class="styledesk_action">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              {{ __('common.back') }}
-            </a>
-
-            @can('update', $staff)
-              <a href="{{ route('settings.staff.edit', $staff) }}"
-                 class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-                {{ __('common.edit') }}
-              </a>
-            @endcan
-          </div>
-        </div>
-
-        @php
-            $headline = [
-                ['icon' => 'envelope', 'label' => __('staff.profile.summary_email'), 'value' => $staff->email, 'href' => $staff->email ? 'mailto:'.$staff->email : null],
-                ['icon' => 'address-book', 'label' => __('staff.profile.summary_phone'), 'value' => $staff->phone, 'href' => $staff->phone ? 'tel:'.$staff->phone : null],
-                ['icon' => 'location-dot', 'label' => __('staff.profile.summary_location'), 'value' => $staff->location?->name ?? 'All locations'],
-                ['icon' => 'clock', 'label' => __('staff.profile.last_login'), 'value' => $staff->user?->last_login_at?->diffForHumans() ?? 'Never'],
-            ];
-        @endphp
-
-        <dl class="styledesk_profile__facts">
-          @foreach ($headline as $fact)
-            @continue (! filled($fact['value']))
-            <div class="styledesk_profile__fact">
-              <x-icon :name="$fact['icon']" size="14" />
-              <div class="min-w-0">
-                <dt>{{ $fact['label'] }}</dt>
-                <dd class="truncate">
-                  @if (! empty($fact['href']))
-                    <a href="{{ $fact['href'] }}" class="text-link hover:underline">{{ $fact['value'] }}</a>
-                  @else
-                    {{ $fact['value'] }}
-                  @endif
-                </dd>
-              </div>
-            </div>
-          @endforeach
-        </dl>
+        @endforeach
       </div>
 
       {{-- ===================== Detail =====================
-           One column. These are label/value facts read top to bottom, not
-           two independent tracks — side by side the eye has to choose a
-           column, then jump back up for the other, for content that has a
-           natural order. --}}
-      <div class="mt-5 space-y-5">
+           One column up to xl, two beyond it.
+
+           These are label/value facts read top to bottom, and side by side the
+           eye has to choose a column then jump back up for the other. That
+           argument held while the page sat in an 860px column; it does not
+           hold at full width, where a single column of short facts stretched
+           across a wide monitor is a line of three words and a hand's width of
+           nothing. Columns, not a masonry grid: the cards keep their order
+           down each column, so the reading order is still the order they are
+           written in. --}}
+      <div class="mt-5 xl:columns-2 xl:gap-5 [&>section]:break-inside-avoid [&>section]:mb-5 space-y-5 xl:space-y-0">
 
         <section class="bg-white border border-line rounded-card p-5">
           <h2 class="text-[15px] font-semibold text-head">{{ __('staff.profile.about') }}</h2>
@@ -132,6 +54,8 @@
               __('staff.profile.preferred_name') => $staff->preferred_name,
               __('staff.profile.pronouns') => App\Support\StaffOptions::label('pronouns', $staff->pronouns) ?? $staff->pronouns,
               __('staff.profile.employee_ref') => $staff->employee_ref,
+              __('staff.fields.date_of_birth') => $staff->date_of_birth?->translatedFormat('j F Y'),
+              __('staff.fields.started_on') => $staff->started_on?->translatedFormat('j F Y'),
               'Bio' => $staff->bio,
           ]" />
         </section>
@@ -173,7 +97,7 @@
             <p class="mt-3 text-[13px] text-sub">
               No services assigned, so {{ $staff->displayName() }} cannot be booked by name.
               @can('update', $staff)
-                <a href="{{ route('settings.staff.edit', $staff) }}" class="text-link font-medium hover:underline">{{ __('staff.profile.assign_services') }}</a>.
+                <a href="{{ \App\Support\StaffSection::route('edit', $staff) }}" class="text-link font-medium hover:underline">{{ __('staff.profile.assign_services') }}</a>.
               @endcan
             </p>
           @else
@@ -184,6 +108,25 @@
             </div>
           @endif
         </section>
+
+        {{-- The chairs and rooms this person works at. Beside the services
+             rather than inside them: a service says which rooms will do, this
+             says which of them this person uses, and the booking engine will
+             need both. --}}
+        @if ($staff->resources->isNotEmpty())
+          <section class="bg-white border border-line rounded-card p-5">
+            <div class="flex items-center gap-3">
+              <h2 class="text-[15px] font-semibold text-head">{{ __('staff.fields.resources') }}</h2>
+              <span class="ml-auto text-[12px] text-sub">{{ $staff->resources->count() }}</span>
+            </div>
+
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              @foreach ($staff->resources as $resource)
+                <span class="styledesk_badge styledesk_badge--soon">{{ $resource->name }}</span>
+              @endforeach
+            </div>
+          </section>
+        @endif
 
         <section class="bg-white border border-line rounded-card p-5">
           <h2 class="text-[15px] font-semibold text-head">{{ __('staff.profile.employment') }}</h2>
@@ -253,6 +196,5 @@
 
       </div>
 
-    </div>
   </main>
 @endsection

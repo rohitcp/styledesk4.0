@@ -27,6 +27,8 @@ return [
         'presence' => 'Presencia del negocio',
         'presence_hint' => 'Dónde te encuentran tus clientes fuera de StyleDesk.',
         'advanced' => 'Información avanzada',
+        'payments' => 'Cobrar',
+        'payments_hint' => 'Las cuentas a las que se pide el dinero. Se leen en el mostrador, así que se guardan tal y como las escribas.',
     ],
 
     'fields' => [
@@ -65,6 +67,11 @@ return [
         'default_booking_duration' => 'Duración de reserva predeterminada',
         'default_appointment_interval' => 'Intervalo de citas predeterminado',
         'default_tax_behavior' => 'Tratamiento fiscal predeterminado',
+        'default_tax_rate' => 'Tipo impositivo',
+        'paypal_handle' => 'PayPal',
+        'zelle_handle' => 'Zelle',
+        'cash_app_handle' => 'Cash App',
+        'venmo_handle' => 'Venmo',
         'session_timeout' => 'Tiempo de sesión',
         'default_staff_assignment' => 'Asignación de personal predeterminada',
         'allow_online_booking' => 'Permitir reserva online',
@@ -129,6 +136,7 @@ return [
     ],
 
     'hints' => [
+        'tax_rate' => 'Un porcentaje. Se aplica a los totales de las reservas con impuesto.',
         'inactive' => 'Un negocio inactivo no aparece en la reserva pública.',
         'session_timeout' => 'Cierra la sesión automáticamente tras un periodo de inactividad.',
         'interval' => 'La cuadrícula a la que se ajustan las horas de inicio.',
@@ -139,6 +147,10 @@ return [
         'legal_name' => 'Tal y como está registrada, si difiere del nombre comercial',
         'category' => 'Especialistas en pelo rizado',
         'description' => 'Una frase que tus clientes leerán en tu página de reservas.',
+        'paypal_handle' => 'paypal.me/tusalon',
+        'zelle_handle' => 'pagos@tusalon.com',
+        'cash_app_handle' => '$tusalon',
+        'venmo_handle' => '@tusalon',
     ],
 
     'choose' => [

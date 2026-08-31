@@ -102,4 +102,5 @@ return [
         'max_value' => ':field must be :max or less.',
         'taken' => 'That value is already in use.',
     ],
+    'type_a_time' => 'Type a time, e.g. 2:30 PM',
 ];

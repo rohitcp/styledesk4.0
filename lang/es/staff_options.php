@@ -62,6 +62,7 @@ return [
     'statuses' => [
         'active' => 'Activo',
         'inactive' => 'Inactivo',
+        'on-leave' => 'De permiso',
         'pending-invite' => 'Invitación pendiente',
         'invite-queued' => 'Invitación en cola',
         'invite-failed' => 'Invitación fallida',

@@ -48,7 +48,10 @@
           $profile = App\Support\BusinessProfile::class;
 
           $dateFormatProps = $combo('date_format', $profile::dateFormats(), old('date_format', $tenant->date_format), __('business.choose.date_format'));
-          $timeFormatProps = $combo('time_format', $profile::timeFormats(), old('time_format', $tenant->time_format), __('business.choose.time_format'));
+          /* Preselected rather than left empty: 12-hour is what the app
+             actually uses until somebody says otherwise (App\Support\TimeFormat),
+             and a blank dropdown claims the business has no clock. */
+          $timeFormatProps = $combo('time_format', $profile::timeFormats(), old('time_format', $tenant->time_format ?? App\Support\TimeFormat::DEFAULT), __('business.choose.time_format'));
           $firstDayProps = $combo('first_day_of_week', $profile::firstDayOfWeek(), old('first_day_of_week', $tenant->first_day_of_week), __('business.choose.day'));
           $durationProps = $combo('default_booking_duration', $profile::bookingDurations(), old('default_booking_duration', $tenant->default_booking_duration), __('business.choose.duration'));
           $intervalProps = $combo('default_appointment_interval', $profile::appointmentIntervals(), old('default_appointment_interval', $tenant->default_appointment_interval), __('business.choose.interval'));
@@ -251,9 +254,39 @@
               </div>
 
               <div>
+                <label for="default_tax_rate" class="block text-[13px] font-medium text-ink mb-1.5">
+                  {{ __('business.fields.default_tax_rate') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
+                </label>
+                <input id="default_tax_rate" name="default_tax_rate" type="text" inputmode="decimal" class="sd-input max-w-[160px]"
+                       placeholder="0" value="{{ old('default_tax_rate', $tenant->default_tax_rate) }}">
+                <p class="mt-1.5 text-[12px] text-sub">{{ __('business.hints.tax_rate') }}</p>
+                @error('default_tax_rate')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+              </div>
+
+              <div>
                 <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('business.fields.default_staff_assignment') }}</span>
                 <div data-vue-component="MultiSelect" data-props='@json($assignmentProps)'></div>
               </div>
+            </section>
+
+            {{-- Where money is asked for when it is not handed over at the
+                 desk. These are read out to a client at the till, so they are
+                 kept as the business writes them rather than reformatted. --}}
+            <section class="bg-white border border-line rounded-card p-5 space-y-4">
+              <h2 class="text-[15px] font-semibold text-head">{{ __('business.cards.payments') }}</h2>
+              <p class="text-[13px] text-sub -mt-2">{{ __('business.cards.payments_hint') }}</p>
+
+              @foreach (['paypal_handle', 'zelle_handle', 'cash_app_handle', 'venmo_handle'] as $handle)
+                <div>
+                  <label for="{{ $handle }}" class="block text-[13px] font-medium text-ink mb-1.5">
+                    {{ __('business.fields.'.$handle) }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
+                  </label>
+                  <input id="{{ $handle }}" name="{{ $handle }}" type="text" class="sd-input"
+                         placeholder="{{ __('business.placeholders.'.$handle) }}"
+                         value="{{ old($handle, $tenant->{$handle}) }}">
+                  @error($handle)<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+                </div>
+              @endforeach
             </section>
 
             {{-- Security. One setting today; it is a card of its own because

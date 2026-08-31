@@ -4,4 +4,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
+| app/{Models/StaffShift.php,Support/SchedulePeriod.php,Http/Controllers/**}, app/{Models/Booking.php,Models/BookingPayment.php,Support/BookingTotals.php,Http/Controllers/BookingController.php} | .ai/rules/controllers.md |
 | ** | .ai/rules/general.md |

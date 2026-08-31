@@ -72,6 +72,7 @@ return [
     'statuses' => [
         'active' => 'Active',
         'inactive' => 'Inactive',
+        'on-leave' => 'On Leave',
         'pending-invite' => 'Pending invite',
         'invite-queued' => 'Invite queued',
         'invite-failed' => 'Invite failed',

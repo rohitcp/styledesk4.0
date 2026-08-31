@@ -246,8 +246,23 @@ function focusFirst(field, form) {
     (standIn ?? field).scrollIntoView?.({ block: 'center', behavior: 'smooth' });
 }
 
+/**
+ * The fields a form is currently asking for.
+ *
+ * A field inside a hidden panel is not one of them. Several forms reveal a
+ * section only when the setting above it is on — the overtime figures, the
+ * shift periods a day is divided into — and those fields keep posting while
+ * hidden so that switching the setting off and on again does not cost what was
+ * typed. Validated anyway, a blank row in a section nobody can see would
+ * refuse the form for a reason the reader cannot act on or even find.
+ *
+ * Matched on the `hidden` attribute rather than on visibility: a control whose
+ * answer lives in a hidden input — a combo box, a time picker — is never
+ * visible itself and must still be checked.
+ */
 function fieldsOf(form) {
-    return Array.from(form.querySelectorAll('[data-rules]'));
+    return Array.from(form.querySelectorAll('[data-rules]'))
+        .filter((field) => field.closest('[hidden]') === null);
 }
 
 export function initLiveValidation(root = document) {

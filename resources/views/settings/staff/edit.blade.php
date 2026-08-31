@@ -7,11 +7,17 @@
     <div class="styledesk_form">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
-        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
+        {{-- Only in App Settings. The same screens are reached from the
+             Staff module, where the trail does not run through a section the
+             reader was never in — and where a link into an administrator-only
+             area would be one they cannot open. --}}
+        @if (\App\Support\StaffSection::isSettings())
+          <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
+          <span class="mx-1.5 text-faint">/</span>
+        @endif
+        <a href="{{ \App\Support\StaffSection::route('index') }}" class="hover:text-ink transition-colors">{{ __('staff.title') }}</a>
         <span class="mx-1.5 text-faint">/</span>
-        <a href="{{ route('settings.staff.index') }}" class="hover:text-ink transition-colors">{{ __('staff.title') }}</a>
-        <span class="mx-1.5 text-faint">/</span>
-        <a href="{{ route('settings.staff.show', $staff) }}" class="hover:text-ink transition-colors">{{ $staff->displayName() }}</a>
+        <a href="{{ \App\Support\StaffSection::route('show', $staff) }}" class="hover:text-ink transition-colors">{{ $staff->displayName() }}</a>
         <span class="mx-1.5 text-faint">/</span>
         <span class="text-ink">{{ __('common.edit') }}</span>
       </nav>
@@ -21,7 +27,7 @@
           <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">{{ __('staff.edit_person', ['name' => $staff->displayName()]) }}</h1>
         </div>
 
-        <a href="{{ route('settings.staff.show', $staff) }}" data-back
+        <a href="{{ \App\Support\StaffSection::route('show', $staff) }}" data-back
            class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
@@ -34,7 +40,7 @@
         </div>
       @endif
 
-      <form id="staffForm" method="POST" action="{{ route('settings.staff.update', $staff) }}"
+      <form id="staffForm" method="POST" action="{{ \App\Support\StaffSection::route('update', $staff) }}"
             enctype="multipart/form-data" class="mt-6 space-y-5">
         @csrf
         @method('PATCH')
@@ -46,7 +52,7 @@
                   class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
             {{ __('common.save_changes') }}
           </button>
-          <a href="{{ route('settings.staff.show', $staff) }}"
+          <a href="{{ \App\Support\StaffSection::route('show', $staff) }}"
              class="styledesk_action">
             {{ __('common.cancel') }}
           </a>

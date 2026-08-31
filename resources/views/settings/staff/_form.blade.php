@@ -25,8 +25,20 @@
     // checks below can compare without caring which they got.
     $chosenSpecialities = array_map('strval', old('specialities', $staff?->specialities ?? []));
     $chosenServices = array_map('strval', old('service_ids', $staff?->services->pluck('id')->all() ?? []));
+    $chosenResources = array_map('strval', old('resource_ids', $staff?->resources->pluck('id')->all() ?? []));
+
+    /* The chairs in use, plus any this person is already assigned to. Without
+       the second half a room retired since the assignment was made would be
+       missing from the list, and the chip for it would show a bare id. */
+    $staffResourceOptions = $resources->pluck('name', 'id')
+        ->union($staff?->resources->pluck('name', 'id') ?? collect());
     $loginEnabled = (bool) old('login_enabled', $staff?->login_enabled ?? true);
-    $accountStatus = old('account_status', $staff ? ($staff->is_active ? 'active' : 'inactive') : 'active');
+    /* On leave is stored on membership_status; is_active only says whether
+       the person can be booked, and reading it alone would show someone on
+       leave as plain Inactive and quietly demote them on the next save. */
+    $accountStatus = old('account_status', $staff
+        ? ($staff->membership_status === 'on-leave' ? 'on-leave' : ($staff->is_active ? 'active' : 'inactive'))
+        : 'active');
 @endphp
 
         {{-- ---------------------------------------------------- basics --}}
@@ -66,6 +78,19 @@
             </div>
             <x-combo name="pronouns" label="{{ __('staff.fields.pronouns') }}" :options="App\Support\StaffOptions::pronouns()"
                      :selected="$staffValue('pronouns')" placeholder="{{ __('staff.not_specified') }}" />
+
+            {{-- The shared calendar picker, not a native date input: nobody
+                 was born tomorrow, and the year dropdown puts a birth year
+                 one step away instead of decades of paging. --}}
+            <x-date-field name="date_of_birth"
+                          :label="__('staff.fields.date_of_birth')"
+                          optional
+                          :value="old('date_of_birth', $staff?->date_of_birth?->toDateString())"
+                          :max="now()->subDay()->toDateString()"
+                          :min-year="1910"
+                          :max-year="now()->year"
+                          open-to="1990-01-01"
+                          rules="date" />
             <div>
               <label for="job_title" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('staff.fields.job_title') }}</label>
               <input id="job_title" name="job_title" type="text" class="sd-input" data-capitalize
@@ -82,7 +107,7 @@
           {{-- Its own row: the uploader carries a preview, a progress bar and
                an error line, none of which fit beside another field. --}}
           <x-image-upload name="avatar" label="{{ __('staff.fields.avatar') }}"
-                          :endpoint="route('settings.staff.avatar.upload')"
+                          :endpoint="\App\Support\StaffSection::route('avatar.upload')"
                           hint="{{ __('staff.fields.avatar_hint') }}" />
 
           <div>
@@ -172,6 +197,16 @@
                      :selected="$staffValue('employment_type')" placeholder="{{ __('staff.not_specified') }}" />
             <x-combo name="provider_type" label="{{ __('staff.fields.provider_type') }}" :options="App\Support\StaffOptions::providerTypes()"
                      :selected="$staffValue('provider_type')" placeholder="{{ __('staff.not_specified') }}" />
+
+            {{-- Future dates allowed: somebody hired to start next month is
+                 added today, and refusing that would mean adding them twice
+                 or not at all. --}}
+            <x-date-field name="started_on"
+                          :label="__('staff.fields.started_on')"
+                          optional
+                          :value="old('started_on', $staff?->started_on?->toDateString())"
+                          :min-year="1980"
+                          rules="date" />
           </div>
 
           <fieldset>
@@ -189,22 +224,65 @@
             </div>
           </fieldset>
 
+          {{-- Services and rooms, the two halves of "what can this person
+               actually be booked for".
+
+               The searchable multi-select rather than a wall of checkboxes: a
+               salon with sixty services rendered sixty boxes, and finding one
+               of them meant reading all of them. Same control as everywhere
+               else, chips with an x on each. --}}
           @if ($services->isNotEmpty())
-            <fieldset>
-              <legend class="text-[13px] font-medium text-ink mb-2">{{ __('staff.fields.services') }}</legend>
-              <div class="styledesk_choicelist sm:grid-cols-2">
-                @foreach ($services as $service)
-                  <label class="styledesk_choice">
-                    <input type="checkbox" name="service_ids[]" value="{{ $service->id }}" class="sd-check"
-                           @checked(in_array((string) $service->id, $chosenServices, true))>
-                    <span class="styledesk_choice__label">{{ $service->name }}</span>
-                  </label>
-                @endforeach
-              </div>
-              <p class="mt-1.5 text-[12px] text-sub">{{ __('staff.fields.services_hint') }}</p>
-            </fieldset>
+            <x-combo name="service_ids" multiple
+                     :label="__('staff.fields.services')"
+                     :hint="__('staff.fields.services_hint')"
+                     :placeholder="__('staff.fields.services_placeholder')"
+                     :selected="$chosenServices"
+                     :options="$services->pluck('name', 'id')" />
+          @endif
+
+          @if ($staffResourceOptions->isNotEmpty())
+            <x-combo name="resource_ids" multiple
+                     :label="__('staff.fields.resources')"
+                     :hint="__('staff.fields.resources_hint')"
+                     :placeholder="__('staff.fields.resources_placeholder')"
+                     :selected="$chosenResources"
+                     :options="$staffResourceOptions" />
           @endif
         </section>
+
+        {{-- ------------------------------------------------ shift rule --}}
+        {{-- Drawn only where the business uses shift rules and there is at
+             least one active rule to choose. A card offering an empty
+             dropdown is a question with no answers, and this form is long
+             enough already. --}}
+        @if ($shiftRulesOn && $shiftRules->isNotEmpty())
+          @php
+              /* An inactive rule already on somebody stays on them — it is new
+                 assignments it is kept out of — so the current one is added
+                 back to the list, or the combo would show a bare id and the
+                 next save would silently drop it. */
+              $ruleOptions = $shiftRules->pluck('name', 'id');
+
+              if ($staff?->shiftRule && ! $ruleOptions->has($staff->shift_rule_id)) {
+                  $ruleOptions = $ruleOptions->put($staff->shift_rule_id, $staff->shiftRule->name);
+              }
+          @endphp
+
+          <section class="bg-white border border-line rounded-card p-5 space-y-4"
+                   data-shift-rule-card
+                   data-rule-locations='@json($shiftRuleLocations)'
+                   data-mismatch-message="{{ __('staff.validation.shift_rule_unavailable') }}">
+            <h2 class="text-[15px] font-semibold text-head">{{ __('staff.cards.shift_rule') }}</h2>
+            <p class="text-[13px] text-sub leading-relaxed">{{ __('staff.cards.shift_rule_hint') }}</p>
+
+            {{-- Optional, and its placeholder says so rather than leaving a
+                 blank that reads as something forgotten. --}}
+            <x-combo name="shift_rule_id" :label="__('staff.fields.shift_rule')"
+                     :options="$ruleOptions"
+                     :selected="$staffValue('shift_rule_id')"
+                     :placeholder="__('staff.fields.no_shift_rule')" />
+          </section>
+        @endif
 
         {{-- ---------------------------------------------------- account --}}
         <section class="bg-white border border-line rounded-card p-5 space-y-4">
@@ -213,7 +291,14 @@
           <fieldset>
             <legend class="text-[13px] font-medium text-ink mb-2">{{ __('staff.fields.account_status') }} <span class="text-danger">*</span></legend>
             <div class="styledesk_choicelist">
-              @foreach (['active' => __('common.active'), 'inactive' => __('common.inactive')] as $value => $label)
+              @foreach ([
+                  'active' => __('common.active'),
+                  'inactive' => __('common.inactive'),
+                  /* Away, not gone. Kept apart from Inactive because a rota
+                     has to tell someone coming back from someone who has
+                     left — the record, the services and the room all stay. */
+                  'on-leave' => App\Support\StaffOptions::statusLabel('on-leave'),
+              ] as $value => $label)
                 <label class="styledesk_choice">
                   <input type="radio" name="account_status" value="{{ $value }}" class="sd-check"
                          @checked($accountStatus === $value)>

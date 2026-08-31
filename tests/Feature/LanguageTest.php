@@ -886,17 +886,31 @@ class LanguageTest extends TestCase
             'job_title' => 'Salon Manager',
         ]);
 
+        /* The page's own chrome — heading, CTA and the column titles the
+           grid is configured with. The rows themselves come from the grid's
+           endpoint, so they are asked separately. */
         $this->actingAs($owner)
             ->get(route('settings.staff.index'))
             ->assertOk()
             ->assertSee('Miembros del personal')
             ->assertSee('Añadir miembro del personal')
-            ->assertSee('Último acceso')
-            ->assertSee('Nunca')
+            /* A column title from the grid's own config. ASCII on purpose:
+               the config travels as JSON, where json_encode writes an accent
+               as \u00f3 and asserting on the accented form would be asserting
+               on the encoder. */
+            ->assertSee('Estado', false)
             ->assertDontSee('Staff members')
-            ->assertDontSee('Last login')
-            // What the business typed is untouched.
-            ->assertSee('Salon Manager');
+            ->assertDontSee('Status', false);
+
+        $row = $this->actingAs($owner)
+            ->get(route('settings.staff.data'))
+            ->assertOk()
+            ->json('data.0');
+
+        /* The status is worded by the server, in the reader's language. */
+        $this->assertSame('Activo', $row['status']);
+        // What the business typed is untouched.
+        $this->assertSame('Salon Manager', $row['role']);
     }
 
     public function test_the_add_staff_form_is_translated(): void

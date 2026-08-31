@@ -168,4 +168,38 @@ class NavigationTest extends TestCase
 
         return substr($html, $start, $end - $start);
     }
+
+    /**
+     * A screen that does not exist yet must not look like one you can open.
+     *
+     * Shifts, Calendar and Resource Availability rendered as ordinary links
+     * to "#": clicking one did nothing, which reads as a broken product
+     * rather than as work still to come.
+     */
+    public function test_an_unbuilt_screen_is_marked_unavailable_rather_than_linked(): void
+    {
+        $content = $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/dashboard')
+            ->assertOk()
+            ->getContent();
+
+        /* Shifts is in the Staff menu and has no route. It is drawn dimmed,
+           marked unavailable to a screen reader, and says why. */
+        $this->assertMatchesRegularExpression(
+            '~sd-menu__item--soon.*?aria-disabled="true".*?Shifts~s',
+            $content,
+        );
+
+        /* And nothing anywhere is a link to nowhere. */
+        $this->assertStringNotContainsString('href="#" data-pending-route', $content);
+    }
+
+    public function test_a_built_screen_is_still_an_ordinary_link(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/dashboard')
+            ->assertOk()
+            ->assertSee('href="'.route('staff.index').'"', false)
+            ->assertSee('href="'.route('staff.create').'"', false);
+    }
 }

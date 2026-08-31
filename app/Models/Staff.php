@@ -8,6 +8,7 @@ use App\Support\StaffOptions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
 /**
@@ -46,6 +47,8 @@ class Staff extends Model
             'provides_services' => 'boolean',
             'login_enabled' => 'boolean',
             'archived_at' => 'datetime',
+            'date_of_birth' => 'date',
+            'started_on' => 'date',
             'specialities' => 'array',
         ];
     }
@@ -115,6 +118,62 @@ class Staff extends Model
      * model was expected. The column stays for now because every existing
      * caller writes it; the relation takes a name that cannot collide.
      */
+    /**
+     * The working pattern this person is on — the template their schedule is
+     * generated from, never the schedule itself.
+     */
+    public function shiftRule(): BelongsTo
+    {
+        return $this->belongsTo(ShiftRule::class);
+    }
+
+    /** The dated shifts this person works. */
+    public function shifts(): HasMany
+    {
+        return $this->hasMany(StaffShift::class);
+    }
+
+    /**
+     * A small report on this person, from the data that actually exists.
+     *
+     * Shifts and the hours in them — the appointment figures the spec also
+     * asks for need a booking module, and a card reading "—" is a card that
+     * teaches the reader to ignore the row. Structured as a list so the rest
+     * slot in beside these rather than replacing them.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function scheduleSummary(): array
+    {
+        $week = [now()->startOfWeek(), now()->endOfWeek()];
+        $month = [now()->startOfMonth(), now()->endOfMonth()];
+
+        $between = fn (array $range) => $this->shifts()
+            ->whereDate('date', '>=', $range[0]->toDateString())
+            ->whereDate('date', '<=', $range[1]->toDateString())
+            ->where('status', '!=', 'cancelled')
+            ->get();
+
+        $thisWeek = $between($week);
+        $thisMonth = $between($month);
+
+        $hours = fn ($shifts) => round(
+            $shifts->sum(fn (StaffShift $shift) => $shift->workedMinutes()) / 60, 1
+        );
+
+        return [
+            ['key' => 'shifts_this_week', 'value' => $thisWeek->count()],
+            ['key' => 'hours_this_week', 'value' => $hours($thisWeek)],
+            ['key' => 'shifts_this_month', 'value' => $thisMonth->count()],
+            ['key' => 'hours_this_month', 'value' => $hours($thisMonth)],
+            ['key' => 'upcoming_shifts', 'value' => $this->shifts()
+                ->whereDate('date', '>=', now()->toDateString())
+                ->where('status', '!=', 'cancelled')
+                ->count()],
+            ['key' => 'services', 'value' => $this->services()->count()],
+        ];
+    }
+
     public function roleRecord(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'role_id');
@@ -123,6 +182,19 @@ class Staff extends Model
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class, 'service_staff');
+    }
+
+    /**
+     * The chairs, rooms or stations this person works at.
+     *
+     * The mirror of a service's own mapping: the service says which rooms
+     * will do, this says which of them this person uses. An empty set is not
+     * "none" but "no restriction recorded" — the same reading as locations,
+     * and the one a single-chair business never has to think about.
+     */
+    public function resources(): BelongsToMany
+    {
+        return $this->belongsToMany(Resource::class);
     }
 
     /**
@@ -142,6 +214,14 @@ class Staff extends Model
 
         if ($this->membership_status === 'suspended') {
             return 'suspended';
+        }
+
+        /* Away, not gone. Kept apart from "inactive" because the two mean
+           different things to a rota: an inactive person has left the
+           business, someone on leave is coming back and their record, their
+           services and their room stay where they are. */
+        if ($this->membership_status === 'on-leave') {
+            return 'on-leave';
         }
 
         if ($this->invite_status === 'expired') {
@@ -165,6 +245,28 @@ class Staff extends Model
         }
 
         return $this->is_active ? 'active' : 'inactive';
+    }
+
+    /**
+     * How many people are on the team right now.
+     *
+     * Counted through status(), not with a WHERE: several of the things that
+     * stop somebody being active are facts about other records — an
+     * unaccepted invitation, an archive timestamp — and a SQL copy of that
+     * rule would be a second definition free to disagree with the first. The
+     * directory pages in memory for the same reason, and at the scale a staff
+     * list actually reaches this is one small query.
+     *
+     * Not memoised: a static would outlive the request in a test or under a
+     * long-running worker and hand back a count from a page ago. The layout
+     * asks once and passes the answer to both navigation partials.
+     */
+    public static function activeCount(): int
+    {
+        return static::query()
+            ->get(['id', 'user_id', 'is_active', 'membership_status', 'invite_status', 'archived_at'])
+            ->filter(fn (self $member) => $member->status() === 'active')
+            ->count();
     }
 
     /**

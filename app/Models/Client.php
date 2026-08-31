@@ -178,6 +178,23 @@ class Client extends Model
         return $this->hasMany(ClientNote::class)->latest();
     }
 
+    /**
+     * How this client likes to be booked, as somebody said it.
+     *
+     * Kept apart from preferences(), which is the business's own list of
+     * service preferences: one is chosen from a set the business maintains,
+     * the other is whatever the client actually asked for.
+     */
+    public function bookingPreferences(): HasMany
+    {
+        return $this->hasMany(ClientBookingPreference::class)->orderBy('position')->orderBy('id');
+    }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
     public function preferences(): BelongsToMany
     {
         return $this->belongsToMany(ClientPreference::class);

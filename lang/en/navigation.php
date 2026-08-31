@@ -34,4 +34,7 @@ return [
     'sign_out' => 'Sign out',
     'invite_team_members' => 'Invite team members',
     'add' => 'Add',
+
+    'active_staff' => '{0} No active staff|{1} :count active staff member|[2,*] :count active staff members',
+    'coming_soon' => 'Soon',
 ];

@@ -85,19 +85,40 @@ class StaffProfileTest extends TestCase
 
     // ------------------------------------------------------- row actions
 
+    /**
+     * One row's actions menu, from where the listing grid reads it.
+     *
+     * Which entries a row offers is a permission question the server answers
+     * — so it is asserted against the payload rather than against markup.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function menuFor(User $viewer, Staff $member): array
+    {
+        $rows = $this->actingAs($viewer)
+            ->get('http://styledesk.test/settings/staff/data')
+            ->assertOk()
+            ->json('data');
+
+        $row = collect($rows)->firstWhere('id', $member->id);
+
+        return $row['menu'] ?? [];
+    }
+
     public function test_each_row_offers_the_actions_the_viewer_may_take(): void
     {
         $owner = $this->owner();
         $amara = $this->member('manager');
 
-        $content = $this->actingAs($owner)->get('http://styledesk.test/settings/staff')->getContent();
+        $menu = $this->menuFor($owner, $amara);
+        $urls = array_column($menu, 'url');
 
-        $this->assertStringContainsString(route('settings.staff.show', $amara), $content);
-        $this->assertStringContainsString(route('settings.staff.edit', $amara), $content);
-        // show and destroy are the same URL with different verbs, so the
-        // delete action is identified by its own marker rather than by a
-        // route() string that also matches the profile link.
-        $this->assertStringContainsString('data-name="'.$amara->displayName().'"', $content);
+        $this->assertContains(route('settings.staff.show', $amara), $urls);
+        $this->assertContains(route('settings.staff.edit', $amara), $urls);
+        // show and destroy are the same URL with different verbs, so delete
+        // is identified by its method rather than by a URL that also matches
+        // the profile link.
+        $this->assertContains('DELETE', array_column($menu, 'method'));
     }
 
     /**
@@ -122,14 +143,10 @@ class StaffProfileTest extends TestCase
         $amara = $this->member('manager', ['email' => 'amara2@acme.test']);
 
         $admin = $adminUser->fresh();
-        $content = $this->actingAs($admin)->get('http://styledesk.test/settings/staff')->getContent();
+        $menu = $this->menuFor($admin, $amara);
 
-        $this->assertStringContainsString(route('settings.staff.edit', $amara), $content);
-
-        // Not 'data-delete-staff': that literal also appears in the page's own
-        // querySelectorAll call, so it is present whether or not any row
-        // renders the button. The per-row data-name is the real marker.
-        $this->assertStringContainsString('data-name="'.$amara->displayName().'"', $content);
+        $this->assertContains(route('settings.staff.edit', $amara), array_column($menu, 'url'));
+        $this->assertContains('DELETE', array_column($menu, 'method'));
 
         // But never their own row, and never the last owner's.
         $ownStaff = Staff::withoutGlobalScopes()->where('user_id', $admin->id)->firstOrFail();
@@ -141,9 +158,9 @@ class StaffProfileTest extends TestCase
         $owner = $this->owner();
         $ownStaff = Staff::withoutGlobalScopes()->where('user_id', $owner->id)->firstOrFail();
 
-        $content = $this->actingAs($owner)->get('http://styledesk.test/settings/staff')->getContent();
+        $menu = $this->menuFor($owner, $ownStaff);
 
-        $this->assertStringNotContainsString('data-name="'.$ownStaff->displayName().'"', $content);
+        $this->assertNotContains('DELETE', array_column($menu, 'method'));
     }
 
     // ---------------------------------------------------------- profile

@@ -55,6 +55,65 @@ const FORMATTERS = {
 
     text: (cell) => orDash(cell.getValue()),
 
+    /* A value with a padlock beside it when the row says it is settled — a
+       published day on a rota, which cannot be changed without telling
+       somebody about it. The flag travels as <field>_locked and its wording
+       as locked_label, the same way badge takes its tone from
+       <field>_class: the server decides what is locked and what to call it,
+       and the grid only draws it. */
+    lockable: (cell) => {
+        const row = cell.getRow().getData();
+        const value = cell.getValue();
+
+        if (!value) {
+            return orDash(value);
+        }
+
+        if (!row[`${cell.getColumn().getField()}_locked`]) {
+            return escape(value);
+        }
+
+        const label = escape(row.locked_label ?? '');
+
+        return `<span class="styledesk_locked">${escape(value)}<svg class="styledesk_locked__icon"
+            width="12" height="12" viewBox="0 0 24 24" fill="none" role="img"
+            aria-label="${label}" data-tip="${label}">
+            <rect x="4.5" y="10.5" width="15" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M8 10.5V7.75a4 4 0 0 1 8 0v2.75" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round"/>
+        </svg></span>`;
+    },
+
+    /**
+     * One month of one person's rota.
+     *
+     * The value is an object rather than a string — the state decides the
+     * colour, the label is already translated and the url is where the cell
+     * leads — because a cell that carried only its words would have the
+     * grid deciding what "Draft" looks like and where it goes.
+     */
+    schedule: (cell) => {
+        const month = cell.getValue();
+
+        if (!month) {
+            return '';
+        }
+
+        const count = month.shifts
+            ? `<span class="styledesk_monthcell__meta" aria-hidden="true">${escape(String(month.shifts))}</span>`
+            : '';
+
+        /* A month that can be read in place says where to read it. Without
+           script the href is what happens, which is the same month on its own
+           page — see the board's own script. */
+        const modal = month.modal ? ` data-schedule-modal="${escape(month.modal)}"` : '';
+
+        return `<a href="${escape(month.url)}"${modal} class="styledesk_monthcell styledesk_monthcell--${escape(month.tone)}"
+            aria-label="${escape(month.describe ?? month.label)}" title="${escape(month.describe ?? month.label)}">
+            <span class="styledesk_monthcell__label">${escape(month.label)}</span>${count}
+        </a>`;
+    },
+
     /* A status or a state, in the colour it is given everywhere else. The
        class travels with the row so the palette is decided once, on the
        server, rather than mapped again per listing. */
@@ -112,8 +171,34 @@ function mount(Tabulator, el) {
             definition.minWidth = column.min ?? 120;
         }
 
-        if (column.muted) {
-            definition.cssClass = 'is-muted';
+        /* A class the page asked for, on the header cell and on every cell
+           under it — which is how a whole column can be marked out. */
+        definition.cssClass = [column.muted ? 'is-muted' : null, column.class ?? null]
+            .filter(Boolean)
+            .join(' ') || undefined;
+
+        /* Pinned to the left while the rest scrolls under it. A matrix whose
+           row labels scroll away is one nobody can read past the fourth
+           column — and the library is what owns the row heights, so this is
+           the only place the two halves can be kept in step. */
+        if (column.frozen) {
+            definition.frozen = true;
+        }
+
+        /* A header that says more than its own name — the month marked as
+           this one. Titles are drawn as HTML, so the page can hand over a
+           badge above the label; everything in it is escaped there. */
+        if (column.title_html) {
+            definition.title = column.title_html;
+            definition.headerHozAlign = 'center';
+        }
+
+        if (column.type === 'schedule') {
+            definition.hozAlign = 'center';
+            definition.headerHozAlign = definition.headerHozAlign ?? 'center';
+            /* Stopped here, so the row's own click does not navigate out from
+               under the month the reader actually aimed at. */
+            definition.cellClick = (event) => event.stopPropagation();
         }
 
         if (column.type === 'actions') {
@@ -183,7 +268,11 @@ function mount(Tabulator, el) {
                 .replace(':total', totalRows);
         },
 
-        layout: 'fitColumns',
+        /* fitColumns by default: a listing's columns share the width they
+           are given. A board of months instead keeps every column at its
+           stated width and scrolls sideways, because hiding March to answer
+           "who is covered in March" is answering it wrongly. */
+        layout: config.layout ?? 'fitColumns',
 
         // Every cell centred against its row, so a badge, an avatar and a
         // line of text all sit on the same line rather than each finding its
@@ -215,8 +304,9 @@ function mount(Tabulator, el) {
         index: 'id',
 
         /* Columns leave in the order the page set out, worst first: the ones
-           a reader needs are the last to go. */
-        responsiveLayout: 'hide',
+           a reader needs are the last to go. A page that scrolls sideways
+           says so instead, and keeps them all. */
+        responsiveLayout: config.responsive === false ? false : 'hide',
 
         columns,
     });

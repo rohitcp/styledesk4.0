@@ -141,11 +141,18 @@ class AppSettingsTest extends TestCase
         }
     }
 
-    public function test_the_spec_s_thirty_six_modules_are_all_configured(): void
+    /**
+     * The original spec listed 36. Shift Rules was asked for afterwards and
+     * makes 37 — the count is updated deliberately rather than loosened to a
+     * minimum, because the point of this test is that the config and the spec
+     * are the same list, and a `>=` would stop noticing a module added by
+     * accident.
+     */
+    public function test_every_specified_settings_module_is_configured(): void
     {
         $count = collect(config('app_settings.groups'))->sum(fn ($g) => count($g['modules']));
 
-        $this->assertSame(36, $count, 'The spec lists 36 settings modules.');
+        $this->assertSame(37, $count, 'The spec lists 36 settings modules, plus Shift Rules.');
     }
 
     public function test_module_keys_are_unique(): void

@@ -24,6 +24,28 @@ return [
         ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'grid-2', 'route' => 'dashboard'],
         ['key' => 'calendar', 'label' => 'Calendar', 'icon' => 'calendar', 'pending' => 'calendar.html'],
 
+        /*
+        | Bookings — the diary. Two things anyone opens this menu for: the
+        | appointments already taken and the screen that takes another. Leads
+        | are enquiries that have not become appointments yet, which is a
+        | different list and not built.
+        */
+        [
+            'key' => 'bookings',
+            'label' => 'Booking',
+            'icon' => 'calendar-check',
+            'route' => 'bookings.index',
+            'children' => [
+                ['section' => 'Management'],
+                ['label' => 'All Bookings', 'route' => 'bookings.index'],
+                ['label' => 'Booking Leads', 'route' => 'bookings.leads'],
+
+                ['section' => 'Quick Actions'],
+                ['label' => '+ Add Booking', 'route' => 'bookings.create'],
+                ['label' => '+ Add Walk-in', 'route' => 'bookings.create', 'params' => ['walk-in' => 1]],
+            ],
+        ],
+
         [
             'key' => 'clients',
             'label' => 'Clients',
@@ -74,7 +96,36 @@ return [
             ],
         ],
 
-        ['key' => 'staff', 'label' => 'Staff', 'icon' => 'users'],
+        /*
+        | Staff — §1 and §2. Two groups under their own headings, the same
+        | shape Services uses: what you open to look something up, and what
+        | you open to add something.
+        |
+        | `count` names an entry in Nav::counts(), so the label reads
+        | "Staff · 12" and the 12 is counted on the way out rather than stored
+        | anywhere that could fall behind.
+        |
+        | App Settings keeps its own Staff screens. These are the same
+        | records, the same form and the same controller reached from the
+        | module instead — see App\Support\StaffSection.
+        */
+        [
+            'key' => 'staff',
+            'label' => 'Staff',
+            'icon' => 'users',
+            'route' => 'staff.index',
+            'count' => 'staff',
+            'children' => [
+                ['section' => 'Management'],
+                ['label' => 'All Staff', 'route' => 'staff.index'],
+                ['label' => 'Staff Schedule', 'route' => 'staff.schedules'],
+                ['label' => 'Shifts', 'route' => 'shifts.index'],
+
+                ['section' => 'Quick Actions'],
+                ['label' => '+ Add Staff', 'route' => 'staff.create'],
+                ['label' => '+ Add Staff Schedule', 'pending' => 'staff-schedule-add.html'],
+            ],
+        ],
         ['key' => 'sales', 'label' => 'Sales', 'icon' => 'credit-card'],
         ['key' => 'marketing', 'label' => 'Marketing', 'icon' => 'bullhorn'],
         ['key' => 'reports', 'label' => 'Reports', 'icon' => 'chart-simple'],

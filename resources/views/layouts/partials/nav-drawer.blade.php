@@ -30,14 +30,25 @@
     </div>
 
     <nav class="styledesk_drawer__body" aria-label="Main">
+      @php $navCounts = $navCounts ?? []; @endphp
+
       @foreach (config('navigation.primary') as $item)
-        @php $active = \App\Support\Nav::isActive($item); @endphp
+        @php
+            $active = \App\Support\Nav::isActive($item);
+            $count = $navCounts[$item['count'] ?? ''] ?? null;
+        @endphp
 
         <a href="{{ \App\Support\Nav::href($item) }}" {!! \App\Support\Nav::pending($item) !!}
            class="styledesk_drawerlink @if ($active) is-active @endif"
            @if ($active) aria-current="page" @endif>
           <span class="styledesk_drawerlink__icon"><x-icon :name="$item['icon']" size="17" /></span>
           {{ \App\Support\Nav::label($item) }}
+
+          {{-- "Staff · 12". The drawer draws labels, so the number can simply
+               follow the word it is about. --}}
+          @if ($count !== null)
+            <span class="styledesk_drawerlink__count">{{ $count }}</span>
+          @endif
         </a>
 
         {{-- Children are listed inline rather than behind another tap. The
@@ -52,8 +63,16 @@
                      links reads as a list without them. --}}
                 <span class="styledesk_drawersub__section">{{ $child['section'] }}</span>
               @else
-                <a href="{{ \App\Support\Nav::href($child) }}" {!! \App\Support\Nav::pending($child) !!}
-                   class="styledesk_drawersub @if (\App\Support\Nav::isCurrent($child)) is-active @endif">{{ $child['label'] }}</a>
+                @if (\App\Support\Nav::isPending($child))
+                  <span class="styledesk_drawersub styledesk_drawersub--soon" aria-disabled="true"
+                        {!! \App\Support\Nav::pending($child) !!}>
+                    {{ $child['label'] }}
+                    <span class="sd-menu__soon">{{ __('navigation.coming_soon') }}</span>
+                  </span>
+                @else
+                  <a href="{{ \App\Support\Nav::href($child) }}"
+                     class="styledesk_drawersub @if (\App\Support\Nav::isCurrent($child)) is-active @endif">{{ $child['label'] }}</a>
+                @endif
               @endif
             @endforeach
           </div>

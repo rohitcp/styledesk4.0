@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
+use App\Models\BookingLead;
+use App\Models\BookingService;
 use App\Models\Client;
 use App\Models\ClientNote;
 use App\Models\ClientSettings;
 use App\Models\ClientTag;
 use App\Models\Staff;
 use App\Models\Tenant;
+use App\Support\ClientBookingContext;
 use App\Support\ClientOptions;
 use App\Support\InputCase;
 use Illuminate\Contracts\View\View;
@@ -466,8 +470,63 @@ class ClientController extends Controller
                 ->each(fn (ClientNote $note) => $note->readable = $note->isVisibleTo($user))
             : collect();
 
+        /* What this client has actually booked, so the panel's filters
+           cannot offer a year, a month or a service that finds nothing —
+           and so the leads tab appears only where there are leads. */
+        $bookingDates = Booking::query()
+            ->where('client_id', $client->id)
+            ->whereNot('status', 'draft')
+            ->orderByDesc('date')
+            ->pluck('date');
+
+        /* The nearest thing in the diary, and whether there is more behind
+           it. Read from the bookings themselves rather than the client's
+           denormalised `next_booking_at`, which knows a date and nothing
+           else — and a card that shows a date it cannot name a service for
+           is a card that makes the reader open something. */
+        $upcoming = Booking::query()
+            ->with(['staff', 'services', 'location'])
+            ->where('client_id', $client->id)
+            /* Confirmed only. "Arrived" is somebody who is here now — the
+               answer to "where are they", not to "when are they next in" —
+               and the card is read to plan the next visit rather than to
+               work the current one. */
+            ->where('status', 'confirmed')
+            /* Today counts, whatever the clock says. A 2pm appointment is
+               still the answer to "when are they next in" at half past —
+               they are in the chair — and a card that went blank at the
+               moment the client walked in would be wrong all afternoon. */
+            ->whereDate('date', '>=', now()->toDateString())
+            ->orderBy('date')->orderBy('starts_at')
+            ->get();
+
         return view('clients.show', [
-            'client' => $client,
+            'nextBooking' => $upcoming->first(),
+            'upcomingCount' => $upcoming->count(),
+            'bookingYears' => $bookingDates
+                ->map(fn ($date) => $date->format('Y'))
+                ->unique()
+                ->values()
+                ->mapWithKeys(fn (string $year) => [$year => $year]),
+            'bookingServices' => BookingService::query()
+                ->whereIn('booking_id', Booking::query()->where('client_id', $client->id)->select('id'))
+                ->whereNotNull('service_id')
+                ->get(['service_id', 'name'])
+                ->unique('service_id')
+                ->sortBy('name')
+                ->pluck('name', 'service_id'),
+            /* A tab for something nobody has is a tab that teaches the
+               reader the wrong thing about this client. */
+            'hasLeads' => BookingLead::query()
+                ->where('client_id', $client->id)
+                ->where('status', '!=', 'converted')
+                ->exists(),
+            'client' => $client->load('bookingPreferences'),
+
+            /* The booking history read as facts about the person: how often
+               they come, when they like to be seen. Worked out here rather
+               than stored, so it cannot fall behind the diary. */
+            'bookingContext' => ClientBookingContext::for($client)->toArray(),
 
             // What this client carries, and everything this business could
             // put on them — the modal needs both to show ticks against a list.

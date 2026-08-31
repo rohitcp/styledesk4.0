@@ -21,7 +21,18 @@ const props = defineProps({
     use12Hours: { type: Boolean, default: true },
     disabled: { type: Boolean, default: false },
     placeholder: { type: String, default: 'Select time' },
+    searchPlaceholder: { type: String, default: 'Type a time' },
     ariaLabel: { type: String, default: 'Select time' },
+    /**
+     * Validation rules for the value this control posts, in the shared
+     * live-validation syntax, and the id the message is addressed to.
+     *
+     * Carried on the hidden input because that is the thing that holds the
+     * answer — the control itself is a button, and a button has no value to
+     * check. The same arrangement MultiSelect uses.
+     */
+    rules: { type: String, default: '' },
+    fieldId: { type: String, default: null },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -31,7 +42,8 @@ const above = ref(false);
 const root = ref(null);
 const hourCol = ref(null);
 const minuteCol = ref(null);
-const meridiemCol = ref(null);
+const query = ref('');
+const searchBox = ref(null);
 
 /** Draft the panel edits, so cancelling by clicking away leaves the value alone. */
 const draft = ref(parse(props.modelValue));
@@ -50,16 +62,116 @@ function pad(n) {
     return String(n).padStart(2, '0');
 }
 
-const hours = computed(() =>
+const allHours = computed(() =>
     props.use12Hours
         ? Array.from({ length: 12 }, (_, i) => (i === 0 ? 12 : i))
         : Array.from({ length: 24 }, (_, i) => i)
 );
 
-const minutes = computed(() => {
+const allMinutes = computed(() => {
     const step = Math.max(1, props.minuteStep);
 
     return Array.from({ length: Math.ceil(60 / step) }, (_, i) => i * step);
+});
+
+/**
+ * What the reader typed, read as a time rather than as a filter string.
+ *
+ * Two short columns are quick to point at and slow to reach for the keyboard,
+ * which is the whole reason this box exists: "230p" is three keystrokes and a
+ * return, where the columns are a scroll, a click, a scroll and a click.
+ *
+ * Everything is optional, because a half-typed time still has to narrow
+ * something — "9" is nine o'clock in either half of the day, and the columns
+ * say so until the reader has typed enough to mean one of them.
+ */
+const search = computed(() => {
+    const raw = query.value.trim().toLowerCase();
+
+    if (raw === '') {
+        return { hour: null, minute: null, meridiem: null, complete: false };
+    }
+
+    /* am / pm anywhere in the string, spelt with or without the m and with or
+       without a space, because all four are what people type. */
+    const meridiem = /p\.?m?\b|p$/.test(raw) ? 'PM' : (/a\.?m?\b|a$/.test(raw) ? 'AM' : null);
+
+    let hour = null;
+    let minute = null;
+
+    /* A separator says where the split is, so "2:30" is two thirty rather
+       than something to be worked out from how many digits were typed. */
+    const parts = raw.split(/[:.\s]+/).map((part) => part.replace(/[^0-9]/g, '')).filter(Boolean);
+
+    if (/[:.]/.test(raw) && parts.length >= 1) {
+        hour = parts[0].slice(0, 2);
+        minute = parts[1] !== undefined ? parts[1].slice(0, 2) : null;
+    } else {
+        /* No separator, so the digits decide: "9" is an hour, "930" is nine
+           thirty, "0930" the same written out. */
+        const digits = raw.replace(/[^0-9]/g, '');
+
+        if (digits.length === 1 || digits.length === 2) {
+            hour = digits;
+        } else if (digits.length === 3) {
+            hour = digits.slice(0, 1);
+            minute = digits.slice(1);
+        } else if (digits.length >= 4) {
+            hour = digits.slice(0, 2);
+            minute = digits.slice(2, 4);
+        }
+    }
+
+    if (hour === '') {
+        hour = null;
+    }
+
+    return {
+        hour,
+        minute,
+        meridiem,
+        complete: hour !== null && minute !== null && minute.length === 2,
+    };
+});
+
+/**
+ * The columns, narrowed to what is still reachable from what was typed.
+ *
+ * Matched on the number rather than on the text, so "9" finds 9 and 09 alike
+ * and does not also find 19 — a filter that widened as you typed would be
+ * worse than none.
+ */
+const hours = computed(() => {
+    const typed = search.value.hour;
+
+    if (typed === null) {
+        return allHours.value;
+    }
+
+    const wanted = Number(typed);
+    const shown = props.use12Hours && wanted > 12 ? wanted % 12 || 12 : wanted;
+
+    const matches = allHours.value.filter((h) => h === shown);
+
+    /* Nothing matched — an hour that does not exist. The full column is left
+       standing rather than emptied: a panel with nothing in it looks broken,
+       and the reader can still point at what they meant. */
+    return matches.length ? matches : allHours.value;
+});
+
+const minutes = computed(() => {
+    const typed = search.value.minute;
+
+    if (typed === null) {
+        return allMinutes.value;
+    }
+
+    /* One digit is a prefix — "3" means the thirties — and two are exact. */
+    const matches = typed.length === 1
+        ? allMinutes.value.filter((m) => String(m).padStart(2, '0').startsWith(typed))
+        : allMinutes.value.filter((m) => m === Number(typed));
+
+    return matches.length ? matches : allMinutes.value;
 });
 
 const meridiem = computed(() => (draft.value.hour === null ? 'AM' : draft.value.hour < 12 ? 'AM' : 'PM'));
@@ -105,6 +217,14 @@ function commit() {
     if (stored.value !== props.modelValue) {
         emit('update:modelValue', stored.value);
     }
+
+    /* The hidden input is what holds the answer and nothing focuses it, so
+       there is no blur for the shared validator to hear. This is the same
+       announcement the combo boxes make for the same reason. */
+    nextTick(() => {
+        root.value?.querySelector('input[type="hidden"]')
+            ?.dispatchEvent(new CustomEvent('sd:combo-change', { bubbles: true }));
+    });
 }
 
 function pickHour(shown) {
@@ -143,6 +263,43 @@ function pickMeridiem(value) {
     scrollToSelection();
 }
 
+/**
+ * Take what was typed, if it is enough to be a time.
+ *
+ * Only on a complete answer: committing halfway would change the field under
+ * somebody who is still typing.
+ */
+function applySearch() {
+    if (!search.value.complete) {
+        return;
+    }
+
+    let hour = Number(search.value.hour);
+    const minute = Number(search.value.minute);
+
+    if (Number.isNaN(hour) || Number.isNaN(minute) || minute > 59) {
+        return;
+    }
+
+    /* A bare "2:30" in a 12-hour picker keeps the half of the day already
+       chosen. Defaulting to AM would silently move an afternoon shift to two
+       in the morning, and the reader has said nothing about which they meant. */
+    if (props.use12Hours && hour <= 12) {
+        const half = search.value.meridiem ?? meridiem.value;
+        const base = hour % 12;
+
+        hour = half === 'PM' ? base + 12 : base;
+    }
+
+    if (hour > 23) {
+        return;
+    }
+
+    draft.value = { hour, minute };
+    commit();
+    close();
+}
+
 function now() {
     const date = new Date();
     const step = Math.max(1, props.minuteStep);
@@ -158,7 +315,10 @@ function now() {
 
 function scrollToSelection() {
     nextTick(() => {
-        [hourCol, minuteCol, meridiemCol].forEach((col) => {
+        /* The AM/PM column is not in this list. It holds two rows and is
+           fixed in place — scrolling a two-row column pushed whichever one
+           was not chosen out of sight. */
+        [hourCol, minuteCol].forEach((col) => {
             const on = col.value?.querySelector('.styledesk_timepicker__opt--on');
 
             if (on) {
@@ -182,12 +342,18 @@ function toggle() {
         const box = root.value.getBoundingClientRect();
         above.value = window.innerHeight - box.bottom < 300 && box.top > 300;
 
+        /* A fresh box each time it opens: yesterday's query narrowing today's
+           columns is a panel that looks broken. */
+        query.value = '';
+
         scrollToSelection();
+        nextTick(() => searchBox.value?.focus());
     }
 }
 
 function close() {
     open.value = false;
+    query.value = '';
 }
 
 function onDocumentClick(event) {
@@ -216,7 +382,8 @@ onBeforeUnmount(() => {
 
 <template>
     <div ref="root" class="styledesk_timepicker" :class="{ 'styledesk_timepicker--open': open }">
-        <input v-if="name" type="hidden" :name="name" :value="stored">
+        <input v-if="name" type="hidden" :name="name" :value="stored"
+               :id="fieldId" :data-rules="rules || null">
 
         <button type="button" class="styledesk_timepicker__field" :disabled="disabled"
                 :aria-label="ariaLabel" :aria-expanded="open" aria-haspopup="dialog" @click.stop="toggle">
@@ -231,6 +398,18 @@ onBeforeUnmount(() => {
 
         <div v-if="open" class="styledesk_timepicker__panel"
              :class="{ 'styledesk_timepicker__panel--above': above }" role="dialog" :aria-label="ariaLabel">
+            <!-- Typing beats scrolling for a time you already know: "230p"
+                 is three keystrokes and a return, where the columns are a
+                 scroll, a click, a scroll and a click. -->
+            <div class="styledesk_timepicker__search">
+                <input ref="searchBox" v-model="query" type="text" inputmode="numeric"
+                       class="sd-input h-9 text-[13px]"
+                       :placeholder="searchPlaceholder" :aria-label="searchPlaceholder"
+                       autocomplete="off"
+                       @keydown.enter.prevent="applySearch"
+                       @keydown.esc.prevent="close">
+            </div>
+
             <div class="styledesk_timepicker__cols">
                 <div ref="hourCol" class="styledesk_timepicker__col" role="listbox" aria-label="Hour">
                     <button v-for="h in hours" :key="h" type="button" role="option"
@@ -252,7 +431,11 @@ onBeforeUnmount(() => {
                     </button>
                 </div>
 
-                <div v-if="use12Hours" ref="meridiemCol" class="styledesk_timepicker__col" role="listbox" aria-label="AM or PM">
+                <!-- Two rows, pinned. As a scrolling column it inherited the
+                     196px of bottom padding the long columns need, so choosing
+                     one scrolled the other out of sight. -->
+                <div v-if="use12Hours" class="styledesk_timepicker__col styledesk_timepicker__col--fixed"
+                     role="listbox" aria-label="AM or PM">
                     <button v-for="value in ['AM', 'PM']" :key="value" type="button" role="option"
                             :aria-selected="meridiem === value"
                             class="styledesk_timepicker__opt"

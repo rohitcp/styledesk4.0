@@ -33,6 +33,8 @@ return [
         'presence' => 'Business presence',
         'presence_hint' => 'Where clients find you outside StyleDesk.',
         'advanced' => 'Advanced information',
+        'payments' => 'Taking payment',
+        'payments_hint' => 'The accounts clients are asked to send money to. Read out at the till, so they are kept exactly as you write them.',
     ],
 
     'fields' => [
@@ -71,6 +73,11 @@ return [
         'default_booking_duration' => 'Default booking duration',
         'default_appointment_interval' => 'Default appointment interval',
         'default_tax_behavior' => 'Default tax behaviour',
+        'default_tax_rate' => 'Tax rate',
+        'paypal_handle' => 'PayPal',
+        'zelle_handle' => 'Zelle',
+        'cash_app_handle' => 'Cash App',
+        'venmo_handle' => 'Venmo',
         'session_timeout' => 'Session timeout',
         'default_staff_assignment' => 'Default staff assignment',
         'allow_online_booking' => 'Allow online booking',
@@ -154,6 +161,7 @@ return [
     ],
 
     'hints' => [
+        'tax_rate' => 'A percentage. Used on booking totals where tax is charged.',
         'inactive' => 'An inactive business is hidden from public booking.',
         'session_timeout' => 'Automatically sign users out after a period of inactivity.',
         'interval' => 'The grid booking start times snap to.',
@@ -164,6 +172,10 @@ return [
         'legal_name' => 'As registered, if different from the trading name',
         'category' => 'Curly hair specialists',
         'description' => 'A sentence clients will read on your booking page.',
+        'paypal_handle' => 'paypal.me/yoursalon',
+        'zelle_handle' => 'pay@yoursalon.com',
+        'cash_app_handle' => '$yoursalon',
+        'venmo_handle' => '@yoursalon',
     ],
 
     'choose' => [

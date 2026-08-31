@@ -18,6 +18,19 @@ return [
     'pending_note' => 'Settings that describe booking screens and client profiles are stored now and take effect as those screens arrive.',
 
     'sections' => 'Sections on this page',
+    /*
+    | What a client's own bookings say about them, as sentences a person can
+    | say out loud. Worked out from the diary — see App\Support\ClientInsights.
+    */
+    'insights' => [
+        'cadence' => '{1} Usually books every week|[2,*] Usually books every :count weeks',
+        'service' => 'Most often books :service',
+        'staff' => 'Usually books with :name',
+        'value' => 'Average booking value :amount',
+        'window' => 'Prefers :window appointments',
+        'attendance' => 'Last :count visits kept, none cancelled',
+    ],
+
     'behavioral' => [
         'title' => 'Behavioural tags',
         'intro' => 'Tags StyleDesk works out for itself from booking, attendance, spending and engagement — as opposed to the ones your team puts on by hand.',
@@ -353,6 +366,15 @@ return [
          * with no appointments has none because bookings have not shipped, and
          * a page that says so is one nobody has to investigate.
          */
+        'booking_preferences' => [
+            'title' => 'Booking preferences',
+            'none' => 'Nothing noted yet.',
+            'add' => 'Add a booking preference',
+            'placeholder' => 'Prefers afternoon appointments',
+            'remove' => 'Remove ":label"',
+            'added' => 'Booking preference added.',
+            'removed' => 'Booking preference removed.',
+        ],
         'workspace' => [
             'back' => 'Back to clients',
             'dob' => 'DOB: :date',
@@ -365,6 +387,7 @@ return [
                 'awaiting_bookings' => 'Counts appear once bookings arrive.',
             ],
             'tabs' => [
+                'leads' => 'Leads',
                 'activity' => 'Activity',
                 'bookings' => 'Bookings',
                 'notes' => 'Notes',
@@ -453,6 +476,14 @@ return [
                 'pending_modules' => 'Bookings, messages and payments join this timeline as those parts of StyleDesk arrive.',
             ],
             'bookings' => [
+                'all_dates' => 'All dates',
+                'with' => 'with :name',
+                'view_upcoming' => 'View upcoming appointments',
+                'all_years' => 'All years',
+                'all_months' => 'All months',
+                'all_services' => 'All services',
+                'none_match' => 'No bookings match these filters.',
+                'view_full' => 'View full booking',
                 'upcoming' => 'Upcoming',
                 'previous' => 'Previous visits',
                 'none_upcoming' => 'No upcoming appointments.',

@@ -62,27 +62,64 @@
 </section>
 
 {{-- ---------------------------------------------------- next appointment --}}
+{{-- The nearest one only. A client with four upcoming appointments needs to
+     know about the next one and to be told there are more — a list of four
+     in a 19rem column is a list nobody reads. --}}
 <section class="styledesk_infocard styledesk_infocard--blue mt-5">
-    <h2 class="styledesk_infocard__title">{{ __('clients.module.workspace.bookings.next_appointment') }}</h2>
+    <div class="flex items-start gap-2">
+        <h2 class="styledesk_infocard__title flex-1 min-w-0">{{ __('clients.module.workspace.bookings.next_appointment') }}</h2>
 
-    @if ($client->next_booking_at)
-        <p class="text-[15px] font-bold text-head mt-2">{{ $client->next_booking_at->isoFormat('D MMM Y') }}</p>
-        <p class="text-[13px] text-sub">{{ $client->next_booking_at->isoFormat('h:mm A') }}</p>
+        {{-- There whether or not there is an appointment: booking one is the
+             thing this card is most often opened to do. --}}
+        <a href="{{ route('bookings.create', ['client' => $client->id]) }}"
+           class="styledesk_cardbtn styledesk_cardbtn--brand sd-tip shrink-0"
+           data-tip="{{ __('bookings.add.booking') }}"
+           aria-label="{{ __('bookings.add.booking') }}">
+            <x-icon name="plus" size="14" />
+        </a>
+    </div>
 
-        @if ($client->preferredStaff || $client->preferredLocation)
-            <p class="text-[12px] text-sub mt-1.5">
-                {{ collect([$client->preferredStaff?->displayName(), $client->preferredLocation?->name])->filter()->join(' · ') }}
-            </p>
+    @if ($nextBooking)
+        {{-- Clickable in full: it opens the booking's own drawer over this
+             page, which is what somebody reading this card wants next. --}}
+        <button type="button" class="styledesk_nextbooking mt-2" data-drawer="{{ route('bookings.drawer', $nextBooking) }}">
+            <span class="block text-[15px] font-bold text-head">
+                {{ $nextBooking->date->translatedFormat('j M Y · l') }}
+            </span>
+            <span class="block text-[13px] text-sub">{{ $nextBooking->timeLabel() }}</span>
+
+            <span class="block text-[13px] text-ink mt-1.5">{{ $nextBooking->services->pluck('name')->implode(', ') }}</span>
+            <span class="block text-[12px] text-sub">
+                {{ __('clients.module.workspace.bookings.with', ['name' => $nextBooking->staff?->displayName() ?? __('bookings.any_staff')]) }}
+            </span>
+
+            <span class="block text-[12px] text-sub mt-1">
+                {{ collect([
+                    trans_choice('bookings.summary.minutes', (int) $nextBooking->minutes, ['count' => (int) $nextBooking->minutes]),
+                    $nextBooking->location?->name,
+                ])->filter()->join(' · ') }}
+            </span>
+
+            <span class="flex flex-wrap items-center gap-2 mt-2">
+                <span class="styledesk_badge {{ $nextBooking->statusClass() }}">{{ $nextBooking->statusLabel() }}</span>
+                <span class="text-[11px] font-mono text-sub">{{ $nextBooking->reference }}</span>
+            </span>
+        </button>
+
+        @if ($upcomingCount > 1)
+            {{-- Everything else they have booked lives in the Bookings tab,
+                 which is one click away rather than a second list here. --}}
+            <button type="button" class="text-[12px] font-semibold underline mt-2.5" data-open-tab="bookings">
+                {{ __('clients.module.workspace.bookings.view_upcoming') }}
+            </button>
         @endif
-
-        {{-- Show more belongs here once a client can hold several upcoming
-             appointments. One booking cannot be a list, so the control is not
-             drawn for it. --}}
     @else
-        {{-- The sentence and nothing else. A disabled Create booking here
-             offered a way to fix the emptiness that does not exist yet, and
-             the header already carries the same button. --}}
         <p class="text-[13px] text-sub mt-2">{{ __('clients.module.workspace.bookings.none_upcoming') }}</p>
+
+        <a href="{{ route('bookings.create', ['client' => $client->id]) }}"
+           class="text-[12px] font-semibold underline mt-2 inline-block">
+            {{ __('bookings.add.booking') }}
+        </a>
     @endif
 </section>
 

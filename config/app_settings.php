@@ -146,6 +146,15 @@ return [
                     'counts' => ['active_staff', 'pending_invites'],
                 ],
                 [
+                    'key' => 'shift-rules',
+                    'name' => 'Shift Rules',
+                    'description' => 'Reusable working patterns — days, hours, breaks, hour limits and rest — that a staff schedule applies to a person.',
+                    'icon' => 'calendar-days',
+                    'route' => 'settings.shift-rules.index',
+                    'status' => 'active',
+                    'keywords' => ['shift', 'rule', 'pattern', 'rota', 'schedule', 'template', 'overtime', 'break', 'hours'],
+                ],
+                [
                     'key' => 'calendar-scheduling',
                     'name' => 'Calendar & Scheduling',
                     'description' => 'Calendar behaviour, scheduling defaults and how appointments display.',

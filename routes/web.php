@@ -2,6 +2,9 @@
 
 use App\Contracts\TenantStorageContract;
 use App\Http\Controllers\AppSettingsController;
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\BookingLeadController;
+use App\Http\Controllers\ClientBookingPreferenceController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientNoteController;
 use App\Http\Controllers\DashboardController;
@@ -21,7 +24,10 @@ use App\Http\Controllers\Settings\LocationController;
 use App\Http\Controllers\Settings\ResourceCategoryController;
 use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\ServiceCategoryController as SettingsServiceCategoryController;
+use App\Http\Controllers\Settings\ShiftRuleController;
 use App\Http\Controllers\Settings\StaffController;
+use App\Http\Controllers\ShiftController;
+use App\Http\Controllers\StaffScheduleBoardController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
 use App\Http\Controllers\VerificationEmailController;
@@ -301,6 +307,7 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
             ->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::get('create', 'create')->name('create');
+                Route::get('data', 'data')->name('data');
                 Route::post('/', 'store')->name('store');
                 Route::post('avatar', 'uploadAvatar')->name('avatar.upload');
 
@@ -308,9 +315,61 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 // /settings/staff/create would look up a member called
                 // "create" and 404.
                 Route::get('{staff}', 'show')->name('show');
+                Route::get('{staff}/schedule', 'schedule')->name('schedule');
+                Route::get('{staff}/services', 'services')->name('services');
+                Route::get('{staff}/notes', 'notes')->name('notes');
+
+                Route::post('{staff}/services', 'attachServices')->name('services.attach');
+                Route::delete('{staff}/services/{service}', 'detachService')->name('services.detach');
+                Route::patch('{staff}/shift-rule', 'assignShiftRule')->name('shift-rule');
+                /* Its own page rather than a dialog: a fortnight is twenty-eight
+                   time fields, and the range travels in the URL so the screen can
+                   be linked to and the back button means what it says. */
+                Route::get('{staff}/schedule/assign', 'assignScheduleForm')->name('schedule.assign.form');
+                Route::post('{staff}/schedule', 'assignSchedule')->name('schedule.assign');
+                Route::post('{staff}/schedule/draft', 'saveScheduleDraft')->name('schedule.draft');
+                Route::post('{staff}/schedule/publish', 'publishSchedule')->name('schedule.publish');
+                /* The listing grid's own rows, as JSON. */
+                Route::get('{staff}/schedule/data', 'scheduleData')->name('schedule.data');
+                Route::delete('{staff}/schedule/{date}', 'destroyScheduleDay')->name('schedule.day.destroy');
+
+                Route::post('{staff}/notes', 'storeNote')->name('notes.store');
+                Route::delete('{staff}/notes/{note}', 'destroyNote')->name('notes.destroy');
+
                 Route::get('{staff}/edit', 'edit')->name('edit');
                 Route::patch('{staff}', 'update')->name('update');
+                Route::patch('{staff}/status', 'toggleStatus')->name('status');
                 Route::delete('{staff}', 'destroy')->name('destroy');
+            });
+
+        /*
+        | Shift Rules — reusable working patterns.
+        |
+        | Configuration rather than operations, which is why they live here:
+        | a pattern is decided once and revisited rarely, where the rota it
+        | generates is touched every week. Owner and Administrator only, from
+        | the group's own can-manage-settings — a manager meets a shift rule
+        | on the Staff Schedule screen, where they pick one, never here.
+        */
+        Route::controller(ShiftRuleController::class)
+            ->prefix('shift-rules')
+            ->name('shift-rules.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                /* Before {shiftRule}: a literal segment declared after a
+                   parameter is reached by matching "create" as an id. */
+                Route::get('create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                /* Whether the business uses shift rules at all. Its own
+                   address rather than a field on the rule form: it is a
+                   decision about the feature, not about any one rule. */
+                Route::patch('feature', 'setFeature')->name('feature');
+
+                Route::get('{shiftRule}/edit', 'edit')->name('edit');
+                Route::patch('{shiftRule}', 'update')->name('update');
+                Route::post('{shiftRule}/duplicate', 'duplicate')->name('duplicate');
+                Route::patch('{shiftRule}/status', 'setStatus')->name('status');
+                Route::delete('{shiftRule}', 'destroy')->name('destroy');
             });
 
         /*
@@ -528,6 +587,20 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
     | separate. The permission is checked in the controller, so every role
     | that holds clients.view can open it at whatever scope it holds.
     */
+    /*
+    | How a client likes to be booked, kept on the client.
+    |
+    | Added and removed one at a time as somebody mentions them at the desk,
+    | which is why they are not part of the client form.
+    */
+    Route::controller(ClientBookingPreferenceController::class)
+        ->prefix('clients/{client}/booking-preferences')
+        ->name('clients.booking-preferences.')
+        ->group(function () {
+            Route::post('/', 'store')->name('store');
+            Route::delete('{preference}', 'destroy')->name('destroy');
+        });
+
     Route::controller(ClientController::class)
         ->prefix('clients')
         ->name('clients.')
@@ -625,6 +698,175 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::patch('{service}', 'update')->name('update');
             Route::patch('{service}/status', 'toggle')->name('toggle');
             Route::post('{service}/duplicate', 'duplicate')->name('duplicate');
+        });
+
+    /*
+    | Shifts — working hours on a named date.
+    |
+    | Declared before the staff group, not inside it: /staff/{staff} would
+    | otherwise match "shifts" and look for a member of staff by that name.
+    |
+    | Guarded by StaffPolicy through the controller, like the rest of the
+    | module — a shift is a fact about a member of staff, and whoever may
+    | change their record is whoever may say when they work.
+    */
+    Route::controller(ShiftController::class)
+        ->prefix('staff/shifts')
+        ->name('shifts.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            /* Before {shift}: a literal segment declared after a parameter is
+               reached by matching "create" as an id. */
+            Route::get('create', 'create')->name('create');
+            Route::get('data', 'data')->name('data');
+            Route::post('/', 'store')->name('store');
+            Route::get('{shift}/edit', 'edit')->name('edit');
+            Route::patch('{shift}', 'update')->name('update');
+            Route::patch('{shift}/cancel', 'cancel')->name('cancel');
+            Route::delete('{shift}', 'destroy')->name('destroy');
+        });
+
+    /*
+    | Staff — the people, run from the module rather than from settings.
+    |
+    | The same controller, views, form, validation and policy as
+    | /settings/staff: §12 and §13 ask for one set of records reached from two
+    | places, and two controllers would have made that a promise instead of a
+    | fact. App\Support\StaffSection is the only thing that differs — which of
+    | the two prefixes a link or a redirect belongs to.
+    |
+    | Not behind can-manage-settings. That is the point of the split: running
+    | the rota is a daily job and configuring the business is not, so this
+    | group is guarded by StaffPolicy, which the controller already asks.
+    */
+    /*
+    | Bookings — the diary and the screen that adds to it.
+    |
+    | Its own controller rather than a corner of the calendar: taking an
+    | appointment is a form with five decisions in it, and reading the day's
+    | appointments is a listing. They share a table and nothing else.
+    */
+    /*
+    | Bookings that were started and not finished.
+    |
+    | Declared before the booking routes below, or /bookings/leads would be
+    | read as a booking with the id "leads". Its own controller: a lead holds
+    | no slot and blocks no time — it is a call to return, not an appointment.
+    */
+    Route::controller(BookingLeadController::class)
+        ->prefix('bookings/leads')
+        ->name('bookings.leads')
+        ->group(function () {
+            Route::get('/', 'index')->name('');
+            Route::get('data', 'data')->name('.data');
+            /* One lead, for the drawer the listing opens over itself. */
+            Route::get('{lead}', 'show')->name('.show');
+            Route::post('{lead}/cancel', 'cancel')->name('.cancel');
+            /* A note about the call, kept on the client and tagged with the
+               lead it was written about. */
+            Route::post('{lead}/notes', 'note')->name('.notes');
+        });
+
+    Route::controller(BookingController::class)
+        ->prefix('bookings')
+        ->name('bookings.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            /* Before {booking}: a literal segment declared after a parameter
+               is reached by matching "create" as an id. */
+            Route::get('create', 'create')->name('create');
+            /* The rows the listing grid asks for, as JSON. */
+            Route::get('data', 'data')->name('data');
+            /* The client search behind the booking screen's first column,
+               and the history panel that opens once one is chosen. */
+            Route::get('clients', 'clients')->name('clients');
+            Route::get('clients/{client}/context', 'context')->name('clients.context');
+            /* Four fields' worth of client, added without leaving the
+               booking that needs them. */
+            Route::post('clients', 'storeClient')->name('clients.store');
+            /* A booking somebody started, written the moment the services
+               are settled so an abandoned call leaves a trace. */
+            Route::post('leads', 'storeLead')->name('leads.store');
+            Route::post('/', 'store')->name('store');
+
+            /* One booking, and the two things done to it after it is taken:
+               money written against it, and the client told about it. Both
+               answer JSON, because the booking screen's third column moves
+               from summary to payment to confirmation without leaving the
+               page it is on. */
+            /* What one client has booked, and one booking's own drawer —
+               both read from the client profile without leaving it. */
+            Route::get('for-client/{client}', 'forClient')->name('for-client');
+            Route::get('{booking}', 'show')->name('show');
+            Route::get('{booking}/drawer', 'drawer')->name('drawer');
+            Route::patch('{booking}', 'update')->name('update');
+            Route::get('{booking}/receipt', 'receipt')->name('receipt');
+            Route::post('{booking}/payments', 'pay')->name('pay');
+            Route::post('{booking}/confirmation', 'sendConfirmation')->name('confirmation');
+        });
+
+    /*
+    | The whole team's rota, a month at a time.
+    |
+    | Declared before the {staff} routes below, or /staff/schedules would be
+    | read as a member of staff called "schedules". Its own controller: the
+    | board is a different question from one person's week — whose month is
+    | empty, rather than what this person is working — and it writes nothing.
+    */
+    Route::controller(StaffScheduleBoardController::class)
+        ->prefix('staff/schedules')
+        ->name('staff.schedules')
+        ->group(function () {
+            Route::get('/', 'index')->name('');
+            /* The rows the board's grid asks for, as JSON. */
+            Route::get('data', 'data')->name('.data');
+            Route::get('start', 'start')->name('.start');
+            /* One person's month, for the board's own modal. */
+            Route::get('{staff}/month', 'month')->name('.month');
+        });
+
+    Route::controller(StaffController::class)
+        ->prefix('staff')
+        ->name('staff.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            /* Before the {staff} routes: a literal segment declared after a
+               parameter is reached by matching "create" as an id. */
+            Route::get('create', 'create')->name('create');
+            /* The rows the listing grid asks for, as JSON. */
+            Route::get('data', 'data')->name('data');
+            Route::post('/', 'store')->name('store');
+            Route::post('avatar', 'uploadAvatar')->name('avatar.upload');
+
+            Route::get('{staff}', 'show')->name('show');
+            /* The staff member's own workspace: one header, four tabs, each
+               its own address so a schedule can be bookmarked and the back
+               button means what it says. */
+            Route::get('{staff}/schedule', 'schedule')->name('schedule');
+            Route::get('{staff}/services', 'services')->name('services');
+            Route::get('{staff}/notes', 'notes')->name('notes');
+
+            Route::post('{staff}/services', 'attachServices')->name('services.attach');
+            Route::delete('{staff}/services/{service}', 'detachService')->name('services.detach');
+            Route::patch('{staff}/shift-rule', 'assignShiftRule')->name('shift-rule');
+            /* Its own page rather than a dialog: a fortnight is twenty-eight
+               time fields, and the range travels in the URL so the screen can
+               be linked to and the back button means what it says. */
+            Route::get('{staff}/schedule/assign', 'assignScheduleForm')->name('schedule.assign.form');
+            Route::post('{staff}/schedule', 'assignSchedule')->name('schedule.assign');
+            Route::post('{staff}/schedule/draft', 'saveScheduleDraft')->name('schedule.draft');
+            Route::post('{staff}/schedule/publish', 'publishSchedule')->name('schedule.publish');
+            /* The listing grid's own rows, as JSON. */
+            Route::get('{staff}/schedule/data', 'scheduleData')->name('schedule.data');
+            Route::delete('{staff}/schedule/{date}', 'destroyScheduleDay')->name('schedule.day.destroy');
+
+            Route::post('{staff}/notes', 'storeNote')->name('notes.store');
+            Route::delete('{staff}/notes/{note}', 'destroyNote')->name('notes.destroy');
+
+            Route::patch('{staff}/status', 'toggleStatus')->name('status');
+            Route::get('{staff}/edit', 'edit')->name('edit');
+            Route::patch('{staff}', 'update')->name('update');
+            Route::delete('{staff}', 'destroy')->name('destroy');
         });
 
     /*

@@ -194,6 +194,22 @@
 
 .styledesk_timepicker__col:last-child { border-right: 0; }
 
+/* A column short enough to show all of itself — AM and PM. Not a scroller:
+   it would inherit the bottom padding the hour and minute columns need to
+   bring their last row to the top, and choosing one of two rows would push
+   the other out of sight. */
+.styledesk_timepicker__col--fixed {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding-bottom: 0;
+}
+
+/* The type-a-time box above the columns. */
+.styledesk_timepicker__search {
+    padding: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
 .styledesk_timepicker__opt {
     /* flex, not block: the custom layer loads after Tailwind, so `display:
        block` here beat the `flex` utility on multi-select rows and stacked the
@@ -472,6 +488,15 @@ a.styledesk_settingcard:focus-visible {
 .styledesk_badge--setup  { background: #fef3c7; color: #92400e; }
 .styledesk_badge--soon   { background: #f1f2f4; color: #6b7280; }
 
+/* Semantic states, for queues that are read at a glance: blue is under way,
+   amber is waiting on somebody, orange is waiting on us, purple is a call
+   that was made, red is a no. Deliberately not the brand colour — a status
+   list in the brand tells the reader nothing about the state. */
+.styledesk_badge--info      { background: #dbeafe; color: #1d4ed8; }
+.styledesk_badge--attention { background: #ffedd5; color: #c2410c; }
+.styledesk_badge--note      { background: #ede9fe; color: #6d28d9; }
+.styledesk_badge--danger    { background: #fee2e2; color: #b91c1c; }
+
 /* ------------------------------------------------------------------
    Toast
    ------------------------------------------------------------------
@@ -662,6 +687,32 @@ a.styledesk_settingcard:focus-visible {
 }
 
 .styledesk_drawerlink:hover { background: #f3f4f6; }
+
+/* A drawer sub-entry for a screen that has not been built. See
+   .sd-menu__item--soon for why it is inert rather than a link to nowhere. */
+.styledesk_drawersub--soon {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #9ca3af;
+    cursor: default;
+}
+.styledesk_drawersub--soon:hover { background: transparent; }
+
+/* The count beside a drawer label. Pushed to the end of the row rather than
+   sat against the word, so a column of links keeps one right edge. */
+.styledesk_drawerlink__count {
+    margin-left: auto;
+    min-width: 1.25rem;
+    padding: 0 0.375rem;
+    border-radius: 999px;
+    background: #eceaf5;
+    color: #3d348b;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.25rem;
+    text-align: center;
+}
 
 .styledesk_drawerlink:focus-visible {
     outline: 2px solid var(--sd-brand, #3d348b);
@@ -1924,6 +1975,457 @@ textarea.sd-input {
     border-color: #9ca3af;
     color: #f3f4f6;
     cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------
+   Locked cell
+   ------------------------------------------------------------------
+   A value the reader may not quietly change — a published day on a rota,
+   which somebody has already been emailed. The padlock sits after the
+   value rather than before it, so a column of dates still reads down its
+   own left edge.
+   ------------------------------------------------------------------ */
+.styledesk_locked {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+}
+
+.styledesk_locked__icon {
+    flex-shrink: 0;
+    color: var(--color-sub);
+}
+
+/* ------------------------------------------------------------------
+   Client context panel (booking screen)
+   ------------------------------------------------------------------
+   The history beside the booking: who they usually see, what they had
+   last time, how they like to be booked. Sections divided by a rule
+   rather than by space, because the panel is long and space would push
+   the part that speeds up a booking below the fold.
+   ------------------------------------------------------------------ */
+.styledesk_eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+}
+
+/* One staff member the client is likely to want. A button, because
+   choosing them here is choosing them for the booking. */
+.styledesk_signal {
+    display: block;
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid var(--color-line);
+    border-radius: 0.5rem;
+    background: #fff;
+    text-align: left;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.styledesk_signal:hover { background: var(--color-hover); }
+
+.styledesk_signal.is-on {
+    border-color: var(--sd-brand);
+    background: color-mix(in srgb, var(--sd-brand) 6%, #fff);
+}
+
+/* Book the same again: the one action in the panel, and quiet enough
+   not to compete with Confirm Booking on the other side of the screen. */
+.styledesk_again {
+    margin-top: 0.5rem;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--sd-brand);
+}
+
+.styledesk_again:hover { text-decoration: underline; }
+
+.styledesk_bullet {
+    flex-shrink: 0;
+    height: 4px;
+    width: 4px;
+    margin-top: 0.5rem;
+    border-radius: 999px;
+    background: var(--color-faint);
+}
+
+/* What the diary noticed rather than what the client said. Marked, and
+   quietly: it is a hint to the receptionist, not a quote. */
+.styledesk_fromdiary {
+    display: inline-block;
+    margin-left: 0.25rem;
+    padding: 0 0.3125rem;
+    border-radius: 0.25rem;
+    background: var(--color-hover);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--color-sub);
+    white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------
+   Booking screen
+   ------------------------------------------------------------------
+   The five decisions, as sections that answer themselves in their own
+   headers. The tick fills in once a section has been answered, so a shut
+   accordion still says whether it is done.
+   ------------------------------------------------------------------ */
+.styledesk_bookingtick {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    height: 1.125rem;
+    width: 1.125rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-stroke, #d1d5db);
+    background: #fff;
+    color: transparent;
+}
+
+.styledesk_bookingtick.is-done {
+    border-color: var(--sd-brand);
+    background: var(--sd-brand);
+    color: #fff;
+}
+
+/* A choice among a handful: a team member, a time, how the client is told.
+   Chips rather than a dropdown, because the whole point is seeing the
+   options side by side. */
+.styledesk_pickchip {
+    height: 2rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    background: #fff;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-ink);
+    white-space: nowrap;
+    transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.styledesk_pickchip:hover { background: var(--color-hover); }
+
+.styledesk_pickchip.is-on {
+    border-color: var(--sd-brand);
+    background: color-mix(in srgb, var(--sd-brand) 8%, #fff);
+    color: var(--sd-brand);
+}
+
+.styledesk_pickchip:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+/* A choice with a sentence under it — the two payment types, where the
+   difference is the explanation rather than the label. */
+.styledesk_optioncard {
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--color-line);
+    border-radius: 0.5rem;
+    background: #fff;
+    text-align: left;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.styledesk_optioncard:hover { background: var(--color-hover); }
+
+.styledesk_optioncard.is-on {
+    border-color: var(--sd-brand);
+    background: color-mix(in srgb, var(--sd-brand) 6%, #fff);
+}
+
+/* "OR", with a rule either side: two ways of answering the same question,
+   neither of them the fallback. */
+.styledesk_or {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--color-faint);
+}
+
+.styledesk_or::before,
+.styledesk_or::after {
+    content: '';
+    flex: 1 1 auto;
+    height: 1px;
+    background: var(--color-line);
+}
+
+/* ------------------------------------------------------------------
+   Week header (Assign Schedule)
+   ------------------------------------------------------------------
+   One week of a month, open or shut. A whole row is the target: the
+   thing being clicked is the week, not the caret at the end of it.
+   ------------------------------------------------------------------ */
+.styledesk_weekhead {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--color-hover);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+}
+
+.styledesk_weekhead:hover { background: color-mix(in srgb, var(--sd-brand) 6%, var(--color-hover)); }
+
+.styledesk_weekhead:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: -2px;
+}
+
+.styledesk_weekhead__caret {
+    flex-shrink: 0;
+    color: var(--color-sub);
+    transition: transform 0.15s ease;
+}
+
+.styledesk_weekhead__caret.is-open { transform: rotate(90deg); }
+
+/* ------------------------------------------------------------------
+   Month schedule modal
+   ------------------------------------------------------------------
+   A whole month read without leaving the board. Wider than the app's
+   other dialogs because it holds a table of eight columns, and a column
+   grid does not fold into 34rem without becoming a list.
+
+   The head and the foot stay; only the days move. What a reader loses in
+   a thirty-one row list is who and what they are looking at, which is
+   exactly what the head says.
+   ------------------------------------------------------------------ */
+.styledesk_monthmodal {
+    display: flex;
+    flex-direction: column;
+    width: min(56rem, 100%);
+    /* Never taller than the window it opens in, so the foot is on screen
+       whatever the month holds. */
+    max-height: min(82vh, 46rem);
+}
+
+.styledesk_monthmodal__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+}
+
+/* The head of the table travels with the scroll, the same way the
+   listings do it. */
+.styledesk_monthmodal__body .sd-table th { top: 0; }
+
+.styledesk_monthmodal__body .sd-table td { white-space: nowrap; }
+
+/* ------------------------------------------------------------------
+   Staff schedule board
+   ------------------------------------------------------------------
+   The board is the shared listing grid with a month per column, so
+   almost nothing is styled here: the header band, the row height, the
+   banding, the hover, the pager and the empty state all come from
+   .tabulator above. What is left is the three states a month can be in
+   and the marker on the current one.
+   ------------------------------------------------------------------ */
+
+/* The pinned column has to be opaque, and the theme deliberately makes
+   every header cell transparent so the brand tint reads as one band. That
+   is right for a listing and wrong for a board: a see-through frozen
+   column shows the months sliding underneath it. Painted back in, with
+   the same tint mixed over white so the band still looks continuous. */
+.styledesk_board .tabulator-header .tabulator-col.tabulator-frozen {
+    background: var(--color-sel);
+    background: color-mix(in srgb, var(--sd-brand) 10%, #fff);
+}
+
+/* The row's own colour, so banding and hover carry across the join. */
+.styledesk_board .tabulator-row .tabulator-cell.tabulator-frozen { background: inherit; }
+
+/* The join itself: one line where the pinned half ends, so the board reads
+   as two halves of one table rather than as a name floating over it. */
+.styledesk_board .tabulator-header .tabulator-col.tabulator-frozen,
+.styledesk_board .tabulator-row .tabulator-cell.tabulator-frozen {
+    border-right: 1px solid var(--color-line);
+}
+
+/* The strip above the table the marker lives in. It keeps its height
+   whether or not there is a marker to draw, so the board does not jump by
+   twenty pixels when the coverage filter drops the current month. */
+.styledesk_boardmarker {
+    position: relative;
+    height: 1.25rem;
+}
+
+/* The table's own horizontal bar is taken away, because it runs under the
+   pinned column as well as the months. The vertical one is untouched: the
+   board grows to fit its rows and the page scrolls, so there is none here
+   to lose. */
+.styledesk_board .tabulator-tableholder { scrollbar-width: none; }
+.styledesk_board .tabulator-tableholder::-webkit-scrollbar:horizontal { height: 0; }
+
+/* The rail that replaces it: indented past the pinned column by script and
+   moved to sit between the rows and the pager, as tall as a scrollbar,
+   holding one element as wide as the months. */
+/* The table's own bottom edge, which the listing theme takes off the last
+   row so a grid can sit flush against whatever follows it. The board wants
+   it back: the scrollbar below belongs to the board but not to the rows,
+   and the line is what says where the table ended. */
+.styledesk_board .tabulator-row:last-child { border-bottom: 1px solid var(--color-line); }
+
+.styledesk_boardscroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* Exactly the scrollbar's own height, so the strip is the bar and
+       nothing else. Left to size itself it takes the spacer's pixel and a
+       little track above the thumb, which reads as a gap under the table. */
+    height: 0.5rem;
+    /* Tight under the table's bottom border and clear of the pager below
+       it: the bar belongs to the months it scrolls, and air above it reads
+       as a band of its own. The negative top takes back the pixel the
+       scrollbar's own track leaves above the thumb. */
+    margin: 0 0 0.625rem;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+/* One pixel tall, and it has to be: a box of no height contributes nothing
+   to its parent's scrollable area, so a zero-height spacer leaves the rail
+   with nothing to scroll and no thumb to show for it. The pixel is taken
+   back by the strip's negative top margin. */
+.styledesk_boardscroll > div { height: 1px; }
+
+.styledesk_boardscroll::-webkit-scrollbar { height: 8px; }
+.styledesk_boardscroll::-webkit-scrollbar-track { background: transparent; }
+
+.styledesk_boardscroll::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 999px;
+    /* One pixel of inset rather than two: the thumb is the only thing in
+       this strip, and every pixel of track above it is a gap under the
+       table. */
+    border: 1px solid transparent;
+    background-clip: content-box;
+}
+
+.styledesk_boardscroll::-webkit-scrollbar-thumb:hover {
+    background-color: #9ca3af;
+    background-clip: content-box;
+}
+
+/* The job title beside the name is the first thing to give way here. On a
+   listing the badge is a short reference and holding its width is right; on
+   the board it is "Finance Administrator" against a pinned column, and a
+   badge that will not shrink squeezes the name it belongs to down to two
+   letters. */
+.styledesk_board .styledesk_gridclient__ref {
+    flex-shrink: 1;
+    min-width: 0;
+    /* The name gets first call on the width; the title takes what is left. */
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* The current month, named above the table and pointed at its own column
+   from script: the grid owns the header, and a badge inside a header cell
+   is a badge inside the table. */
+.styledesk_board__now {
+    position: absolute;
+    bottom: 0.125rem;
+    transform: translateX(-50%);
+    width: max-content;
+    /* It sits where the reader reaches for the scrollbar above the table,
+       and a label that highlights when grabbed reads as a mis-hit. */
+    user-select: none;
+    padding: 0.0625rem 0.4375rem;
+    border-radius: 999px;
+    background-color: var(--sd-brand);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.5;
+}
+
+/* The column the reader is standing in, tinted from the header down
+   through every row so it can be found without counting along the top.
+
+   Deliberately weak: the three states are the colours this board is read
+   for, and a column that shouted would be competing with the thing it is
+   meant to help find. The header carries a little more of it, because a
+   header is one row and a column is twenty. */
+.styledesk_board .tabulator-header .tabulator-col.styledesk_board__current {
+    background: color-mix(in srgb, var(--sd-brand) 18%, #fff);
+}
+
+.styledesk_board .tabulator-row .tabulator-cell.styledesk_board__current {
+    background-color: color-mix(in srgb, var(--sd-brand) 7%, transparent);
+}
+
+/* A badge, not a tile: twelve of these across a row of staff is a lot of
+   height to spend on three words, and a board read for what is missing is
+   read by scanning down the columns. One line, the count beside the word
+   rather than under it. */
+.styledesk_monthcell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3125rem;
+    min-height: 1.625rem;
+    padding: 0.1875rem 0.625rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+    text-align: center;
+    transition: filter 0.12s ease;
+}
+
+.styledesk_monthcell:hover { filter: brightness(0.96); }
+
+.styledesk_monthcell:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+/* The count, separated by a rule rather than by a bracket: brackets in a
+   badge read as part of the label. */
+.styledesk_monthcell__meta {
+    padding-left: 0.3125rem;
+    border-left: 1px solid currentColor;
+    font-size: 10px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
+}
+
+.styledesk_monthcell--published { background-color: #dcfce7; border-color: #bbf7d0; color: #166534; }
+.styledesk_monthcell--draft { background-color: #fef3c7; border-color: #fde68a; color: #92400e; }
+
+/* Light red, and deliberately not the danger palette: a month nobody has
+   planned yet needs attention, and dressing it as a failed save teaches
+   the reader to ignore the colour that means something broke. */
+.styledesk_monthcell--none { background-color: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+
+/* The same three swatches, in the key above the board. */
+.styledesk_monthkey {
+    display: inline-block;
+    height: 0.75rem;
+    width: 0.75rem;
+    border-radius: 0.25rem;
+    border-width: 1px;
+    border-style: solid;
 }
 
 /* ------------------------------------------------------------------
@@ -3688,3 +4190,421 @@ fieldset:disabled :where(button, input, select, textarea),
     background: var(--color-hover);
     border-style: dashed;
 }
+
+/* --------------------------------------------------------------------------
+   Date picker with a preset rail
+
+   The design system's range picker, turned on a single date: `.sd-cal` holds
+   the calendar, and this widens it by the width of the sidebar of presets.
+   -------------------------------------------------------------------------- */
+.styledesk_cal--presets {
+  width: 500px;
+}
+
+/* --------------------------------------------------------------------------
+   Booking payment panel
+
+   The third column of the booking screen, once it stops being a summary. The
+   method rows are the same shape as the option cards above them, because
+   picking how somebody is paying is the same kind of choice as picking
+   whether to take a deposit.
+   -------------------------------------------------------------------------- */
+.styledesk_paymethod {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.styledesk_paymethod > span:first-child { flex: 1 1 auto; min-width: 0; }
+.styledesk_paymethod:hover:not(:disabled) { border-color: var(--sd-brand); background: var(--color-hover); }
+.styledesk_paymethod:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+
+/* A method the business has not set up yet. Shown, because hiding it leaves
+   somebody hunting for a Venmo option that is simply not configured. */
+.styledesk_paymethod:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.styledesk_paycta {
+  width: 100%;
+  height: 2.75rem;
+  border-radius: 0.5rem;
+  background: var(--sd-brand);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 0.12s ease, opacity 0.12s ease;
+}
+
+.styledesk_paycta:hover:not(:disabled) { background: var(--sd-brand-dark, var(--sd-brand)); }
+.styledesk_paycta:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* The second way to settle the same money — a card already taken on the
+   terminal — which is a record rather than a charge, and reads quieter. */
+.styledesk_paycta--quiet {
+  background: #fff;
+  color: var(--color-ink);
+  border: 1px solid var(--color-line);
+}
+
+.styledesk_paycta--quiet:hover:not(:disabled) { background: var(--color-hover); }
+
+/* Something to read out: a handle, or a booking reference. */
+.styledesk_handle {
+  padding: 0.75rem;
+  border: 1px dashed var(--color-line);
+  border-radius: 0.5rem;
+  background: var(--color-hover);
+}
+
+.styledesk_paystate {
+  display: inline-flex;
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-hover);
+  color: var(--color-sub);
+}
+
+.styledesk_paystate.is-paid { background: #dcfce7; color: #15803d; }
+.styledesk_paystate.is-partial { background: #fef3c7; color: #b45309; }
+.styledesk_paystate.is-unpaid { background: #fee2e2; color: #b91c1c; }
+
+/* The way on from one step of the booking to the next. */
+.styledesk_stepcta {
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  background: var(--sd-brand);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: background-color 0.12s ease, opacity 0.12s ease;
+}
+
+.styledesk_stepcta:hover:not(:disabled) { background: var(--sd-brand-dark, var(--sd-brand)); }
+.styledesk_stepcta:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* A chosen row — the payment method in hand, or the team member this client
+   usually sees. Same shape, because both are one pick out of a short list. */
+.styledesk_paymethod.is-on {
+  border-color: var(--sd-brand);
+  background: color-mix(in srgb, var(--sd-brand) 6%, #fff);
+}
+
+/* --------------------------------------------------------------------------
+   The two cards a booking is committed through
+
+   Booking summary and Payment, in the third column of the booking screen.
+   Everything else on that screen describes the appointment; these two are
+   where it is taken and paid for, so they carry the brand rather than the
+   hairline every other card uses.
+
+   Scoped to this class on purpose. The same head markup runs the five
+   accordions in the middle column, and those must stay as they are.
+   -------------------------------------------------------------------------- */
+.styledesk_workcard {
+  border-color: color-mix(in srgb, var(--sd-brand) 30%, transparent);
+}
+
+/* The head, tinted rather than filled: a solid brand bar would take the
+   emphasis off the numbers underneath it, which are the point of the card. */
+.styledesk_workcard > .styledesk_weekhead {
+  background: color-mix(in srgb, var(--sd-brand) 10%, #fff);
+}
+
+.styledesk_workcard > .styledesk_weekhead:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--sd-brand) 16%, #fff);
+}
+
+/* A head that cannot be opened yet — payment, before there is a booking —
+   still reads as part of the card rather than as a disabled control. */
+.styledesk_workcard > .styledesk_weekhead:disabled {
+  cursor: default;
+}
+
+/* --------------------------------------------------------------------------
+   Detail sheet
+
+   A panel over the listing rather than a page instead of it. The front desk
+   reads three or four leads in a row while somebody is on hold, and a detail
+   page would throw away the filters, the page and the scroll position every
+   time one was opened.
+
+   Head and foot stay put and only the middle scrolls, because the reference
+   at the top and the way on at the bottom are what a reader needs at every
+   point in between.
+   -------------------------------------------------------------------------- */
+/* The same floating window the note composer uses (.styledesk_composer):
+   anchored to the bottom-right rather than filling an edge, because a lead is
+   read *against* the list behind it — which stays visible, and stays usable.
+   Full screen on a phone, where a floating window inside a small screen is
+   just a smaller screen. */
+.styledesk_sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  pointer-events: none;
+}
+
+/* No scrim: the listing behind is not disabled while a lead is open, so the
+   desk can search or page while reading one. */
+.styledesk_sheet__scrim { display: none; }
+
+.styledesk_sheet__panel {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(0.75rem);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.styledesk_sheet.is-open .styledesk_sheet__panel { opacity: 1; transform: none; }
+
+@media (min-width: 640px) {
+  .styledesk_sheet__panel {
+    inset: auto 1.5rem 1.5rem auto;
+    width: min(34rem, calc(100vw - 3rem));
+    height: clamp(30rem, 76vh, calc(100vh - 3rem));
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+    box-shadow: 0 18px 48px rgba(15, 15, 16, 0.22);
+    overflow: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .styledesk_sheet__panel { transition-duration: 0.01ms; }
+}
+
+.styledesk_sheet__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.styledesk_sheet__close {
+  display: grid;
+  place-items: center;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  color: var(--color-sub);
+}
+
+.styledesk_sheet__close:hover { background: var(--color-hover); color: var(--color-ink); }
+
+.styledesk_sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.styledesk_sheet__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid var(--color-line);
+  background: #fff;
+}
+
+.styledesk_sheet__cta {
+  display: grid;
+  place-items: center;
+  height: 2.75rem;
+  border-radius: 0.5rem;
+  background: var(--sd-brand);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.styledesk_sheet__cta:hover { background: var(--sd-brand-dark, var(--sd-brand)); }
+
+.styledesk_sheet__cancel {
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-sub);
+}
+
+.styledesk_sheet__cancel:hover { background: #fef2f2; color: #b91c1c; }
+
+/* A block of facts inside the sheet. */
+.styledesk_sheet__section + .styledesk_sheet__section {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-line);
+}
+
+.styledesk_sheet__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 13px;
+  padding: 0.1875rem 0;
+}
+
+.styledesk_sheet__row dt { color: var(--color-sub); flex-shrink: 0; }
+.styledesk_sheet__row dd { color: var(--color-head); font-weight: 600; text-align: right; min-width: 0; }
+
+/* Nothing chosen yet, said in a quieter voice than an answer. */
+.styledesk_sheet__row dd.is-blank { color: var(--color-faint); font-weight: 400; }
+
+/* The five cards, ticked off. */
+.styledesk_journey { display: flex; flex-direction: column; gap: 0.375rem; }
+
+.styledesk_journey__step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 13px;
+  color: var(--color-sub);
+}
+
+.styledesk_journey__step.is-done { color: var(--color-head); }
+.styledesk_journey__step.is-current { color: var(--sd-brand); font-weight: 600; }
+
+.styledesk_journey__mark {
+  display: grid;
+  place-items: center;
+  height: 1.125rem;
+  width: 1.125rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  font-size: 10px;
+  background: #fff;
+}
+
+.styledesk_journey__step.is-done .styledesk_journey__mark {
+  background: #dcfce7;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.styledesk_journey__step.is-current .styledesk_journey__mark {
+  border-color: var(--sd-brand);
+  color: var(--sd-brand);
+}
+
+/* What happened, newest first. */
+.styledesk_activity { display: flex; flex-direction: column; gap: 0.625rem; }
+
+.styledesk_activity__item { font-size: 12.5px; }
+.styledesk_activity__item strong { display: block; color: var(--color-head); font-weight: 600; }
+.styledesk_activity__item span { color: var(--color-faint); }
+
+/* Notes, over the sheet's own card.
+   Written while the call is happening, so it covers what it is about —
+   and what it is about is still underneath when it closes. */
+.styledesk_sheet__notes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  z-index: 1;
+}
+
+.styledesk_sheet__note {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+  font-size: 12.5px;
+  color: var(--color-ink);
+  white-space: pre-wrap;
+}
+
+.styledesk_sheet__note span {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--color-faint);
+  font-size: 11.5px;
+}
+
+/* The way back from the notes panel to the lead underneath it. */
+.styledesk_sheet__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.75rem;
+  padding: 0 0.5rem 0 0.25rem;
+  margin-right: 0.25rem;
+  border-radius: 0.5rem;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-sub);
+}
+
+.styledesk_sheet__back:hover { background: var(--color-hover); color: var(--color-ink); }
+
+/* The written notes sit under the composer, and the last one clears the
+   footer that overlaps nothing. */
+.styledesk_sheet__notes .styledesk_sheet__body { padding-bottom: 1rem; }
+
+/* A booking or a lead, as a card in the client's own panel. Clickable in
+   full: the whole card opens the drawer, so there is no small target to
+   find on a row that is mostly white space. */
+.styledesk_bookingcard {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.625rem;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.styledesk_bookingcard:hover { border-color: var(--sd-brand); background: var(--color-hover); }
+.styledesk_bookingcard:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 1px; }
+
+/* The + on a column-three card: the brand in outline, so it reads as an
+   action without competing with the card's own content. */
+.styledesk_cardbtn--brand {
+  border: 1px solid var(--sd-brand);
+  color: var(--sd-brand);
+  background: transparent;
+}
+
+.styledesk_cardbtn--brand:hover {
+  background: color-mix(in srgb, var(--sd-brand) 10%, transparent);
+}
+
+/* The next appointment, clickable in full. Its own button rather than a link
+   because it opens a panel over this page rather than going anywhere. */
+.styledesk_nextbooking {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: opacity 0.12s ease;
+}
+
+.styledesk_nextbooking:hover { opacity: 0.82; }
+.styledesk_nextbooking:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 2px; }

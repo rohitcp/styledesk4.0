@@ -3,295 +3,208 @@
 @section('title', __('staff.title'))
 
 @section('content')
-  <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
-    <div class="max-w-[1180px]">
+  {{-- One content width for the header, the toolbar and the grid, exactly as
+       the clients listing has it. No max-width column: the table is the point
+       of this screen, and a nine-column grid inside 1180px wastes half a
+       desktop.
 
-      <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
+       100px under the pagination before the footer. On the page rather than
+       inside the grid: a spacer within the scroller is something the reader
+       has to scroll past to reach the last row. --}}
+  <main class="w-full px-6 lg:px-8 pt-5 pb-[100px]">
+
+    {{-- Only in App Settings. The same screen is reached from the Staff
+         module, where the trail does not run through a section the reader was
+         never in — and where a link into an administrator-only area would be
+         one they cannot open. --}}
+    @if (\App\Support\StaffSection::isSettings())
+      <nav class="text-[13px] text-sub mb-3" aria-label="Breadcrumb">
         <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
         <span class="mx-1.5 text-faint">/</span>
         <span class="text-ink">{{ __('staff.title') }}</span>
       </nav>
+    @endif
 
-      <div class="mt-3 flex flex-wrap items-start gap-4">
-        <div class="min-w-0 flex-1">
-          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight">{{ __('staff.title') }}</h1>
-          <p class="text-[14px] text-sub mt-2 max-w-[640px] leading-relaxed">
-            @php
-                /**
-                 * Built here rather than inline.
-                 *
-                 * Each half is a whole phrase in its own language: Str::plural()
-                 * only knows English and would have produced "2 invitación
-                 * pendientes".
-                 */
-                $summary = trans_choice('staff.summary', $activeCount, ['count' => $activeCount]);
+    <header class="flex flex-wrap items-start gap-4">
+      <div class="min-w-0 flex-1">
+        <h1 class="text-[22px] sm:text-[24px] font-bold text-head tracking-tight">{{ __('staff.title') }}</h1>
 
-                if ($pendingCount) {
-                    $summary .= ', '.trans_choice('staff.summary_pending', $pendingCount, ['count' => $pendingCount]);
-                }
-            @endphp
-            {{ $summary }}.
-          </p>
+        <p class="text-[13px] text-sub mt-1.5 leading-relaxed">
+          @php
+              /**
+               * Built here rather than inline.
+               *
+               * Each half is a whole phrase in its own language: Str::plural()
+               * only knows English and would have produced "2 invitación
+               * pendientes".
+               */
+              $summary = trans_choice('staff.summary', $activeCount, ['count' => $activeCount]);
+
+              if ($pendingCount) {
+                  $summary .= ', '.trans_choice('staff.summary_pending', $pendingCount, ['count' => $pendingCount]);
+              }
+          @endphp
+          {{ $summary }}.
+        </p>
+      </div>
+
+      <div class="shrink-0 flex items-center gap-2">
+        {{-- Designed, not built. Disabled rather than absent, the same way
+             the navigation carries it: an entry that quietly disappears reads
+             as a permission the reader lacks. --}}
+        <button type="button" class="styledesk_action opacity-45 cursor-not-allowed" disabled
+                data-pending-route="staff-schedule-add.html">
+          {{ __('staff.add_schedule') }}
+        </button>
+
+        @can('create', App\Models\Staff::class)
+          <a href="{{ \App\Support\StaffSection::route('create') }}"
+             class="shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+            <x-icon name="plus" size="14" />
+            {{ __('staff.add') }}
+          </a>
+        @endcan
+      </div>
+    </header>
+
+    @if (! $hasStaff)
+      {{-- Nobody at all, which is a different fact from nobody matching — and
+           gets a different answer. The reader has not searched for anything,
+           so they must not be told their search found nothing. --}}
+      <div class="mt-6 border-t border-line py-16 text-center">
+        <p class="text-[15px] font-semibold text-head">{{ __('staff.none_yet') }}</p>
+        <p class="text-[13px] text-sub mt-1.5 max-w-[420px] mx-auto leading-relaxed">{{ __('staff.none_yet_hint') }}</p>
+
+        @can('create', App\Models\Staff::class)
+          <a href="{{ \App\Support\StaffSection::route('create') }}"
+             class="inline-flex items-center gap-1.5 h-9 px-3.5 mt-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+            <x-icon name="plus" size="14" />
+            {{ __('staff.add') }}
+          </a>
+        @endcan
+      </div>
+    @else
+
+    {{-- Toolbar: search and the filters on one line where there is room,
+         wrapping before they shrink into unreadability. The same arrangement
+         as the clients listing, down to the reasons. --}}
+    <form method="GET" action="{{ \App\Support\StaffSection::route('index') }}" class="mt-4">
+      {{-- The search keeps a whole row to itself when the window is narrow
+           and the filters take the next one. Splitting the search field
+           itself would be splitting one control in two. --}}
+      <div class="flex flex-wrap items-start gap-2">
+        <div class="relative w-full lg:w-auto lg:flex-1 lg:min-w-[220px]">
+          <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">
+            <x-icon name="magnifying-glass" size="15" />
+          </span>
+          <input name="search" type="search" class="sd-input styledesk_input--prefixed"
+                 value="{{ $filters['search'] }}"
+                 aria-label="{{ __('staff.search_label') }}"
+                 placeholder="{{ __('staff.search_placeholder') }}">
         </div>
 
-        <div class="shrink-0 flex items-center gap-2">
-          <a href="{{ route('settings.index') }}"
-             class="styledesk_action">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            {{ __('common.back') }}
-          </a>
+        {{-- The filters move as one group: wrapped one at a time they would
+             leave a single dropdown stranded on a line of its own.
 
-          @can('create', App\Models\Staff::class)
-            <a href="{{ route('settings.staff.create') }}"
-               class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-              {{ __('staff.add') }}
-            </a>
-          @endcan
+             They wrap rather than scroll on purpose — each control opens a
+             panel positioned inside itself, and a container with overflow set
+             would cut those panels off at its edge. --}}
+        <div class="flex flex-col lg:flex-row lg:flex-wrap items-stretch lg:items-start gap-2 w-full lg:w-auto">
+          <x-combo name="status" :options="App\Support\StaffOptions::statuses()" :selected="$filters['status']"
+                   :placeholder="__('staff.filters.all_statuses')"
+                   class="w-full lg:w-[150px] shrink-0" />
+
+          <x-combo name="location" :options="$locations->pluck('name', 'id')" :selected="$filters['location']"
+                   :placeholder="__('staff.filters.all_locations')"
+                   class="w-full lg:w-[170px] shrink-0" />
+
+          <x-combo name="role" :options="$roles->mapWithKeys(fn ($r) => [$r->key => $r->label()])"
+                   :selected="$filters['role']"
+                   :placeholder="__('staff.filters.all_roles')"
+                   class="w-full lg:w-[150px] shrink-0" />
+
+          <x-combo name="service" :options="$services->pluck('name', 'id')" :selected="$filters['service']"
+                   :placeholder="__('staff.filters.all_services')"
+                   class="w-full lg:w-[170px] shrink-0" />
+
+          {{-- Full width below the desktop breakpoint, like every control
+               above it: a button half the width of the field it acts on is a
+               smaller target than the fields themselves. --}}
+          <button type="submit" class="styledesk_search w-full lg:w-auto shrink-0">
+            {{ __('common.search') }}
+          </button>
         </div>
       </div>
 
-      @php
-          // Everything except the search box, so the button can say how many
-          // are narrowing the list without counting the search twice.
-          $activeFilters = collect($filters)
-              ->except(['search', 'sort'])
-              ->filter(fn ($value) => $value !== null)
-              ->count();
-      @endphp
+      {{-- The names behind the ids, so a chip can be labelled without asking
+           the server again. --}}
+      <span hidden data-filter-labels="status" data-labels='@json(App\Support\StaffOptions::statuses())'></span>
+      <span hidden data-filter-labels="location" data-labels='@json($locations->pluck('name', 'id'))'></span>
+      <span hidden data-filter-labels="role" data-labels='@json($roles->mapWithKeys(fn ($r) => [$r->key => $r->label()]))'></span>
+      <span hidden data-filter-labels="service" data-labels='@json($services->pluck('name', 'id'))'></span>
 
-      {{-- Search stays in the open; the rest lives behind a button.
-           Seven controls permanently on screen made the filters bigger than
-           the directory they filter, and most visits use none of them. --}}
-      <form method="GET" action="{{ route('settings.staff.index') }}" class="mt-6">
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="relative flex-1 min-w-[240px]">
-            <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">
-              <x-icon name="magnifying-glass" size="15" />
-            </span>
-            <input name="search" type="search" class="sd-input styledesk_input--prefixed"
-                   value="{{ $filters['search'] }}" aria-label="{{ __('staff.search_label') }}"
-                   placeholder="{{ __('staff.search_placeholder') }}">
-          </div>
+      {{-- Active filters. Hidden entirely when nothing is chosen rather than
+           left as an empty band: a row that is sometimes blank is a row the
+           reader has to check. Built by the shared script from what the
+           controls hold, so it cannot disagree with them. --}}
+      <div class="mt-2.5 flex flex-wrap items-center gap-2" data-active-filters hidden
+           data-remove-label="{{ __('common.remove') }}">
+        <span class="text-[12px] font-semibold text-sub">{{ __('clients.module.filters.active') }}</span>
+        <span class="flex flex-wrap items-center gap-1.5" data-active-chips></span>
 
-          <button type="submit" class="styledesk_search w-full sm:w-auto">
-            {{ __('common.search') }}
-          </button>
+        <button type="button" class="styledesk_action styledesk_action--sm" data-clear-filters>
+          {{ __('common.clear_all') }}
+        </button>
+      </div>
+    </form>
 
-          <button type="button" data-filter-toggle aria-expanded="{{ $activeFilters ? 'true' : 'false' }}"
-                  aria-controls="staff-filters"
-                  class="styledesk_action">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-            </svg>
-            {{ __('common.filter') }}
-            @if ($activeFilters)
-              <span class="inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1 rounded-full bg-brand text-white text-[11px] font-semibold">{{ $activeFilters }}</span>
-            @endif
-          </button>
-        </div>
+    @php
+        $gridLabels = [
+            'view' => __('staff.view'),
+            'edit' => __('staff.edit'),
+            'actions_for' => __('staff.actions_for', ['name' => ':name']),
+            'showing' => __('staff.showing'),
+            'results' => [
+                'zero' => __('staff.results.zero'),
+                'one' => __('staff.results.one'),
+                'many' => __('staff.results.many'),
+            ],
+            'clear_filters' => __('staff.results.clear'),
+            'empty' => __('staff.results.empty'),
+        ];
 
-        {{-- Open on load when something is filtering, so a shared or
-             bookmarked URL does not hide the reason the list is short. --}}
-        <div id="staff-filters" class="mt-3 rounded-card border border-line bg-white p-4" @if (! $activeFilters) hidden @endif>
-          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <x-combo name="role" label="{{ __('staff.filters.role') }}" :options="$roles->mapWithKeys(fn ($r) => [$r->key => $r->label()])"
-                     :selected="$filters['role']" placeholder="{{ __('staff.filters.all_roles') }}" />
+        /* The columns, in the order they may leave as the table narrows:
+           responsive 0 never goes, and the ones that tell one person from
+           another are the last out. */
+        $gridConfig = [
+            'labels' => $gridLabels,
+            'name_field' => 'name',
+            'columns' => [
+                ['field' => 'name', 'title' => __('staff.columns.name'), 'type' => 'primary', 'grow' => 3, 'min' => 200, 'responsive' => 0],
+                ['field' => 'role', 'title' => __('staff.columns.role'), 'grow' => 1.6, 'min' => 140, 'responsive' => 2],
+                ['field' => 'location', 'title' => __('staff.columns.location'), 'grow' => 1.5, 'min' => 140, 'responsive' => 5],
+                ['field' => 'phone', 'title' => __('staff.fields.phone'), 'grow' => 1.4, 'min' => 130, 'responsive' => 3],
+                ['field' => 'email', 'title' => __('staff.profile.email'), 'grow' => 2, 'min' => 180, 'responsive' => 4],
+                ['field' => 'services', 'title' => __('staff.columns.services'), 'width' => 90, 'responsive' => 6],
+                ['field' => 'status', 'title' => __('staff.columns.status'), 'type' => 'badge', 'width' => 120, 'responsive' => 1],
+                ['field' => 'actions', 'type' => 'actions'],
+            ],
+        ];
+    @endphp
 
-            <x-combo name="location" label="{{ __('staff.filters.location') }}" :options="$locations->pluck('name', 'id')"
-                     :selected="$filters['location']" placeholder="{{ __('staff.filters.all_locations') }}" />
+    {{-- How many the current search and filters return. Filled by the grid
+         from the same response that drew the rows, so the two cannot
+         disagree — a count worked out separately is a count that will
+         eventually describe a different list. --}}
+    <p class="mt-3 text-[12px] font-semibold text-sub" data-result-count></p>
 
-            <x-combo name="service" label="{{ __('staff.filters.service') }}" :options="$services->pluck('name', 'id')"
-                     :selected="$filters['service']" placeholder="{{ __('staff.filters.all_services') }}" />
-
-            <x-combo name="provider_type" label="{{ __('staff.filters.provider_type') }}" :options="App\Support\StaffOptions::providerTypes()"
-                     :selected="$filters['provider_type']" placeholder="{{ __('staff.filters.all_provider_types') }}" />
-
-            <x-combo name="employment_type" label="{{ __('staff.filters.employment') }}" :options="App\Support\StaffOptions::employmentTypes()"
-                     :selected="$filters['employment_type']" placeholder="{{ __('staff.filters.all_employment') }}" />
-
-            @php
-                $statusOptions = App\Support\StaffOptions::statuses();
-            @endphp
-            <x-combo name="status" label="{{ __('staff.filters.status') }}" :options="$statusOptions"
-                     :selected="$filters['status']" placeholder="{{ __('staff.filters.all_statuses') }}" />
-
-            <x-combo name="sort" label="{{ __('staff.filters.sort') }}" :options="App\Support\StaffOptions::sorts()"
-                     :selected="$filters['sort']" placeholder="{{ __('staff.columns.name') }}" />
-          </div>
-
-          <div class="mt-3 flex items-center gap-2">
-            <button type="submit" class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-              {{ __('staff.apply_filters') }}
-            </button>
-            <a href="{{ route('settings.staff.index') }}" class="styledesk_action">
-              {{ __('common.clear') }}
-            </a>
-          </div>
-        </div>
-      </form>
-
-      @if ($staff->isEmpty())
-        <div class="mt-6 rounded-card border border-line bg-white p-10 text-center">
-          <p class="text-[15px] font-semibold text-head">{{ __('staff.empty_title') }}</p>
-          <p class="text-[13px] text-sub mt-1.5">{{ __('staff.empty_hint') }}</p>
-        </div>
-      @else
-        {{-- A table, scrolling inside its own container: the row carries nine
-             facts and squeezing them into a phone-width card would drop the
-             ones the directory exists to compare. --}}
-        <div class="mt-6 rounded-card border border-line bg-white overflow-x-auto">
-          <table class="w-full text-[13px]" style="min-width: 860px">
-            <thead>
-              <tr class="text-left text-[12px] text-sub border-b border-line">
-                <th class="font-medium px-4 py-3">{{ __('staff.columns.name') }}</th>
-                <th class="font-medium px-4 py-3">{{ __('staff.columns.role') }}</th>
-                <th class="font-medium px-4 py-3">{{ __('staff.columns.location') }}</th>
-                <th class="font-medium px-4 py-3">{{ __('staff.columns.contact') }}</th>
-                <th class="font-medium px-4 py-3 text-right">{{ __('staff.columns.services') }}</th>
-                <th class="font-medium px-4 py-3">{{ __('staff.columns.status') }}</th>
-                <th class="font-medium px-4 py-3">{{ __('staff.columns.last_login') }}</th>
-                <th class="font-medium px-4 py-3 text-right"><span class="sr-only">{{ __('staff.columns.actions') }}</span></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-line">
-              @foreach ($staff as $member)
-                <tr class="hover:bg-hover/50 transition-colors">
-                  <td class="px-4 py-3">
-                    <span class="flex items-center gap-2.5">
-                      <span class="sd-avatar sd-avatar--sm shrink-0" aria-hidden="true">{{ $member->initials() }}</span>
-                      <span class="min-w-0">
-                        <span class="block font-semibold text-head truncate">{{ $member->directoryName() }}</span>
-                        @if ($member->job_title)
-                          <span class="block text-[12px] text-sub truncate">{{ $member->job_title }}</span>
-                        @endif
-                      </span>
-                    </span>
-                  </td>
-                  {{-- Falls back to the role the row names when no Role
-                       record is linked. A dash there would say "this person
-                       has no role", when what happened is that a link was
-                       never made. --}}
-                  <td class="px-4 py-3 text-ink">{{ $member->roleName() }}</td>
-                  <td class="px-4 py-3 text-ink">{{ $member->location?->name ?? __('staff.all_locations') }}</td>
-                  <td class="px-4 py-3">
-                    <span class="block text-ink truncate">{{ $member->email ?? '—' }}</span>
-                    @if ($member->phone)
-                      <span class="block text-[12px] text-sub">{{ $member->phone }}</span>
-                    @endif
-                  </td>
-                  <td class="px-4 py-3 text-right text-ink">{{ $member->services_count }}</td>
-                  <td class="px-4 py-3">
-                    <span class="styledesk_badge {{ $member->statusClass() }}">{{ $member->statusLabel() }}</span>
-                  </td>
-                  <td class="px-4 py-3 text-sub">
-                    {{ $member->user?->last_login_at?->diffForHumans() ?? __('staff.never') }}
-                  </td>
-                  <td class="px-4 py-3 text-right">
-                    <span class="styledesk_rowmenu" data-rowmenu>
-                      <button type="button" class="styledesk_rowmenu__button" data-rowmenu-button
-                              aria-haspopup="true" aria-expanded="false"
-                              aria-label="{{ __('staff.actions_for', ['name' => $member->displayName()]) }}">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                          <circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>
-                        </svg>
-                      </button>
-
-                      <span class="styledesk_rowmenu__pop" data-rowmenu-pop hidden role="menu">
-                        <a href="{{ route('settings.staff.show', $member) }}" class="styledesk_rowmenu__item" role="menuitem">
-                          <x-icon name="user" size="14" /> {{ __('staff.view_profile') }}
-                        </a>
-
-                        @can('update', $member)
-                          <a href="{{ route('settings.staff.edit', $member) }}" class="styledesk_rowmenu__item" role="menuitem">
-                            <x-icon name="pen-to-square" size="14" /> {{ __('common.edit') }}
-                          </a>
-                        @endcan
-
-                        {{-- Only rendered when it is actually permitted. The
-                             policy refuses deleting yourself and deleting the
-                             last owner, so those rows simply do not offer it
-                             rather than offering a button that will be
-                             refused. --}}
-                        @can('delete', $member)
-                          {{-- No separator before Delete. Three items is a
-                               short enough list to read at a glance, and a
-                               rule through the middle of it implies a grouping
-                               that is not there. Delete stays distinguishable
-                               by being the only red one. --}}
-                          <button type="button" class="styledesk_rowmenu__item styledesk_rowmenu__item--danger"
-                                  role="menuitem"
-                                  data-delete-staff
-                                  data-name="{{ $member->displayName() }}"
-                                  data-confirm-title="{{ __('common.delete') }}"
-                                  data-confirm="{{ __('staff.delete_confirm', ['name' => $member->displayName()]) }}"
-                                  data-confirm-label="{{ __('common.delete') }}"
-                                  data-action="{{ route('settings.staff.destroy', $member) }}">
-                            <x-icon name="trash-can" size="14" /> {{ __('common.delete') }}
-                          </button>
-                        @endcan
-                      </span>
-                    </span>
-                  </td>
-                </tr>
-              @endforeach
-            </tbody>
-          </table>
-        </div>
-
-        {{-- Only once there is more than one page. A pager under a list that
-             fits on one screen is furniture describing nothing. --}}
-        @if ($staff->hasPages())
-          {{-- Laravel's own pager, which already prints "Showing 1 to 25 of
-               28 results" and drops to prev/next on a phone. A hand-written
-               count beside it said the same thing twice. --}}
-          <div class="mt-4">
-            {{ $staff->onEachSide(1)->links() }}
-          </div>
-        @endif
-      @endif
-
-      {{-- One delete form for the table, not one per row: a form per row is
-           twelve identical elements whose only difference is an action, and
-           the confirmation has to name the person anyway. --}}
-      <form id="staffDeleteForm" method="POST" class="hidden">
-        @csrf
-        @method('DELETE')
-      </form>
+    {{-- The grid. Full width, filling the height left under the toolbar and
+         scrolling inside itself, with rows fetched a page at a time. --}}
+    <div class="mt-4 styledesk_gridframe">
+      <div data-grid
+           data-url="{{ \App\Support\StaffSection::route('data', array_filter($filters)) }}"
+           data-config='@json($gridConfig)'></div>
     </div>
+    @endif
   </main>
 @endsection
-
-@push('scripts')
-  <script>
-    /* The filter panel. A plain disclosure: the filters are a real GET form
-       and work with no JavaScript at all, so this only decides whether they
-       are on screen. */
-    (function () {
-      var toggle = document.querySelector('[data-filter-toggle]');
-      var panel = document.getElementById('staff-filters');
-      if (!toggle || !panel) return;
-
-      toggle.addEventListener('click', function () {
-        panel.hidden = !panel.hidden;
-        toggle.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
-      });
-    }());
-
-
-
-    /* Delete. The question is asked by the shared confirmation dialog off
-       the button's own data-confirm attributes, so by the time this handler
-       runs the reader has already said yes. */
-    (function () {
-      var form = document.getElementById('staffDeleteForm');
-      if (!form) return;
-
-      document.querySelectorAll('[data-delete-staff]').forEach(function (button) {
-        button.addEventListener('click', function () {
-          form.action = button.getAttribute('data-action');
-          form.submit();
-        });
-      });
-    }());
-  </script>
-@endpush

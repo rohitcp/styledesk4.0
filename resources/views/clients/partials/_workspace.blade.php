@@ -10,7 +10,12 @@
         {{-- Bookings first: the question a profile is usually opened to
              answer is "when are they next in", and Activity is the record of
              everything else, which is what you read after the specifics. --}}
-        @foreach (['bookings', 'notes', 'files', 'activity'] as $tab)
+        {{-- Leads sits beside bookings rather than inside it: they are two
+             different things counted two different ways, and a segment one
+             level down is a thing nobody finds. Only where there are leads —
+             a tab for nothing teaches the reader the wrong thing about this
+             client. --}}
+        @foreach (array_filter(['bookings', $hasLeads ? 'leads' : null, 'notes', 'files', 'activity']) as $tab)
             <button type="button" role="tab" data-tab="{{ $tab }}"
                     id="tab-{{ $tab }}" aria-controls="panel-{{ $tab }}"
                     aria-selected="{{ $loop->first ? 'true' : 'false' }}"
@@ -93,23 +98,87 @@
     @unless ($canViewHistory)
         <p class="text-[13px] text-sub">{{ __('clients.module.workspace.bookings.hidden') }}</p>
     @else
-        <h3 class="styledesk_heading">{{ __('clients.module.workspace.bookings.upcoming') }}</h3>
-        <p class="text-[13px] text-sub mt-1.5">
-            {{ $client->next_booking_at
-                ? $client->next_booking_at->isoFormat('D MMM Y · h:mm A')
-                : __('clients.module.workspace.bookings.none_upcoming') }}
-        </p>
+        {{-- What they have booked, and what they started and did not finish.
+             Two different things counted two different ways by everybody who
+             reads them, so they are two segments rather than one list. --}}
+        @php
+            $bookingLabels = [
+                'bookings' => __('clients.module.workspace.tabs.bookings'),
+                'leads' => __('leads.title'),
+                'all_dates' => __('clients.module.workspace.bookings.all_dates'),
+                'all_services' => __('clients.module.workspace.bookings.all_services'),
+                'search_services' => __('bookings.service.search_categories'),
+                'none' => __('clients.module.workspace.bookings.none_match'),
+                'no_leads' => __('leads.none_yet'),
+                'stopped_at' => __('leads.drawer.stopped_at'),
+                'last_activity' => __('leads.drawer.last_activity'),
+                'view_full' => __('clients.module.workspace.bookings.view_full'),
+                'cancel' => __('bookings.detail.cancel_booking'),
+                'soon' => __('leads.drawer.soon'),
+                'transactions' => __('bookings.detail.transactions'),
+                'close' => __('leads.drawer.close'),
+                'complete' => __('leads.actions.complete'),
+                'not_selected' => __('leads.drawer.not_selected'),
+                'summary' => __('leads.drawer.summary'),
+                'client' => __('leads.drawer.client'),
+                'booking' => __('leads.drawer.booking'),
+                'payment' => __('leads.drawer.payment'),
+                'journey' => __('leads.drawer.journey'),
+                'activity' => __('leads.drawer.activity'),
+                'no_activity' => __('leads.drawer.no_activity'),
+            ];
+        @endphp
 
-        <h3 class="styledesk_heading mt-5 pt-4 border-t border-line">{{ __('clients.module.workspace.bookings.previous') }}</h3>
-        <p class="text-[13px] text-sub mt-1.5">
-            {{ $client->last_visit_at
-                ? $client->last_visit_at->isoFormat('D MMM Y')
-                : __('clients.module.workspace.bookings.none_previous') }}
-        </p>
+        <div data-client-bookings
+             data-url="{{ route('bookings.for-client', $client) }}"
+             data-labels='@json($bookingLabels)'>
 
-        <p class="text-[12px] text-faint mt-4 leading-relaxed">{{ __('clients.module.workspace.bookings.coming') }}</p>
+            {{-- Only what this client actually has: a filter that can offer a
+                 month with nothing in it is a filter that finds nothing. --}}
+            {{-- Year and month apart rather than one list of every month
+                 this client has ever booked in: two short lists are quicker
+                 to read than one long one, and the year is the half people
+                 change least. The app's own combo, like every other
+                 dropdown. --}}
+            @php
+                $months = collect(range(1, 12))->mapWithKeys(fn (int $month) => [
+                    str_pad((string) $month, 2, '0', STR_PAD_LEFT) => \Carbon\CarbonImmutable::create(null, $month)->translatedFormat('F'),
+                ]);
+            @endphp
+
+            <div class="flex flex-wrap items-end gap-2 mt-3" data-booking-filters>
+                <div class="w-full sm:w-[150px]">
+                    <x-combo name="booking_year" :options="$bookingYears"
+                             :selected="now()->format('Y')"
+                             :placeholder="__('clients.module.workspace.bookings.all_years')" />
+                </div>
+
+                <div class="w-full sm:w-[170px]">
+                    <x-combo name="booking_month" :options="$months"
+                             :selected="now()->format('m')"
+                             :placeholder="__('clients.module.workspace.bookings.all_months')" />
+                </div>
+
+                <div class="w-full sm:w-[220px]">
+                    <x-combo name="booking_service" :options="$bookingServices"
+                             :placeholder="$bookingLabels['all_services']" />
+                </div>
+            </div>
+
+            <div class="mt-4" data-booking-list></div>
+        </div>
     @endunless
 </div>
+
+{{-- -------------------------------------------------------------- leads --}}
+@if ($hasLeads)
+    <div id="panel-leads" role="tabpanel" aria-labelledby="tab-leads" data-panel="leads" class="pt-4" hidden>
+        {{-- Filled by the same fetch the bookings panel makes: one answer
+             holds both, and asking twice for two halves of it would show one
+             half a beat before the other. --}}
+        <div data-lead-list></div>
+    </div>
+@endif
 
 {{-- -------------------------------------------------------------- notes --}}
 <div id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" data-panel="notes" class="pt-4" hidden>

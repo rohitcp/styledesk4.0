@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\Staff;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
@@ -42,6 +44,32 @@ class Nav
         }
 
         return $item['label'] ?? '';
+    }
+
+    /**
+     * The live numbers the navigation shows beside a label.
+     *
+     * §1: "Staff · 12", and the 12 has to be right the moment somebody is
+     * added, activated, deactivated or removed — so it is counted on the way
+     * out rather than stored anywhere that could fall behind.
+     *
+     * Read once by the layout and handed to both navigation partials: the
+     * rail and the drawer are the same config rendered twice, and each asking
+     * for itself would be the same query twice on every page.
+     *
+     * Empty before a tenant is resolved — the sign-in screens render no
+     * navigation, and a count of somebody else's staff is the one answer that
+     * must never be possible.
+     *
+     * @return array<string, int>
+     */
+    public static function counts(): array
+    {
+        if (Auth::user()?->tenant === null) {
+            return [];
+        }
+
+        return ['staff' => Staff::activeCount()];
     }
 
     /**
@@ -118,6 +146,22 @@ class Nav
             ->all();
 
         return $routes !== [] && Request::routeIs(...$routes);
+    }
+
+    /**
+     * Whether this entry goes anywhere.
+     *
+     * An entry with no route is a screen that has not been built. It used to
+     * render as an ordinary link to "#", so clicking Shifts — or Calendar, or
+     * Resource Availability — did nothing at all and looked like the product
+     * was broken. Nothing happening is the correct behaviour; looking like an
+     * ordinary link while doing it was not.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    public static function isPending(array $item): bool
+    {
+        return ! isset($item['route']);
     }
 
     /**

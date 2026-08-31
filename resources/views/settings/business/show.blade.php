@@ -154,9 +154,19 @@
 
             <x-settings.field label="{{ __('business.fields.date_format') }}"
                               :value="$tenant->date_format ? App\Support\BusinessProfile::dateFormats()[$tenant->date_format].' — '.now()->format($tenant->date_format) : null" />
-            <x-settings.field label="{{ __('business.fields.time_format') }}" :value="App\Support\BusinessProfile::label('timeFormats', (string) $tenant->time_format)" />
+            {{-- Falls back to the default the app is really using, so this
+                 reads the same as every clock on every other screen. --}}
+            <x-settings.field label="{{ __('business.fields.time_format') }}"
+                              :value="App\Support\BusinessProfile::label('timeFormats', (string) ($tenant->time_format ?: App\Support\TimeFormat::DEFAULT))" />
             <x-settings.field label="{{ __('business.fields.first_day_of_week') }}"
                               :value="$tenant->first_day_of_week !== null ? App\Support\BusinessProfile::label('firstDayOfWeek', (string) $tenant->first_day_of_week) : null" />
+          </x-settings.card>
+
+          <x-settings.card title="{{ __('business.cards.payments') }}"
+                           description="{{ __('business.cards.payments_hint') }}">
+            @foreach (['paypal_handle', 'zelle_handle', 'cash_app_handle', 'venmo_handle'] as $handle)
+              <x-settings.field label="{{ __('business.fields.'.$handle) }}" :value="$tenant->{$handle}" />
+            @endforeach
           </x-settings.card>
 
           <x-settings.card title="{{ __('business.cards.defaults') }}"
@@ -170,6 +180,8 @@
             <x-settings.field label="{{ __('business.fields.default_tax_behavior') }}"
                               :value="App\Support\BusinessProfile::label('taxBehaviors', (string) $tenant->default_tax_behavior)"
                               :manage="route('settings.index')" manage-label="{{ __('business.manage') }}" />
+            <x-settings.field label="{{ __('business.fields.default_tax_rate') }}"
+                              :value="$tenant->default_tax_rate ? rtrim(rtrim(number_format((float) $tenant->default_tax_rate, 2), '0'), '.').'%' : null" />
             <x-settings.field label="{{ __('business.fields.default_staff_assignment') }}"
                               :value="App\Support\BusinessProfile::label('staffAssignment', (string) $tenant->default_staff_assignment)" />
 
