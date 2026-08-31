@@ -1,0 +1,212 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Mi cuenta',
+    'intro' => 'Tu perfil, tus preferencias y tu seguridad. Nada de esto cambia algo para el resto del negocio.',
+
+    'sections' => [
+        'profile' => 'Mi perfil',
+        'preferences' => 'Mis preferencias',
+        'password' => 'Cambiar contraseña',
+        'notifications' => 'Notificaciones',
+    ],
+
+    'save' => 'Guardar cambios',
+    'cancel' => 'Cancelar',
+    'reset' => 'Restablecer',
+    'reset_confirm' => '¿Restablecer estos ajustes a los del negocio?',
+
+    'profile' => [
+        'title' => 'Mi perfil',
+        'intro' => 'Cómo apareces en StyleDesk y cómo te localizamos.',
+
+        'photo_card' => 'Foto de perfil',
+        'photo_hint' => 'JPG, PNG o WebP, hasta 5 MB. Mientras tanto usamos tus iniciales.',
+        'photo_upload' => 'Subir foto',
+        'photo_replace' => 'Cambiar foto',
+        'photo_remove' => 'Quitar',
+        'photo_saved' => 'Foto de perfil actualizada.',
+        'photo_removed' => 'Foto de perfil eliminada.',
+        'photo_too_large' => 'Esa imagen supera los 5 MB.',
+        'photo_wrong_type' => 'Elige una imagen JPG, PNG o WebP.',
+        'photo_pending' => 'Vista previa: guarda para conservarla.',
+
+        'personal_card' => 'Información personal',
+        'first_name' => 'Nombre',
+        'last_name' => 'Apellidos',
+        'display_name' => 'Nombre para mostrar',
+        'display_name_hint' => 'Déjalo en blanco para usar tu nombre y apellidos.',
+        'display_name_placeholder' => 'Cómo ven tu nombre los clientes',
+        'job_title' => 'Puesto',
+        'job_title_placeholder' => 'Estilista sénior',
+        'phone' => 'Móvil',
+        'phone_hint' => 'Se usará para avisos de citas cuando activemos los SMS.',
+        'saved' => 'Perfil actualizado correctamente.',
+
+        'email_card' => 'Correo electrónico',
+        'email' => 'Correo electrónico',
+        'email_hint' => 'Con esta dirección inicias sesión. Para cambiarla necesitamos tu contraseña y una confirmación desde la nueva dirección.',
+        'email_current_password' => 'Contraseña actual',
+        'email_change' => 'Cambiar correo electrónico',
+        'email_subject' => 'Confirma tu nuevo correo de StyleDesk',
+        'email_pending_title' => 'Confirma tu nuevo correo electrónico',
+        'email_pending_body' => 'Enviamos un enlace a :email. Tu dirección actual seguirá funcionando hasta que confirmes la nueva.',
+        'email_pending' => 'Revisa :email para confirmar el cambio.',
+        'email_resend' => 'Reenviar enlace',
+        'email_resent' => 'Volvimos a enviar el enlace de confirmación.',
+        'email_cancel' => 'Cancelar el cambio',
+        'email_cancelled' => 'Cambio de correo cancelado.',
+        'email_changed' => 'Correo electrónico actualizado correctamente.',
+        'email_link_dead' => 'Ese enlace caducó o ya se usó. Pide uno nuevo desde Mi perfil.',
+        'email_taken' => 'Ese correo electrónico ya está en uso.',
+        'email_unchanged' => 'Ese ya es tu correo electrónico.',
+
+        'staff_card' => 'Información laboral',
+        'staff_intro' => 'La configura un administrador en Gestión de personal; aquí se muestra como referencia.',
+        'role' => 'Rol',
+        'no_role' => 'Sin rol asignado',
+        'locations' => 'Sede asignada',
+        'all_locations' => 'Todas las sedes',
+        'no_location' => 'Sin sede asignada',
+        'status' => 'Estado de la cuenta',
+        'status_active' => 'Activa',
+        'status_inactive' => 'Inactiva',
+        'status_archived' => 'Archivada',
+        'member_since' => 'Miembro desde',
+    ],
+
+    'preferences' => [
+        'title' => 'Mis preferencias',
+        'intro' => 'Cómo se muestra la aplicación para ti. Cada ajuste sigue al del negocio hasta que lo cambies aquí.',
+
+        'language_card' => 'Idioma',
+        'language' => 'Idioma principal',
+        'language_hint' => 'Cambia la interfaz solo para ti. Lo que ha escrito tu negocio — servicios, notas de clientes — nunca se traduce.',
+        'language_default' => 'Usar el idioma del negocio',
+
+        'format_card' => 'Fechas y horas',
+        'date_format' => 'Formato de fecha',
+        'time_format' => 'Formato de hora',
+        'timezone' => 'Zona horaria',
+        'timezone_hint' => 'Déjala sin definir para seguir la del negocio.',
+        'first_day_of_week' => 'Inicio de la semana',
+        'use_business' => 'Usar el ajuste del negocio',
+
+        'calendar_card' => 'Calendario',
+        'calendar_intro' => 'Cómo se abren para ti las pantallas de calendario.',
+        'calendar_view' => 'Vista predeterminada',
+        'calendar_views' => [
+            'day' => 'Día',
+            'week' => 'Semana',
+            'month' => 'Mes',
+        ],
+        'show_weekends' => 'Mostrar fines de semana',
+        'show_cancelled' => 'Mostrar citas canceladas',
+        'show_resource_color' => 'Mostrar el color del recurso',
+        'show_staff_color' => 'Mostrar el color del personal',
+
+        'save' => 'Guardar preferencias',
+        'saved' => 'Preferencias actualizadas correctamente.',
+        'reset_action' => 'Restablecer',
+        'reset_hint' => 'Borra tus elecciones personales para volver a seguir al negocio en todo.',
+        'reset' => 'Preferencias restablecidas a las del negocio.',
+    ],
+
+    'password' => [
+        'title' => 'Cambiar contraseña',
+        'intro' => 'Elige una que no uses en ningún otro sitio.',
+        'card' => 'Tu contraseña',
+        'current' => 'Contraseña actual',
+        'new' => 'Nueva contraseña',
+        'confirm' => 'Confirmar la nueva contraseña',
+        'requirements' => 'Tu contraseña necesita',
+        'save' => 'Cambiar contraseña',
+        'saved' => 'Contraseña cambiada correctamente.',
+        'current_wrong' => 'Esa no es tu contraseña actual.',
+        'same_as_current' => 'Elige una contraseña distinta de la actual.',
+        'mismatch' => 'Las contraseñas no coinciden.',
+        'logout_others' => 'Cerrar sesión en los demás dispositivos',
+        'logout_others_hint' => 'Este navegador seguirá con la sesión abierta. En el resto habrá que entrar con la nueva contraseña.',
+    ],
+
+    'notifications' => [
+        'title' => 'Notificaciones',
+        'intro' => 'Qué mensajes recibes y por dónde. Los avisos de seguridad se envían siempre.',
+        'saved' => 'Preferencias de notificación actualizadas correctamente.',
+        'reset' => 'Preferencias de notificación restablecidas.',
+        'save' => 'Guardar preferencias de notificación',
+        'enable_all' => 'Activar todo',
+        'disable_all' => 'Desactivar las opcionales',
+        'bulk_hint' => 'Los avisos de seguridad siguen activos en cualquier caso.',
+        'always_on' => 'Siempre activo',
+        'coming_soon' => 'Próximamente',
+        'not_supported' => 'No disponible para esta notificación',
+
+        'channels' => [
+            'in_app' => 'En la app',
+            'email' => 'Correo',
+            'sms' => 'SMS',
+            'push' => 'Push',
+        ],
+
+        'groups' => [
+            'appointments' => [
+                'label' => 'Citas',
+                'description' => 'Lo que ocurre con las reservas de tu calendario.',
+            ],
+            'clients' => [
+                'label' => 'Clientes',
+                'description' => 'Cambios en las personas que atiendes.',
+            ],
+            'team' => [
+                'label' => 'Equipo',
+                'description' => 'Tu horario, tu rol y lo que te envían tus compañeros.',
+            ],
+            'resources' => [
+                'label' => 'Recursos',
+                'description' => 'Las salas, sillas y equipos de los que depende tu trabajo.',
+            ],
+            'system' => [
+                'label' => 'Seguridad y cuenta',
+                'description' => 'Cómo te enteras de que algo pasó con tu cuenta. Siempre se envían.',
+            ],
+        ],
+
+        'types' => [
+            'booking.created' => 'Nueva cita creada',
+            'booking.assigned' => 'Cita asignada a mí',
+            'booking.updated' => 'Cita actualizada',
+            'booking.rescheduled' => 'Cita reprogramada',
+            'booking.cancelled' => 'Cita cancelada',
+            'booking.completed' => 'Cita completada',
+            'booking.no_show' => 'Cita marcada como ausencia',
+            'booking.reminder' => 'Recordatorio de cita',
+
+            'client.assigned' => 'Nuevo cliente asignado a mí',
+            'client.updated' => 'Ficha de cliente actualizada',
+            'client.note_added' => 'Nota de cliente añadida',
+            'client.file_uploaded' => 'Archivo de cliente subido',
+            'client.mentioned' => 'Una nota de cliente me menciona',
+
+            'team.invitation' => 'Invitación de personal',
+            'team.location_assigned' => 'Personal asignado a una sede',
+            'team.hours_changed' => 'Horario laboral modificado',
+            'team.schedule_changed' => 'Turnos modificados',
+            'team.mentioned' => 'Alguien me menciona',
+            'team.role_changed' => 'Rol o permisos modificados',
+
+            'resource.assigned' => 'Recurso asignado a mí',
+            'resource.changed' => 'Recurso modificado',
+            'resource.unavailable' => 'Un recurso deja de estar disponible',
+            'resource.conflict' => 'Conflicto de reserva de recursos',
+
+            'security.alert' => 'Avisos de seguridad',
+            'security.password_changed' => 'Contraseña cambiada',
+            'security.email_changed' => 'Correo electrónico cambiado',
+            'security.new_login' => 'Nuevo inicio de sesión detectado',
+            'security.account_alert' => 'Avisos de cuenta',
+        ],
+    ],
+];

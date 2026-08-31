@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 return [
+
+    'validation' => [
+        'code_taken' => 'That code is already used by another resource.',
+        'prefix_shape' => 'Use letters, numbers, hyphens and underscores only.',
+    ],
     'title' => 'Resources',
     'subtitle' => 'Chairs, rooms, equipment and anything else a booking needs as well as a person.',
 
@@ -14,6 +19,7 @@ return [
 
     'form' => [
         'code' => 'Resource code',
+        'code_hint' => 'Numbered for you. Change it if this business has its own labels, or clear it to let StyleDesk number the next one.',
         'color' => 'Colour code',
         'color_hint' => 'Used to pick this resource out in scheduling and availability views.',
         'place' => 'Location & capacity',
@@ -124,6 +130,16 @@ return [
     'count' => '{0} No resources|{1} 1 resource|[2,*] :count resources',
 
     'categories_ui' => [
+        'code_card' => 'Resource codes',
+        'code_intro' => 'How new resources are numbered. Codes already given out are left alone — a code is a name for a thing, not a calculation about it.',
+        'code_prefix' => 'Prefix',
+        'code_prefix_hint' => 'Letters, numbers, hyphens and underscores. Leave blank for the StyleDesk default.',
+        'code_padding' => 'Number width',
+        'code_padding_hint' => 'How many digits the number is padded to.',
+        'code_preview' => 'Next code',
+        'code_save' => 'Save numbering',
+        'code_saved' => 'Resource numbering updated.',
+        'code_exhausted' => 'Every number in this format is taken. Widen the number or change the prefix.',
         'title' => 'Resource categories',
         'intro' => 'The kinds of thing your business books — chairs, rooms, equipment. StyleDesk supplies a set to start from; switch off the ones you do not use and add your own.',
         'add' => 'Add category',

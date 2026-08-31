@@ -29,7 +29,14 @@
         </div>
       @endif
 
-      <form id="resourceForm" method="POST" action="{{ route('resources.store') }}" class="mt-6 space-y-5">
+      <form id="resourceForm" method="POST" action="{{ route('resources.store') }}"
+            {{-- Live validation, the same module and the same messages as the
+                 sign-up form. The rules live on the fields; this only says
+                 which words to refuse them in. --}}
+            data-validate-form
+            data-validation-messages='@json(\App\Support\LiveValidation::messages([
+                "taken" => __("resources.validation.code_taken"),
+            ]))' class="mt-6 space-y-5">
         @csrf
 
         @include('resources._form', ['resource' => null])

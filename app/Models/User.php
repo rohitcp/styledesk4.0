@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Contracts\TenantStorageContract;
 use App\Http\Middleware\EnsureCanManageSettings;
 use App\Notifications\VerifyEmail;
 use Database\Factories\UserFactory;
@@ -11,13 +12,15 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['first_name', 'last_name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token', 'email_verification_code'])]
+#[Fillable(['first_name', 'last_name', 'display_name', 'job_title', 'phone', 'phone_country', 'email', 'password'])]
+#[Hidden(['password', 'remember_token', 'email_verification_code', 'pending_email_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -35,6 +38,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verification_code_expires_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'pending_email_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -294,14 +298,69 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Their photo, wherever it was uploaded.
      *
-     * A person can have an account picture and a staff-record picture; the
-     * account one wins, because it is the one they chose for themselves.
+     * Three places, narrowest first. What they uploaded in My Account is a
+     * stored_files row and wins outright — it is the picture they chose for
+     * themselves, through the storage component that knows who owns it. Then
+     * the older `avatar_path`, still written by screens this feature has not
+     * touched, and last the staff record's, which an administrator set.
      */
     public function avatarUrl(): ?string
     {
+        if ($this->avatar_file_id !== null) {
+            $url = app(TenantStorageContract::class)->url($this->avatar_file_id);
+
+            if ($url !== null) {
+                return $url;
+            }
+        }
+
         $path = $this->avatar_path ?: $this->staffRecord()?->avatar_path;
 
         return $path ? Storage::disk('brand')->url($path) : null;
+    }
+
+    /** The stored file behind the account photo, when there is one. */
+    public function avatarFile(): BelongsTo
+    {
+        return $this->belongsTo(StoredFile::class, 'avatar_file_id');
+    }
+
+    /**
+     * What this person is called on screen.
+     *
+     * Their own answer first: `display_name` is the name they chose for
+     * themselves, which is the one clients see, and it is deliberately
+     * separate from the legal first and last name the business keeps.
+     */
+    public function displayName(): string
+    {
+        return $this->display_name !== null && $this->display_name !== ''
+            ? $this->display_name
+            : $this->name;
+    }
+
+    /**
+     * This person's display preferences, created on first read.
+     *
+     * A row rather than null, so a caller can write to it without checking.
+     * App\Support\AccountPreferences is what reads it — every column is
+     * nullable and means "whatever the business says".
+     */
+    public function preferences(): HasOne
+    {
+        return $this->hasOne(UserPreference::class);
+    }
+
+    /** The preference row, made if this person has never had one. */
+    public function preferencesRow(): UserPreference
+    {
+        return $this->preferences()->firstOrCreate([]);
+    }
+
+    /** Where this person's notification answers differ from the defaults. */
+    public function notificationPreferences(): HasMany
+    {
+        return $this->hasMany(UserNotificationPreference::class);
     }
 
     /** Backing store for staffRecord(); not an attribute, so it is never saved. */

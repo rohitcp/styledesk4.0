@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 return [
+
+    'validation' => [
+        'code_taken' => 'Ese código ya lo usa otro recurso.',
+        'prefix_shape' => 'Usa solo letras, números, guiones y guiones bajos.',
+    ],
     'title' => 'Recursos',
     'subtitle' => 'Sillones, salas, equipos y todo lo que una reserva necesita además de una persona.',
 
@@ -14,6 +19,7 @@ return [
 
     'form' => [
         'code' => 'Código del recurso',
+        'code_hint' => 'Lo numeramos por ti. Cámbialo si el negocio usa sus propias etiquetas, o bórralo para que StyleDesk numere el siguiente.',
         'color' => 'Código de color',
         'color_hint' => 'Sirve para distinguir este recurso en las vistas de agenda y disponibilidad.',
         'place' => 'Sede y capacidad',
@@ -124,6 +130,16 @@ return [
     'count' => '{0} Sin recursos|{1} 1 recurso|[2,*] :count recursos',
 
     'categories_ui' => [
+        'code_card' => 'Códigos de recurso',
+        'code_intro' => 'Cómo se numeran los recursos nuevos. Los códigos ya asignados no se tocan: un código es el nombre de algo, no un cálculo sobre ello.',
+        'code_prefix' => 'Prefijo',
+        'code_prefix_hint' => 'Letras, números, guiones y guiones bajos. Déjalo en blanco para usar el valor de StyleDesk.',
+        'code_padding' => 'Dígitos del número',
+        'code_padding_hint' => 'A cuántos dígitos se rellena el número.',
+        'code_preview' => 'Siguiente código',
+        'code_save' => 'Guardar numeración',
+        'code_saved' => 'Numeración de recursos actualizada.',
+        'code_exhausted' => 'Todos los números de este formato están en uso. Amplía el número o cambia el prefijo.',
         'title' => 'Categorías de recursos',
         'intro' => 'Los tipos de cosas que reserva tu negocio: sillones, salas, equipos. StyleDesk aporta un conjunto inicial; desactiva las que no uses y añade las tuyas.',
         'add' => 'Añadir categoría',

@@ -996,4 +996,50 @@ class ServicesTest extends TestCase
             ->assertOk()
             ->assertSee('Couples Massage Room', false);
     }
+
+    // ------------------------------------------------- inline validation
+
+    /**
+     * The form checks itself as it is filled in, with the same module and the
+     * same messages as the sign-up, client and resource forms.
+     */
+    public function test_the_form_carries_the_live_validation_rules(): void
+    {
+        $page = $this->actingAs($this->owner)
+            ->get(route('services.create'))
+            ->assertOk();
+
+        $page->assertSee('data-validate-form', false);
+        $page->assertSee('data-rules="required|max:120"', false);
+        $page->assertSee('data-rules="required|integer|min:1|max:'.config('service_options.max_duration_minutes').'"', false);
+    }
+
+    /**
+     * Every field carrying rules has somewhere to print them.
+     *
+     * A rule with no message box beside it fails silently in the browser: the
+     * module paints into [data-error-for="<the field's id>"], and without one
+     * the reader is refused with nothing said.
+     */
+    public function test_every_validated_field_has_a_message_box(): void
+    {
+        $html = $this->actingAs($this->owner)
+            ->get(route('services.create'))
+            ->getContent();
+
+        preg_match_all('/id="([^"]+)"[^>]*data-rules=/', $html, $withRules);
+        preg_match_all('/data-rules=[^>]*id="([^"]+)"/', $html, $rulesFirst);
+
+        $ids = array_unique(array_merge($withRules[1], $rulesFirst[1]));
+
+        $this->assertNotEmpty($ids, 'The service form declares no live-validation rules at all.');
+
+        foreach ($ids as $id) {
+            $this->assertStringContainsString(
+                'data-error-for="'.$id.'"',
+                $html,
+                "The field {$id} declares rules but has nowhere to print the message."
+            );
+        }
+    }
 }

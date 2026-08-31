@@ -130,3 +130,40 @@
     });
   }());
 </script>
+
+<script>
+    /*
+     * The numbering preview.
+     *
+     * Redrawn from the prefix and the width as they are typed, so the reader
+     * sees "RES-001" rather than having to picture what two fields called
+     * "prefix" and "width" will produce. The number itself is whatever the
+     * server said was next — this only re-dresses it, and never invents one:
+     * which number is free is a question about the database.
+     */
+    (function () {
+        var form = document.querySelector('[data-code-format]');
+        if (!form) return;
+
+        var prefix = form.querySelector('[data-code-prefix]');
+        var padding = form.querySelector('[data-code-padding]');
+        var preview = form.querySelector('[data-code-preview]');
+
+        /* The digits of the code the server rendered, so a business already
+           on RES-014 previews 015 rather than 001. */
+        var current = (preview.textContent.match(/(\d+)\s*$/) || [])[1] || '1';
+        var fallback = @json(config('resources.code.prefix'));
+
+        function paint() {
+            var width = Number(padding.value) || 1;
+            var number = String(Number(current));
+
+            while (number.length < width) number = '0' + number;
+
+            preview.textContent = (prefix.value.trim() || fallback) + number;
+        }
+
+        prefix.addEventListener('input', paint);
+        padding.addEventListener('change', paint);
+    }());
+</script>

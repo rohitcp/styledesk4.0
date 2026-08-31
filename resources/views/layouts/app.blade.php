@@ -228,11 +228,42 @@
     @php
         $sdUser = auth()->user();
         $sdAccountBoot = [
-            'name' => $sdUser->name,
+            'name' => $sdUser->displayName(),
             'email' => $sdUser->email,
-            'initials' => strtoupper(mb_substr($sdUser->first_name, 0, 1).mb_substr($sdUser->last_name, 0, 1)),
+            'initials' => $sdUser->initials(),
+            'photo' => $sdUser->avatarUrl(),
             'org' => tenancy()->initialized ? tenant('name') : 'No business yet',
+
+            /* The menu's rows, from the app's own routes rather than the
+               prototype's .html list — and from App\Support\AccountSection,
+               so the menu and the left navigation inside My Account cannot
+               offer different sections. */
+            'rows' => collect(App\Support\AccountSection::all())
+                ->map(fn (array $section) => [
+                    'id' => $section['key'],
+                    'label' => $section['label'],
+                    'url' => route($section['route']),
+                ])
+                ->all(),
+
         ];
+
+        /**
+         * App Settings is an administrator's screen, so the row is absent
+         * rather than present-and-refusing for everybody else.
+         *
+         * The label and the URL are added only when the row is, not passed
+         * with a flag turning them off: this whole array is printed into the
+         * page as JSON, so a label sent to somebody who may not open the
+         * screen puts "App settings" in their markup — which is the nav item
+         * being hidden in appearance only.
+         */
+        if ($sdUser->canManageSettings()) {
+            $sdAccountBoot['settingsUrl'] = route('settings.index');
+            $sdAccountBoot['settingsLabel'] = __('navigation.app_settings');
+        } else {
+            $sdAccountBoot['showSettings'] = false;
+        }
     @endphp
     <script id="sd-account-boot" type="application/json">@json($sdAccountBoot)</script>
 

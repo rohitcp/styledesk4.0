@@ -23,6 +23,14 @@
      */
     'rules' => null,
     /**
+     * A URL that answers "is this value already taken?".
+     *
+     * The same contract the client form uses: the module appends ?value=…
+     * and paints the message from a {"ok": false, "message": "…"} reply. Only
+     * a problem is ever painted, never a clearance — see live-validation.js.
+     */
+    'remoteCheck' => null,
+    /**
      * Shown but not editable.
      *
      * readonly, never disabled: a disabled field is left out of the submitted
@@ -39,7 +47,20 @@
 @endphp
 
 <div>
-    <label for="{{ $name }}" class="block text-[13px] font-medium text-ink mb-1.5">{{ $label }}</label>
+    {{-- The star is the component's job, not each caller's.
+
+         A field the form will refuse when it is empty says so before it is
+         refused, and every hand-written form in the app already marks them
+         this way. Drawn from `required` rather than typed into the label, so
+         a field that stops being required stops being starred — and so the
+         two cannot disagree.
+
+         aria-hidden: the input carries `required`, which is what a screen
+         reader announces. Reading "asterisk" after every required label is
+         noise on top of an announcement that already happened. --}}
+    <label for="{{ $name }}" class="block text-[13px] font-medium text-ink mb-1.5">
+        {{ $label }}@if ($required) <span class="text-danger" aria-hidden="true">*</span>@endif
+    </label>
 
     <div @class(['relative' => $isPassword])>
         <input
@@ -51,6 +72,7 @@
             @if ($autofocus) autofocus @endif
             @if ($maxlength) maxlength="{{ $maxlength }}" @endif
             @if ($rules) data-rules="{{ $rules }}" @endif
+            @if ($remoteCheck) data-remote-check="{{ $remoteCheck }}" @endif
             @if ($readonly) readonly aria-readonly="true" @endif
             value="{{ $isPassword ? '' : old($name, $value) }}"
             @class(['sd-input', 'has-suffix' => $isPassword, 'is-readonly' => $readonly])

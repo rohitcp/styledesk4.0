@@ -16,6 +16,26 @@ declare(strict_types=1);
 return [
 
     /*
+    | How resources are numbered when a business has not said otherwise.
+    |
+    | The code is generated rather than typed: "RES-001" after "RES-002" is
+    | the kind of mistake nobody notices until two labels on two chairs say
+    | the same thing. A business changes the prefix and the width in App
+    | Settings; the number is always the next one it has not used.
+    |
+    | `max_attempts` bounds the search for a free number, so a business whose
+    | codes were all typed by hand cannot turn one save into an endless loop.
+    */
+    'code' => [
+        'prefix' => 'RES-',
+        'padding' => 3,
+        'max_prefix_length' => 12,
+        'min_padding' => 1,
+        'max_padding' => 6,
+        'max_attempts' => 1000,
+    ],
+
+    /*
     | What a new business starts with.
     |
     | Seeded rather than left blank, because "styling chair" and "treatment

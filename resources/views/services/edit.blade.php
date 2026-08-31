@@ -58,7 +58,12 @@
         </div>
       @endif
 
-      <form id="serviceForm" method="POST" action="{{ route('services.update', $service) }}" class="mt-6 space-y-5">
+      <form id="serviceForm" method="POST" action="{{ route('services.update', $service) }}"
+            {{-- Live validation, the same module and the same messages as the
+                 sign-up and resource forms. The rules live on the fields;
+                 this only says which words to refuse them in. --}}
+            data-validate-form
+            data-validation-messages='@json(\App\Support\LiveValidation::messages())' class="mt-6 space-y-5">
         @csrf
         @method('PATCH')
 

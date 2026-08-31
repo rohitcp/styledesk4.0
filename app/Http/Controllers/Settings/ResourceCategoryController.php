@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\ResourceCategory;
 use App\Support\InputCase;
+use App\Support\ResourceCode;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,12 +37,55 @@ class ResourceCategoryController extends Controller
 
         return view('settings.resources.index', [
             'categories' => $categories,
+            /* The numbering scheme sits on this screen because it is a
+               property of the catalogue rather than of any one chair — the
+               same reason the categories are here and the resources are not. */
+            'codePrefix' => ResourceCode::prefix($request->user()->tenant),
+            'codePadding' => ResourceCode::padding($request->user()->tenant),
+            'codeSample' => ResourceCode::sample($request->user()->tenant),
+            'nextCode' => ResourceCode::next($request->user()->tenant),
             /* Grouped for reading, ordered for dragging: the sections are how
                a thirty-entry list is scanned, and position is what the rest
                of the app sorts by. */
             'grouped' => $categories->groupBy(fn (ResourceCategory $category) => $category->groupLabel() ?? __('resources.category_groups.general')),
             'search' => (string) $request->query('search', ''),
         ]);
+    }
+
+    /**
+     * How this business numbers its resources.
+     *
+     * Two fields, not a pattern string: a prefix somebody types and a width
+     * for the number. Changing either affects the *next* code only — the
+     * codes already printed on labels and written into a rota are not
+     * rewritten, because a code is a name for a thing rather than a
+     * calculation about it.
+     */
+    public function updateCodeFormat(Request $request): RedirectResponse
+    {
+        $code = config('resources.code');
+
+        $data = $request->validate([
+            /* Letters, digits and the two separators anybody actually uses.
+               Anything else ends up in a filename, a spreadsheet or a URL
+               eventually, and a code with a slash in it is a support ticket. */
+            'resource_code_prefix' => ['nullable', 'string', 'max:'.$code['max_prefix_length'], 'regex:/^[A-Za-z0-9_-]*$/'],
+            'resource_code_padding' => ['required', 'integer', 'min:'.$code['min_padding'], 'max:'.$code['max_padding']],
+        ], [
+            'resource_code_prefix.regex' => __('resources.validation.prefix_shape'),
+        ]);
+
+        $request->user()->tenant->forceFill([
+            /* Blank means "the product's default", not an empty prefix: the
+               same arrangement as every other tenant setting, so a business
+               that clears the field keeps following StyleDesk if the default
+               ever changes. */
+            'resource_code_prefix' => $data['resource_code_prefix'] ?: null,
+            'resource_code_padding' => (int) $data['resource_code_padding'],
+        ])->save();
+
+        return redirect()->route('settings.resources.index')
+            ->with('toast', ['type' => 'success', 'message' => __('resources.categories_ui.code_saved')]);
     }
 
     public function store(Request $request): RedirectResponse

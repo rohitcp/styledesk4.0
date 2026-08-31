@@ -2,6 +2,10 @@
 
 use App\Contracts\TenantStorageContract;
 use App\Http\Controllers\AccessCodeController;
+use App\Http\Controllers\Account\NotificationController as AccountNotificationController;
+use App\Http\Controllers\Account\PasswordController as AccountPasswordController;
+use App\Http\Controllers\Account\PreferencesController as AccountPreferencesController;
+use App\Http\Controllers\Account\ProfileController as AccountProfileController;
 use App\Http\Controllers\AppSettingsController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingLeadController;
@@ -273,6 +277,76 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'not-onboarded'])
     });
 
 /*
+| My Account.
+|
+| The signed-in person's own settings. Deliberately not inside the settings
+| group and deliberately without can-manage-settings: App Settings configures
+| the business and is an administrator's screen, while everything here belongs
+| to whoever is signed in, so a receptionist has exactly the same rights to it
+| as the owner.
+|
+| No `onboarded` gate either. Somebody part-way through setting up a business
+| still has a password to change and a language to choose, and locking them
+| out of their own account until the wizard is finished would be a support
+| ticket rather than a protection.
+|
+| Every route acts on $request->user(). There is no {user} parameter anywhere
+| in this group, which is what makes "you may only change your own settings"
+| a property of the URLs rather than a policy somebody has to remember.
+*/
+Route::middleware(['auth', 'verified', 'tenant.user'])
+    ->prefix('account')
+    ->name('account.')
+    ->group(function () {
+        Route::redirect('/', '/account/profile')->name('index');
+
+        Route::controller(AccountProfileController::class)->group(function () {
+            Route::get('profile', 'show')->name('profile');
+            Route::patch('profile', 'update')->name('profile.update');
+
+            /* Its own endpoints: a photo is chosen and applied on its own,
+               so it is not lost when the rest of the form is refused. */
+            Route::post('profile/photo', 'uploadPhoto')->name('photo.store');
+            Route::delete('profile/photo', 'removePhoto')->name('photo.destroy');
+
+            /* Throttled: each of these sends mail, and the address it goes to
+               is chosen by whoever is asking. */
+            Route::post('profile/email', 'requestEmailChange')->middleware('throttle:6,1')->name('email.request');
+            Route::post('profile/email/resend', 'resendEmailChange')->middleware('throttle:6,1')->name('email.resend');
+            Route::delete('profile/email', 'cancelEmailChange')->name('email.cancel');
+        });
+
+        Route::controller(AccountPreferencesController::class)->group(function () {
+            Route::get('preferences', 'show')->name('preferences');
+            Route::patch('preferences', 'update')->name('preferences.update');
+            Route::post('preferences/reset', 'reset')->name('preferences.reset');
+        });
+
+        Route::controller(AccountPasswordController::class)->group(function () {
+            Route::get('password', 'show')->name('password');
+            Route::put('password', 'update')->name('password.update');
+        });
+
+        Route::controller(AccountNotificationController::class)->group(function () {
+            Route::get('notifications', 'show')->name('notifications');
+            Route::patch('notifications', 'update')->name('notifications.update');
+            Route::post('notifications/reset', 'reset')->name('notifications.reset');
+        });
+    });
+
+/*
+| The link in the change-email message.
+|
+| Outside `auth`, like the verification link is and for the same reason: the
+| mail client opens it in whichever browser it likes, and that browser is
+| often not the one holding the session. The token is the credential and it is
+| checked against a stored hash, so nothing is trusted from the URL but the id.
+*/
+Route::middleware('throttle:10,1')
+    ->get('account/email/confirm/{user}/{token}', [AccountProfileController::class, 'confirmEmailChange'])
+    ->name('account.email.confirm');
+
+/*
 | App Settings.
 |
 | An administrative module: Owner and Administrator only, enforced here rather
@@ -318,6 +392,9 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 Route::get('/', 'index')->name('index');
                 Route::post('/', 'store')->name('store');
                 Route::post('reorder', 'reorder')->name('reorder');
+                /* Before {resourceCategory}: a literal segment declared after
+                   a parameter is reached by matching "code-format" as an id. */
+                Route::patch('code-format', 'updateCodeFormat')->name('code-format');
                 Route::patch('{resourceCategory}', 'update')->name('update');
                 Route::patch('{resourceCategory}/status', 'toggle')->name('toggle');
                 Route::delete('{resourceCategory}', 'destroy')->name('destroy');
@@ -932,6 +1009,9 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
                a parameter is reached by matching "create" as an id. */
             Route::get('create', 'create')->name('create');
             Route::get('data', 'data')->name('data');
+            /* Asked while somebody is typing a code, so it is throttled: the
+               answer is cheap, and one request per keystroke is not. */
+            Route::get('code-in-use', 'codeInUse')->middleware('throttle:60,1')->name('code-in-use');
             Route::get('{resource}/edit', 'edit')->name('edit');
             Route::get('{resource}', 'show')->name('show');
             Route::delete('{resource}', 'destroy')->name('destroy');

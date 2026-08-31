@@ -9,8 +9,11 @@ use App\Models\Resource;
 use App\Models\ResourceBlock;
 use App\Models\ResourceCategory;
 use App\Models\Service;
+use App\Models\Tenant;
+use App\Support\ResourceCode;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -273,7 +276,12 @@ class ResourceController extends Controller
     {
         $this->authorizeResources($request, 'resources.create');
 
-        return view('resources.create', $this->formData());
+        /* The form arrives with the next free code already in it. Generated
+           rather than typed: "RES-001" after "RES-002" is the kind of mistake
+           nobody notices until two labels on two chairs say the same thing. */
+        return view('resources.create', $this->formData() + [
+            'suggestedCode' => ResourceCode::next($request->user()->tenant),
+        ]);
     }
 
     public function edit(Request $request, Resource $resource): View
@@ -307,10 +315,15 @@ class ResourceController extends Controller
         $this->authorizeResources($request, 'resources.create');
 
         $data = $this->validated($request);
+        $tenant = $request->user()->tenant;
 
-        $resource = Resource::create(
-            $this->columns($data) + ['tenant_id' => $request->user()->tenant->getTenantKey()]
-        );
+        /* Blank means "number it for me". The field is optional, so a
+           business that labels its chairs by hand simply clears it. */
+        if (($data['code'] ?? null) === null || $data['code'] === '') {
+            $data['code'] = ResourceCode::next($tenant) ?: null;
+        }
+
+        $resource = $this->createWithCode($this->columns($data), $tenant);
 
         $this->syncRelations($resource, $data);
 
@@ -325,7 +338,7 @@ class ResourceController extends Controller
     {
         $this->authorizeResources($request, 'resources.edit', $resource);
 
-        $data = $this->validated($request);
+        $data = $this->validated($request, $resource);
 
         $resource->forceFill($this->columns($data))->save();
 
@@ -413,15 +426,88 @@ class ResourceController extends Controller
     }
 
     /**
+     * Save, and take the next number if somebody else took this one.
+     *
+     * Two people adding a resource in the same second are both handed the
+     * same next code — the read and the write cannot be one operation — and
+     * only the unique index can settle which of them keeps it. The loser is
+     * not shown an error: nothing they typed is wrong, so the save is retried
+     * with the number that is now next.
+     *
+     * Only a code the app generated is retried. A code the reader typed is
+     * theirs, and silently changing it would be answering a different
+     * question from the one they asked; that collision is a validation error
+     * on the way in.
+     *
+     * @param  array<string, mixed>  $columns
+     */
+    private function createWithCode(array $columns, ?Tenant $tenant): Resource
+    {
+        $attempts = $columns['code'] === null ? 0 : 3;
+
+        for ($i = 0; $i < $attempts; $i++) {
+            try {
+                return Resource::create($columns + ['tenant_id' => $tenant->getTenantKey()]);
+            } catch (UniqueConstraintViolationException $collision) {
+                $columns['code'] = ResourceCode::next($tenant) ?: null;
+            }
+        }
+
+        return Resource::create($columns + ['tenant_id' => $tenant->getTenantKey()]);
+    }
+
+    /**
+     * Is this code already on another of this business's resources?
+     *
+     * Asked while the reader types, so the answer arrives beside the field
+     * instead of after a submission they have to redo. The same question the
+     * unique rule asks on the way in — one of them without the other is how a
+     * form ends up accepting what the server refuses.
+     */
+    public function codeInUse(Request $request): JsonResponse
+    {
+        $this->authorizeResources($request, 'resources.create');
+
+        $code = trim((string) $request->query('value'));
+
+        if ($code === '') {
+            return response()->json(['ok' => true]);
+        }
+
+        $taken = Resource::withoutGlobalScopes()
+            ->withTrashed()
+            ->where('tenant_id', $request->user()->tenant?->getTenantKey())
+            /* The resource being edited is not a duplicate of itself. */
+            ->when($request->query('ignore'), fn ($query, $id) => $query->whereKeyNot($id))
+            ->where('code', $code)
+            ->exists();
+
+        return response()->json($taken
+            ? ['ok' => false, 'message' => __('resources.validation.code_taken')]
+            : ['ok' => true]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
-    private function validated(Request $request): array
+    private function validated(Request $request, ?Resource $resource = null): array
     {
         $ancillary = config('resources.ancillary_minutes');
 
         return $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'code' => ['nullable', 'string', 'max:40'],
+            /* Unique within the business, and only there: two salons both
+               numbering their first chair RES-001 is not a conflict, and a
+               code is only ever read next to the business it belongs to.
+               Archived resources still hold theirs — restoring one whose
+               number had been reissued would be a collision nobody could
+               resolve — so the rule deliberately does not skip trashed rows. */
+            'code' => [
+                'nullable', 'string', 'max:40',
+                Rule::unique('resources', 'code')
+                    ->where('tenant_id', $request->user()->tenant?->getTenantKey())
+                    ->ignore($resource?->id),
+            ],
             /* The palette is a shortlist, not the whole set: the last card in
                the picker opens a colour picker, so any well-formed hex is a
                colour a business may have chosen. Still validated — an

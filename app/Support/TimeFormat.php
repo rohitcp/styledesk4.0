@@ -36,10 +36,12 @@ class TimeFormat
          * `auth()` rather than `tenant()`: App Settings runs on the central
          * domain where tenancy is not initialised, and the user's business is
          * the one whose preference matters.
+         *
+         * Through AccountPreferences, so a colleague who chose a 24-hour clock
+         * in My Account sees one everywhere the app prints a time — the
+         * business's setting is the default, not the ceiling.
          */
-        $format = auth()->user()?->tenant?->time_format ?? self::DEFAULT;
-
-        return (string) $format !== '24';
+        return AccountPreferences::timeFormat(auth()->user()) !== '24';
     }
 
     /**

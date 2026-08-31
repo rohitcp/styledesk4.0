@@ -34,6 +34,62 @@
         </div>
       </div>
 
+      {{-- How new resources are numbered.
+
+           On this screen rather than on the resource form: it is a property
+           of the catalogue, not of any one chair — the same reason the
+           categories live here and the chairs themselves do not. --}}
+      <section class="bg-white border border-line rounded-card p-5 mt-6">
+        <h2 class="text-[15px] font-semibold text-head">{{ __('resources.categories_ui.code_card') }}</h2>
+        <p class="text-[13px] text-sub mt-1 max-w-[640px] leading-relaxed">{{ __('resources.categories_ui.code_intro') }}</p>
+
+        <form method="POST" action="{{ route('settings.resources.code-format') }}"
+              class="mt-4 flex flex-wrap items-end gap-4" data-code-format>
+          @csrf
+          @method('PATCH')
+
+          <div class="w-[160px]">
+            <label for="resource_code_prefix" class="block text-[13px] font-medium text-ink mb-1.5">
+              {{ __('resources.categories_ui.code_prefix') }}
+            </label>
+            <input id="resource_code_prefix" name="resource_code_prefix" type="text" class="sd-input"
+                   maxlength="{{ config('resources.code.max_prefix_length') }}"
+                   data-code-prefix
+                   value="{{ old('resource_code_prefix', $codePrefix) }}">
+            @error('resource_code_prefix')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+          </div>
+
+          <div class="w-[140px]">
+            <label for="resource_code_padding" class="block text-[13px] font-medium text-ink mb-1.5">
+              {{ __('resources.categories_ui.code_padding') }}
+            </label>
+            <select id="resource_code_padding" name="resource_code_padding" class="sd-input has-value" data-code-padding>
+              @for ($digits = config('resources.code.min_padding'); $digits <= config('resources.code.max_padding'); $digits++)
+                <option value="{{ $digits }}" @selected((int) old('resource_code_padding', $codePadding) === $digits)>
+                  {{ $digits }}
+                </option>
+              @endfor
+            </select>
+            @error('resource_code_padding')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+          </div>
+
+          {{-- The example is the setting explained. Two fields called
+               "prefix" and "width" do not tell anybody what a code will look
+               like; "RES-001" does, and it updates as they type. --}}
+          <div class="min-w-0">
+            <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('resources.categories_ui.code_preview') }}</span>
+            <p class="h-9 inline-flex items-center px-3 rounded-lg bg-hover border border-line
+                      text-[13px] font-semibold text-head tabular-nums" data-code-preview>
+              {{ $nextCode !== '' ? $nextCode : __('resources.categories_ui.code_exhausted') }}
+            </p>
+          </div>
+
+          <button type="submit" class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+            {{ __('resources.categories_ui.code_save') }}
+          </button>
+        </form>
+      </section>
+
       <form method="GET" class="mt-5 flex flex-wrap items-center gap-2">
         <div class="relative flex-1 min-w-[220px]">
           <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">

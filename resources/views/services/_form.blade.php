@@ -14,7 +14,13 @@
     <h2 class="text-[15px] font-semibold text-head">{{ __('services.section.about') }}</h2>
 
     <div class="space-y-4 mt-4">
+        {{-- The rules sit on the fields and resources/js/live-validation.js
+             reads them, so a name left blank is answered beside the field
+             while the form is being filled in rather than after a submission
+             the reader has to redo. The server checks the same things again
+             — see ServiceController::validated. --}}
         <x-text-field name="name" :label="__('services.name')" required maxlength="120"
+                      rules="required|max:120"
                       :value="old('name', $service?->name)" />
 
         <x-combo name="service_category_id" :label="__('services.category')"
@@ -28,7 +34,16 @@
                 <span class="text-faint font-normal">{{ __('common.optional') }}</span>
             </label>
             <textarea id="serviceDescription" name="description" rows="3" class="sd-input !h-auto py-2.5"
+                      data-rules="max:1000"
                       maxlength="1000">{{ old('description', $service?->description) }}</textarea>
+
+            {{-- One box for both kinds of message, like every field the
+                 x-text-field component draws: the server writes into it when
+                 it refuses a submission and the browser writes into the same
+                 one while the reader types, so a message never appears twice
+                 or in two different places. --}}
+            <p data-error-for="serviceDescription" role="alert" class="mt-1.5 text-[12px] text-danger"
+               @unless ($errors->has('description')) hidden @endunless>{{ $errors->first('description') }}</p>
         </div>
     </div>
 </section>
@@ -46,8 +61,15 @@
                 {{ __('services.duration') }} <span class="text-danger">*</span>
             </label>
             <input id="serviceDuration" name="duration_minutes" type="number" class="sd-input" required
+                   data-rules="required|integer|min:1|max:{{ config('service_options.max_duration_minutes') }}"
                    min="1" max="{{ config('service_options.max_duration_minutes') }}"
                    value="{{ old('duration_minutes', $service?->duration_minutes ?? config('service_options.default_duration_minutes')) }}">
+
+            {{-- Under the field it is about. The refusal used to be printed
+                 at the foot of the section, which on a row of five numbers
+                 says one of them is wrong without saying which. --}}
+            <p data-error-for="serviceDuration" role="alert" class="mt-1.5 text-[12px] text-danger"
+               @unless ($errors->has('duration_minutes')) hidden @endunless>{{ $errors->first('duration_minutes') }}</p>
         </div>
 
         @foreach ([
@@ -59,13 +81,16 @@
             <div>
                 <label for="service_{{ $field }}" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('services.'.$key) }}</label>
                 <input id="service_{{ $field }}" name="{{ $field }}" type="number" class="sd-input"
+                       data-rules="integer|min:0|max:{{ config('service_options.max_ancillary_minutes') }}"
                        min="0" max="{{ config('service_options.max_ancillary_minutes') }}"
                        value="{{ old($field, $service?->{$field} ?? 0) }}">
+
+                <p data-error-for="service_{{ $field }}" role="alert" class="mt-1.5 text-[12px] text-danger"
+                   @unless ($errors->has($field)) hidden @endunless>{{ $errors->first($field) }}</p>
             </div>
         @endforeach
     </div>
 
-    @error('duration_minutes')<p class="mt-2 text-[12px] text-danger">{{ $message }}</p>@enderror
 </section>
 
 <section class="bg-white border border-line rounded-card p-5">

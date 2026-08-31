@@ -40,13 +40,34 @@
     <h2 class="text-[15px] font-semibold text-head">{{ __('resources.section.about') }}</h2>
 
     <div class="space-y-4 mt-4">
-        <div class="grid sm:grid-cols-2 gap-4">
-            <x-text-field name="name" :label="__('resources.name')" required maxlength="120"
-                          :value="old('name', $resource?->name)" />
+        {{-- One field per row rather than the pair side by side.
 
-            <x-text-field name="code" :label="__('resources.form.code')" maxlength="40"
-                          :value="old('code', $resource?->code)" />
-        </div>
+             They are read in order, not compared: the name is what the
+             resource is, and the code is a label the app has already filled
+             in. Beside each other they read as two halves of one answer, and
+             the code's own hint then sits under half the width it needs. --}}
+
+        {{-- The rules sit on the fields and resources/js/live-validation.js
+             reads them, so a name left blank is answered beside the field
+             while it is being filled in rather than after a submission the
+             reader has to redo. The server checks the same two things
+             again — see ResourceController::validated. --}}
+        <x-text-field name="name" :label="__('resources.name')" required maxlength="120"
+                      rules="required|max:120"
+                      :value="old('name', $resource?->name)" />
+
+        {{-- Filled in already on the add form: the next number this business
+             has not used, from App\Support\ResourceCode. Still an ordinary
+             editable field, because a business with its own labels on the
+             wall has to be able to type them — and clearing it hands the
+             numbering back to the app. Checked against this business's other
+             resources while it is typed; `ignore` keeps a resource from being
+             a duplicate of itself on the edit form. --}}
+        <x-text-field name="code" :label="__('resources.form.code')" maxlength="40"
+                      rules="max:40"
+                      :hint="__('resources.form.code_hint')"
+                      :remote-check="route('resources.code-in-use', array_filter(['ignore' => $resource?->id]))"
+                      :value="old('code', $resource?->code ?? ($suggestedCode ?? null))" />
 
         {{-- Searchable, and each name carrying the section it sits under: the
              catalogue is thirty entries long and several read alike out of

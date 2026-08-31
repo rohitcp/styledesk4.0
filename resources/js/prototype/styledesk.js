@@ -1014,6 +1014,17 @@ window.SD = (function () {
     var here = window.location.pathname.split('/').pop() || 'dashboard.html';
     var from = encodeURIComponent(here.indexOf('account-') === 0 ? 'dashboard.html' : here);
 
+    /* The rows, and where App Settings lives.
+       Passed in by the Laravel shell, which knows the real routes and the
+       reader's language; the prototype's own .html list is the fallback so
+       this file still works when opened straight from html/. Rows whose id
+       has no icon are skipped rather than drawn blank. */
+    var rows = (options.rows && options.rows.length ? options.rows : ACCOUNT_ROWS);
+    var settingsUrl = options.settingsUrl || 'app-settings.html';
+    var settingsLabel = options.settingsLabel || 'App Settings';
+    var showSettings = options.showSettings !== false;
+    var linked = !!options.rows;
+
     var avatar = photo
       ? '<img src="' + photo + '" alt="" class="h-full w-full object-cover" />'
       : escapeHtml(initials);
@@ -1046,13 +1057,19 @@ window.SD = (function () {
           '<span class="block text-[12px] text-sub truncate">' + escapeHtml(email) + '</span>' +
         '</span>' +
       '</div>' +
-      ACCOUNT_ROWS.map(function (r) {
-        return '<a class="sd-acct__item" role="menuitem" tabindex="-1" href="' + r.url + '?from=' + from + '">' +
-          ACCOUNT_ICONS[r.id] + escapeHtml(r.label) + '</a>';
+      rows.map(function (r) {
+        /* Real routes carry no ?from=: the app has a back button and a nav,
+           and an opener remembered in a query string would be a second,
+           worse one. */
+        var href = linked ? r.url : r.url + '?from=' + from;
+        return '<a class="sd-acct__item" role="menuitem" tabindex="-1" href="' + href + '">' +
+          (ACCOUNT_ICONS[r.id] || '') + escapeHtml(r.label) + '</a>';
       }).join('') +
-      '<div class="sd-acct__sep"></div>' +
-      '<a class="sd-acct__item" role="menuitem" tabindex="-1" href="app-settings.html">' +
-        ACCOUNT_ICONS.settings + 'App Settings</a>' +
+      (showSettings
+        ? '<div class="sd-acct__sep"></div>' +
+          '<a class="sd-acct__item" role="menuitem" tabindex="-1" href="' + settingsUrl + '">' +
+          ACCOUNT_ICONS.settings + escapeHtml(settingsLabel) + '</a>'
+        : '') +
       '<div class="sd-acct__sep"></div>' +
       '<button type="button" class="sd-acct__item sd-acct__item--danger" role="menuitem" tabindex="-1" data-signout>' +
         ACCOUNT_ICONS.signout + 'Sign Out</button>';
