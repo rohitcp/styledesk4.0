@@ -550,4 +550,116 @@ class StaffCreateTest extends TestCase
         $this->assertSame('Senior stylist', $staff->job_title);
         $this->assertSame([$service->id], $staff->services()->pluck('services.id')->all());
     }
+
+    // --------------------------------------------- contact fields and rules
+
+    /**
+     * The form checks itself as it is filled in, with the same module and the
+     * same messages as the resource and location forms.
+     */
+    public function test_the_form_carries_the_live_validation_rules(): void
+    {
+        $page = $this->actingAs($this->owner())
+            ->get('http://styledesk.test/settings/staff/create')
+            ->assertOk();
+
+        $page->assertSee('data-validate-form', false);
+        $page->assertSee('data-rules="required|email|max:255"', false);
+        $page->assertSee('data-rules="required|max:100"', false);
+        $page->assertSee('data-phone-country-value', false);
+    }
+
+    /**
+     * Every field carrying rules has somewhere to print them.
+     *
+     * A rule with no message box beside it fails silently in the browser: the
+     * module paints into [data-error-for="<the field's id>"], and without one
+     * the reader is refused with nothing said.
+     */
+    public function test_every_validated_field_has_a_message_box(): void
+    {
+        $html = $this->actingAs($this->owner())
+            ->get('http://styledesk.test/settings/staff/create')
+            ->getContent();
+
+        preg_match_all('/id="([^"]+)"[^>]*data-rules=/', $html, $withRules);
+        preg_match_all('/data-rules=[^>]*id="([^"]+)"/', $html, $rulesFirst);
+
+        $ids = array_unique(array_merge($withRules[1], $rulesFirst[1]));
+
+        $this->assertNotEmpty($ids);
+
+        foreach ($ids as $id) {
+            $this->assertStringContainsString('data-error-for="'.$id.'"', $html,
+                "The field {$id} declares rules but has nowhere to print the message.");
+        }
+    }
+
+    /**
+     * All three numbers are entered with a searchable country picker beside
+     * them, and all three codes are saved. None of the columns existed before
+     * — a mobile written as "07700 900461" was a number nobody outside the UK
+     * could dial, with nothing recording where it was from.
+     */
+    public function test_each_number_keeps_its_dialling_code(): void
+    {
+        Queue::fake();
+
+        $this->actingAs($this->owner())
+            ->post('http://styledesk.test/settings/staff', $this->payload([
+                'phone' => '7700 900461',
+                'phone_country' => 'GB',
+                'secondary_phone' => '512 555 0111',
+                'secondary_phone_country' => 'US',
+                'emergency_contact_phone' => '416 555 0199',
+                'emergency_contact_phone_country' => 'CA',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $staff = Staff::withoutGlobalScopes()->where('email', 'kit@acme.test')->firstOrFail();
+
+        $this->assertSame('GB', $staff->phone_country);
+        $this->assertSame('US', $staff->secondary_phone_country);
+        $this->assertSame('CA', $staff->emergency_contact_phone_country);
+    }
+
+    /**
+     * The address the browser refuses is the address the server refuses.
+     *
+     * The invitation to join is sent to this address, so one that reaches
+     * nobody is a colleague who never arrives.
+     */
+    public function test_an_address_with_no_domain_is_refused(): void
+    {
+        Queue::fake();
+
+        $this->actingAs($this->owner())
+            ->from('http://styledesk.test/settings/staff/create')
+            ->post('http://styledesk.test/settings/staff', $this->payload(['email' => 'kit@acme']))
+            ->assertSessionHasErrors('email');
+
+        $this->assertDatabaseMissing('staff', ['email' => 'kit@acme']);
+    }
+
+    public function test_a_work_address_with_no_domain_is_refused(): void
+    {
+        Queue::fake();
+
+        $this->actingAs($this->owner())
+            ->from('http://styledesk.test/settings/staff/create')
+            ->post('http://styledesk.test/settings/staff', $this->payload(['work_email' => 'kit@acme']))
+            ->assertSessionHasErrors('work_email');
+    }
+
+    public function test_a_real_address_is_accepted(): void
+    {
+        Queue::fake();
+
+        $this->actingAs($this->owner())
+            ->post('http://styledesk.test/settings/staff', $this->payload([
+                'email' => 'kit@acme.co.uk',
+                'work_email' => 'kit.wu@acme.co.uk',
+            ]))
+            ->assertSessionHasNoErrors();
+    }
 }

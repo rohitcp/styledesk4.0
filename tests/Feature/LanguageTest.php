@@ -1066,4 +1066,51 @@ class LanguageTest extends TestCase
             ->assertOk()
             ->assertSee(route('settings.languages.show'), false);
     }
+
+    /**
+     * The primary language is shown in the additional list as included.
+     *
+     * It is an enabled language by definition — App\Support\Locale always
+     * counts it — so an unticked row said the opposite: that the business's
+     * own main language was one it had not switched on. Locked, because
+     * unticking it would be asking to disable the language everything else
+     * falls back to.
+     */
+    public function test_the_primary_language_is_ticked_and_locked_in_the_additional_list(): void
+    {
+        $this->enableSpanish();
+
+        $html = $this->actingAs($this->owner())
+            ->get(route('settings.languages.edit'))
+            ->assertOk()
+            ->getContent();
+
+        preg_match('/<input type="checkbox" name="secondary\[\]" value="en"[^>]*>/', $html, $english);
+
+        $this->assertNotEmpty($english, 'The primary language has no row in the additional list.');
+        $this->assertStringContainsString('checked', $english[0]);
+        $this->assertStringContainsString('disabled', $english[0]);
+    }
+
+    /**
+     * A disabled box posts nothing, so the primary is never written into the
+     * pivot as well — it lives in tenants.default_language and one copy of a
+     * fact is enough.
+     */
+    public function test_the_primary_is_not_stored_as_an_additional_language(): void
+    {
+        $this->enableSpanish();
+
+        $owner = $this->owner();
+
+        $this->actingAs($owner)->patch(route('settings.languages.update'), [
+            'primary' => 'en',
+            'secondary' => ['en', 'es'],
+        ])->assertSessionHasNoErrors();
+
+        $codes = $owner->tenant->fresh()->languages()->pluck('language_code');
+
+        $this->assertFalse($codes->contains('en'));
+        $this->assertTrue($codes->contains('es'));
+    }
 }

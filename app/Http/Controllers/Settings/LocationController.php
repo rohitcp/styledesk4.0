@@ -8,10 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\LocationHour;
 use App\Models\Staff;
+use App\Support\EmailAddress;
 use App\Support\InputCase;
 use App\Support\LocationOptions;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -186,6 +188,34 @@ class LocationController extends Controller
     // ------------------------------------------------------------ helpers
 
     /**
+     * Is this code already on another of this business's locations?
+     *
+     * Asked while the reader types, so the answer arrives beside the field
+     * instead of after a submission they have to redo. The same question the
+     * unique rule asks on the way in — one of them without the other is how a
+     * form ends up accepting what the server refuses.
+     */
+    public function codeInUse(Request $request): JsonResponse
+    {
+        $code = trim((string) $request->query('value'));
+
+        if ($code === '') {
+            return response()->json(['ok' => true]);
+        }
+
+        $taken = Location::withoutGlobalScopes()
+            ->where('tenant_id', $request->user()->tenant?->getTenantKey())
+            /* The location being edited is not a duplicate of itself. */
+            ->when($request->query('ignore'), fn ($query, $id) => $query->whereKeyNot($id))
+            ->where('code', $code)
+            ->exists();
+
+        return response()->json($taken
+            ? ['ok' => false, 'message' => __('locations.validation.code_unique')]
+            : ['ok' => true]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function validated(Request $request, ?Location $location): array
@@ -232,10 +262,20 @@ class LocationController extends Controller
             'assistant_manager_ids.*' => [$this->staffRule($tenantId)],
 
             'phone' => ['required', 'string', 'max:32'],
+            /* The dialling code, chosen beside the number. The column existed
+               and the form never posted it, so every number saved here was a
+               number with no country against it. */
+            'phone_country' => ['nullable', 'string', 'size:2'],
             'phone_secondary' => ['nullable', 'string', 'max:32'],
-            'email' => ['required', 'email', 'max:255'],
-            'booking_email' => ['nullable', 'email', 'max:255'],
-            'support_email' => ['nullable', 'email', 'max:255'],
+            'phone_secondary_country' => ['nullable', 'string', 'size:2'],
+            /* Held to what the browser holds them to. Laravel's `email` rule
+               on its own accepts "desk@salon" — an address with no dot in the
+               domain, legal on a local network and reaching nobody a client
+               lives on. App\Support\EmailAddress is the one answer both ends
+               read. */
+            'email' => EmailAddress::rules(required: true),
+            'booking_email' => EmailAddress::rules(),
+            'support_email' => EmailAddress::rules(),
             'website' => ['nullable', 'url', 'max:255'],
             'extension' => ['nullable', 'string', 'max:20'],
             'contact_person' => ['nullable', 'string', 'max:120'],
@@ -276,9 +316,15 @@ class LocationController extends Controller
             'timezone.timezone' => __('locations.validation.timezone_in'),
             'phone.required' => __('locations.validation.phone_required'),
             'email.required' => __('locations.validation.email_required'),
+            /* Both the rule and the pattern say the same sentence: which of
+               the two refused an address is not a distinction the reader can
+               act on. */
             'email.email' => __('locations.validation.email_invalid'),
+            'email.regex' => __('locations.validation.email_invalid'),
             'booking_email.email' => __('locations.validation.email_invalid'),
+            'booking_email.regex' => __('locations.validation.email_invalid'),
             'support_email.email' => __('locations.validation.email_invalid'),
+            'support_email.regex' => __('locations.validation.email_invalid'),
             'website.url' => __('locations.validation.url_invalid'),
             'hours.*.*.closes_at.after' => __('locations.validation.closes_after_opens'),
             'manager_staff_id.exists' => __('locations.validation.staff_invalid'),
@@ -313,7 +359,8 @@ class LocationController extends Controller
             ->only([
                 'name', 'code', 'type', 'status',
                 'address_line1', 'address_line2', 'suite', 'city', 'state', 'postal_code', 'country', 'timezone',
-                'manager_staff_id', 'phone', 'phone_secondary', 'email', 'booking_email',
+                'manager_staff_id', 'phone', 'phone_country', 'phone_secondary',
+                'phone_secondary_country', 'email', 'booking_email',
                 'support_email', 'website', 'extension', 'contact_person',
             ])
             ->all();

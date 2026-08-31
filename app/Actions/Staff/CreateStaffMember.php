@@ -55,11 +55,17 @@ class CreateStaffMember
                 'email' => $data['email'],
                 'work_email' => $data['work_email'] ?? null,
                 'phone' => $data['phone'] ?? null,
+                /* The dialling code travels with the number it belongs to.
+                   Dropped here, the picker on the form would appear to work
+                   and the country would be gone by the time the row existed. */
+                'phone_country' => $data['phone_country'] ?? null,
                 'phone_type' => $data['phone_type'] ?? null,
                 'secondary_phone' => $data['secondary_phone'] ?? null,
+                'secondary_phone_country' => $data['secondary_phone_country'] ?? null,
                 'address' => $data['address'] ?? null,
                 'emergency_contact_name' => $data['emergency_contact_name'] ?? null,
                 'emergency_contact_phone' => $data['emergency_contact_phone'] ?? null,
+                'emergency_contact_phone_country' => $data['emergency_contact_phone_country'] ?? null,
                 'emergency_contact_relationship' => $data['emergency_contact_relationship'] ?? null,
 
                 // Both are written: `role` keeps the string every existing

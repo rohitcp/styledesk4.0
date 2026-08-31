@@ -7,6 +7,8 @@ return [
     'description' => 'Define el idioma principal de la aplicación y elige los idiomas adicionales disponibles para tu equipo.',
 
     'primary' => 'Idioma principal',
+
+    'is_primary' => 'principal',
     'primary_hint' => 'El idioma predeterminado de la aplicación. Cada persona puede cambiar el suyo desde la cabecera cuando hay más de un idioma activo.',
     'secondary' => 'Idiomas adicionales',
     'secondary_hint' => 'Los idiomas que tu equipo puede elegir. El idioma principal siempre está disponible y no aparece aquí.',

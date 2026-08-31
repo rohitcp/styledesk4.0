@@ -81,6 +81,7 @@ return [
     'validation' => [
         'required' => ':field es obligatorio.',
         'email' => 'Introduce una dirección de correo válida.',
+        'url' => 'Introduce una dirección web válida, empezando por https://',
         'phone' => 'Introduce un número de teléfono válido.',
         'date' => 'Introduce una fecha válida.',
         'numeric' => ':field debe ser un número.',

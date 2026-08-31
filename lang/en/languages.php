@@ -9,6 +9,8 @@ return [
     'description' => 'Set the primary application language and choose the additional languages available to your team.',
 
     'primary' => 'Primary language',
+
+    'is_primary' => 'primary',
     'primary_hint' => 'What the app is shown in by default. Everyone can change their own from the header once more than one language is enabled.',
     'secondary' => 'Additional languages',
     'secondary_hint' => 'Languages your team can choose from. The primary language is always available and is not listed here.',

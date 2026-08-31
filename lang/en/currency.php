@@ -19,6 +19,8 @@ return [
     'saved' => 'Currency settings updated successfully.',
 
     'primary' => 'Primary currency',
+
+    'is_primary' => 'primary',
     'primary_hint' => 'The default for services, products, packages, memberships, deposits, fees, discounts, taxes, payments, refunds and reports.',
     'secondary' => 'Additional currencies',
     'secondary_hint' => 'Currencies you also price in. The primary is always available and is not listed here.',

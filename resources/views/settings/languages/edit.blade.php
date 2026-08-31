@@ -57,17 +57,36 @@
 
             <div class="grid sm:grid-cols-2 gap-x-4 gap-y-2">
               @foreach ($available as $code => $language)
-                {{-- The primary is listed but disabled rather than hidden.
-                     Removing the row as the primary changes would make the
-                     list jump under the cursor; a disabled row explains
-                     itself. --}}
-                <label class="styledesk_choice" data-secondary-row="{{ $code }}">
+                {{-- The primary is listed, ticked and locked.
+
+                     Listed rather than hidden, because removing the row as
+                     the primary changes would make the list jump under the
+                     cursor. Ticked because it is true: the primary is an
+                     enabled language by definition — App\Support\Locale
+                     always counts it — and showing it unticked said the
+                     opposite, that the business's own main language was one
+                     it had not switched on. Locked because unticking it would
+                     be asking to disable the language everything falls back
+                     to.
+
+                     A disabled box posts nothing, which is exactly right: the
+                     primary is stored in tenants.default_language and a
+                     second copy of that fact in the pivot is a second thing
+                     to keep in step. --}}
+                @php $isPrimary = $code === old('primary', $primary); @endphp
+
+                <label class="styledesk_choice @if ($isPrimary) opacity-60 cursor-not-allowed @endif"
+                       data-secondary-row="{{ $code }}">
                   <input type="checkbox" name="secondary[]" value="{{ $code }}" class="sd-check"
                          data-secondary-box="{{ $code }}"
-                         @checked(in_array($code, $chosenSecondary, true))>
+                         @disabled($isPrimary)
+                         @checked($isPrimary || in_array($code, $chosenSecondary, true))>
                   <span class="styledesk_choice__label">
                     {{ $language['native'] }}
                     <span class="text-sub">— {{ $language['name'] }}</span>
+                    <span data-secondary-note="{{ $code }}" class="text-[12px] text-faint" @unless ($isPrimary) hidden @endunless>
+                      ({{ __('languages.is_primary') }})
+                    </span>
                   </span>
                 </label>
               @endforeach
@@ -105,12 +124,25 @@
         document.querySelectorAll('[data-secondary-row]').forEach(function (row) {
           var code = row.getAttribute('data-secondary-row');
           var box = row.querySelector('[data-secondary-box]');
+          var note = row.querySelector('[data-secondary-note]');
           var isPrimary = code === primary.value;
 
-          box.disabled = isPrimary;
-          if (isPrimary) box.checked = false;
+          /* Ticked and locked while it is the primary: it is an enabled
+             language by definition. What the reader had ticked before is
+             remembered on the box, so demoting a language from primary gives
+             back the answer they gave rather than a guess. */
+          if (isPrimary) {
+            if (!box.disabled) box.dataset.wasChecked = box.checked ? '1' : '0';
+            box.checked = true;
+          } else if (box.disabled) {
+            box.checked = box.dataset.wasChecked === '1';
+          }
 
-          row.classList.toggle('opacity-50', isPrimary);
+          box.disabled = isPrimary;
+
+          if (note) note.hidden = !isPrimary;
+
+          row.classList.toggle('opacity-60', isPrimary);
           row.classList.toggle('cursor-not-allowed', isPrimary);
         });
       }

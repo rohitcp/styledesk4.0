@@ -3,6 +3,19 @@
 @section('title', __('staff.edit_title'))
 
 @section('content')
+  @php
+      /**
+       * The browser's copy of the messages, built here rather than inline.
+       *
+       * @json() cannot take a call with nested parentheses: Blade's directive
+       * parser counts brackets rather than reading PHP, so it closes at the
+       * first inner ")" and the rest becomes stray template text.
+       */
+      $validationMessages = App\Support\LiveValidation::messages([
+          'email' => __('staff.validation.email_invalid'),
+      ]);
+  @endphp
+
   <main class="w-full px-4 sm:px-5 lg:px-6 py-5 sm:py-6">
     <div class="styledesk_form">
 
@@ -41,7 +54,12 @@
       @endif
 
       <form id="staffForm" method="POST" action="{{ \App\Support\StaffSection::route('update', $staff) }}"
-            enctype="multipart/form-data" class="mt-6 space-y-5">
+            enctype="multipart/form-data" 
+            {{-- Live validation, the same module and the same messages as the
+                 resource and location forms. The rules live on the fields;
+                 this only says which words to refuse them in. --}}
+            data-validate-form
+            data-validation-messages='@json($validationMessages)' class="mt-6 space-y-5">
         @csrf
         @method('PATCH')
 

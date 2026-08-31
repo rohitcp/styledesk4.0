@@ -56,18 +56,30 @@
       <label for="name" class="block text-[13px] font-medium text-ink mb-1.5">
         {{ __('locations.fields.name') }} <span class="text-danger">*</span>
       </label>
+      {{-- The rules sit on the fields and resources/js/live-validation.js
+           reads them, so a blank is answered beside the box while the form is
+           being filled in rather than after a submission the reader has to
+           redo. The server checks the same things again. --}}
       <input id="name" name="name" type="text" class="sd-input" data-capitalize required
+             data-rules="required|max:255"
              placeholder="{{ __('locations.placeholders.name') }}" value="{{ $locationValue('name') }}" autofocus>
-      @error('name')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+      <p data-error-for="name" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('name')) hidden @endunless>{{ $errors->first('name') }}</p>
     </div>
 
     <div>
       <label for="code" class="block text-[13px] font-medium text-ink mb-1.5">
         {{ __('locations.fields.code') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
+      {{-- Checked against this business's other branches while it is typed:
+           the code is what tells two of them apart on a receipt, so finding
+           out it is taken after pressing Save is finding out too late. --}}
       <input id="code" name="code" type="text" class="sd-input" placeholder="{{ __('locations.placeholders.code') }}"
+             data-rules="max:20"
+             data-remote-check="{{ route('settings.locations.code-in-use', array_filter(['ignore' => $location?->id])) }}"
              value="{{ $locationValue('code') }}">
-      @error('code')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+      <p data-error-for="code" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('code')) hidden @endunless>{{ $errors->first('code') }}</p>
       <p class="mt-1.5 text-[12px] text-sub">{{ __('locations.fields.code_hint') }}</p>
     </div>
 
@@ -115,8 +127,9 @@
         {{ __('locations.fields.address_line1') }} <span class="text-danger">*</span>
       </label>
       <input id="address_line1" name="address_line1" type="text" class="sd-input" data-capitalize required
-             value="{{ $locationValue('address_line1') }}">
-      @error('address_line1')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+             value="{{ $locationValue('address_line1') }}" data-rules="required|max:255">
+      <p data-error-for="address_line1" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('address_line1')) hidden @endunless>{{ $errors->first('address_line1') }}</p>
     </div>
 
     <div>
@@ -124,7 +137,9 @@
         {{ __('locations.fields.address_line2') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="address_line2" name="address_line2" type="text" class="sd-input" data-capitalize
-             value="{{ $locationValue('address_line2') }}">
+             value="{{ $locationValue('address_line2') }}" data-rules="max:255">
+      <p data-error-for="address_line2" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('address_line2')) hidden @endunless>{{ $errors->first('address_line2') }}</p>
     </div>
 
     <div>
@@ -132,7 +147,9 @@
         {{ __('locations.fields.suite') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="suite" name="suite" type="text" class="sd-input" data-capitalize
-             value="{{ $locationValue('suite') }}">
+             value="{{ $locationValue('suite') }}" data-rules="max:60">
+      <p data-error-for="suite" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('suite')) hidden @endunless>{{ $errors->first('suite') }}</p>
     </div>
 
     <div>
@@ -140,8 +157,9 @@
         {{ __('locations.fields.city') }} <span class="text-danger">*</span>
       </label>
       <input id="city" name="city" type="text" class="sd-input" data-capitalize required
-             value="{{ $locationValue('city') }}">
-      @error('city')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+             value="{{ $locationValue('city') }}" data-rules="required|max:120">
+      <p data-error-for="city" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('city')) hidden @endunless>{{ $errors->first('city') }}</p>
     </div>
 
     <div>
@@ -149,8 +167,9 @@
         {{ __('locations.fields.state') }} <span class="text-danger">*</span>
       </label>
       <input id="state" name="state" type="text" class="sd-input" data-capitalize required
-             value="{{ $locationValue('state') }}">
-      @error('state')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+             value="{{ $locationValue('state') }}" data-rules="required|max:120">
+      <p data-error-for="state" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('state')) hidden @endunless>{{ $errors->first('state') }}</p>
     </div>
 
     <div>
@@ -158,8 +177,9 @@
         {{ __('locations.fields.postal_code') }} <span class="text-danger">*</span>
       </label>
       <input id="postal_code" name="postal_code" type="text" class="sd-input" required
-             value="{{ $locationValue('postal_code') }}">
-      @error('postal_code')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+             value="{{ $locationValue('postal_code') }}" data-rules="required|max:20">
+      <p data-error-for="postal_code" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('postal_code')) hidden @endunless>{{ $errors->first('postal_code') }}</p>
     </div>
 
     {{-- The country is editable here, unlike in onboarding.
@@ -222,60 +242,120 @@
   <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
     <div>
       <label for="phone" class="block text-[13px] font-medium text-ink mb-1.5">
-        {{ __('locations.fields.phone') }} <span class="text-danger">*</span>
+        {{ __('locations.fields.phone') }} <span class="text-danger" aria-hidden="true">*</span>
       </label>
-      <input id="phone" name="phone" type="tel" class="sd-input" required value="{{ $locationValue('phone') }}">
-      @error('phone')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+
+      {{-- The dialling code beside the number, not typed into it: the same
+           control as the client, staff and business screens. phone.js formats
+           as you type and writes the country into the hidden input, which is
+           what the column beside the number has always wanted. --}}
+      <div class="relative" data-phone
+           data-phone-country="{{ $locationValue('phone_country') ?: $locationValue('country') ?: 'US' }}">
+        <div class="sd-phone">
+          <button type="button" class="sd-phone__country" data-phone-toggle
+                  aria-haspopup="listbox" aria-expanded="false"
+                  aria-label="{{ __('locations.fields.phone') }}">
+            <span class="sd-phone__flag" data-phone-flag>&#127482;&#127480;</span>
+            <span class="font-medium" data-phone-code>+1</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <input id="phone" name="phone" type="tel" class="sd-phone__field"
+                 data-phone-input data-rules="required|phone" autocomplete="tel-national"
+                 required value="{{ $locationValue('phone') }}">
+        </div>
+        <div class="sd-pop" data-phone-pop hidden></div>
+        <input type="hidden" name="phone_country" data-phone-country-value
+               value="{{ $locationValue('phone_country') ?: $locationValue('country') ?: 'US' }}">
+      </div>
+
+      <p data-error-for="phone" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('phone')) hidden @endunless>{{ $errors->first('phone') }}</p>
     </div>
 
     <div>
       <label for="phone_secondary" class="block text-[13px] font-medium text-ink mb-1.5">
         {{ __('locations.fields.phone_secondary') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
-      <input id="phone_secondary" name="phone_secondary" type="tel" class="sd-input"
-             value="{{ $locationValue('phone_secondary') }}">
+
+      {{-- The dialling code beside the number, not typed into it: the same
+           control as the client, staff and business screens. phone.js formats
+           as you type and writes the country into the hidden input, which is
+           what the column beside the number has always wanted. --}}
+      <div class="relative" data-phone
+           data-phone-country="{{ $locationValue('phone_secondary_country') ?: $locationValue('country') ?: 'US' }}">
+        <div class="sd-phone">
+          <button type="button" class="sd-phone__country" data-phone-toggle
+                  aria-haspopup="listbox" aria-expanded="false"
+                  aria-label="{{ __('locations.fields.phone_secondary') }}">
+            <span class="sd-phone__flag" data-phone-flag>&#127482;&#127480;</span>
+            <span class="font-medium" data-phone-code>+1</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <input id="phone_secondary" name="phone_secondary" type="tel" class="sd-phone__field"
+                 data-phone-input data-rules="phone" autocomplete="tel-national"
+                  value="{{ $locationValue('phone_secondary') }}">
+        </div>
+        <div class="sd-pop" data-phone-pop hidden></div>
+        <input type="hidden" name="phone_secondary_country" data-phone-country-value
+               value="{{ $locationValue('phone_secondary_country') ?: $locationValue('country') ?: 'US' }}">
+      </div>
+
+      <p data-error-for="phone_secondary" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('phone_secondary')) hidden @endunless>{{ $errors->first('phone_secondary') }}</p>
     </div>
 
     <div>
       <label for="email" class="block text-[13px] font-medium text-ink mb-1.5">
-        {{ __('locations.fields.email') }} <span class="text-danger">*</span>
+        {{ __('locations.fields.email') }} <span class="text-danger" aria-hidden="true">*</span>
       </label>
-      <input id="email" name="email" type="email" class="sd-input" required value="{{ $locationValue('email') }}">
-      @error('email')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+      <input id="email" name="email" type="email" class="sd-input" autocomplete="email"
+             data-rules="required|email|max:255" required value="{{ $locationValue('email') }}">
+      <p data-error-for="email" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('email')) hidden @endunless>{{ $errors->first('email') }}</p>
     </div>
 
     <div>
       <label for="booking_email" class="block text-[13px] font-medium text-ink mb-1.5">
         {{ __('locations.fields.booking_email') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
-      <input id="booking_email" name="booking_email" type="email" class="sd-input"
-             value="{{ $locationValue('booking_email') }}">
-      @error('booking_email')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+      <input id="booking_email" name="booking_email" type="email" class="sd-input" autocomplete="email"
+             data-rules="email|max:255"  value="{{ $locationValue('booking_email') }}">
+      <p data-error-for="booking_email" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('booking_email')) hidden @endunless>{{ $errors->first('booking_email') }}</p>
     </div>
 
     <div>
       <label for="support_email" class="block text-[13px] font-medium text-ink mb-1.5">
         {{ __('locations.fields.support_email') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
-      <input id="support_email" name="support_email" type="email" class="sd-input"
-             value="{{ $locationValue('support_email') }}">
-      @error('support_email')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+      <input id="support_email" name="support_email" type="email" class="sd-input" autocomplete="email"
+             data-rules="email|max:255"  value="{{ $locationValue('support_email') }}">
+      <p data-error-for="support_email" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('support_email')) hidden @endunless>{{ $errors->first('support_email') }}</p>
     </div>
 
     <div>
       <label for="website" class="block text-[13px] font-medium text-ink mb-1.5">
         {{ __('locations.fields.website') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
-      <input id="website" name="website" type="url" class="sd-input" placeholder="https://"
+      {{-- The whole address here, scheme included, so the rule is `url` — the
+           scheme-and-host pair is the Business Settings pattern and this field
+           has always held one string. Checked as it is typed against the same
+           shape the server enforces. --}}
+      <input id="website" name="website" type="url" class="sd-input" placeholder="https://example.com"
+             data-rules="url|max:255" inputmode="url" spellcheck="false" autocapitalize="none"
              value="{{ $locationValue('website') }}">
-      @error('website')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+      <p data-error-for="website" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('website')) hidden @endunless>{{ $errors->first('website') }}</p>
     </div>
 
     <div>
       <label for="extension" class="block text-[13px] font-medium text-ink mb-1.5">
         {{ __('locations.fields.extension') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
-      <input id="extension" name="extension" type="text" class="sd-input" value="{{ $locationValue('extension') }}">
+      <input id="extension" name="extension" type="text" class="sd-input" value="{{ $locationValue('extension') }}" data-rules="max:20">
+      <p data-error-for="extension" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('extension')) hidden @endunless>{{ $errors->first('extension') }}</p>
     </div>
 
     <div>
@@ -283,7 +363,9 @@
         {{ __('locations.fields.contact_person') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
       </label>
       <input id="contact_person" name="contact_person" type="text" class="sd-input" data-capitalize
-             value="{{ $locationValue('contact_person') }}">
+             value="{{ $locationValue('contact_person') }}" data-rules="max:120">
+      <p data-error-for="contact_person" role="alert" class="mt-1.5 text-[12px] text-danger"
+         @unless ($errors->has('contact_person')) hidden @endunless>{{ $errors->first('contact_person') }}</p>
     </div>
   </div>
 </section>

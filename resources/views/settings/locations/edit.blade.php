@@ -3,6 +3,22 @@
 @section('title', __('locations.edit_title'))
 
 @section('content')
+  @php
+      /**
+       * The browser's copy of the messages, built here rather than inline.
+       *
+       * @json() cannot take a call with nested parentheses: Blade's directive
+       * parser counts brackets rather than reading PHP, so it closes at the
+       * first inner ")" and the rest becomes stray template text — which is
+       * exactly what happened when this was written inline.
+       */
+      $validationMessages = App\Support\LiveValidation::messages([
+          'taken' => __('locations.validation.code_unique'),
+          'email' => __('locations.validation.email_invalid'),
+          'url' => __('locations.validation.url_invalid'),
+      ]);
+  @endphp
+
   <main class="w-full px-4 sm:px-5 lg:px-6 pt-5 sm:pt-6 pb-[200px]">
     <div class="styledesk_form">
 
@@ -37,7 +53,12 @@
         </div>
       @endif
 
-      <form id="locationForm" method="POST" action="{{ route('settings.locations.update', $location) }}" class="mt-6 space-y-5">
+      <form id="locationForm" method="POST" action="{{ route('settings.locations.update', $location) }}"
+            {{-- Live validation, the same module and the same messages as the
+                 resource and service forms. The rules live on the fields;
+                 this only says which words to refuse them in. --}}
+            data-validate-form
+            data-validation-messages='@json($validationMessages)' class="mt-6 space-y-5">
         @csrf
         @method('PATCH')
 

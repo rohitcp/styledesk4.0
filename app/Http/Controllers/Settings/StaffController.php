@@ -19,6 +19,7 @@ use App\Models\StaffNote;
 use App\Models\StaffShift;
 use App\Models\TeamInvitation;
 use App\Support\Currencies;
+use App\Support\EmailAddress;
 use App\Support\InputCase;
 use App\Support\RoleGuard;
 use App\Support\ScheduleGuard;
@@ -1615,8 +1616,10 @@ class StaffController extends Controller
                     ...collect($data)->only([
                         'first_name', 'middle_name', 'last_name', 'preferred_name', 'pronouns',
                         'job_title', 'employee_ref', 'bio', 'avatar_path',
-                        'email', 'work_email', 'phone', 'phone_type', 'secondary_phone', 'address',
-                        'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship',
+                        'email', 'work_email', 'phone', 'phone_country', 'phone_type',
+                        'secondary_phone', 'secondary_phone_country', 'address',
+                        'emergency_contact_name', 'emergency_contact_phone',
+                        'emergency_contact_phone_country', 'emergency_contact_relationship',
                         'location_id', 'employment_type', 'provider_type', 'specialities',
                         'date_of_birth', 'started_on', 'shift_rule_id', 'login_enabled',
                     ])->all(),
@@ -1748,20 +1751,34 @@ class StaffController extends Controller
              * The same person can work for two salons on the platform, so a
              * global unique would stop the second one adding them at all.
              */
+            /* Held to what the browser holds it to: Laravel's `email` rule on
+               its own accepts "sam@salon", an address with no dot in the
+               domain that reaches nobody. App\Support\EmailAddress is the one
+               answer both ends read — and the invitation to join is sent to
+               this address, so an unreachable one is a colleague who never
+               arrives. */
             'email' => [
-                'required', 'email', 'max:255',
+                ...EmailAddress::rules(required: true),
                 Rule::unique('staff', 'email')
                     ->where('tenant_id', $request->user()->tenant_id)
                     // Editing someone must not collide with themselves.
                     ->ignore($staff?->id),
             ],
-            'work_email' => ['nullable', 'email', 'max:255'],
+            'work_email' => EmailAddress::rules(),
+
             'phone' => ['nullable', 'string', 'max:32'],
+            /* The dialling code chosen beside each number. Three numbers,
+               three answers: a personal mobile, a second line and an
+               emergency contact are not necessarily in the same country as
+               each other, let alone as the salon. */
+            'phone_country' => ['nullable', 'string', 'size:2'],
             'phone_type' => ['nullable', Rule::in(array_keys(config('staff.phone_types')))],
             'secondary_phone' => ['nullable', 'string', 'max:32'],
+            'secondary_phone_country' => ['nullable', 'string', 'size:2'],
             'address' => ['nullable', 'string', 'max:500'],
             'emergency_contact_name' => ['nullable', 'string', 'max:120'],
             'emergency_contact_phone' => ['nullable', 'string', 'max:32'],
+            'emergency_contact_phone_country' => ['nullable', 'string', 'size:2'],
             'emergency_contact_relationship' => ['nullable', 'string', 'max:60'],
 
             'role_id' => ['required', Rule::exists('roles', 'id')->where('tenant_id', $request->user()->tenant_id)],

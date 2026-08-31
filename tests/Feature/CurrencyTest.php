@@ -297,4 +297,48 @@ class CurrencyTest extends TestCase
 
         return Blade::render('<x-price-input name="price" label="Price" />');
     }
+
+    /**
+     * The primary currency is shown in the additional list as included and
+     * read-only.
+     *
+     * It is an enabled currency by definition — App\Support\Currencies always
+     * counts it — so an unticked row said the opposite: that the currency the
+     * business actually prices in was one it had not switched on. Read-only,
+     * because unticking it would be asking to disable the currency every
+     * total falls back to.
+     */
+    public function test_the_primary_currency_is_ticked_and_locked_in_the_additional_list(): void
+    {
+        $html = $this->actingAs($this->owner())
+            ->get(route('settings.currency.edit'))
+            ->assertOk()
+            ->getContent();
+
+        preg_match('/<input type="checkbox" name="secondary\[\]" value="USD"[^>]*>/', $html, $primary);
+
+        $this->assertNotEmpty($primary, 'The primary currency has no row in the additional list.');
+        $this->assertStringContainsString('checked', $primary[0]);
+        $this->assertStringContainsString('disabled', $primary[0]);
+    }
+
+    /**
+     * A disabled box posts nothing, so the primary is never written into the
+     * pivot as well — it lives in tenants.currency_code, and one copy of a
+     * fact is enough.
+     */
+    public function test_the_primary_is_not_stored_as_an_additional_currency(): void
+    {
+        $owner = $this->owner();
+
+        $this->actingAs($owner)->patch(route('settings.currency.update'), [
+            'primary' => 'USD',
+            'secondary' => ['USD', 'EUR'],
+        ])->assertSessionHasNoErrors();
+
+        $codes = $owner->tenant->fresh()->currencies()->pluck('currency_code');
+
+        $this->assertFalse($codes->contains('USD'));
+        $this->assertTrue($codes->contains('EUR'));
+    }
 }

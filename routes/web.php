@@ -510,6 +510,9 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
             ->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::get('create', 'create')->name('create');
+                /* Asked while somebody is typing a code, so it is throttled:
+                   the answer is cheap, and one request per keystroke is not. */
+                Route::get('code-in-use', 'codeInUse')->middleware('throttle:60,1')->name('code-in-use');
                 Route::post('/', 'store')->name('store');
 
                 Route::get('{location}', 'show')->name('show');

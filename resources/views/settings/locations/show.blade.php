@@ -175,29 +175,21 @@
           </dl>
         </x-settings.card>
 
-        {{-- What this branch does not configure yet.
-             One card saying where these settings currently come from, rather
-             than five empty cards implying they were configured here and left
-             blank. Each names the module that owns it today. --}}
-        <x-settings.card title="{{ __('locations.cards.elsewhere') }}"
-                         description="{{ __('locations.cards.elsewhere_hint') }}">
-          <x-settings.field label="{{ __('locations.elsewhere.holidays') }}"
-                            value="{{ __('locations.elsewhere.holidays_value') }}"
-                            :manage="route('settings.index')" manage-label="{{ __('locations.elsewhere.link_hours') }}" />
-          <x-settings.field label="{{ __('locations.elsewhere.staff') }}"
-                            :value="trans_choice('locations.elsewhere.staff_value', $location->staff->count(), ['count' => $location->staff->count()])"
-                            :manage="route('settings.staff.index', ['location' => $location->id])" manage-label="{{ __('locations.elsewhere.link_staff') }}" />
-          <x-settings.field label="{{ __('locations.elsewhere.services') }}"
-                            value="{{ __('locations.elsewhere.services_value') }}"
-                            :manage="route('settings.index')" manage-label="{{ __('locations.elsewhere.link_services') }}" />
-          <x-settings.field label="{{ __('locations.elsewhere.resources') }}" value="{{ __('locations.elsewhere.resources_value') }}" />
-          <x-settings.field label="{{ __('locations.elsewhere.booking') }}"
-                            value="{{ __('locations.elsewhere.uses_business') }}"
-                            :manage="route('settings.business.show')" manage-label="{{ __('locations.elsewhere.link_business') }}" />
-          <x-settings.field label="{{ __('locations.elsewhere.currency') }}"
-                            value="{{ __('locations.elsewhere.uses_business') }}"
-                            :manage="route('settings.business.show')" manage-label="{{ __('locations.elsewhere.link_business') }}" />
-        </x-settings.card>
+        {{-- The "Configured elsewhere" card used to sit here: one card
+             listing holidays, staff, services, resources, booking rules and
+             currency, each saying which module owns it today.
+
+             Removed on request. It described the rest of the product rather
+             than this branch, and every row was a link away from the page the
+             reader had just opened. The settings it named have not moved —
+             they are still owned by the modules it pointed at — so nothing
+             about the product changed with it.
+
+             The wording is still in the locations language file under
+             `elsewhere`, kept both because the manager card above uses
+             `elsewhere.link_permissions` and because per-location overrides
+             are the thing that would bring this card back. --}}
+
 
       </div>
     </div>

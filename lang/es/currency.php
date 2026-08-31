@@ -11,6 +11,8 @@ return [
     'saved' => 'Configuración de moneda actualizada correctamente.',
 
     'primary' => 'Moneda principal',
+
+    'is_primary' => 'principal',
     'primary_hint' => 'El valor predeterminado para servicios, productos, paquetes, membresías, depósitos, cargos, descuentos, impuestos, pagos, reembolsos e informes.',
     'secondary' => 'Monedas adicionales',
     'secondary_hint' => 'Otras monedas en las que fijas precios. La principal siempre está disponible y no aparece aquí.',

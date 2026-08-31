@@ -80,6 +80,14 @@ const TESTS = {
     phone: (value) => value.trim() === '' || (value.replace(/\D/g, '').length >= 6
         && /^\+?[\d\s().-]+$/.test(value.trim())),
 
+    /* A whole address, scheme included — this is for the fields that hold
+       one, not for the scheme-plus-host pair (website-field.js owns those).
+       Deliberately looser than the server's `url` rule in only one direction:
+       it insists on a dot in the host, because "https://hello" is a URL by
+       the standard and reaches nobody. */
+    url: (value) => value.trim() === ''
+        || /^https?:\/\/[^\s/?#.]+\.[^\s]{2,}$/i.test(value.trim()),
+
     date: (value) => value.trim() === '' || !Number.isNaN(Date.parse(value)),
 
     numeric: (value) => value.trim() === '' || !Number.isNaN(Number(value)),
@@ -356,15 +364,35 @@ export function initLiveValidation(root = document) {
             return failed.length === 0;
         };
 
-        form.addEventListener('submit', (event) => {
-            if (form.sdValidate()) {
-                return;
-            }
-
-            event.preventDefault();
-            /* Stopped here, so no other submit handler goes on to disable the
-               buttons of a form that is not being submitted. */
-            event.stopImmediatePropagation();
-        });
     });
 }
+
+/**
+ * Cancel a submit the fields have not earned, before anything else sees it.
+ *
+ * On the document, in the capture phase, which is the only place this works
+ * from. A listener on the form itself runs in registration order against
+ * every other listener on that form — and the ones that matter are registered
+ * earlier: a page's own fetch-submit handler while the document is parsing,
+ * and initSubmitOnce() before initLiveValidation() in app.js. Each of those
+ * disables the save button and relabels it "Saving…" the moment a submit
+ * fires; if validation then cancelled the submit from a listener on the form,
+ * the button stayed disabled, the label stayed "Saving…", and the page looked
+ * as though it had saved itself and hung. That is precisely what it looked
+ * like on the staff form.
+ *
+ * Capture at the document runs before any listener on the form, so
+ * stopPropagation here means those handlers never run at all — nothing is
+ * disabled, nothing is relabelled, and the reader is put on the field that
+ * needs fixing.
+ */
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+
+    if (typeof form?.sdValidate !== 'function' || form.sdValidate()) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+}, true);

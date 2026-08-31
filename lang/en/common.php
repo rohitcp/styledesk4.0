@@ -92,6 +92,7 @@ return [
     'validation' => [
         'required' => ':field is required.',
         'email' => 'Enter a valid email address.',
+        'url' => 'Enter a valid website address, starting with https://',
         'phone' => 'Enter a valid phone number.',
         'date' => 'Enter a valid date.',
         'numeric' => ':field must be a number.',

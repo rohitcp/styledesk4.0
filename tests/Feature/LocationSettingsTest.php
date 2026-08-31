@@ -635,4 +635,169 @@ class LocationSettingsTest extends TestCase
             // the label alone is what a text assertion can match.
             ->assertSee('active location');
     }
+
+    // ------------------------------------------- contact fields and their rules
+
+    /**
+     * The five contact fields are checked as they are typed, with the same
+     * module and the same messages as the resource form.
+     */
+    public function test_the_form_carries_the_live_validation_rules(): void
+    {
+        $page = $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.create'))
+            ->assertOk();
+
+        $page->assertSee('data-validate-form', false);
+        $page->assertSee('data-rules="required|phone"', false);
+        $page->assertSee('data-rules="required|email|max:255"', false);
+        $page->assertSee('data-rules="url|max:255"', false);
+        $page->assertSee('data-remote-check', false);
+    }
+
+    /**
+     * Every field carrying rules has somewhere to print them.
+     *
+     * A rule with no message box beside it fails silently in the browser: the
+     * module paints into [data-error-for="<the field's id>"], and without one
+     * the reader is refused with nothing said.
+     */
+    public function test_every_validated_field_has_a_message_box(): void
+    {
+        $html = $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.create'))
+            ->getContent();
+
+        preg_match_all('/id="([^"]+)"[^>]*data-rules=/', $html, $withRules);
+        preg_match_all('/data-rules=[^>]*id="([^"]+)"/', $html, $rulesFirst);
+
+        $ids = array_unique(array_merge($withRules[1], $rulesFirst[1]));
+
+        $this->assertNotEmpty($ids);
+
+        foreach ($ids as $id) {
+            $this->assertStringContainsString('data-error-for="'.$id.'"', $html,
+                "The field {$id} declares rules but has nowhere to print the message.");
+        }
+    }
+
+    /**
+     * Both numbers are entered with a dialling code beside them, and both
+     * codes are saved. The primary column existed and was never posted; the
+     * secondary had nowhere to go at all.
+     */
+    public function test_both_phone_numbers_keep_their_country(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->post(route('settings.locations.store'), $this->validPayload([
+                'phone' => '20 7946 0958',
+                'phone_country' => 'GB',
+                'phone_secondary' => '1 512 555 0111',
+                'phone_secondary_country' => 'US',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $location = Location::withoutGlobalScopes()->where('name', 'Downtown Salon')->firstOrFail();
+
+        $this->assertSame('GB', $location->phone_country);
+        $this->assertSame('US', $location->phone_secondary_country);
+    }
+
+    public function test_the_phone_fields_offer_a_country_picker(): void
+    {
+        $html = $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.create'))
+            ->getContent();
+
+        $this->assertStringContainsString('name="phone_country" data-phone-country-value', $html);
+        $this->assertStringContainsString('name="phone_secondary_country" data-phone-country-value', $html);
+    }
+
+    /**
+     * The address the browser refuses is the address the server refuses.
+     *
+     * "desk@salon" passes Laravel's `email` rule — no dot in the domain is
+     * legal on a local network and reaches nobody a client lives on.
+     */
+    public function test_an_address_with_no_domain_is_refused(): void
+    {
+        $owner = $this->member('owner');
+
+        foreach (['email', 'booking_email', 'support_email'] as $field) {
+            $this->actingAs($owner)
+                ->from(route('settings.locations.create'))
+                ->post(route('settings.locations.store'), $this->validPayload([$field => 'desk@salon']))
+                ->assertSessionHasErrors($field);
+        }
+    }
+
+    public function test_real_addresses_are_accepted(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->post(route('settings.locations.store'), $this->validPayload([
+                'email' => 'desk@nadia.co.uk',
+                'booking_email' => 'book@nadia.co.uk',
+                'support_email' => 'help@nadia.co.uk',
+            ]))
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_a_main_number_and_an_email_are_required(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->from(route('settings.locations.create'))
+            ->post(route('settings.locations.store'), $this->validPayload(['phone' => '', 'email' => '']))
+            ->assertSessionHasErrors(['phone', 'email']);
+    }
+
+    // ---------------------------------------------------- the live code check
+
+    public function test_the_code_check_reports_a_code_already_in_use(): void
+    {
+        $owner = $this->member('owner');
+
+        $this->actingAs($owner)->post(route('settings.locations.store'), $this->validPayload(['code' => 'DT']));
+
+        $this->actingAs($owner)
+            ->getJson(route('settings.locations.code-in-use', ['value' => 'DT']))
+            ->assertOk()
+            ->assertJson(['ok' => false]);
+    }
+
+    public function test_the_code_check_passes_a_free_code(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->getJson(route('settings.locations.code-in-use', ['value' => 'WEST']))
+            ->assertJson(['ok' => true]);
+    }
+
+    public function test_the_code_check_does_not_report_the_location_being_edited(): void
+    {
+        $owner = $this->member('owner');
+
+        $this->actingAs($owner)->post(route('settings.locations.store'), $this->validPayload(['code' => 'DT']));
+        $location = Location::withoutGlobalScopes()->where('code', 'DT')->firstOrFail();
+
+        $this->actingAs($owner)
+            ->getJson(route('settings.locations.code-in-use', ['value' => 'DT', 'ignore' => $location->id]))
+            ->assertJson(['ok' => true]);
+    }
+
+    /**
+     * The "Configured elsewhere" card is gone from the detail page.
+     *
+     * It listed what other modules own — holidays, staff, services, booking
+     * rules, currency — which described the rest of the product rather than
+     * this branch, and every row was a link away from the page just opened.
+     */
+    public function test_the_configured_elsewhere_card_is_not_shown(): void
+    {
+        $location = $this->location();
+
+        $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.show', $location))
+            ->assertOk()
+            ->assertDontSee(__('locations.cards.elsewhere'))
+            ->assertDontSee(__('locations.cards.elsewhere_hint'));
+    }
 }

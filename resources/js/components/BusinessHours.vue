@@ -233,31 +233,44 @@ onMounted(() => nextTick(announce));
                                         :aria-label="withDay(labels.closing_time, row.label)" />
                         </div>
 
-                        <!-- Only from the second period onwards. Removing the
-                             only period is what the day's own toggle is for,
-                             and two controls for one outcome is a choice
-                             nobody wants. The placeholder keeps the pickers
-                             from shifting sideways on the first row. -->
-                        <button v-if="splitPeriods && index > 0" type="button"
-                                class="styledesk_action styledesk_action--icon shrink-0"
-                                :aria-label="withDay(labels.remove_period, row.label)"
-                                @click="removePeriod(day, index)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <path d="M5 7h14M10 7V5.5h4V7M8 7l.7 12h6.6L16 7" stroke="currentColor"
-                                      stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </button>
+                        <!-- The trailing control, on the same line as the two
+                             times rather than under them: opening, closing and
+                             what to do next are one thought, and a button on
+                             its own line below read as belonging to the day
+                             rather than to the row.
 
-                        <span v-else-if="splitPeriods" class="h-9 w-9 shrink-0" aria-hidden="true"></span>
+                             A fixed-width slot, because the two controls it
+                             holds are different widths — "Add another period"
+                             against a bin icon — and without it the time
+                             pickers on the second period would sit further
+                             right than those on the first.
+
+                             Add appears on the first period only: it is one
+                             action for the day, and repeating it per row would
+                             be several buttons doing the same thing. Remove
+                             appears from the second onwards, because removing
+                             the only period is what the day's own toggle is
+                             for. -->
+                        <div v-if="splitPeriods" class="w-[176px] shrink-0 flex justify-end">
+                            <button v-if="index === 0" type="button" @click="addPeriod(day)"
+                                    class="styledesk_action styledesk_action--sm">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                                </svg>
+                                {{ labels.add_period }}
+                            </button>
+
+                            <button v-else type="button"
+                                    class="styledesk_action styledesk_action--icon shrink-0"
+                                    :aria-label="withDay(labels.remove_period, row.label)"
+                                    @click="removePeriod(day, index)">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M5 7h14M10 7V5.5h4V7M8 7l.7 12h6.6L16 7" stroke="currentColor"
+                                          stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-
-                    <button v-if="splitPeriods" type="button" @click="addPeriod(day)"
-                            class="styledesk_action styledesk_action--sm">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
-                        </svg>
-                        {{ labels.add_period }}
-                    </button>
                 </div>
 
                 <span v-else class="ml-auto text-[13px] text-faint">{{ labels.closed_all_day }}</span>
