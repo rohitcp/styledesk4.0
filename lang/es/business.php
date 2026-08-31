@@ -45,6 +45,7 @@ return [
         'support_email' => 'Correo de soporte',
         'booking_email' => 'Correo de contacto para reservas',
         'website' => 'Sitio web',
+        'website_scheme' => 'Esquema de la URL',
 
         'address_line1' => 'Dirección línea 1',
         'address_line2' => 'Dirección línea 2',

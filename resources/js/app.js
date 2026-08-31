@@ -24,7 +24,7 @@ import { initColorPickers, initDepositToggles } from './color-picker';
 import { initRowMenus } from './row-menu';
 import { initSubdomainFields } from './subdomain';
 import { initWebsiteFields } from './website-field';
-import { initLiveValidation } from './live-validation';
+import { initLiveValidation, validateForm } from './live-validation';
 import { initResourceRequirement } from './service-resources';
 import { initShiftRuleFeatureToggle, initShiftRuleForm } from './shift-rules';
 import { initBoardFilters, initMonthModal, initScheduleBoard } from './schedule-board';
@@ -165,6 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initSubdomainFields();
     initWebsiteFields();
     initLiveValidation();
+
+    /* Published for the screens that submit themselves over fetch. Their own
+       handler runs before the module's, so it has to ask rather than be
+       stopped — see validateForm in live-validation.js. */
+    window.styledesk = window.styledesk || {};
+    window.styledesk.validateForm = validateForm;
     initResourceRequirement();
     initShiftRuleForm();
     initShiftRuleFeatureToggle();

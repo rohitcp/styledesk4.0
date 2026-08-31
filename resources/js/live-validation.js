@@ -265,6 +265,17 @@ function fieldsOf(form) {
         .filter((field) => field.closest('[hidden]') === null);
 }
 
+/**
+ * Whether this form's fields are all satisfied, painting anything that is not.
+ *
+ * For a form that submits itself — see form.sdValidate above. Answers true for
+ * a form that never opted into validation, because "no rules" is not the same
+ * as "failed".
+ */
+export function validateForm(form) {
+    return typeof form?.sdValidate === 'function' ? form.sdValidate() : true;
+}
+
 export function initLiveValidation(root = document) {
     root.querySelectorAll('[data-validate-form]').forEach((form) => {
         if (form.dataset.liveValidation) {
@@ -323,10 +334,30 @@ export function initLiveValidation(root = document) {
             }
         });
 
-        form.addEventListener('submit', (event) => {
+        /**
+         * The same check, callable by a form that submits itself.
+         *
+         * Several screens post over fetch so that a failure keeps everything
+         * typed into the page. Their handler is registered while the document
+         * is parsed and this one is registered on DOMContentLoaded, so this
+         * one runs second — and stopImmediatePropagation cannot stop a
+         * handler that has already run. A form in that position asks first.
+         *
+         * Published on the element rather than in a registry so it cannot
+         * outlive the form it belongs to.
+         */
+        form.sdValidate = () => {
             const failed = fieldsOf(form).filter((field) => !validate(field));
 
-            if (failed.length === 0) {
+            if (failed.length > 0) {
+                focusFirst(failed[0], form);
+            }
+
+            return failed.length === 0;
+        };
+
+        form.addEventListener('submit', (event) => {
+            if (form.sdValidate()) {
                 return;
             }
 
@@ -334,8 +365,6 @@ export function initLiveValidation(root = document) {
             /* Stopped here, so no other submit handler goes on to disable the
                buttons of a form that is not being submitted. */
             event.stopImmediatePropagation();
-
-            focusFirst(failed[0], form);
         });
     });
 }

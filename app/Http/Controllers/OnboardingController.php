@@ -16,6 +16,7 @@ use App\Services\ServiceImageSync;
 use App\Support\InputCase;
 use App\Support\LocationOptions;
 use App\Support\Subdomain;
+use App\Support\WebsiteAddress;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -132,30 +133,18 @@ class OnboardingController extends Controller
             'business_phone' => ['required', 'string', 'max:32'],
             'business_phone_country' => ['nullable', 'string', 'size:2'],
             'business_email' => ['nullable', 'email', 'max:255'],
-            'website_scheme' => ['nullable', Rule::in(config('business_profile.website_schemes'))],
+            'website_scheme' => ['nullable', Rule::in(WebsiteAddress::schemes())],
             /*
              * Checked as the whole address, not as the fragment that was
              * typed: the scheme lives in the dropdown beside it, so "hello
              * world" used to pass a string rule and be stored as
              * "https://hello world".
+             *
+             * Shared with Business Settings, which asks the same question
+             * about the same field — two copies of this would answer it
+             * differently the moment either was touched.
              */
-            'website' => ['nullable', 'string', 'max:255', function (string $attribute, mixed $value, callable $fail) use ($request) {
-                if (blank($value)) {
-                    return;
-                }
-
-                $host = trim((string) $value);
-                $joined = $this->joinWebsite($request->input('website_scheme'), $host);
-
-                /* Both checks earn their place: filter_var accepts
-                   "https://hello" with no dot in it, and the pattern alone
-                   would accept a string filter_var rejects. */
-                $looksLikeHost = (bool) preg_match('/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}(\/\S*)?$/i', $host);
-
-                if (! $looksLikeHost || filter_var($joined, FILTER_VALIDATE_URL) === false) {
-                    $fail(__('business.validation.url_invalid'));
-                }
-            }],
+            'website' => ['nullable', 'string', 'max:255', WebsiteAddress::rule($request->input('website_scheme'))],
             'logo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
         ], [
             'business_type_ids.required' => 'Choose at least one business type.',
@@ -780,9 +769,7 @@ class OnboardingController extends Controller
 
     private function joinWebsite(?string $scheme, ?string $host): ?string
     {
-        $host = trim((string) $host);
-
-        return $host === '' ? null : ($scheme ?? 'https://').$host;
+        return WebsiteAddress::join($scheme, $host);
     }
 
     /**

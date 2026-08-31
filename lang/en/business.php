@@ -51,6 +51,7 @@ return [
         'support_email' => 'Support email',
         'booking_email' => 'Booking contact email',
         'website' => 'Website',
+        'website_scheme' => 'URL scheme',
 
         'address_line1' => 'Address line 1',
         'address_line2' => 'Address line 2',

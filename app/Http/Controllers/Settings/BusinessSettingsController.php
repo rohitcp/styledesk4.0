@@ -7,7 +7,9 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\BusinessType;
 use App\Models\Tenant;
+use App\Support\EmailAddress;
 use App\Support\InputCase;
+use App\Support\WebsiteAddress;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -60,10 +62,39 @@ class BusinessSettingsController extends Controller
             'business_type_ids.*' => ['integer', Rule::exists('business_types', 'id')],
             'status' => ['required', Rule::in(['active', 'inactive'])],
 
-            'business_email' => ['required', 'email', 'max:255'],
+            /**
+             * Held to what the browser holds them to.
+             *
+             * Laravel's `email` rule on its own accepts "nadia@salon" — legal
+             * on a local network, reaching nobody a salon's clients live on —
+             * while the live-validation module has always required a dot in
+             * the domain. The same address was refused as it was typed on the
+             * sign-up form and accepted here. App\Support\EmailAddress is the
+             * one answer both ends now read.
+             */
+            'business_email' => EmailAddress::rules(required: true),
+            'support_email' => EmailAddress::rules(),
+            'booking_email' => EmailAddress::rules(),
+
             'business_phone' => ['nullable', 'string', 'max:32'],
-            'support_email' => ['nullable', 'email', 'max:255'],
-            'booking_email' => ['nullable', 'email', 'max:255'],
+            /* The dialling code, chosen beside the number. The column has
+               always existed; the form simply never sent it, so every number
+               saved here was a number with no country against it. */
+            'business_phone_country' => ['nullable', 'string', 'size:2'],
+
+            /**
+             * The scheme is chosen from a list and only the host is typed —
+             * "https//" with the colon missing is one of the two commonest
+             * things anybody types into a website field, and the other is
+             * nothing at all.
+             *
+             * Checked as the whole address rather than as the typed fragment:
+             * "hello world" passes a string rule on its own and is then
+             * stored as "https://hello world".
+             */
+            'website_scheme' => ['nullable', Rule::in(WebsiteAddress::schemes())],
+            'website' => ['nullable', 'string', 'max:255', WebsiteAddress::rule($request->input('website_scheme'))],
+
             /**
              * A URL, not merely a string containing a dot.
              *
@@ -71,7 +102,6 @@ class BusinessSettingsController extends Controller
              * value that is not a URL is a broken link on a page clients see
              * rather than a cosmetic problem in settings.
              */
-            'website' => ['nullable', 'url', 'max:255'],
             'instagram_url' => ['nullable', 'url', 'max:255'],
             'facebook_url' => ['nullable', 'url', 'max:255'],
             'tiktok_url' => ['nullable', 'url', 'max:255'],
@@ -117,10 +147,16 @@ class BusinessSettingsController extends Controller
              */
             'name.required' => __('business.validation.name_required'),
             'business_email.required' => __('business.validation.email_required'),
+            /* Both the rule and the pattern say the same sentence: which of
+               the two refused an address is not a distinction the reader can
+               act on, and "the format is invalid" is the validator talking
+               about itself. */
             'business_email.email' => __('business.validation.email_invalid'),
+            'business_email.regex' => __('business.validation.email_invalid'),
             'support_email.email' => __('business.validation.email_invalid'),
+            'support_email.regex' => __('business.validation.email_invalid'),
             'booking_email.email' => __('business.validation.email_invalid'),
-            'website.url' => __('business.validation.url_invalid'),
+            'booking_email.regex' => __('business.validation.email_invalid'),
             'instagram_url.url' => __('business.validation.instagram_invalid'),
             'facebook_url.url' => __('business.validation.facebook_invalid'),
             'tiktok_url.url' => __('business.validation.tiktok_invalid'),
@@ -133,6 +169,12 @@ class BusinessSettingsController extends Controller
         // The project capitalisation rule. Emails and URLs are deliberately
         // excluded: case there is not the business's to choose.
         $data = InputCase::apply($data, ['name', 'legal_name', 'business_category', 'description']);
+
+        /* The address is stored whole, because that is what a link needs. The
+           two controls are how it is edited, not how it is kept — the same
+           join onboarding does, from the same class. */
+        $data['website'] = WebsiteAddress::join($data['website_scheme'] ?? null, $data['website'] ?? null);
+        unset($data['website_scheme']);
 
         $typeIds = $data['business_type_ids'] ?? [];
         unset($data['business_type_ids']);

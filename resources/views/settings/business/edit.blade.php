@@ -95,7 +95,14 @@
         </div>
       @endif
 
-      <form id="businessForm" method="POST" action="{{ route('settings.business.update') }}" class="mt-6">
+      {{-- Live validation, the same module and the same messages as the
+           sign-up, resource and service forms. The rules live on the fields;
+           this only says which words to refuse them in. --}}
+      <form id="businessForm" method="POST" action="{{ route('settings.business.update') }}"
+            data-validate-form
+            data-validation-messages='@json(\App\Support\LiveValidation::messages([
+                "email" => __("business.validation.email_invalid"),
+            ]))' class="mt-6">
         @csrf
         @method('PATCH')
 
@@ -175,40 +182,109 @@
             <section class="bg-white border border-line rounded-card p-5 space-y-4">
               <h2 class="text-[15px] font-semibold text-head">{{ __('business.cards.contact') }}</h2>
 
+              @php
+                  /* The stored address, back into the two controls it is
+                     edited in. Split here rather than in the controller so a
+                     refused submission comes back showing what was typed —
+                     old() holds the host on its own, not the whole URL. */
+                  $site = App\Support\WebsiteAddress::split($tenant->website);
+              @endphp
+
               <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
                 <div>
                   <label for="business_email" class="block text-[13px] font-medium text-ink mb-1.5">
-                    {{ __('business.fields.business_email') }} <span class="text-danger">*</span>
+                    {{ __('business.fields.business_email') }} <span class="text-danger" aria-hidden="true">*</span>
                   </label>
+                  {{-- The rules sit on the field and resources/js/live-validation.js
+                       reads them, so an address is answered beside the box while it
+                       is being typed. The server holds it to the same shape —
+                       App\Support\EmailAddress is the one answer both ends read. --}}
                   <input id="business_email" name="business_email" type="email" class="sd-input" required
+                         data-rules="required|email|max:255" autocomplete="email"
                          value="{{ old('business_email', $tenant->business_email) }}">
-                  @error('business_email')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+                  <p data-error-for="business_email" role="alert" class="mt-1.5 text-[12px] text-danger"
+                     @unless ($errors->has('business_email')) hidden @endunless>{{ $errors->first('business_email') }}</p>
                 </div>
+
                 <div>
-                  <label for="business_phone" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('business.fields.business_phone') }}</label>
-                  <input id="business_phone" name="business_phone" type="tel" class="sd-input"
-                         value="{{ old('business_phone', $tenant->business_phone) }}">
-                  @error('business_phone')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+                  <label for="business_phone" class="block text-[13px] font-medium text-ink mb-1.5">
+                    {{ __('business.fields.business_phone') }}
+                  </label>
+
+                  {{-- The dialling code beside the number, not typed into it.
+                       The same control as onboarding and the client screens —
+                       resources/js/phone.js reads the data attributes, formats
+                       as you type and writes the country into the hidden input.
+                       Until now this page posted no country at all, so every
+                       number saved here had none against it. --}}
+                  <div class="relative" data-phone
+                       data-phone-country="{{ old('business_phone_country', $tenant->business_phone_country ?? $tenant->country_code ?? 'US') }}">
+                    <div class="sd-phone">
+                      <button type="button" class="sd-phone__country" data-phone-toggle
+                              aria-haspopup="listbox" aria-expanded="false"
+                              aria-label="{{ __('business.fields.business_phone') }}">
+                        <span class="sd-phone__flag" data-phone-flag>&#127482;&#127480;</span>
+                        <span class="font-medium" data-phone-code>+1</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
+                      <input id="business_phone" name="business_phone" type="tel" class="sd-phone__field"
+                             data-phone-input data-rules="phone" autocomplete="tel-national"
+                             value="{{ old('business_phone', $tenant->business_phone) }}">
+                    </div>
+                    <div class="sd-pop" data-phone-pop hidden></div>
+                    <input type="hidden" name="business_phone_country" data-phone-country-value
+                           value="{{ old('business_phone_country', $tenant->business_phone_country ?? $tenant->country_code ?? 'US') }}">
+                  </div>
+
+                  <p data-error-for="business_phone" role="alert" class="mt-1.5 text-[12px] text-danger"
+                     @unless ($errors->has('business_phone')) hidden @endunless>{{ $errors->first('business_phone') }}</p>
                 </div>
+
                 <div>
                   <label for="support_email" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('business.fields.support_email') }}</label>
                   <input id="support_email" name="support_email" type="email" class="sd-input"
+                         data-rules="email|max:255" autocomplete="email"
                          value="{{ old('support_email', $tenant->support_email) }}">
-                  @error('support_email')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+                  <p data-error-for="support_email" role="alert" class="mt-1.5 text-[12px] text-danger"
+                     @unless ($errors->has('support_email')) hidden @endunless>{{ $errors->first('support_email') }}</p>
                 </div>
+
                 <div>
                   <label for="booking_email" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('business.fields.booking_email') }}</label>
                   <input id="booking_email" name="booking_email" type="email" class="sd-input"
+                         data-rules="email|max:255" autocomplete="email"
                          value="{{ old('booking_email', $tenant->booking_email) }}">
-                  @error('booking_email')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+                  <p data-error-for="booking_email" role="alert" class="mt-1.5 text-[12px] text-danger"
+                     @unless ($errors->has('booking_email')) hidden @endunless>{{ $errors->first('booking_email') }}</p>
                 </div>
               </div>
 
-              <div>
+              {{-- The scheme is chosen, only the host is typed.
+
+                   "https//" with the colon missing is one of the two
+                   commonest things anybody types into a website field, and
+                   the other is nothing at all — so neither is possible here.
+                   resources/js/website-field.js checks the host against the
+                   same pattern the server uses, and absorbs the scheme out of
+                   a pasted address rather than refusing the paste. --}}
+              <div data-website data-invalid-message="{{ __('business.validation.url_invalid') }}">
                 <label for="website" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('business.fields.website') }}</label>
-                <input id="website" name="website" type="url" class="sd-input" placeholder="https://example.com"
-                       value="{{ old('website', $tenant->website) }}">
-                @error('website')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
+
+                <div class="sd-group">
+                  <label class="sr-only" for="website_scheme">{{ __('business.fields.website_scheme') }}</label>
+                  <select id="website_scheme" name="website_scheme" class="sd-group__scheme" data-website-scheme>
+                    @foreach (App\Support\WebsiteAddress::schemes() as $scheme)
+                      <option value="{{ $scheme }}" @selected(old('website_scheme', $site['scheme']) === $scheme)>{{ $scheme }}</option>
+                    @endforeach
+                  </select>
+
+                  <input id="website" name="website" type="text" class="sd-group__field" placeholder="bellabeauty.com"
+                         autocomplete="url" spellcheck="false" autocapitalize="none" data-website-field
+                         value="{{ old('website', $site['host']) }}">
+                </div>
+
+                <p data-error-for="website" role="alert" class="mt-1.5 text-[12px] text-danger"
+                   @unless ($errors->has('website')) hidden @endunless>{{ $errors->first('website') }}</p>
               </div>
             </section>
 
@@ -460,6 +536,19 @@
       var saving = false;
 
       form.addEventListener('submit', function (e) {
+        /* Asked, not waited for.
+
+           This handler is registered while the document is parsed and the
+           live-validation module registers its own on DOMContentLoaded, so
+           this one runs first — the module's stopImmediatePropagation cannot
+           stop what has already run, and the fetch would go out carrying a
+           field the page had just marked invalid. */
+        if (window.styledesk && typeof window.styledesk.validateForm === 'function'
+            && !window.styledesk.validateForm(form)) {
+          e.preventDefault();
+          return;
+        }
+
         if (!window.fetch) return;          // no fetch: plain form post
         e.preventDefault();
 

@@ -479,4 +479,142 @@ class BusinessSettingsTest extends TestCase
 
         return $end === false ? substr($html, $start) : substr($html, $start, $end - $start);
     }
+
+    // --------------------------------------------- email, phone and website
+
+    /**
+     * The address the browser refuses is the address the server refuses.
+     *
+     * "nadia@salon" passes Laravel's `email` rule — an address with no dot in
+     * the domain is legal on a local network — and has never passed the live
+     * check the sign-up form makes. The same address being accepted here and
+     * refused there is the bug; App\Support\EmailAddress is the one answer.
+     */
+    public function test_an_address_with_no_domain_is_refused(): void
+    {
+        $owner = $this->member('owner');
+
+        foreach (['business_email', 'support_email', 'booking_email'] as $field) {
+            $this->actingAs($owner)
+                ->from(route('settings.business.edit'))
+                ->patch('http://styledesk.test/settings/business', $this->validPayload([$field => 'nadia@salon']))
+                ->assertSessionHasErrors($field);
+        }
+    }
+
+    public function test_a_real_address_is_accepted(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                'business_email' => 'hello@nadia.co.uk',
+                'support_email' => 'help@nadia.co.uk',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('hello@nadia.co.uk', $this->tenant->fresh()->business_email);
+    }
+
+    public function test_a_business_email_is_still_required(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->from(route('settings.business.edit'))
+            ->patch('http://styledesk.test/settings/business', $this->validPayload(['business_email' => '']))
+            ->assertSessionHasErrors('business_email');
+    }
+
+    /**
+     * The country the number is dialled from is saved with it.
+     *
+     * The column has always existed; this form never posted it, so every
+     * number saved here had no country against it.
+     */
+    public function test_the_phone_country_is_saved(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                'business_phone' => '20 7946 0958',
+                'business_phone_country' => 'GB',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('GB', $this->tenant->fresh()->business_phone_country);
+    }
+
+    public function test_the_edit_screen_offers_a_country_dropdown_and_a_scheme_dropdown(): void
+    {
+        $page = $this->actingAs($this->member('owner'))
+            ->get(route('settings.business.edit'))
+            ->assertOk();
+
+        $page->assertSee('data-phone-country-value', false);
+        $page->assertSee('data-website-scheme', false);
+        $page->assertSee('data-validate-form', false);
+    }
+
+    /**
+     * The scheme is chosen and only the host is typed, so the two are joined
+     * on the way in.
+     */
+    public function test_the_scheme_and_the_host_are_stored_as_one_address(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                'website_scheme' => 'https://www.',
+                'website' => 'nadiahair.test',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('https://www.nadiahair.test', $this->tenant->fresh()->website);
+    }
+
+    /**
+     * A pasted address is absorbed rather than refused: people paste the whole
+     * thing because that is what their browser gave them.
+     */
+    public function test_a_pasted_full_address_is_absorbed(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                'website_scheme' => 'https://www.',
+                'website' => 'https://www.nadiahair.test',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        /* And the www. is not doubled. */
+        $this->assertSame('https://www.nadiahair.test', $this->tenant->fresh()->website);
+    }
+
+    /**
+     * "hello world" passes a string rule on its own and would be stored as
+     * "https://hello world".
+     */
+    public function test_a_host_that_is_not_a_host_is_refused(): void
+    {
+        $owner = $this->member('owner');
+
+        foreach (['hello world', 'nodot', 'https//nadiahair.test'] as $typed) {
+            $this->actingAs($owner)
+                ->from(route('settings.business.edit'))
+                ->patch('http://styledesk.test/settings/business', $this->validPayload([
+                    'website_scheme' => 'https://',
+                    'website' => $typed,
+                ]))
+                ->assertSessionHasErrors('website');
+        }
+    }
+
+    /**
+     * The stored address opens in the two controls it is edited in, on the
+     * option the form actually offers.
+     */
+    public function test_a_stored_address_splits_back_into_the_two_controls(): void
+    {
+        $this->tenant->forceFill(['website' => 'https://www.nadiahair.test'])->save();
+
+        $this->actingAs($this->member('owner'))
+            ->get(route('settings.business.edit'))
+            ->assertOk()
+            ->assertSee('value="nadiahair.test"', false)
+            ->assertSee('<option value="https://www." selected>', false);
+    }
 }
