@@ -32,11 +32,95 @@ return [
     */
     'statuses' => [
         'draft' => ['class' => 'styledesk_badge--setup'],
+        'pending' => ['class' => 'styledesk_badge--setup'],
         'confirmed' => ['class' => 'styledesk_badge--active'],
-        'arrived' => ['class' => 'styledesk_badge--active'],
+        /* Checked in. Its own colour rather than the confirmed one: the
+           front desk scans this listing for who is already in the building,
+           and two states painted alike answer that question wrongly. */
+        'arrived' => ['class' => 'styledesk_badge--info'],
         'completed' => ['class' => 'styledesk_badge--soon'],
-        'no-show' => ['class' => 'styledesk_badge--soon'],
-        'cancelled' => ['class' => 'styledesk_badge--soon'],
+        'no-show' => ['class' => 'styledesk_badge--attention'],
+        'cancelled' => ['class' => 'styledesk_badge--danger'],
+        'declined' => ['class' => 'styledesk_badge--danger'],
+    ],
+
+    /*
+    | What can be done to a booking once it has been taken, and from where.
+    |
+    | Four acts, and each one only from the states where it means something.
+    | Marking a completed appointment as a no-show is not a decision anybody
+    | should be able to make by mistake, and declining one that was already
+    | confirmed is not declining a request — it is cancelling a booking, which
+    | is a different word and a different reason list.
+    |
+    | `reason` names the list the modal asks from. They are the reason types
+    | in config/reasons.php, so a business's own wording flows straight
+    | through to the dialogue without a second list to keep in step.
+    |
+    | `permission` is the StyleDesk permission the action is gated on. An
+    | action a reader may not take is not shown at all — a disabled button
+    | they can never enable is furniture.
+    */
+    'status_actions' => [
+        /* The client is here.
+           |
+           | No reason list: arriving for an appointment does not need to be
+           | explained, and a required dropdown at the front desk while
+           | somebody stands at it waiting is the wrong shape entirely.
+           |
+           | `today` is the second gate. Checking in for Thursday's
+           | appointment on Tuesday is not early — it is the wrong booking,
+           | and the front desk finds that out here rather than at half four
+           | on Thursday. Within the day itself nothing is enforced: a client
+           | ten minutes early and one twenty minutes late are both simply
+           | here. */
+        'check-in' => [
+            'route' => 'bookings.check-in',
+            'from' => ['confirmed'],
+            'today' => true,
+            'reason' => null,
+            'permission' => 'appointments.check_in',
+            'tone' => 'default',
+        ],
+        'no-show' => [
+            'route' => 'bookings.no-show',
+            /* Confirmed only. Somebody who has been checked in is standing in
+               the salon, and marking them absent is not a mistake the front
+               desk should be able to make with one press. */
+            'from' => ['confirmed'],
+            'reason' => 'no-show',
+            'permission' => 'appointments.no_show',
+            'tone' => 'default',
+        ],
+        'cancelled' => [
+            'route' => 'bookings.cancel',
+            /* Still allowed after check-in: a client who arrived and then had
+               to leave is a cancellation, and it is the only word for it. */
+            'from' => ['pending', 'confirmed', 'arrived'],
+            'reason' => 'booking-cancellation',
+            'permission' => 'appointments.cancel',
+            'tone' => 'danger',
+        ],
+        'declined' => [
+            'route' => 'bookings.decline',
+            /* A request turned down. Only from pending: a confirmed booking
+               that is being called off was accepted first, and calling that
+               "declined" would lose the difference the reports are counting. */
+            'from' => ['pending'],
+            'reason' => 'booking-declined',
+            'permission' => 'appointments.decline',
+            'tone' => 'danger',
+        ],
+        /* Not a status change at all — the booking stays where it is and the
+           appointment moves — but it belongs in this list because it is the
+           fourth thing the header offers and it is gated the same way. */
+        'reschedule' => [
+            'route' => 'bookings.reschedule',
+            'from' => ['pending', 'confirmed'],
+            'reason' => 'booking-reschedule',
+            'permission' => 'appointments.reschedule',
+            'tone' => 'default',
+        ],
     ],
 
     /*

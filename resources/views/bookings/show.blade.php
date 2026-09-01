@@ -40,22 +40,33 @@
           <span class="styledesk_action__label">{{ __('common.back') }}</span>
         </a>
 
-        {{-- Cancelling and moving an appointment both change the diary, and
-             neither flow exists yet. Shown disabled with the reason rather
-             than hidden: a header that grows a Cancel button next month is
-             one nobody trusts today, and an action quietly missing reads as
-             a permission the reader lacks. --}}
-        <span class="styledesk_action styledesk_action--danger shrink-0 opacity-60 cursor-not-allowed"
-              aria-disabled="true" data-tip="{{ __('bookings.detail.soon_hint') }}">
-          {{ __('bookings.detail.cancel_booking') }}
-          <span class="styledesk_badge styledesk_badge--soon">{{ __('leads.drawer.soon') }}</span>
-        </span>
+        {{-- What can be done to this booking now, and only that.
 
-        <span class="styledesk_action shrink-0 opacity-60 cursor-not-allowed"
-              aria-disabled="true" data-tip="{{ __('bookings.detail.soon_hint') }}">
-          {{ __('bookings.detail.reschedule') }}
-          <span class="styledesk_badge styledesk_badge--soon">{{ __('leads.drawer.soon') }}</span>
-        </span>
+             An action the reader may not take is absent rather than shown
+             disabled: a button they can never enable is furniture. An action
+             that would make no sense from here — marking a completed
+             appointment as a no-show — is absent for the same reason. --}}
+        {{-- Already here, and so not a button any more.
+
+             The line replaces the action rather than sitting beside it: a
+             Check In button on a client who is standing in the salon is an
+             invitation to record them arriving twice. --}}
+        @if ($checkIn)
+          <span class="styledesk_metachip styledesk_badge--info shrink-0">
+            {{ __('bookings.status.check-in.done_at', [
+                'time' => $checkIn->created_at?->isoFormat('h:mm A'),
+                'name' => $checkIn->actor(),
+            ]) }}
+          </span>
+        @endif
+
+        @foreach ($actions as $action)
+          @php $tone = config('bookings.status_actions.'.$action.'.tone'); @endphp
+          <button type="button" data-status-action="{{ $action }}"
+                  class="styledesk_action shrink-0 {{ $tone === 'danger' ? 'styledesk_action--danger' : '' }}">
+            {{ __('bookings.status.'.$action.'.action') }}
+          </button>
+        @endforeach
 
         <a href="{{ route('bookings.receipt', $booking) }}" target="_blank" rel="noopener" class="styledesk_action shrink-0">
           {{ __('bookings.confirmation.print') }}
@@ -153,6 +164,7 @@
           @include('bookings.partials._services')
           @include('bookings.partials._notes')
           @include('bookings.partials._payments')
+          @include('bookings.partials._activity')
         </div>
       </div>
 
@@ -165,4 +177,12 @@
       </aside>
     </div>
   </main>
+
+  {{-- Rendered only where the act is on offer, so a reader without the
+       permission is not sent the dialogue for it. --}}
+  @include('bookings.partials._status-modals')
 @endsection
+
+@push('scripts')
+  @include('bookings.partials._status-scripts')
+@endpush

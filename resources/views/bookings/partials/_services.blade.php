@@ -24,10 +24,17 @@
                             ])->filter()->join(' · ') }}
                         </p>
 
-                        @if ($line->service?->resources->isNotEmpty())
+                        {{-- Where the appointment actually is.
+
+                             It used to list every room the service *could*
+                             use, which on a spa with six of them read as
+                             though one client had been given the whole
+                             building. The booking now records the one it was
+                             given, so that is what it says. --}}
+                        @if ($booking->resource)
                             <p class="text-[12px] text-sub mt-1">
                                 {{ __('bookings.summary.resource') }}:
-                                <span class="text-ink">{{ $line->service->resources->pluck('name')->implode(', ') }}</span>
+                                <span class="text-ink">{{ $booking->resource->name }}</span>
                             </p>
                         @endif
                     </div>

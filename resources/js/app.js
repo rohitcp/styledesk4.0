@@ -26,6 +26,8 @@ import { initSubdomainFields } from './subdomain';
 import { initWebsiteFields } from './website-field';
 import { initLiveValidation, validateForm } from './live-validation';
 import { initResourceRequirement } from './service-resources';
+import { initServiceTips } from './service-tips';
+import { initDashboardTabs } from './dashboard-tabs';
 import { initShiftRuleFeatureToggle, initShiftRuleForm } from './shift-rules';
 import { initBoardFilters, initMonthModal, initScheduleBoard } from './schedule-board';
 import { initClientBookings } from './client-bookings';
@@ -187,6 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initResendCooldown();
     initSessionTimeout();
     initListingFilters();
+    initServiceTips();
+    initDashboardTabs();
 });
 
 export { initDateFields };

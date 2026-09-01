@@ -9,6 +9,8 @@ use App\Http\Controllers\Account\ProfileController as AccountProfileController;
 use App\Http\Controllers\AppSettingsController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingLeadController;
+use App\Http\Controllers\BookingQuoteController;
+use App\Http\Controllers\BookingStatusController;
 use App\Http\Controllers\ClientBookingPreferenceController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientNoteController;
@@ -16,6 +18,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PaymentLinkController;
+use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\ServiceController;
@@ -27,11 +30,13 @@ use App\Http\Controllers\Settings\ClientSettingsController;
 use App\Http\Controllers\Settings\CurrencyController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
+use App\Http\Controllers\Settings\ReasonCodeController;
 use App\Http\Controllers\Settings\ResourceCategoryController;
 use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\ServiceCategoryController as SettingsServiceCategoryController;
 use App\Http\Controllers\Settings\ShiftRuleController;
 use App\Http\Controllers\Settings\StaffController;
+use App\Http\Controllers\Settings\TipController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\StaffScheduleBoardController;
 use App\Http\Controllers\TeamInvitationController;
@@ -405,6 +410,44 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 Route::delete('{serviceCategory}', 'destroy')->name('destroy');
             });
 
+        /*
+        | App Settings → Reasons: why things happened, as a list.
+        |
+        | Nine lists of reason codes the rest of StyleDesk picks from —
+        | cancellations, reschedules, refunds and the rest. Reference data,
+        | so a tenth list is a block added to config/reasons.php and nothing
+        | here has to change.
+        |
+        | `{type}` is a key from that config, checked by the controller
+        | rather than by a route constraint, so a new type does not need this
+        | file edited to become reachable.
+        */
+        /*
+        | Whether this business takes tips, and which of its services are
+        | tipped. Inside the settings group, so the same permission that
+        | guards every other module guards this one.
+        */
+        Route::controller(TipController::class)->prefix('tips')->name('tips.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::patch('/', 'update')->name('update');
+            Route::patch('services/{service}', 'service')->name('service');
+        });
+
+        Route::controller(ReasonCodeController::class)
+            ->prefix('reasons')
+            ->name('reasons.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                /* Before {reason}: a literal segment declared after a
+                   parameter is reached by matching it as an id. */
+                Route::patch('code/{reason}', 'update')->name('update');
+                Route::patch('code/{reason}/status', 'toggle')->name('toggle');
+                Route::delete('code/{reason}', 'destroy')->name('destroy');
+                Route::get('{type}', 'show')->name('show');
+                Route::post('{type}', 'store')->name('store');
+                Route::post('{type}/reorder', 'reorder')->name('reorder');
+            });
+
         Route::controller(ResourceCategoryController::class)
             ->prefix('resources')
             ->name('resources.')
@@ -746,6 +789,33 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::delete('{preference}', 'destroy')->name('destroy');
         });
 
+    /*
+    | Coupons and offers.
+    |
+    | Under clients rather than settings: a promotion is something a business
+    | runs at people, and the people are here.
+    |
+    | Declared before the client routes below, or /clients/coupons-offers
+    | would be read as a client whose id is "coupons-offers".
+    */
+    Route::controller(PromotionController::class)
+        ->prefix('clients/coupons-offers')
+        ->name('promotions.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            /* Before {promotion}: a literal segment declared after a
+               parameter is reached by matching "create" as an id. */
+            Route::get('create', 'create')->name('create');
+            Route::get('data', 'data')->name('data');
+            Route::post('/', 'store')->name('store');
+
+            Route::get('{promotion}', 'show')->name('show');
+            Route::get('{promotion}/edit', 'edit')->name('edit');
+            Route::patch('{promotion}', 'update')->name('update');
+            Route::get('{promotion}/duplicate', 'duplicate')->name('duplicate');
+            Route::patch('{promotion}/status', 'toggle')->name('toggle');
+        });
+
     Route::controller(ClientController::class)
         ->prefix('clients')
         ->name('clients.')
@@ -946,6 +1016,10 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
                tightly: a receptionist adjusting a booking is meant to ask it
                often. */
             Route::get('availability', 'availability')->middleware('throttle:120,1')->name('availability');
+            /* Which rooms one service could go in, and which are free.
+               Asked on every change to the day, the time or the branch, so
+               it is throttled like availability rather than tightly. */
+            Route::get('resources', 'resources')->middleware('throttle:120,1')->name('resources');
             /* The client search behind the booking screen's first column,
                and the history panel that opens once one is chosen. */
             Route::get('clients', 'clients')->name('clients');
@@ -967,6 +1041,10 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
                as a receptionist works, which is many saves per booking and
                exactly the behaviour it is for. */
             Route::post('draft', 'autosave')->middleware('throttle:120,1')->name('draft');
+            /* What the booking comes to, before it exists. Asked as the
+               reader switches between card and cash, types a coupon or picks
+               a tip — so throttled like availability rather than tightly. */
+            Route::post('quote', BookingQuoteController::class)->middleware('throttle:120,1')->name('quote');
             Route::post('/', 'store')->name('store');
 
             /* One booking, and the two things done to it after it is taken:
@@ -983,6 +1061,29 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::get('{booking}/receipt', 'receipt')->name('receipt');
             Route::post('{booking}/payments', 'pay')->name('pay');
             Route::post('{booking}/confirmation', 'sendConfirmation')->name('confirmation');
+        });
+
+    /*
+    | What happens to a booking after it has been taken.
+    |
+    | Its own controller: nobody came, it was called off, it was turned down
+    | and it moved are four acts of one shape — a reason, a note, a status and
+    | an entry in two histories — and the one thing they must never become is
+    | four slightly different implementations of that.
+    */
+    Route::controller(BookingStatusController::class)
+        ->prefix('bookings/{booking}')
+        ->name('bookings.')
+        ->group(function () {
+            Route::post('check-in', 'checkIn')->name('check-in');
+            Route::post('no-show', 'noShow')->name('no-show');
+            Route::post('cancel', 'cancel')->name('cancel');
+            Route::post('decline', 'decline')->name('decline');
+            Route::post('reschedule', 'reschedule')->name('reschedule');
+            /* Which times could be worked, asked as the dialog's date
+               changes. Throttled like the booking screen's own availability:
+               it is meant to be asked often. */
+            Route::get('slots', 'slots')->middleware('throttle:120,1')->name('slots');
         });
 
     /*

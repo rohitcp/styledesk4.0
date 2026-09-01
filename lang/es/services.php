@@ -7,6 +7,10 @@ return [
     'subtitle' => 'El trabajo que vendes: cómo se llama, cuánto dura, cuánto cuesta y quién puede realizarlo.',
 
     'intro' => 'Gestiona los servicios que ofrece tu negocio: categorías, duración, precios, personal, recursos y disponibilidad de reserva.',
+    'card_price' => 'Precio con tarjeta',
+    'cash_price' => 'Precio en efectivo',
+    'cash_price_same' => 'Igual que tarjeta',
+    'pricing_pair' => 'Tarjeta :card · Efectivo :cash',
     'search_placeholder' => 'Buscar servicios',
     'resource_required' => 'Necesario',
     'resource_not_required' => 'No necesario',

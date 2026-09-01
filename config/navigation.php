@@ -57,6 +57,9 @@ return [
                 // list and the way to add to it are the two things anyone
                 // opens this menu for.
                 ['label' => 'Add Client', 'route' => 'clients.create'],
+                ['label' => 'Coupons & Offers', 'route' => 'promotions.index'],
+                ['label' => 'Gift Cards'],
+                ['label' => 'Loyalty'],
                 ['label' => 'Groups'],
                 ['label' => 'Forms & Waivers'],
                 ['label' => 'Memberships & Packages'],

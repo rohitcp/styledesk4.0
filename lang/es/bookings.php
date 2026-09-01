@@ -14,6 +14,7 @@ declare(strict_types=1);
 return [
 
     'title' => 'Reservas',
+    'search_placeholder' => 'Busca reservas, clientes, ID de reserva…',
     'intro' => 'Todas las citas tomadas y con quién son.',
     'new' => 'Nueva reserva',
     'new_intro' => 'Busca al cliente o atiende a alguien sin cita.',
@@ -35,6 +36,9 @@ return [
     'walk_in_guest' => 'Sin cita',
 
     'columns' => [
+        'arrival' => 'Llegada',
+        'checkin' => 'Registro',
+        'location' => 'Ubicación',
         'reference' => 'ID de reserva',
         'booked_by' => 'Creada por',
         'client' => 'Cliente',
@@ -48,17 +52,22 @@ return [
 
     'filters' => [
         'all_statuses' => 'Todos los estados',
+        'all_locations' => 'Todas las ubicaciones',
+        'all_services' => 'Todos los servicios',
+        'all_payments' => 'Todos los estados de pago',
         'all_staff' => 'Todo el equipo',
         'date' => 'Fecha',
         'reset' => 'Restablecer',
     ],
 
     'statuses' => [
+        'pending' => ['label' => 'Pendiente'],
         'draft' => ['label' => 'Borrador'],
         'confirmed' => ['label' => 'Confirmada'],
-        'arrived' => ['label' => 'Ha llegado'],
+        'arrived' => ['label' => 'Registrado'],
         'completed' => ['label' => 'Completada'],
         'no-show' => ['label' => 'No se presentó'],
+        'declined' => ['label' => 'Rechazada'],
         'cancelled' => ['label' => 'Cancelada'],
     ],
 
@@ -358,6 +367,145 @@ return [
     ],
     'actions_for' => 'Acciones para :name',
 
+    'tabs' => [
+        'today' => 'Hoy',
+        'next-3' => 'Próximos 3 días',
+        'month' => 'Mes',
+        'check-in' => 'Pendientes de llegada',
+        'more' => 'Más',
+        'all' => 'Todas las reservas',
+        'completed' => 'Completadas',
+        'cancelled' => 'Canceladas',
+        'no-shows' => 'No asistieron',
+        'declined' => 'Rechazadas',
+
+        'summary' => [
+            'total' => 'Reservas de hoy',
+            'checked_in' => 'Registrados',
+            'pending' => 'Pendientes de llegada',
+            'completed' => 'Completadas',
+            'no_show' => 'No asistieron',
+        ],
+
+        'arrival' => [
+            'checked_in' => 'Registrado',
+            'waiting' => 'Aún no ha llegado',
+            'not_due' => 'No es para hoy',
+            'done' => 'Atendido',
+            'absent' => 'No llegó',
+            'due' => 'Es la hora',
+            'later' => 'Más tarde hoy',
+            'early' => ':count min de adelanto',
+            'late' => ':count min de retraso',
+        ],
+
+        'previous_month' => 'Mes anterior',
+        'next_month' => 'Mes siguiente',
+        'empty' => [
+            'today' => 'No hay nada reservado para hoy.',
+            'next-3' => 'No hay nada reservado en los próximos tres días.',
+            'check-in' => 'Nadie está esperando para registrarse.',
+        ],
+    ],
+
+    'resources' => [
+        'none_available' => 'No hay ningún recurso disponible para este servicio a esa hora.',
+        'auto' => 'Asignado automáticamente',
+        'manual' => 'Elegido a mano',
+        'change' => 'Cambiar recurso',
+        'choose' => 'Seleccionar recurso',
+        'unavailable' => 'No disponible',
+        'currently' => 'Asignado ahora',
+        'updated' => 'Recurso actualizado: :name',
+    ],
+
+    'status' => [
+        'check-in' => [
+            'action' => 'Registrar llegada',
+            'title' => 'Registrar la llegada del cliente',
+            'intro' => 'El cliente ya está aquí. Su cita pasa a registrada y se guarda la hora.',
+            'confirm' => 'Registrar llegada',
+            'note' => 'Nota de llegada',
+            'note_hint' => 'Opcional. «Llegó diez minutos antes», y cualquier otra cosa que el equipo deba saber.',
+            'done_at' => 'Llegada registrada a las :time por :name',
+            'already' => 'Registrado',
+        ],
+        'no-show' => [
+            'action' => 'No asistió',
+            'title' => 'Marcar la reserva como no asistió',
+            'intro' => 'La cita queda registrada; se marca que el cliente no llegó.',
+            'reason' => 'Motivo',
+            'confirm' => 'Guardar',
+        ],
+        'cancelled' => [
+            'action' => 'Cancelar reserva',
+            'title' => 'Cancelar reserva',
+            'intro' => 'La cita se anula y se libera el horario que ocupaba.',
+            'reason' => 'Motivo de cancelación',
+            'dismiss' => 'Mantener la reserva',
+            'confirm' => 'Cancelar reserva',
+        ],
+        'declined' => [
+            'action' => 'Rechazar reserva',
+            'title' => 'Rechazar reserva',
+            'intro' => 'La solicitud se rechaza. No se reserva nada y se puede explicar el motivo al cliente.',
+            'reason' => 'Motivo del rechazo',
+            'confirm' => 'Rechazar reserva',
+        ],
+        'reschedule' => [
+            'action' => 'Reprogramar reserva',
+            'title' => 'Reprogramar reserva',
+            'intro' => 'La misma reserva, a otra hora. La referencia, el cliente y el importe no cambian.',
+            'reason' => 'Motivo de la reprogramación',
+            'confirm' => 'Guardar la reprogramación',
+            'current' => 'Actualmente',
+            'new_date' => 'Nueva fecha',
+            'new_time' => 'Nueva hora',
+            'staff' => 'Miembro del equipo',
+            'location' => 'Ubicación',
+            'pick_date' => 'Elige una fecha para ver qué hay libre.',
+            'no_slots' => 'No hay nada libre ese día.',
+            'loading' => 'Comprobando qué hay libre…',
+        ],
+
+        'choose_reason' => 'Elige un motivo',
+        'note' => 'Nota',
+        'note_hint' => 'Opcional. Para el equipo, no para el cliente.',
+        'details' => 'Detalles adicionales',
+        'details_hint' => 'Obligatorio para este motivo.',
+        'details_required' => 'Este motivo requiere una explicación.',
+        'reason_unavailable' => 'Ese motivo ya no está disponible. Elige otro.',
+        'slot_taken' => 'Esa hora no está libre. Elige otra.',
+        'dismiss' => 'Cancelar',
+
+        'done' => [
+            'check-in' => 'Llegada del cliente registrada.',
+            'no-show' => 'Marcada como no asistió.',
+            'cancelled' => 'Reserva cancelada.',
+            'declined' => 'Reserva rechazada.',
+            'reschedule' => 'Reserva reprogramada.',
+        ],
+    ],
+
+    'activity' => [
+        'title' => 'Actividad de la reserva',
+        'none' => 'Todavía no ha pasado nada con esta reserva.',
+        'system' => 'StyleDesk',
+        'by' => 'por :name',
+        'reason' => 'Motivo',
+        'note' => 'Nota',
+        'previous' => 'Anterior',
+        'new' => 'Nueva',
+        'events' => [
+            'no-show' => 'Reserva marcada como no asistió',
+            'cancelled' => 'Reserva cancelada',
+            'declined' => 'Reserva rechazada',
+            'confirmed' => 'Reserva reprogramada',
+            'pending' => 'Reserva reprogramada',
+            'arrived' => 'Cliente registrado',
+        ],
+    ],
+
     'detail' => [
         'payment_status' => 'Pago',
         'book_again' => 'Reservar otra vez',
@@ -381,6 +529,18 @@ return [
     ],
 
     'pay' => [
+        'coupon' => 'Código de cupón',
+        'coupon_placeholder' => 'Escribe el código',
+        'apply' => 'Aplicar',
+        'remove_coupon' => 'Quitar',
+        'add_tip' => 'Añadir propina',
+        'no_tip' => 'Sin propina',
+        'custom_tip' => 'Otra',
+        'discount' => 'Descuento',
+        'tip' => 'Propina',
+        'total_due' => 'Total a pagar',
+        'paying_by' => 'Forma de pago',
+        'paying_by_hint' => 'Algunos servicios cuestan distinto en efectivo. El total sigue esta opción.',
         'title' => 'Pago',
         'due' => 'Importe a pagar',
         'collect_now' => 'A cobrar ahora',

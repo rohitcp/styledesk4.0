@@ -119,6 +119,8 @@
                the location, services, staff member or date change. The list
                above is only what the page opens with. */
             'availabilityUrl' => route('bookings.availability'),
+            'resourcesUrl' => route('bookings.resources'),
+            'quoteUrl' => route('bookings.quote'),
             'today' => now()->toDateString(),
             /* The business's own clock. Times are chosen and posted as 24-hour
                "H:i" whatever this says — it decides only what a person reads,
@@ -138,7 +140,7 @@
                 'sections', 'client', 'service', 'when', 'details', 'payment',
                 'comms', 'summary', 'blockers', 'confirm', 'draft', 'cancel', 'context',
                 'new_client', 'pay', 'methods', 'payment_statuses', 'confirmation', 'steps', 'lead',
-                'any_staff', 'autosave',
+                'any_staff', 'autosave', 'resources',
             ]) + ['summary' => __('bookings.summary') + ['minutes_short' => __('bookings.service.minutes')]],
         ];
     @endphp

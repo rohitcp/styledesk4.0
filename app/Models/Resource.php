@@ -63,9 +63,19 @@ class Resource extends Model
     }
 
     /** The services that may claim it. */
+    /**
+     * The services this room or chair can carry.
+     *
+     * The pivot's priority comes with it: how good a fit this resource is for
+     * a service belongs to the pairing rather than to either side, because
+     * the same room is a body massage's first choice and a reflexology's
+     * second. Declared on both ends — the allocator reads it from this one,
+     * and a relation that quietly drops it returns a null priority that
+     * sorts as nought and puts a bed ahead of the chair.
+     */
     public function services(): BelongsToMany
     {
-        return $this->belongsToMany(Service::class);
+        return $this->belongsToMany(Service::class)->withPivot('priority');
     }
 
     public function scopeActive(Builder $query): Builder

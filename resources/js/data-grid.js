@@ -237,6 +237,32 @@ function mount(Tabulator, el) {
 
         definition.formatter = FORMATTERS[column.type] ?? FORMATTERS.text;
 
+        /* The full value on hover, wherever the column is narrow enough to
+           cut it off.
+
+           A truncated cell is the one place a table lies about its own
+           contents: "Aromatherapy Massage — 90 Mi…" and "Aromatherapy
+           Massage — 120 M…" are two different services that look like the
+           same one. The browser's own tooltip is the right answer — it needs
+           no script, survives the row being redrawn, and is what a reader
+           already tries when a name is cut.
+
+           Only where the text is actually clipped, so a column with room to
+           spare does not sprout a tooltip repeating what is on screen. */
+        definition.tooltip = (event, cell) => {
+            const value = cell.getValue();
+
+            if (value === null || value === undefined || typeof value === 'object') {
+                return '';
+            }
+
+            const text = String(value);
+            /* The element the ellipsis is on, not the cell around it. */
+            const inner = cell.getElement().querySelector('.styledesk_gridclient__name') ?? cell.getElement();
+
+            return inner.scrollWidth > inner.clientWidth ? text : '';
+        };
+
         return definition;
     });
 

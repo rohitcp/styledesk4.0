@@ -14,6 +14,7 @@ declare(strict_types=1);
 return [
 
     'title' => 'Bookings',
+    'search_placeholder' => 'Search bookings, clients, booking ID…',
     'intro' => 'Every appointment taken, and who it is with.',
     'new' => 'New Booking',
     'new_intro' => 'Find the client, or take a walk-in.',
@@ -35,6 +36,9 @@ return [
     'walk_in_guest' => 'Walk-in',
 
     'columns' => [
+        'arrival' => 'Arrival',
+        'checkin' => 'Check-in',
+        'location' => 'Location',
         'reference' => 'Booking ID',
         'booked_by' => 'Booked by',
         'client' => 'Client',
@@ -48,17 +52,22 @@ return [
 
     'filters' => [
         'all_statuses' => 'All statuses',
+        'all_locations' => 'All locations',
+        'all_services' => 'All services',
+        'all_payments' => 'All payment statuses',
         'all_staff' => 'All team members',
         'date' => 'Date',
         'reset' => 'Reset',
     ],
 
     'statuses' => [
+        'pending' => ['label' => 'Pending'],
         'draft' => ['label' => 'Draft'],
         'confirmed' => ['label' => 'Confirmed'],
-        'arrived' => ['label' => 'Arrived'],
+        'arrived' => ['label' => 'Checked in'],
         'completed' => ['label' => 'Completed'],
         'no-show' => ['label' => 'No show'],
+        'declined' => ['label' => 'Declined'],
         'cancelled' => ['label' => 'Cancelled'],
     ],
 
@@ -398,6 +407,170 @@ return [
     | Read the way the client profile is read: the person on the left, the
     | work in the middle, what to do about them on the right.
     */
+    /*
+    | What can be done to a booking after it has been taken.
+    |
+    | Four acts, and each one asks the same two questions: why, and is there
+    | anything else. The reasons themselves are the business's own — set in
+    | App settings → Reasons — so nothing here names one.
+    */
+    /*
+    | The views a desk works in.
+    |
+    | Not saved searches: each one is a question somebody at the front desk
+    | actually asks between nine and six, which is also why Today is where
+    | the page opens.
+    */
+    'tabs' => [
+        'today' => 'Today',
+        'next-3' => 'Next 3 days',
+        'month' => 'Month',
+        'check-in' => 'Check-in pending',
+        'more' => 'More',
+        'all' => 'All bookings',
+        'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
+        'no-shows' => 'No shows',
+        'declined' => 'Declined',
+
+        'summary' => [
+            'total' => "Today's bookings",
+            'checked_in' => 'Checked in',
+            'pending' => 'Check-in pending',
+            'completed' => 'Completed',
+            'no_show' => 'No show',
+        ],
+
+        /* Where they have got to, and — while they are due — how far off the
+           time they are. "12 min late" is what the desk acts on; the
+           scheduled time alone makes somebody read a clock and work it out
+           themselves, forty times a morning. */
+        'arrival' => [
+            'checked_in' => 'Checked in',
+            'waiting' => 'Not yet arrived',
+            'not_due' => 'Not due today',
+            'done' => 'Seen',
+            'absent' => 'Did not arrive',
+            'due' => 'Due now',
+            'later' => 'Later today',
+            'early' => ':count min early',
+            'late' => ':count min late',
+        ],
+
+        'previous_month' => 'Previous month',
+        'next_month' => 'Next month',
+        'empty' => [
+            'today' => 'Nothing booked for today.',
+            'next-3' => 'Nothing booked over the next three days.',
+            'check-in' => 'Nobody is waiting to check in.',
+        ],
+    ],
+
+    'resources' => [
+        'none_available' => 'No resource available for this service at the selected time.',
+        'auto' => 'Auto-assigned',
+        'manual' => 'Manually selected',
+        'change' => 'Change resource',
+        'choose' => 'Select resource',
+        'unavailable' => 'Unavailable',
+        'currently' => 'Currently assigned',
+        'updated' => 'Resource updated: :name',
+    ],
+
+    'status' => [
+        'check-in' => [
+            'action' => 'Check in',
+            'title' => 'Check in client',
+            'intro' => 'The client is here. Their appointment moves to checked in and the time is recorded.',
+            'confirm' => 'Check in',
+            'note' => 'Check-in note',
+            'note_hint' => 'Optional. "Arrived ten minutes early", and anything else the team should know.',
+            'done_at' => 'Checked in at :time by :name',
+            'already' => 'Checked in',
+        ],
+        'no-show' => [
+            'action' => 'No show',
+            'title' => 'Mark booking as no show',
+            'intro' => 'The appointment stays on the record; the client is marked as not having arrived.',
+            'reason' => 'Reason',
+            'confirm' => 'Save',
+        ],
+        'cancelled' => [
+            'action' => 'Cancel booking',
+            'title' => 'Cancel booking',
+            'intro' => 'The appointment is called off and the time it held is given back.',
+            'reason' => 'Cancellation reason',
+            /* "Keep booking" rather than "Cancel": in a dialogue about
+               cancelling, a button that says Cancel is the one nobody can
+               read twice the same way. */
+            'dismiss' => 'Keep booking',
+            'confirm' => 'Cancel booking',
+        ],
+        'declined' => [
+            'action' => 'Decline booking',
+            'title' => 'Decline booking',
+            'intro' => 'The request is turned down. Nothing is booked and the client can be told why.',
+            'reason' => 'Decline reason',
+            'confirm' => 'Decline booking',
+        ],
+        'reschedule' => [
+            'action' => 'Reschedule booking',
+            'title' => 'Reschedule booking',
+            'intro' => 'The same booking, at a different time. The reference, the client and the bill all stay as they are.',
+            'reason' => 'Reschedule reason',
+            'confirm' => 'Save reschedule',
+            'current' => 'Currently',
+            'new_date' => 'New date',
+            'new_time' => 'New time',
+            'staff' => 'Team member',
+            'location' => 'Location',
+            'pick_date' => 'Choose a date to see what is free.',
+            'no_slots' => 'Nothing is free on that day.',
+            'loading' => 'Checking what is free…',
+        ],
+
+        'choose_reason' => 'Choose a reason',
+        'note' => 'Note',
+        'note_hint' => 'Optional. For the team, not for the client.',
+        'details' => 'Additional details',
+        'details_hint' => 'Required for this reason.',
+        'details_required' => 'This reason asks for an explanation.',
+        'reason_unavailable' => 'That reason is no longer available. Choose another.',
+        'slot_taken' => 'That time is not free. Choose another.',
+        'dismiss' => 'Cancel',
+
+        'done' => [
+            'check-in' => 'Client checked in.',
+            'no-show' => 'Marked as no show.',
+            'cancelled' => 'Booking cancelled.',
+            'declined' => 'Booking declined.',
+            'reschedule' => 'Booking rescheduled.',
+        ],
+    ],
+
+    /*
+    | The booking's own history: everything that was done to it, in the words
+    | the reasons had on the day rather than the words they have now.
+    */
+    'activity' => [
+        'title' => 'Booking activity',
+        'none' => 'Nothing has happened to this booking yet.',
+        'system' => 'StyleDesk',
+        'by' => 'by :name',
+        'reason' => 'Reason',
+        'note' => 'Note',
+        'previous' => 'Previous',
+        'new' => 'New',
+        'events' => [
+            'no-show' => 'Booking marked as no show',
+            'cancelled' => 'Booking cancelled',
+            'declined' => 'Booking declined',
+            'confirmed' => 'Booking rescheduled',
+            'pending' => 'Booking rescheduled',
+            'arrived' => 'Client checked in',
+        ],
+    ],
+
     'detail' => [
         'payment_status' => 'Payment',
         'book_again' => 'Book again',
@@ -423,6 +596,18 @@ return [
     ],
 
     'pay' => [
+        'coupon' => 'Coupon code',
+        'coupon_placeholder' => 'Enter coupon code',
+        'apply' => 'Apply',
+        'remove_coupon' => 'Remove',
+        'add_tip' => 'Add tip',
+        'no_tip' => 'No tip',
+        'custom_tip' => 'Custom',
+        'discount' => 'Discount',
+        'tip' => 'Tip',
+        'total_due' => 'Total due',
+        'paying_by' => 'Paying by',
+        'paying_by_hint' => 'Some services cost a different amount in cash. The total follows this.',
         'title' => 'Payment',
         'due' => 'Amount due',
         'collect_now' => 'Amount to collect now',

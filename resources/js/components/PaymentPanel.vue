@@ -34,13 +34,102 @@ const card = ref({ name: '', number: '', expiry: '', cvv: '', zip: '' });
 
 const chosenMethod = computed(() => props.methods.find((row) => row.key === method.value) ?? null);
 
+/* The tip, as its own answer.
+
+   A tip is offered on the work, not on the bill: a booking with a massage
+   and a bottle of oil on it suggests a tip on the massage, because twenty
+   per cent of the oil is money the therapist did not earn. The server has
+   already worked out which part of the bill that is — everything here reads
+   from `booking.tips` rather than doing the arithmetic again. */
+const tips = computed(() => props.booking.tips ?? { enabled: false });
+
+/* Null means nobody has answered yet, which is not the same as nought.
+   Where the business asks the client to choose, only one of those lets the
+   payment through. */
+const tip = ref(null);
+const customTip = ref('');
+
+/*
+ * Start from what was agreed when the booking was taken.
+ *
+ * A receptionist who settled fifteen per cent with the client should not have
+ * to remember it at the counter. A percentage is worked out again against
+ * what is actually being collected; an amount somebody typed is offered
+ * exactly as typed.
+ */
+function adoptChosenTip() {
+    const chosen = props.booking.tips ?? {};
+
+    if (! chosen.enabled) {
+        return;
+    }
+
+    if (chosen.chosen_percent !== null && chosen.chosen_percent !== undefined) {
+        const match = (chosen.suggested ?? []).find((option) => option.percent === chosen.chosen_percent);
+
+        tip.value = match ? match.minor : Math.round((chosen.eligible_minor ?? 0) * chosen.chosen_percent / 100);
+        customTip.value = '';
+
+        return;
+    }
+
+    if (chosen.chosen_minor) {
+        customTip.value = (chosen.chosen_minor / 100).toFixed(2);
+    }
+}
+
+adoptChosenTip();
+
+const tipMinor = computed(() => {
+    if (customTip.value !== '') {
+        return Math.max(0, Math.round(Number(customTip.value || 0) * 100));
+    }
+
+    return tip.value === null ? 0 : tip.value;
+});
+
+/*
+ * What the till is taking, tip included.
+ *
+ * The bill and the tip are separate records — the tip is owed to whoever did
+ * the work — but they are one handful of money, and a panel that showed the
+ * bill alone would have the desk adding up in their head.
+ */
+const collectingMinor = computed(() => {
+    const amount = Math.round(Number(payment.value.amount || 0) * 100);
+
+    return Math.max(0, amount) + tipMinor.value;
+});
+
+
+/* Where the business insists on an answer, the button waits for one. */
+const tipMissing = computed(() => tips.value.enabled
+    && tips.value.require_selection
+    && tip.value === null
+    && customTip.value === '');
+
+function chooseTip(minor) {
+    tip.value = minor;
+    customTip.value = '';
+}
+
+/* A new booking is a new question. Without this the previous client's
+   twenty per cent would sit there pre-selected for the next one. */
+watch(() => props.booking.id, () => {
+    tip.value = null;
+    customTip.value = '';
+    adoptChosenTip();
+});
+
 /* What is still owed, worked the way the panel shows it: the amount typed
    against what the booking says is due. */
 const changeDue = computed(() => {
     const received = Math.round(Number(payment.value.received || 0) * 100);
     const due = Math.round(Number(payment.value.amount || 0) * 100);
 
-    return money(Math.max(0, received - due));
+    /* The tip comes out of the same handful of notes, so what goes back is
+       what is left after both. */
+    return money(Math.max(0, received - due - tipMinor.value));
 });
 
 function money(minor) {
@@ -82,6 +171,10 @@ async function takePayment(manual) {
                 amount: payment.value.amount || props.booking.collect_amount || props.booking.due_amount,
                 received: method.value === 'cash' ? (payment.value.received || null) : null,
                 reference: payment.value.reference || null,
+                /* Sent whenever tipping is on, including as nought: the
+                   server can tell "declined" from "never asked" only by
+                   whether the field arrives at all. */
+                ...(tips.value.enabled ? { tip: (tipMinor.value / 100).toFixed(2) } : {}),
                 manual,
             }),
         });
@@ -97,6 +190,8 @@ async function takePayment(manual) {
         }
 
         payment.value = { amount: json.booking.collect_amount ?? json.booking.due_amount, received: '', reference: '' };
+        tip.value = null;
+        customTip.value = '';
         /* Never kept a moment longer than the request. */
         card.value = { name: '', number: '', expiry: '', cvv: '', zip: '' };
 
@@ -112,7 +207,7 @@ async function takePayment(manual) {
     }
 }
 
-defineExpose({ reset: () => { method.value = ''; failure.value = ''; } });
+defineExpose({ reset: () => { method.value = ''; failure.value = ''; tip.value = null; customTip.value = ''; } });
 </script>
 
 <template>
@@ -145,6 +240,59 @@ defineExpose({ reset: () => { method.value = ''; failure.value = ''; } });
                         @click="method = ''">{{ labels.pay?.change_method }}</button>
             </div>
 
+            <!-- The tip, asked before the amount is committed rather than
+                 after. It is offered on the tipped part of the bill, which
+                 is what the server sent: twenty per cent of a bottle of oil
+                 is money nobody earned. -->
+            <div v-if="tips.enabled" class="border border-line rounded-lg p-3 space-y-2.5">
+                <div class="flex items-baseline justify-between gap-3">
+                    <p class="text-[12px] font-semibold text-ink">{{ tips.labels?.title }}</p>
+                    <p class="text-[11.5px] text-sub">
+                        {{ tips.labels?.eligible }} {{ money(tips.eligible_minor) }}
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap gap-1.5">
+                    <button v-for="option in tips.suggested" :key="option.percent" type="button"
+                            class="styledesk_tipchip"
+                            :class="{ 'styledesk_tipchip--on': customTip === '' && tip === option.minor }"
+                            @click="chooseTip(option.minor)">
+                        <span class="font-semibold">{{ option.percent }}%</span>
+                        <span class="text-[11px] opacity-80">{{ money(option.minor) }}</span>
+                    </button>
+
+                    <!-- Declining is an answer, and only offered where the
+                         business allows one. -->
+                    <button v-if="tips.allow_no_tip" type="button"
+                            class="styledesk_tipchip"
+                            :class="{ 'styledesk_tipchip--on': customTip === '' && tip === 0 }"
+                            @click="chooseTip(0)">
+                        <span class="font-semibold">{{ tips.labels?.none }}</span>
+                    </button>
+                </div>
+
+                <div>
+                    <label for="pTip" class="block text-[11.5px] font-medium text-ink mb-1">{{ tips.labels?.custom }}</label>
+                    <input id="pTip" v-model="customTip" type="text" inputmode="decimal" class="sd-input !h-9"
+                           :placeholder="money(0)">
+                </div>
+
+                <div class="flex items-baseline justify-between gap-3 text-[13px] border-t border-line pt-2">
+                    <span class="text-sub">{{ tips.labels?.selected }}</span>
+                    <span class="font-semibold text-head">{{ money(tipMinor) }}</span>
+                </div>
+
+                <!-- The bill and the tip are one handful of money, whatever
+                     the records say. A panel that showed the bill alone
+                     would have the desk adding up in their head. -->
+                <div class="flex items-baseline justify-between gap-3 text-[13px]">
+                    <span class="font-semibold text-head">{{ labels.pay?.total_due }}</span>
+                    <span class="text-[15px] font-bold text-head">{{ money(collectingMinor) }}</span>
+                </div>
+
+                <p v-if="tipMissing" class="text-[11.5px] text-danger">{{ tips.labels?.required }}</p>
+            </div>
+
             <!-- Cash: what is owed, what was handed over, what goes back.
                  The third is the number being counted into a hand. -->
             <template v-if="method === 'cash'">
@@ -161,7 +309,7 @@ defineExpose({ reset: () => { method.value = ''; failure.value = ''; } });
                     <span class="font-semibold text-head">{{ changeDue }}</span>
                 </div>
 
-                <button type="button" class="styledesk_paycta" :disabled="busy" @click="takePayment(true)">
+                <button type="button" class="styledesk_paycta" :disabled="busy || tipMissing" @click="takePayment(true)">
                     {{ busy ? labels.pay?.marking : labels.pay?.record }}
                 </button>
             </template>
@@ -203,7 +351,7 @@ defineExpose({ reset: () => { method.value = ''; failure.value = ''; } });
 
                     <p class="text-[11.5px] text-faint">{{ labels.pay?.card_safe }}</p>
 
-                    <button type="button" class="styledesk_paycta" :disabled="busy" @click="takePayment(false)">
+                    <button type="button" class="styledesk_paycta" :disabled="busy || tipMissing" @click="takePayment(false)">
                         {{ (labels.pay?.pay_amount ?? '').replace(':amount', (labels.currency_symbol ?? '') + Number(payment.amount || 0).toFixed(2)) }}
                     </button>
                 </fieldset>
@@ -215,7 +363,7 @@ defineExpose({ reset: () => { method.value = ''; failure.value = ''; } });
                         <p class="text-[11.5px] text-faint mt-1">{{ labels.pay?.reference_hint }}</p>
                     </div>
 
-                    <button type="button" class="styledesk_paycta styledesk_paycta--quiet" :disabled="busy"
+                    <button type="button" class="styledesk_paycta styledesk_paycta--quiet" :disabled="busy || tipMissing"
                             @click="takePayment(true)">
                         {{ busy ? labels.pay?.marking : labels.pay?.terminal }}
                     </button>
@@ -242,7 +390,7 @@ defineExpose({ reset: () => { method.value = ''; failure.value = ''; } });
                     <input id="hRef" v-model="payment.reference" type="text" class="sd-input">
                 </div>
 
-                <button type="button" class="styledesk_paycta" :disabled="busy" @click="takePayment(true)">
+                <button type="button" class="styledesk_paycta" :disabled="busy || tipMissing" @click="takePayment(true)">
                     {{ busy ? labels.pay?.marking : labels.pay?.mark_paid }}
                 </button>
             </template>

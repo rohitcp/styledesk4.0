@@ -53,7 +53,7 @@ class ClientActivityLog
      *
      * @param  array{date: ?string, time: ?string}  $was
      */
-    public static function bookingRescheduled(Booking $booking, array $was, ?int $userId = null): void
+    public static function bookingRescheduled(Booking $booking, array $was, ?int $userId = null, ?string $reason = null, ?string $note = null): void
     {
         if ($booking->client_id === null) {
             return;
@@ -70,23 +70,59 @@ class ClientActivityLog
                 'from' => trim(($was['date'] ?? '').' · '.($was['time'] ?? ''), ' ·'),
                 'to' => $booking->date->isoFormat('D MMM Y').' · '.$booking->timeLabel(),
             ]],
-            'meta' => self::bookingMeta($booking),
+            'meta' => self::bookingMeta($booking) + array_filter([
+                'reason' => $reason,
+                'note' => $note,
+            ]),
         ]);
     }
 
-    public static function bookingCancelled(Booking $booking, ?string $reason = null, ?int $userId = null): void
+    public static function bookingCancelled(Booking $booking, ?string $reason = null, ?int $userId = null, ?string $note = null): void
+    {
+        self::statusChanged($booking, 'booking.cancelled', $reason, $note, $userId);
+    }
+
+    /** The client arrived and the desk said so. */
+    public static function bookingCheckedIn(Booking $booking, ?string $note = null, ?int $userId = null): void
+    {
+        self::statusChanged($booking, 'booking.checked_in', null, $note, $userId);
+    }
+
+    /** Nobody came. */
+    public static function bookingNoShow(Booking $booking, ?string $reason = null, ?string $note = null, ?int $userId = null): void
+    {
+        self::statusChanged($booking, 'booking.no_show', $reason, $note, $userId);
+    }
+
+    /** A request the business turned down. */
+    public static function bookingDeclined(Booking $booking, ?string $reason = null, ?string $note = null, ?int $userId = null): void
+    {
+        self::statusChanged($booking, 'booking.declined', $reason, $note, $userId);
+    }
+
+    /**
+     * A booking that ended in something other than the work being done.
+     *
+     * The three of them are one shape — a status, a reason and a note — so
+     * they are one method: three copies would be three places for the next
+     * reader to check when the timeline prints one of them differently.
+     */
+    private static function statusChanged(Booking $booking, string $type, ?string $reason, ?string $note, ?int $userId): void
     {
         if ($booking->client_id === null) {
             return;
         }
 
-        self::write($booking->client_id, 'booking.cancelled', 'bookings', [
+        self::write($booking->client_id, $type, 'bookings', [
             'booking_id' => $booking->id,
             'subject_type' => Booking::class,
             'subject_id' => $booking->id,
             'user_id' => $userId,
             'description' => self::bookingLine($booking),
-            'meta' => self::bookingMeta($booking) + array_filter(['reason' => $reason]),
+            'meta' => self::bookingMeta($booking) + array_filter([
+                'reason' => $reason,
+                'note' => $note,
+            ]),
         ]);
     }
 

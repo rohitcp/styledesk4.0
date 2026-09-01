@@ -83,6 +83,16 @@
 
                         <div class="text-right shrink-0">
                             <p class="text-[13.5px] font-semibold text-head">{{ $payment->amountLabel() }}</p>
+
+                            {{-- The tip beside the bill rather than inside
+                                 it: it is owed to whoever did the work, and
+                                 a total that has absorbed it can never be
+                                 taken apart again. --}}
+                            @if ($payment->tip_minor)
+                                <p class="text-[11.5px] text-sub">
+                                    {{ __('tips.panel.selected') }} {{ $totals->money((int) $payment->tip_minor) }}
+                                </p>
+                            @endif
                             <span class="styledesk_paystate is-paid mt-1">{{ __('bookings.payment_statuses.'.$payment->status.'.label') }}</span>
                         </div>
                     </div>

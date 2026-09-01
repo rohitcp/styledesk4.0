@@ -67,7 +67,7 @@
         @csrf
         @method('PATCH')
 
-        @include('services._form', ['service' => $service, 'priceValues' => $priceValues])
+        @include('services._form', ['service' => $service, 'priceValues' => $priceValues, 'cashPriceValues' => $cashPriceValues, 'depositValues' => $deposits])
 
         <div class="flex flex-wrap items-center gap-3">
           <button type="submit" id="serviceSave"

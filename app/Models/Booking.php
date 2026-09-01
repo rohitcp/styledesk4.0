@@ -218,6 +218,89 @@ class Booking extends Model
         return $reference;
     }
 
+    /**
+     * What has happened to this booking since it was taken.
+     *
+     * Immutable rows, newest last. They outlive what they describe: a
+     * cancelled booking keeps the entry that says it was confirmed first.
+     */
+    /**
+     * The room or chair the appointment is in.
+     *
+     * One per booking rather than one per service on it: a client lies on one
+     * bed for the whole appointment, and a cupping added to a massage happens
+     * in the room they are already in.
+     */
+    public function resource(): BelongsTo
+    {
+        return $this->belongsTo(Resource::class);
+    }
+
+    public function statusChanges(): HasMany
+    {
+        return $this->hasMany(BookingStatusChange::class);
+    }
+
+    /**
+     * What can be done to this booking now, by this reader.
+     *
+     * Two gates, and an action has to pass both. The status decides what the
+     * act would even mean — marking a completed appointment as a no-show is
+     * not a decision anybody should be able to make by mistake — and the
+     * permission decides whether this person may make it.
+     *
+     * Actions a reader may not take are absent rather than disabled: a button
+     * they can never enable is furniture, and one that is quietly missing
+     * reads as a permission they lack, which here it is.
+     *
+     * @return array<int, string>
+     */
+    public function availableActions(?User $user = null): array
+    {
+        return collect(config('bookings.status_actions'))
+            ->filter(fn (array $action) => in_array($this->status, $action['from'], true))
+            /* Some acts only mean anything on the day. Checking in for
+               Thursday's appointment on Tuesday is not early — it is the
+               wrong booking. */
+            ->filter(fn (array $action) => empty($action['today']) || $this->isToday())
+            ->filter(fn (array $action) => $user === null || $user->hasPermission($action['permission'], 'own'))
+            ->keys()
+            ->all();
+    }
+
+    /** The appointment is today, in the business's own reckoning of today. */
+    public function isToday(): bool
+    {
+        return $this->date?->isSameDay(now()) === true;
+    }
+
+    public function allows(string $action, ?User $user = null): bool
+    {
+        return in_array($action, $this->availableActions($user), true);
+    }
+
+    /**
+     * When the client arrived, and who said so.
+     *
+     * Read from the history rather than from a pair of columns on this row:
+     * the entry is written once and never rewritten, so it still says what it
+     * said even after the booking has moved on to completed.
+     */
+    public function checkIn(): ?BookingStatusChange
+    {
+        return $this->statusChanges()
+            ->where('to_status', 'arrived')
+            ->with('changedBy')
+            ->orderBy('created_at')
+            ->first();
+    }
+
+    /** Called off, turned down, or nobody came: the diary is done with it. */
+    public function isSettled(): bool
+    {
+        return in_array($this->status, ['cancelled', 'declined', 'no-show', 'completed'], true);
+    }
+
     public function statusLabel(): string
     {
         return __('bookings.statuses.'.$this->status.'.label');

@@ -35,6 +35,14 @@
      * 'value' => '20']].
      */
     'deposits' => null,
+    /**
+     * The cash price, keyed by currency, where the screen has two.
+     *
+     * Null for a field that prices one way only — a deposit input has no
+     * second price, and the component should not grow an empty box on every
+     * screen that uses it.
+     */
+    'cashValues' => null,
 ])
 
 @php
@@ -44,6 +52,11 @@
     $priceValues = collect($priceCurrencies)
         ->mapWithKeys(fn (string $code) => [
             $code => old($name.'.'.$code, data_get($values, $code)),
+        ]);
+
+    $cashPriceValues = $cashValues === null ? null : collect($priceCurrencies)
+        ->mapWithKeys(fn (string $code) => [
+            $code => old('cash_price.'.$code, data_get($cashValues, $code)),
         ]);
 
     $depositFor = fn (string $code, string $key, $fallback = null) => old(
@@ -76,7 +89,12 @@
                 <div class="flex flex-wrap items-end gap-3">
                     <div>
                         <label for="price_{{ $code }}" class="block text-[12px] text-sub mb-1">
-                            {{ $priceCurrencies->count() > 1 ? $code : __('services.price') }}
+                            {{-- "Card price" only where there is a cash one
+                                 beside it: a lone field labelled "card"
+                                 would imply the business cannot take cash. --}}
+                            {{ $priceCurrencies->count() > 1
+                                ? $code.($cashPriceValues ? ' · '.__('services.card_price') : '')
+                                : ($cashPriceValues ? __('services.card_price') : __('services.price')) }}
                         </label>
 
                         <div class="relative w-[160px]">
@@ -96,6 +114,38 @@
                                    autocomplete="off">
                         </div>
                     </div>
+
+                    {{-- The cash price, beside the card one.
+
+                         Two explicit prices rather than a discount off the
+                         first: a business that charges the same either way,
+                         or more for cash, is not doing anything wrong and a
+                         stored percentage could not say so.
+
+                         Blank means "the same as card" — which is what every
+                         service priced before today means, and is why the
+                         column is nullable rather than defaulted to nought. --}}
+                    @if ($cashPriceValues)
+                        <div>
+                            <label for="cash_price_{{ $code }}" class="block text-[12px] text-sub mb-1">
+                                {{ __('services.cash_price') }}
+                            </label>
+
+                            <div class="relative w-[160px]">
+                                <span class="styledesk_input__prefix pointer-events-none text-sub" aria-hidden="true">
+                                    {{ App\Support\Money::symbol($code) }}
+                                </span>
+
+                                <input id="cash_price_{{ $code }}" type="text" inputmode="decimal"
+                                       name="cash_price[{{ $code }}]"
+                                       value="{{ $cashPriceValues[$code] }}"
+                                       placeholder="{{ __('services.cash_price_same') }}"
+                                       class="sd-input styledesk_input--prefixed"
+                                       aria-label="{{ __('services.cash_price').' — '.$code }}"
+                                       autocomplete="off">
+                            </div>
+                        </div>
+                    @endif
 
                     {{-- Hidden until this price's own switch is on, so a
                          service that takes no deposit is a row of one

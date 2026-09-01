@@ -45,6 +45,28 @@ return [
                 'dashboard.todays_appointments' => ['label' => "View today's appointments", 'scopes' => ['own', 'location', 'all']],
                 'dashboard.revenue_summary' => ['label' => 'View revenue summary'],
                 'dashboard.staff_performance' => ['label' => 'View staff performance', 'scopes' => ['own', 'location', 'all']],
+
+                /*
+                | One permission per panel, so the dashboard is assembled
+                | from what somebody may see rather than from what their role
+                | is called. A business that gives its senior therapist the
+                | tips panel and nothing else gets exactly that, without
+                | anybody inventing a role for it.
+                */
+                'dashboard.view_revenue' => ['label' => 'Dashboard: revenue', 'scopes' => ['location', 'all']],
+                'dashboard.view_bookings' => ['label' => 'Dashboard: booking overview', 'scopes' => ['own', 'location', 'all']],
+                'dashboard.view_checkin' => ['label' => 'Dashboard: check-in queue', 'scopes' => ['own', 'location', 'all']],
+                'dashboard.view_clients' => ['label' => 'Dashboard: client overview', 'scopes' => ['location', 'all']],
+                'dashboard.view_staff' => ['label' => 'Dashboard: staff overview', 'scopes' => ['location', 'all']],
+                'dashboard.view_schedule' => ['label' => 'Dashboard: staff schedule', 'scopes' => ['location', 'all']],
+                'dashboard.view_payments' => ['label' => 'Dashboard: payments', 'scopes' => ['location', 'all']],
+                'dashboard.view_reports' => ['label' => 'Dashboard: reports'],
+                /* The provider's own day. Deliberately unscoped: "own" is
+                   the whole of what these mean. */
+                'dashboard.view_own_schedule' => ['label' => 'Dashboard: my schedule'],
+                'dashboard.view_own_clients' => ['label' => 'Dashboard: my clients'],
+                'dashboard.view_own_performance' => ['label' => 'Dashboard: my performance'],
+                'dashboard.view_tips' => ['label' => 'Dashboard: tips'],
             ],
         ],
 
@@ -57,6 +79,13 @@ return [
                 'appointments.create' => ['label' => 'Create appointment'],
                 'appointments.edit' => ['label' => 'Edit appointment', 'scopes' => $readScopes],
                 'appointments.cancel' => ['label' => 'Cancel appointment', 'scopes' => $readScopes],
+                /* Turning a request down is not cancelling a booking that was
+                   accepted, and marking somebody absent is not either. Both
+                   are their own permission because both are their own act,
+                   and a salon that lets the desk cancel may not want the desk
+                   deciding who did not turn up. */
+                'appointments.decline' => ['label' => 'Decline booking request', 'scopes' => $readScopes],
+                'appointments.no_show' => ['label' => 'Mark appointment as no show', 'scopes' => $readScopes],
                 'appointments.reschedule' => ['label' => 'Reschedule appointment', 'scopes' => $readScopes],
                 'appointments.check_in' => ['label' => 'Check in client'],
                 'appointments.check_out' => ['label' => 'Check out client'],

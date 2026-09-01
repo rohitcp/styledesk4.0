@@ -9,6 +9,7 @@ use App\Models\Resource;
 use App\Models\Service;
 use App\Models\ServiceCategory;
 use App\Models\Staff;
+use App\Models\TipSettings;
 use App\Services\ServiceImageSync;
 use App\Support\Currencies;
 use Illuminate\Contracts\View\View;
@@ -97,7 +98,10 @@ class ServiceController extends Controller
                 'primary_badge' => $service->category?->name,
                 'category' => $service->category?->name,
                 'duration' => $service->durationLabel(),
-                'price' => $service->priceLabel($currency) ?: null,
+                /* Both prices stacked in one column rather than two: a
+                   table that grows a column for every way of paying is a
+                   table nobody can read on a laptop. */
+                'price' => $service->pricingLabel($currency),
                 'staff' => $this->summarise($service->staff->count(), $service->staff->first()?->first_name.' '.$service->staff->first()?->last_name, 'services.staff_count', __('services.anyone')),
                 'resource' => $service->requires_resource ? __('services.resource_required') : __('services.resource_not_required'),
                 'location' => $this->summarise($service->locations->count(), $service->locations->first()?->name, 'services.location_count', __('services.everywhere')),
@@ -279,6 +283,11 @@ class ServiceController extends Controller
             'priceValues' => $service->prices
                 ->mapWithKeys(fn ($price) => [$price->currency_code => $price->amount()])
                 ->all(),
+            /* Blank where a service has only ever had one price: blank means
+               "the same as card", which is what it has always charged. */
+            'cashPriceValues' => $service->prices
+                ->mapWithKeys(fn ($price) => [$price->currency_code => $price->cashAmount()])
+                ->all(),
             'deposits' => $service->prices
                 ->mapWithKeys(fn ($price) => [$price->currency_code => [
                     'required' => $price->deposit_required,
@@ -304,6 +313,10 @@ class ServiceController extends Controller
                room that is no longer in use. One already mapped stays mapped
                — see the edit form, which adds it back to the list. */
             'resources' => Resource::query()->active()->inOrder()->get(),
+            /* Whether to ask about tipping at all. A card asking how much to
+               suggest, in a salon that has never tipped anybody, is a
+               question with no answer. */
+            'tips' => TipSettings::forTenant(request()->user()->tenant),
         ];
     }
 
@@ -431,7 +444,7 @@ class ServiceController extends Controller
            rows in stored_files, and which one leads is written by
            ServiceImageSync once the service has an id to attach them to. */
         return collect($data)
-            ->except(['staff', 'locations', 'resources', 'price', 'deposit', 'deposit_required', 'images', 'default_image_id'])
+            ->except(['staff', 'locations', 'resources', 'price', 'cash_price', 'deposit', 'deposit_required', 'images', 'default_image_id'])
             ->all();
     }
 
@@ -442,10 +455,20 @@ class ServiceController extends Controller
     {
         $service->staff()->sync($data['staff'] ?? []);
         $service->locations()->sync($data['locations'] ?? []);
-        $service->resources()->sync($data['resources'] ?? []);
+
+        /* The resources, keeping whatever preference each pairing already
+           had. A plain sync writes the pivot's default over it, which would
+           silently flatten "a chair first, a bed if the client would rather"
+           into "any of these" — the ordering is not on this form, so editing
+           a price should not be able to lose it. */
+        $existing = $service->resources()->pluck('resource_service.priority', 'resources.id');
+
+        $service->resources()->sync(collect($data['resources'] ?? [])
+            ->mapWithKeys(fn ($id) => [(int) $id => ['priority' => (int) ($existing[$id] ?? 0)]])
+            ->all());
 
         $service->load('prices');
-        $service->syncPrices($data['price'] ?? [], $data['deposit'] ?? []);
+        $service->syncPrices($data['price'] ?? [], $data['deposit'] ?? [], $data['cash_price'] ?? []);
 
         $images->sync($service, $data['images'] ?? [], $data['default_image_id'] ?? null);
     }
@@ -497,6 +520,16 @@ class ServiceController extends Controller
              * so the two shapes of nothing are answered the same way.
              */
             'resources' => ['array', Rule::requiredIf(fn () => $request->boolean('requires_resource'))],
+
+            /* Tipping. Every field optional, and blank on the two that can
+               be blank means "whatever the business says" rather than a
+               value of its own — so a service that never disagreed moves
+               when the business changes its mind. */
+            'accepts_tips' => ['nullable', 'boolean'],
+            'tip_type' => ['nullable', Rule::in(TipSettings::TYPES)],
+            'tip_value' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'tip_required' => ['nullable', 'boolean'],
+            'allow_no_tip' => ['nullable', 'boolean'],
             'resources.*' => [Rule::exists('resources', 'id')->where('tenant_id', $request->user()->tenant?->getTenantKey())],
 
             /* Keyed by currency, and only by a currency this business
@@ -512,6 +545,13 @@ class ServiceController extends Controller
                 }
             }],
             'price.*' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+
+            /* The cash price, keyed the same way. Deliberately not required
+               to be lower than the card price, or equal to it: a business
+               that charges the same either way, or more for cash, is not
+               doing anything wrong and the form should not argue. */
+            'cash_price' => ['array'],
+            'cash_price.*' => ['nullable', 'numeric', 'min:0', 'max:999999'],
 
             /* One deposit per price, keyed the same way. Checked as a whole
                rather than field by field: whether a value is required depends

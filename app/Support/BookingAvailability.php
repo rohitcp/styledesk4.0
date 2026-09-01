@@ -7,8 +7,6 @@ namespace App\Support;
 use App\Models\Booking;
 use App\Models\Location;
 use App\Models\LocationClosure;
-use App\Models\Resource;
-use App\Models\ResourceBlock;
 use App\Models\Service;
 use App\Models\StaffShift;
 use Illuminate\Support\Carbon;
@@ -300,11 +298,16 @@ class BookingAvailability
     }
 
     /**
-     * Drop the times a required chair or room is taken.
+     * Drop the times when nothing the appointment could happen in is free.
      *
      * A service that needs a room cannot be given one that is blocked for
-     * maintenance or already holding somebody else, however free the stylist
-     * is. Services that need nothing are unaffected.
+     * maintenance or already holding somebody else, however free the
+     * therapist is. Services mapped to nothing are unaffected — a business
+     * that does not track rooms is not a business with no rooms free.
+     *
+     * The question is asked of the whole set at once: one free chair of three
+     * is a bookable appointment, so what matters is whether anything is left,
+     * not whether any particular room is.
      *
      * @param  array<int, string>  $slots
      * @param  array<int, int>  $serviceIds
@@ -316,34 +319,20 @@ class BookingAvailability
             return $slots;
         }
 
-        $resourceIds = Resource::query()
-            ->whereHas('services', fn ($query) => $query->whereIn('services.id', $serviceIds))
-            ->pluck('resources.id');
+        $eligible = ResourceAllocator::eligibleFor($serviceIds);
 
-        if ($resourceIds->isEmpty()) {
+        if ($eligible->isEmpty()) {
             return $slots;
         }
 
-        /* Every one of them being busy is what makes a slot impossible. One
-           free chair of three is a bookable appointment, so the count is what
-           matters rather than any individual row. */
-        $capacity = $resourceIds->count();
+        /* Read once for the day rather than once per slot: ninety slots
+           against ten rooms is one query here and nine hundred otherwise. */
+        $taken = ResourceAllocator::takenOn($eligible->pluck('id')->all(), $date, $ignore);
 
-        $blocked = ResourceBlock::query()
-            ->whereIn('resource_id', $resourceIds)
-            ->whereDate('starts_at', '<=', $date)
-            ->whereDate('ends_at', '>=', $date)
-            ->get()
-            ->map(fn (ResourceBlock $block) => [
-                'starts_at' => $block->starts_at?->format('H:i'),
-                'ends_at' => $block->ends_at?->format('H:i'),
-            ]);
-
-        return array_values(array_filter($slots, function (string $slot) use ($minutes, $blocked, $capacity) {
-            $clashes = $blocked->filter(fn (array $window) => self::overlaps($slot, $minutes, $window['starts_at'], $window['ends_at']))->count();
-
-            return $clashes < $capacity;
-        }));
+        return array_values(array_filter(
+            $slots,
+            fn (string $slot) => ResourceAllocator::anythingFree($eligible, $taken, $slot, $minutes)
+        ));
     }
 
     /**

@@ -97,7 +97,8 @@
     <h2 class="text-[15px] font-semibold text-head">{{ __('services.section.price') }}</h2>
 
     <div class="mt-4">
-        <x-price-input name="price" :label="__('services.price')" :values="$priceValues" />
+        <x-price-input name="price" :label="__('services.price')" :values="$priceValues"
+                       :cash-values="$cashPriceValues" :deposits="$depositValues ?? null" />
     </div>
 </section>
 
@@ -215,3 +216,70 @@
         </div>
     </div>
 </section>
+
+{{-- Tips.
+
+     Only where the business takes them: a card asking how much to suggest,
+     in a salon that has never tipped anybody, is a question with no answer.
+     They switch it on in App settings → Tips and it appears here.
+
+     Every field may be left as it is, and "follows the default" is a real
+     value rather than a blank — a service that never disagreed should move
+     when the business changes its mind, which a copied number would not. --}}
+@if ($tips->is_enabled)
+    @php
+        $acceptsTips = (bool) old('accepts_tips', $service?->accepts_tips ?? true);
+    @endphp
+
+    <section class="styledesk_formsection">
+        <div class="styledesk_formsection__head">
+            <h2 class="styledesk_formsection__title">{{ __('tips.title') }}</h2>
+            <p class="styledesk_formsection__hint">{{ __('tips.services_hint') }}</p>
+        </div>
+
+        <div class="styledesk_formsection__body">
+            <div class="space-y-5">
+                <div data-tip-card>
+                    <x-toggle name="accepts_tips" :label="__('tips.accepts')"
+                              :hint="__('tips.accepts_hint')"
+                              :checked="$acceptsTips" data-tip-toggle />
+
+                    <div class="mt-3 pl-[3.25rem] space-y-4" data-tip-fields @unless ($acceptsTips) hidden @endunless>
+                        <div class="grid sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="serviceTipType" class="block text-[13px] font-medium text-ink mb-1.5">
+                                    {{ __('tips.tip_type') }}
+                                </label>
+                                <select id="serviceTipType" name="tip_type" class="sd-input">
+                                    <option value="">{{ __('tips.follows_default') }}</option>
+                                    @foreach (\App\Models\TipSettings::TYPES as $type)
+                                        <option value="{{ $type }}" @selected(old('tip_type', $service?->tip_type) === $type)>
+                                            {{ __('tips.types.'.$type) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="serviceTipValue" class="block text-[13px] font-medium text-ink mb-1.5">
+                                    {{ __('tips.default_tip') }}
+                                </label>
+                                <input id="serviceTipValue" name="tip_value" type="number" min="0" max="100"
+                                       class="sd-input" placeholder="{{ __('tips.follows_default') }}"
+                                       value="{{ old('tip_value', $service?->tip_value) }}">
+                            </div>
+                        </div>
+
+                        <x-toggle name="tip_required" :label="__('tips.require_selection')"
+                                  :hint="__('tips.require_selection_hint')"
+                                  :checked="(bool) old('tip_required', $service?->tip_required ?? $tips->require_selection)" />
+
+                        <x-toggle name="allow_no_tip" :label="__('tips.allow_no_tip')"
+                                  :hint="__('tips.allow_no_tip_hint')"
+                                  :checked="(bool) old('allow_no_tip', $service?->allow_no_tip ?? $tips->allow_no_tip)" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+@endif

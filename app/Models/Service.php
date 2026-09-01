@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,14 @@ class Service extends Model
             'online_booking_enabled' => 'boolean',
             'taxable' => 'boolean',
             'requires_resource' => 'boolean',
+            /* Nullable booleans: null is "whatever the business says" rather
+               than false, and only a cast keeps the difference — an
+               uncast column comes back as 0 or 1 and `?? true` never
+               fires. */
+            'accepts_tips' => 'boolean',
+            'tip_required' => 'boolean',
+            'allow_no_tip' => 'boolean',
+            'tip_value' => 'integer',
             'deposit_required' => 'boolean',
             'duration_minutes' => 'integer',
             'preparation_minutes' => 'integer',
@@ -65,6 +74,56 @@ class Service extends Model
     }
 
     /**
+     * What this service costs, paid that way, in minor units.
+     *
+     * One place, because four screens ask it — the booking screen, the till,
+     * the coupon engine and the deposit — and four answers is how a client
+     * gets quoted one price and charged another.
+     */
+    public function priceMinorFor(string $currency, string $method = 'card'): int
+    {
+        return (int) ($this->prices->firstWhere('currency_code', $currency)?->minorFor($method) ?? 0);
+    }
+
+    /** The cash price as a form field holds it. */
+    public function cashPriceIn(string $currency): string
+    {
+        return $this->prices->firstWhere('currency_code', $currency)?->cashAmount() ?? '';
+    }
+
+    /**
+     * Both prices, for a listing that has one column for them.
+     *
+     * Just the amount where they are the same — which is most services, and
+     * "Card $65 · Cash $65" on every row would be a column of noise.
+     */
+    public function pricingLabel(string $currency): ?string
+    {
+        $price = $this->prices->firstWhere('currency_code', $currency);
+
+        if ($price === null) {
+            return null;
+        }
+
+        $symbol = Money::symbol($currency);
+
+        if (! $price->hasTwoPrices()) {
+            return $this->priceLabel($currency) ?: null;
+        }
+
+        return __('services.pricing_pair', [
+            'card' => $symbol.$price->amount(),
+            'cash' => $symbol.$price->cashAmount(),
+        ]);
+    }
+
+    /** Whether card and cash actually differ for this currency. */
+    public function hasTwoPricesIn(string $currency): bool
+    {
+        return (bool) $this->prices->firstWhere('currency_code', $currency)?->hasTwoPrices();
+    }
+
+    /**
      * Replace the price set, and the deposit each price carries.
      *
      * The deposit belongs to the price rather than to the service: 20% of one
@@ -74,7 +133,7 @@ class Service extends Model
      * @param  array<string, string|null>  $prices  currency => decimal amount
      * @param  array<string, array<string, mixed>>  $deposits  currency => deposit
      */
-    public function syncPrices(array $prices, array $deposits = []): void
+    public function syncPrices(array $prices, array $deposits = [], array $cashPrices = []): void
     {
         foreach ($prices as $currency => $amount) {
             if ($amount === null || $amount === '') {
@@ -92,6 +151,12 @@ class Service extends Model
                 [
                     // Rounded once, here, so no float arithmetic happens later.
                     'price_minor' => (int) round(((float) $amount) * 100),
+                    /* Null rather than nought when nobody set one: null
+                       means "the same as card", and nought would make the
+                       service free for anybody paying cash. */
+                    'cash_price_minor' => ($cashPrices[$currency] ?? null) === null || ($cashPrices[$currency] ?? '') === ''
+                        ? null
+                        : (int) round(((float) $cashPrices[$currency]) * 100),
                     'deposit_required' => $required,
                     'deposit_type' => $type,
                     /* Minor units for a fixed amount, whole percent for a
@@ -192,7 +257,23 @@ class Service extends Model
      */
     public function resources(): BelongsToMany
     {
-        return $this->belongsToMany(Resource::class);
+        return $this->belongsToMany(Resource::class)->withPivot('priority');
+    }
+
+    /**
+     * The same list, first choice first.
+     *
+     * The order lives on the pairing rather than on the resource, because the
+     * same room is a body massage's first choice and a reflexology's second,
+     * and one number on the room can only be one of those. A single massage
+     * should be given a single room while one is free and a couple room only
+     * when none is; a reflexology should be offered a chair before a bed.
+     */
+    public function resourcesByPreference(): BelongsToMany
+    {
+        return $this->resources()
+            ->orderBy('resource_service.priority')
+            ->orderBy('resources.position');
     }
 
     /** Price in the tenant's primary currency, for display. */

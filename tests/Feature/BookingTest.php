@@ -259,7 +259,13 @@ class BookingTest extends TestCase
             'services' => [$service->id],
         ]);
 
-        $row = $this->actingAs($owner)->getJson(route('bookings.data'))
+        /* Asked for every booking rather than the default.
+
+           The listing now opens on Today, because the question a front desk
+           opens it with is "who is coming in" — so an appointment ten days
+           out is deliberately not in the default answer, and a test about
+           what the listing returns has to say which view it means. */
+        $row = $this->actingAs($owner)->getJson(route('bookings.data', ['tab' => 'all']))
             ->assertOk()
             ->json('data.0');
 
@@ -271,7 +277,7 @@ class BookingTest extends TestCase
         /* And the filters narrow it: a status nothing is in returns nothing. */
         $this->assertSame(
             0,
-            $this->actingAs($owner)->getJson(route('bookings.data').'?status=cancelled')->json('total'),
+            $this->actingAs($owner)->getJson(route('bookings.data', ['tab' => 'all', 'status' => 'cancelled']))->json('total'),
         );
     }
 

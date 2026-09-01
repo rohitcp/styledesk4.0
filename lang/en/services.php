@@ -7,6 +7,10 @@ return [
     'subtitle' => 'The work you sell: what it is called, how long it takes, what it costs and who can perform it.',
 
     'intro' => 'Manage the services your business offers — categories, duration, pricing, staff, resources and booking availability.',
+    'card_price' => 'Card price',
+    'cash_price' => 'Cash price',
+    'cash_price_same' => 'Same as card',
+    'pricing_pair' => 'Card :card · Cash :cash',
     'search_placeholder' => 'Search services',
     'resource_required' => 'Required',
     'resource_not_required' => 'Not required',

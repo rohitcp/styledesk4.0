@@ -146,6 +146,15 @@ return [
                     'counts' => ['active_staff', 'pending_invites'],
                 ],
                 [
+                    'key' => 'reasons',
+                    'name' => 'Reasons',
+                    'description' => 'Why things happened, as lists rather than free-text boxes — cancellations, reschedules, refunds, no-shows and the rest.',
+                    'icon' => 'clipboard-list',
+                    'route' => 'settings.reasons.index',
+                    'status' => 'active',
+                    'keywords' => ['reason', 'cancel', 'cancellation', 'reschedule', 'refund', 'no show', 'decline', 'adjustment', 'code'],
+                ],
+                [
                     'key' => 'shift-rules',
                     'name' => 'Shift Rules',
                     'description' => 'Reusable working patterns — days, hours, breaks, hour limits and rest — that a staff schedule applies to a person.',
@@ -292,9 +301,11 @@ return [
                 [
                     'key' => 'tips',
                     'name' => 'Tips',
-                    'description' => 'Tipping options, suggested percentages and how tips are shared.',
+                    'description' => 'Whether clients are asked to tip, what they are offered at the till, and which services it applies to.',
                     'icon' => 'hand-holding-dollar',
-                    'keywords' => ['gratuity', 'tip', 'service charge'],
+                    'route' => 'settings.tips.index',
+                    'status' => 'active',
+                    'keywords' => ['gratuity', 'tip', 'service charge', 'percentage'],
                 ],
                 [
                     'key' => 'receipts-invoices',

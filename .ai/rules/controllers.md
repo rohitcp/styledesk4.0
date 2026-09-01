@@ -4,6 +4,7 @@ paths:
   - 'app/{Models/Booking.php,Models/BookingPayment.php,Support/BookingTotals.php,Http/Controllers/BookingController.php}'
   - 'app/{Models/Booking.php,Models/BookingLead.php,Support/BookingAvailability.php,Http/Controllers/BookingController.php,Http/Controllers/BookingLeadController.php}'
   - 'app/{Models/BookingPaymentLink.php,Http/Controllers/PaymentLinkController.php,Http/Controllers/BookingController.php}'
+  - 'app/{Models/BookingStatusChange.php,Models/ReasonCode.php,Support/BookingStatusHistory.php,Http/Controllers/BookingStatusController.php}'
 ---
 
 # Controllers
@@ -50,3 +51,10 @@ Waiving is a decision, not a mechanism: it needs `payments.apply_discount` (NOT 
 Payment links live in `booking_payment_links`, one row per ask. `sent`/`opened` are known from this side; `paid` is settled ONLY from `settleAgainst()` when money is recorded against the booking, because StyleDesk charges nothing — never let a link mark itself paid because somebody clicked it. `expired` is derived from the clock, so read `currentStatus()`, never the raw column. The public `/pay/{token}` route is outside auth and throttled; the token is the whole credential, so the page shows one appointment and the business's own payment handles, nothing else.
 
 The confirmation screen is full-width at the TOP of the create page (`stage === 'done'` hides the three columns via v-show and scrolls to top). It must never sit under the payment card.
+
+## Booking status changes: snapshot the reason's words, never just the id
+`booking_status_changes` keeps `reason_code_id` AND `reason_label`. The label is what the timeline prints. A business renaming a reason next spring has renamed their list, not last March's no-show — never join to `reason_codes` to render history.
+
+Rows are immutable: `UPDATED_AT = null`, and `booted()` returns false on updating/deleting. Do not add an edit path.
+
+What can be done to a booking, from which statuses, and on which permission, lives in one place: `config('bookings.status_actions')`. `Booking::availableActions($user)` reads it for the header; `BookingStatusController::permit()` reads it again for the request. Add an action there, not in a blade `@if`. 403 = may not; 422 = allowed, but the booking is not in a state where the act means anything.

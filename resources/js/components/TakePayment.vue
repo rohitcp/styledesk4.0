@@ -34,6 +34,10 @@ const panel = ref(null);
 
 const settled = computed(() => booking.value.due_minor <= 0);
 
+/* The word beside a tip on a past payment. Read from the booking's own tip
+   payload so it is translated once, on the server, like everything else. */
+const tipLabel = computed(() => booking.value.tips?.labels?.selected ?? '');
+
 function openPanel() {
     if (settled.value) {
         return;
@@ -186,6 +190,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', closeOnEscape));
 
                         <div class="text-right shrink-0">
                             <p class="text-[13.5px] font-semibold text-head">{{ entry.amount }}</p>
+                            <p v-if="entry.tip" class="text-[11.5px] text-sub">{{ tipLabel }} {{ entry.tip }}</p>
                             <span class="styledesk_paystate is-paid mt-1">{{ entry.status_label }}</span>
                         </div>
                     </div>

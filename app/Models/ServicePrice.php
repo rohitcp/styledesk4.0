@@ -28,9 +28,39 @@ class ServicePrice extends Model
         return ['deposit_required' => 'boolean'];
     }
 
+    /** How the client is paying, and so which of the two prices applies. */
+    public const METHODS = ['card', 'cash'];
+
     public function amount(): string
     {
         return number_format($this->price_minor / 100, 2);
+    }
+
+    /** The cash price as a form field holds it, blank where there is none. */
+    public function cashAmount(): string
+    {
+        return $this->cash_price_minor === null ? '' : number_format($this->cash_price_minor / 100, 2);
+    }
+
+    /**
+     * What this costs, paid that way.
+     *
+     * Null cash means "the same as card" rather than nothing: every service
+     * priced before there were two prices has one, and should keep charging
+     * it whichever way somebody pays.
+     */
+    public function minorFor(string $method = 'card'): int
+    {
+        return $method === 'cash'
+            ? (int) ($this->cash_price_minor ?? $this->price_minor)
+            : (int) $this->price_minor;
+    }
+
+    /** Whether the two prices actually differ, which is what makes it worth showing both. */
+    public function hasTwoPrices(): bool
+    {
+        return $this->cash_price_minor !== null
+            && (int) $this->cash_price_minor !== (int) $this->price_minor;
     }
 
     /**

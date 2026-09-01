@@ -143,7 +143,21 @@
                         @endif
 
                         @if (! empty($meta['reason']))
-                            <p class="text-[12px] text-sub mt-1">{{ $meta['reason'] }}</p>
+                            <p class="text-[12px] text-sub mt-1">
+                                <span class="text-faint">{{ __('bookings.activity.reason') }}:</span>
+                                {{ $meta['reason'] }}
+                            </p>
+                        @endif
+
+                        {{-- What the person who did it wanted the next reader
+                             to know. Not the client's note and not the
+                             appointment's — the one written at the moment the
+                             booking changed. --}}
+                        @if (! empty($meta['note']))
+                            <p class="text-[12px] text-sub mt-1 whitespace-pre-line">
+                                <span class="text-faint">{{ __('bookings.activity.note') }}:</span>
+                                {{ \Illuminate\Support\Str::limit($meta['note'], 240) }}
+                            </p>
                         @endif
 
                         {{-- Before and after, folded away.

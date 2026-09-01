@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Actions\Roles\ProvisionSystemRoles;
 use App\Models\BehavioralTag;
 use App\Models\ClientTag;
+use App\Models\ReasonCode;
 use App\Models\ResourceCategory;
 use App\Models\ServiceCategory;
 use Illuminate\Contracts\Http\Kernel;
@@ -50,6 +51,10 @@ class TenancyServiceProvider extends ServiceProvider
                  */
                 function (Events\TenantCreated $event) {
                     ServiceCategory::seedDefaultsFor($event->tenant);
+                    /* And the reason library, for the same reason: a
+                       business should not have to invent "client cancelled"
+                       before it can record one. */
+                    ReasonCode::seedDefaultsFor($event->tenant);
                 },
 
                 /**

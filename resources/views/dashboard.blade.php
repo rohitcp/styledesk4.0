@@ -47,118 +47,128 @@
     {{-- Single column. Tasks and Goals used to occupy a 352px side rail; with
          those gone there is nothing to put beside the summary, and keeping the
          two-column grid would only narrow it for an empty neighbour. --}}
-    <div>
+    <main class="w-full px-4 sm:px-5 lg:px-6 pt-5 pb-[120px]">
 
-      <!-- ---------- Summary card ---------- -->
-      <section class="min-w-0 bg-white border border-line rounded-card p-5 sm:p-7">
+      @php
+          /* The greeting follows the viewer's own clock once per-user
+             timezones exist. Until then it is the business's. */
+          $hour = now()->hour;
+          $greeting = $hour < 12 ? __('dashboard.greeting.morning')
+              : ($hour < 18 ? __('dashboard.greeting.afternoon') : __('dashboard.greeting.evening'));
 
-        @php
-            // Greeting follows the viewer's own clock, not the server's, once
-            // per-user timezones exist. Until then it is the app timezone.
-            $hour = now()->hour;
-            $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good evening');
-        @endphp
-        <p class="text-[13px] text-sub">{{ now()->format('l, F j') }}</p>
-        <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight mt-1">{{ $greeting }}, {{ auth()->user()->first_name }}</h1>
+          /* Handed to every panel so none of them formats money its own
+             way — a dashboard where two cards round differently is a
+             dashboard somebody reconciles by hand. */
+          $currency = \App\Support\Currencies::resolve();
+          $money = fn (int $minor) => \App\Support\Money::format($minor / 100, $currency);
 
-        <!-- Underline tabs — same pattern as the design system -->
-        <div class="mt-6 flex items-end gap-5 border-b border-line">
-          <a href="#" class="h-10 flex items-center text-[14px] font-medium text-ink border-b-2 border-brand">Your Summary</a>
-          <a href="#" class="h-10 flex items-center text-[14px] font-medium text-sub hover:text-ink border-b-2 border-transparent transition-colors">Recent Comments</a>
+          $user = auth()->user();
+          $shows = fn (string $widget) => $widgets->contains($widget);
+          $canCheckIn = $user->hasPermission('appointments.check_in', 'own');
+          $showsTips = $user->hasPermission('dashboard.view_tips', 'own')
+              && \App\Models\TipSettings::forTenant($tenant)->is_enabled;
+      @endphp
+
+      <header class="flex flex-wrap items-start gap-4">
+        <div class="min-w-0 flex-1">
+          <p class="text-[13px] text-sub">{{ now()->translatedFormat('l, j F') }}</p>
+          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight mt-1">
+            {{ $greeting }}, {{ $user->first_name }}
+          </h1>
         </div>
 
-        <!-- Explore Features -->
-        <div class="mt-8">
-          <div class="flex items-start gap-2.5">
-            <span class="sd-tip text-faint mt-1.5 shrink-0 cursor-grab" data-tip="Drag to reorder" aria-hidden="true">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.8"/><circle cx="15" cy="5" r="1.8"/><circle cx="9" cy="12" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="9" cy="19" r="1.8"/><circle cx="15" cy="19" r="1.8"/></svg>
-            </span>
-            <div class="min-w-0 flex-1">
-              <h2 class="text-[19px] sm:text-[20px] font-bold text-head tracking-tight">Explore Features</h2>
-              <p class="text-[14px] text-sub mt-1.5 max-w-[640px]">Take a minute to view the panels below to guide your next actions and discover what StyleDesk can do for you.</p>
+        <div class="shrink-0 flex flex-wrap items-center justify-end gap-2">
+          {{-- Only where there is a choice to make. One branch is not a
+               filter, it is the business, and a dropdown with a single
+               entry is furniture. --}}
+          @if ($locations->isNotEmpty())
+            <form method="GET" action="{{ route('dashboard') }}">
+              <select name="location" class="sd-input w-[200px]" onchange="this.form.submit()"
+                      aria-label="{{ __('dashboard.location') }}">
+                <option value="">{{ __('dashboard.all_locations') }}</option>
+                @foreach ($locations as $location)
+                  <option value="{{ $location->id }}" @selected($chosenLocation === $location->id)>{{ $location->name }}</option>
+                @endforeach
+              </select>
+            </form>
+          @endif
+
+          {{-- The things somebody came here to do, beside the greeting
+               rather than under everything they came to read. --}}
+          @if ($widgets->contains('quick_actions'))
+            @include('dashboard.widgets._quick_actions', ['inline' => true])
+          @endif
+        </div>
+      </header>
+
+      @php
+          /* Split into the page and the column beside it.
+
+             The side panels are the ones somebody glances at repeatedly
+             while working on something else. Which of them this reader
+             actually gets is still decided by their permissions — the split
+             only says where a panel goes, never whether. */
+          $side = collect(config('dashboard.side'))->filter(fn (string $w) => $widgets->contains($w))->values();
+          /* Quick actions have moved up into the greeting row, so they are
+             not one of the panels any more. */
+          $main = $widgets->reject(fn (string $w) => $side->contains($w) || $w === 'quick_actions')->values();
+      @endphp
+
+      <div class="mt-6 grid gap-4 {{ $side->isEmpty() ? '' : 'xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]' }}">
+
+        {{-- The page itself, in this role's own order. --}}
+        <div class="min-w-0 space-y-4">
+          @foreach ($main as $widget)
+            @include('dashboard.widgets._'.$widget)
+          @endforeach
+        </div>
+
+        {{-- Beside it, tabbed: only one of the three is urgent at a time,
+             and stacking them would push the third below the fold on the
+             one screen nobody scrolls. --}}
+        @if ($side->isNotEmpty())
+          <aside class="min-w-0">
+            {{-- No padding of its own, and clipped to the radius: the tab
+                 bar is this card's top edge, so anything between it and the
+                 border reads as a control sitting on a panel rather than as
+                 the panel itself. --}}
+            <div class="sd-card !p-0 overflow-hidden xl:sticky xl:top-4" data-dashboard-side>
+              {{-- Flush to the card. A tab bar inset from the edge reads as
+                   a control sitting on a panel rather than as the panel's
+                   own top. --}}
+              <div class="flex items-end border-b border-line" role="tablist">
+                @foreach ($side as $index => $widget)
+                  <button type="button" role="tab" id="side-tab-{{ $widget }}"
+                          aria-controls="side-panel-{{ $widget }}"
+                          aria-selected="{{ $index === 0 ? 'true' : 'false' }}"
+                          data-side-tab="{{ $widget }}"
+                          @class([
+                              /* Never wrapped: a two-line tab label in a
+                                 three-tab bar reads as three paragraphs. */
+                              'h-10 flex-1 px-2 text-[12.5px] font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors',
+                              'border-brand text-brand' => $index === 0,
+                              'border-transparent text-sub hover:text-head' => $index !== 0,
+                          ])>
+                    {{ __('dashboard.'.$widget.'.title') }}
+                  </button>
+                @endforeach
+              </div>
+
+              @foreach ($side as $index => $widget)
+                <div role="tabpanel" id="side-panel-{{ $widget }}"
+                     aria-labelledby="side-tab-{{ $widget }}"
+                     data-side-panel="{{ $widget }}" @unless ($index === 0) hidden @endunless>
+                  {{-- Rendered without its own card: a card inside a card is
+                       a border around a border. --}}
+                  @include('dashboard.widgets._'.$widget, ['bare' => true])
+                </div>
+              @endforeach
             </div>
-            <button class="h-8 w-8 grid place-items-center rounded-md text-faint hover:bg-hover hover:text-sub shrink-0 transition-colors" data-tip="Dismiss" aria-label="Dismiss">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-            </button>
-          </div>
+          </aside>
+        @endif
+      </div>
+    </main>
 
-          {{-- A wrapping grid, not a horizontal rail.
-               The rail kept two of the five cards off-screen behind arrows, so
-               the ones most worth watching were the ones nobody saw. Every card
-               is on the page now and the row count follows the width. --}}
-          <div class="mt-5 styledesk_cardgrid">
-
-              <article class="border border-line rounded-card overflow-hidden bg-white hover:shadow-md transition-shadow">
-                <div class="sd-thumb grid place-items-center">
-                  <span class="h-11 w-11 rounded-full bg-white/85 grid place-items-center text-head shadow-sm">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5l11 6.5-11 6.5v-13z"/></svg>
-                  </span>
-                </div>
-                <div class="p-4">
-                  <h3 class="text-[15px] font-semibold text-head">Manage Contacts</h3>
-                  <p class="text-[13px] text-sub mt-1.5 leading-relaxed">StyleDesk separates Contacts into two types, Person and Organization.</p>
-                  <button class="mt-4 h-8 px-3.5 rounded-md border border-stroke bg-hover text-ink text-[13px] font-semibold hover:bg-sel transition-colors">Watch Clip</button>
-                </div>
-              </article>
-
-              <article class="border border-line rounded-card overflow-hidden bg-white hover:shadow-md transition-shadow">
-                <div class="sd-thumb grid place-items-center">
-                  <span class="h-11 w-11 rounded-full bg-white/85 grid place-items-center text-head shadow-sm">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5l11 6.5-11 6.5v-13z"/></svg>
-                  </span>
-                </div>
-                <div class="p-4">
-                  <h3 class="text-[15px] font-semibold text-head">Manage Sales Opportunities</h3>
-                  <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Stay in control of your sales pipeline and track deals from start to finish.</p>
-                  <button class="styledesk_action mt-4">Watch Clip</button>
-                </div>
-              </article>
-
-              <article class="border border-line rounded-card overflow-hidden bg-white hover:shadow-md transition-shadow">
-                <div class="sd-thumb grid place-items-center">
-                  <span class="h-11 w-11 rounded-full bg-white/85 grid place-items-center text-head shadow-sm">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5l11 6.5-11 6.5v-13z"/></svg>
-                  </span>
-                </div>
-                <div class="p-4">
-                  <h3 class="text-[15px] font-semibold text-head">Log a Note or Activity</h3>
-                  <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Keep your team informed with detailed logs of interactions.</p>
-                  <button class="styledesk_action mt-4">Watch Clip</button>
-                </div>
-              </article>
-
-              <article class="border border-line rounded-card overflow-hidden bg-white hover:shadow-md transition-shadow">
-                <div class="sd-thumb grid place-items-center">
-                  <span class="h-11 w-11 rounded-full bg-white/85 grid place-items-center text-head shadow-sm">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5l11 6.5-11 6.5v-13z"/></svg>
-                  </span>
-                </div>
-                <div class="p-4">
-                  <h3 class="text-[15px] font-semibold text-head">Comments</h3>
-                  <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Leave threaded comments for colleagues, and reply from the app or email.</p>
-                  <button class="styledesk_action mt-4">Watch Clip</button>
-                </div>
-              </article>
-
-              <article class="border border-line rounded-card overflow-hidden bg-white hover:shadow-md transition-shadow">
-                <div class="sd-thumb grid place-items-center">
-                  <span class="h-11 w-11 rounded-full bg-white/85 grid place-items-center text-head shadow-sm">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5l11 6.5-11 6.5v-13z"/></svg>
-                  </span>
-                </div>
-                <div class="p-4">
-                  <h3 class="text-[15px] font-semibold text-head">Build Workflows</h3>
-                  <p class="text-[13px] text-sub mt-1.5 leading-relaxed">Automate the repetitive steps so your team can focus on the work itself.</p>
-                  <button class="styledesk_action mt-4">Watch Clip</button>
-                </div>
-              </article>
-
-          </div>
-        </div>
-      </section>
-
-    </div>
-  </main>
 @endsection
 
 @push('scripts')

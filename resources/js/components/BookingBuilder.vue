@@ -34,6 +34,10 @@ const props = defineProps({
     canWaive: { type: Boolean, default: false },
     /** Which times could actually be booked, asked again as choices change. */
     availabilityUrl: { type: String, default: '' },
+    /* Which rooms one service could go in, and which are free. */
+    resourcesUrl: { type: String, default: '' },
+    /* What the booking comes to, worked out on the server. */
+    quoteUrl: { type: String, default: '' },
     /** The lead this screen was opened from, when it was opened from one. */
     lead: { type: Object, default: null },
     /** The client it is being taken for, where the screen knows already. */
@@ -70,12 +74,254 @@ const staffId = ref('');
 const locationId = ref(props.locations[0]?.id ?? '');
 const date = ref(props.today);
 const start = ref('');
+
+/*
+ * Which room each service is in.
+ *
+ * Keyed by service id, because a booking can be a massage at ten and a
+ * facial at eleven — two rooms, at two times, and one answer for both would
+ * be wrong about at least one of them.
+ *
+ * Each entry: { id, name, auto, options, message }. `auto` is the difference
+ * between a room the engine picked and one a person did: the first may be
+ * replaced whenever the booking moves, the second may not.
+ */
+const rooms = ref({});
+const roomPickerFor = ref(null);
+let roomRequest = 0;
+
+/** Whether anything on this booking has no room to go in. */
+const roomProblem = computed(() => Object.values(rooms.value).find((room) => room.message) ?? null);
+
+function roomOf(serviceId) {
+    return rooms.value[serviceId] ?? null;
+}
+
+/**
+ * Ask the server which rooms each service could use, and which are free.
+ *
+ * Only once there is a day and a time to ask about — "is Single Room 02
+ * free" has no answer until somebody says when.
+ */
+async function refreshRooms() {
+    if (! props.resourcesUrl || ! date.value || ! start.value) {
+        return;
+    }
+
+    const ticket = ++roomRequest;
+    const next = {};
+
+    await Promise.all(chosen.value.map(async (service) => {
+        const query = new URLSearchParams({
+            service_id: String(service.id),
+            date: date.value,
+            starts_at: start.value,
+        });
+
+        if (locationId.value) query.set('location_id', String(locationId.value));
+        if (props.lead?.booking_id) query.set('ignore', String(props.lead.booking_id));
+
+        try {
+            const response = await fetch(`${props.resourcesUrl}?${query.toString()}`, {
+                headers: { Accept: 'application/json' },
+            });
+
+            if (! response.ok) {
+                return;
+            }
+
+            const payload = await response.json();
+
+            /* A service mapped to no rooms needs none — that is not the same
+               as one whose rooms are all taken, and only the second is a
+               problem worth telling anybody about. */
+            if (! payload.required) {
+                return;
+            }
+
+            const previous = rooms.value[service.id];
+            const options = payload.options ?? [];
+
+            /* A room somebody chose is kept while it is still possible.
+               Replacing it the moment the clock moved would quietly undo
+               their decision, which is the fastest way to lose their trust
+               in the whole feature. */
+            const keep = previous && ! previous.auto
+                && options.some((option) => option.id === previous.id && option.available);
+
+            const id = keep ? previous.id : payload.assigned;
+            const option = options.find((o) => o.id === id) ?? null;
+
+            next[service.id] = {
+                id,
+                name: option?.name ?? null,
+                auto: ! keep,
+                options,
+                /* Said only when there is genuinely nowhere to put it. */
+                message: id === null ? (payload.message ?? '') : '',
+                /* So the screen can say "resource updated" rather than
+                   silently swapping a room under somebody. */
+                changed: previous && previous.id !== null && previous.id !== id,
+            };
+        } catch (error) {
+            /* A failed lookup leaves the last good answer on screen: emptying
+               it because the network blinked would read as no rooms free. */
+            if (rooms.value[service.id]) {
+                next[service.id] = rooms.value[service.id];
+            }
+        }
+    }));
+
+    /* A slower answer to an older question must not overwrite a faster
+       answer to the current one. */
+    if (ticket === roomRequest) {
+        rooms.value = next;
+    }
+}
+
+/** A room somebody picked themselves, which the engine will not overrule. */
+function chooseRoom(serviceId, option) {
+    if (! option.available && option.id !== roomOf(serviceId)?.id) {
+        return;
+    }
+
+    rooms.value = {
+        ...rooms.value,
+        [serviceId]: { ...rooms.value[serviceId], id: option.id, name: option.name, auto: false, message: '', changed: false },
+    };
+
+    roomPickerFor.value = null;
+}
+
 const source = ref(props.walkIn ? 'walk-in' : 'front-desk');
 const notes = ref('');
 const clientNote = ref('');
 const payType = ref('none');
 const deposit = ref('');
 const collectionMethod = ref('later');
+
+/*
+ * How the client is paying, and so which price applies.
+ *
+ * Card by default rather than whichever is cheaper: the screen has to quote
+ * a price before anybody has said how they are paying, and quoting the lower
+ * one and then charging more is the version a client complains about.
+ */
+const paymentMethod = ref('card');
+
+/** Whether any chosen service is actually priced differently for cash. */
+const hasTwoPrices = computed(() => chosen.value.some((service) => service.two_prices));
+
+/*
+ * What the booking comes to, from the server.
+ *
+ * The arithmetic is not done here: the coupon rules alone would mean handing
+ * the browser the whole promotions table, and a quote worked out twice is a
+ * quote that can disagree with itself. The screen asks and renders.
+ */
+const quote = ref(null);
+const couponCode = ref('');
+const couponError = ref('');
+/* The code that has actually been applied, as opposed to what is typed. */
+const appliedCoupon = ref('');
+const tipPercent = ref(null);
+const customTip = ref('');
+const quoting = ref(false);
+let quoteTimer = null;
+let quoteRequest = 0;
+
+async function refreshQuote() {
+    if (! props.quoteUrl || ! chosen.value.length) {
+        quote.value = null;
+
+        return;
+    }
+
+    const ticket = ++quoteRequest;
+
+    quoting.value = true;
+
+    try {
+        const response = await fetch(props.quoteUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': props.csrf,
+            },
+            body: JSON.stringify({
+                services: chosen.value.map((service) => service.id),
+                payment_method: paymentMethod.value,
+        coupon: appliedCoupon.value || null,
+        tip_percent: customTip.value === '' ? tipPercent.value : null,
+        tip_amount: customTip.value === '' ? null : customTip.value,
+                client_id: client.value?.id ?? null,
+                location_id: locationId.value || null,
+                coupon: appliedCoupon.value || null,
+                /* One or the other, never both: a typed amount is a decision
+                   and a percentage is a share, and sending both would leave
+                   the server guessing which the reader meant. */
+                tip_percent: customTip.value === '' ? tipPercent.value : null,
+                tip_amount: customTip.value === '' ? null : customTip.value,
+            }),
+        });
+
+        if (! response.ok || ticket !== quoteRequest) {
+            return;
+        }
+
+        const payload = await response.json();
+
+        quote.value = payload;
+        couponError.value = payload.coupon_error ?? '';
+
+        /* A coupon the server refused is not applied, whatever the box
+           still says. */
+        if (payload.coupon_error) {
+            appliedCoupon.value = '';
+        }
+    } catch (error) {
+        /* A failed quote leaves the last good one on screen rather than
+           blanking the total somebody is reading. */
+    } finally {
+        if (ticket === quoteRequest) {
+            quoting.value = false;
+        }
+    }
+}
+
+function applyCoupon() {
+    couponError.value = '';
+    appliedCoupon.value = couponCode.value.trim().toUpperCase();
+    refreshQuote();
+}
+
+function removeCoupon() {
+    appliedCoupon.value = '';
+    couponCode.value = '';
+    couponError.value = '';
+    refreshQuote();
+}
+
+/** A percentage: recalculated whenever anything it is a share of moves. */
+function chooseTipPercent(percent) {
+    tipPercent.value = percent;
+    customTip.value = '';
+    refreshQuote();
+}
+
+/** An amount somebody typed: left exactly as typed. */
+function applyCustomTip() {
+    tipPercent.value = null;
+    refreshQuote();
+}
+
+/** What one service costs the way this booking is being paid for. */
+function serviceMinor(service) {
+    return paymentMethod.value === 'cash'
+        ? (service.cash_price_minor ?? service.price_minor)
+        : service.price_minor;
+}
 const waiverReason = ref('');
 const confirmation = ref('both');
 const sending = ref(false);
@@ -181,10 +427,18 @@ function autosaveBody() {
         date: date.value || null,
         starts_at: start.value || null,
         services: chosen.value.map((service) => service.id),
+        /* Only the rooms somebody chose. A blank means "you decide", which
+           is the usual answer and is not the same as a choice. */
+        resources: Object.fromEntries(
+            Object.entries(rooms.value)
+                .filter(([, room]) => ! room.auto && room.id)
+                .map(([serviceId, room]) => [serviceId, room.id]),
+        ),
         source: source.value,
         payment_type: payType.value,
         deposit: payType.value === 'deposit' ? (deposit.value || null) : null,
         collection_method: payType.value === 'none' ? null : collectionMethod.value,
+        payment_method: paymentMethod.value,
         waiver_reason: collectionMethod.value === 'waive' ? waiverReason.value : null,
         confirmation: confirmation.value,
         notes: notes.value,
@@ -728,7 +982,7 @@ function removeService(service) {
 
 const minutes = computed(() => chosen.value.reduce((sum, service) => sum + service.minutes, 0));
 
-const totalMinor = computed(() => chosen.value.reduce((sum, service) => sum + service.price_minor, 0));
+const totalMinor = computed(() => chosen.value.reduce((sum, service) => sum + serviceMinor(service), 0));
 
 /** "45 min", "2 hr", "2 hr 30 min" — as a person says a length out loud. */
 function durationLabel(count) {
@@ -1160,6 +1414,17 @@ const taxLabel = computed(() => {
 /* The chairs and rooms the chosen services need, named once each. */
 const resources = computed(() => [...new Set(chosen.value.flatMap((service) => service.resources ?? []))]);
 
+/*
+ * The rooms this booking is actually in.
+ *
+ * Not every room the services *could* use — on a spa with six of them that
+ * read as though one client had been given the whole building. These are the
+ * ones assigned, one per service.
+ */
+const assignedRooms = computed(() => [...new Set(
+    Object.values(rooms.value).map((room) => room.name).filter(Boolean),
+)]);
+
 /**
  * "2:15 PM" or "14:15", from the stored "14:15".
  *
@@ -1247,7 +1512,28 @@ watch([locationId, staffId, date, chosen], () => {
     availabilityTimer = window.setTimeout(refreshAvailability, 200);
 }, { deep: true });
 
-onMounted(refreshAvailability);
+/* The rooms are worked out again whenever anything that decides them moves:
+   the day, the time, the branch or the services. A room that is still free
+   keeps its booking; one that is not is replaced, and the card says so. */
+let roomTimer = null;
+
+watch([locationId, date, start, chosen], () => {
+    window.clearTimeout(roomTimer);
+    roomTimer = window.setTimeout(refreshRooms, 200);
+}, { deep: true });
+
+/* The total is asked for again whenever anything that decides it moves: the
+   services, how it is being paid, the client the coupon is checked against.
+   The tip and the coupon ask for themselves, because they are pressed. */
+watch([chosen, paymentMethod, client], () => {
+    window.clearTimeout(quoteTimer);
+    quoteTimer = window.setTimeout(refreshQuote, 200);
+}, { deep: true });
+
+onMounted(() => {
+    refreshAvailability();
+    refreshRooms();
+});
 
 /**
  * The day's start times in three windows.
@@ -2440,28 +2726,100 @@ const summaryOf = (section) => {
 
                         <ul class="mt-2.5 space-y-1.5">
                             <li v-for="service in chosen" :key="service.id"
-                                class="flex items-center gap-2 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2">
-                                <span class="min-w-0 flex-1">
-                                    <span class="block text-[13px] font-semibold text-head truncate">{{ service.name }}</span>
-                                    <span class="block text-[12px] text-sub">
-                                        {{ durationLabel(service.minutes) }}
-                                        <template v-if="service.price"> · {{ service.price }}</template>
+                                class="rounded-lg border border-brand/30 bg-brand/5 px-3 py-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-[13px] font-semibold text-head truncate">{{ service.name }}</span>
+                                        <span class="block text-[12px] text-sub">
+                                            {{ durationLabel(service.minutes) }}
+                                            <template v-if="service.price"> · {{ service.price }}</template>
+                                        </span>
                                     </span>
-                                </span>
-                                <button type="button" class="sd-iconbtn grid place-items-center shrink-0"
-                                        :aria-label="(labels.service?.remove ?? '').replace(':name', service.name)"
-                                        @click="removeService(service)">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-                                </button>
+                                    <button type="button" class="sd-iconbtn grid place-items-center shrink-0"
+                                            :aria-label="(labels.service?.remove ?? '').replace(':name', service.name)"
+                                            @click="removeService(service)">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+                                    </button>
+                                </div>
+
+                                <!-- The room, worked out rather than asked
+                                     for. A receptionist choosing a treatment
+                                     and a time should not also have to know
+                                     which of six identical rooms is free —
+                                     but they can say, and then the engine
+                                     leaves their choice alone. -->
+                                <div v-if="roomOf(service.id)" class="mt-1.5 pt-1.5 border-t border-brand/20">
+                                    <div class="flex items-center gap-2">
+                                        <span class="min-w-0 flex-1">
+                                            <span class="block text-[11px] font-semibold text-sub uppercase tracking-wide">
+                                                {{ labels.summary?.resource }}
+                                            </span>
+
+                                            <span v-if="roomOf(service.id).name" class="flex flex-wrap items-center gap-1.5">
+                                                <span class="text-[12.5px] font-medium text-head">{{ roomOf(service.id).name }}</span>
+                                                <span class="styledesk_badge"
+                                                      :class="roomOf(service.id).auto ? 'styledesk_badge--info' : 'styledesk_badge--note'">
+                                                    {{ roomOf(service.id).auto ? labels.resources?.auto : labels.resources?.manual }}
+                                                </span>
+                                            </span>
+
+                                            <!-- Nowhere to put it. Said here
+                                                 rather than only on save, so
+                                                 the desk finds out while the
+                                                 client is still on the
+                                                 telephone. -->
+                                            <span v-else class="block text-[12px] text-danger">
+                                                {{ roomOf(service.id).message }}
+                                            </span>
+                                        </span>
+
+                                        <button type="button" class="sd-iconbtn grid place-items-center shrink-0"
+                                                :aria-label="labels.resources?.change"
+                                                @click="roomPickerFor = roomPickerFor === service.id ? null : service.id">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4zM14 6l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        </button>
+                                    </div>
+
+                                    <!-- Every room this service could use,
+                                         with whether it is free. The taken
+                                         ones stay on the list: somebody
+                                         hunting for Single Room 03 and not
+                                         finding it will assume the mapping is
+                                         wrong, where "unavailable" answers
+                                         the question they had. -->
+                                    <ul v-if="roomPickerFor === service.id" class="mt-2 space-y-1">
+                                        <li v-for="option in roomOf(service.id).options" :key="option.id">
+                                            <button type="button"
+                                                    class="w-full flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors"
+                                                    :class="[
+                                                        option.id === roomOf(service.id).id ? 'border-brand bg-white' : 'border-line bg-white',
+                                                        option.available || option.id === roomOf(service.id).id
+                                                            ? 'hover:border-brand cursor-pointer'
+                                                            : 'opacity-50 cursor-not-allowed',
+                                                    ]"
+                                                    :disabled="! option.available && option.id !== roomOf(service.id).id"
+                                                    @click="chooseRoom(service.id, option)">
+                                                <span class="min-w-0 flex-1 text-[12.5px] text-head truncate">{{ option.name }}</span>
+                                                <span class="text-[11px] shrink-0"
+                                                      :class="option.available ? 'text-sub' : 'text-danger'">
+                                                    {{ option.id === roomOf(service.id).id
+                                                        ? labels.resources?.currently
+                                                        : (option.available ? '' : labels.resources?.unavailable) }}
+                                                </span>
+                                                <span class="text-[11px] text-faint shrink-0">{{ option.capacity }}</span>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
                             </li>
                         </ul>
 
-                        <!-- What it needs, worked out from the services
-                             rather than asked for: a booking that quietly
-                             takes the only colour bar is one somebody has to
-                             know about. -->
-                        <p v-if="resources.length" class="mt-2.5 text-[12.5px] text-sub">
-                            {{ labels.summary?.resource }}: <span class="text-ink">{{ resources.join(', ') }}</span>
+                        <!-- One line where nothing can be placed at all.
+                             The per-service rows above say which room each
+                             one is in; this is the summary that stops the
+                             booking. -->
+                        <p v-if="roomProblem" class="mt-2.5 text-[12.5px] text-danger">
+                            {{ roomProblem.message }}
                         </p>
                     </div>
 
@@ -2804,13 +3162,141 @@ const summaryOf = (section) => {
                         {{ labels.payment?.nothing_collected }}
                     </p>
 
+                    <!-- Which price applies.
+
+                         Only where the services actually cost different
+                         amounts either way: on a business with one price
+                         this is a control that changes nothing, and asking
+                         a question with one answer wastes the reader's
+                         attention. -->
+                    <div v-if="hasTwoPrices" class="mt-3">
+                        <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.pay?.paying_by }}</p>
+
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="method in ['card', 'cash']" :key="method" type="button"
+                                    class="rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold transition-colors"
+                                    :class="paymentMethod === method
+                                        ? 'border-brand text-brand bg-brand/5'
+                                        : 'border-line text-sub hover:border-brand'"
+                                    @click="paymentMethod = method">
+                                {{ labels.methods?.[method]?.name ?? method }}
+                            </button>
+                        </div>
+
+                        <p class="mt-1.5 text-[11.5px] text-faint">{{ labels.pay?.paying_by_hint }}</p>
+                    </div>
+
+                    <!-- The coupon.
+
+                         Validated on the server, because the rules are the
+                         business's own and the browser cannot be handed the
+                         promotions table to check them against. -->
+                    <div v-if="chosen.length" class="mt-4 pt-3.5 border-t border-line">
+                        <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.pay?.coupon }}</p>
+
+                        <div v-if="quote?.coupon" class="flex items-center gap-2 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2">
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-[12.5px] font-semibold text-head font-mono">{{ quote.coupon.code }}</span>
+                                <span class="block text-[11.5px] text-sub">{{ quote.coupon.name }} · {{ quote.coupon.label }}</span>
+                            </span>
+                            <span class="text-[13px] font-semibold text-head shrink-0">−{{ quote.discount }}</span>
+                            <button type="button" class="text-[12px] font-semibold text-link hover:underline shrink-0"
+                                    @click="removeCoupon">{{ labels.pay?.remove_coupon }}</button>
+                        </div>
+
+                        <div v-else class="flex gap-2">
+                            <input v-model="couponCode" type="text" class="sd-input font-mono uppercase"
+                                   :placeholder="labels.pay?.coupon_placeholder"
+                                   @keydown.enter.prevent="applyCoupon">
+                            <button type="button" class="styledesk_action shrink-0" :disabled="! couponCode.trim()"
+                                    @click="applyCoupon">{{ labels.pay?.apply }}</button>
+                        </div>
+
+                        <!-- Why, rather than "invalid": the desk has to tell
+                             the client something they can act on. -->
+                        <p v-if="couponError" class="mt-1.5 text-[12px] text-danger">{{ couponError }}</p>
+                    </div>
+
+                    <!-- The tip. Percentages come from App settings → Tips,
+                         so a business that offers 15/18/20/25 gets those. -->
+                    <div v-if="chosen.length && quote?.tips_enabled" class="mt-4 pt-3.5 border-t border-line">
+                        <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.pay?.add_tip }}</p>
+
+                        <div class="flex flex-wrap gap-1.5">
+                            <button v-if="quote.allow_no_tip" type="button" class="styledesk_tipchip"
+                                    :class="{ 'styledesk_tipchip--on': tipPercent === 0 && customTip === '' }"
+                                    @click="chooseTipPercent(0)">
+                                <span class="font-semibold">{{ labels.pay?.no_tip }}</span>
+                            </button>
+
+                            <button v-for="percent in quote.tip_percentages" :key="percent" type="button"
+                                    class="styledesk_tipchip"
+                                    :class="{ 'styledesk_tipchip--on': tipPercent === percent && customTip === '' }"
+                                    @click="chooseTipPercent(percent)">
+                                <span class="font-semibold">{{ percent }}%</span>
+                            </button>
+
+                            <button type="button" class="styledesk_tipchip"
+                                    :class="{ 'styledesk_tipchip--on': customTip !== '' }"
+                                    @click="tipPercent = null">
+                                <span class="font-semibold">{{ labels.pay?.custom_tip }}</span>
+                            </button>
+                        </div>
+
+                        <div v-if="tipPercent === null" class="mt-2 w-[150px]">
+                            <input v-model="customTip" type="text" inputmode="decimal" class="sd-input !h-9"
+                                   :placeholder="money(0)" @input="applyCustomTip">
+                        </div>
+                    </div>
+
+                    <!-- How the total was arrived at.
+
+                         Every line of it, in the order it is worked out:
+                         services, then the discount off them, then the tip on
+                         what is left, then tax. A total nobody can take apart
+                         is a total the desk cannot defend at the counter. -->
+                    <dl v-if="quote && chosen.length" class="mt-4 pt-3.5 border-t border-line space-y-1 text-[12.5px]">
+                        <div v-for="line in quote.lines" :key="line.name" class="flex items-baseline justify-between gap-3">
+                            <dt class="min-w-0 text-sub truncate">{{ line.name }}</dt>
+                            <dd class="font-medium text-head shrink-0">{{ line.price }}</dd>
+                        </div>
+
+                        <div class="flex items-baseline justify-between gap-3 pt-1 border-t border-line">
+                            <dt class="text-sub">{{ labels.summary?.subtotal }}</dt>
+                            <dd class="font-medium text-head">{{ quote.subtotal }}</dd>
+                        </div>
+
+                        <div v-if="quote.discount_minor > 0" class="flex items-baseline justify-between gap-3">
+                            <dt class="text-sub">{{ labels.pay?.discount }}<template v-if="quote.coupon"> — {{ quote.coupon.code }}</template></dt>
+                            <dd class="font-medium text-head">−{{ quote.discount }}</dd>
+                        </div>
+
+                        <div v-if="quote.tip_minor > 0" class="flex items-baseline justify-between gap-3">
+                            <dt class="text-sub">
+                                {{ labels.pay?.tip }}<template v-if="quote.tip_percent"> — {{ quote.tip_percent }}%</template>
+                            </dt>
+                            <dd class="font-medium text-head">+{{ quote.tip }}</dd>
+                        </div>
+
+                        <div v-if="quote.tax_minor > 0" class="flex items-baseline justify-between gap-3">
+                            <dt class="text-sub">{{ labels.summary?.tax }}</dt>
+                            <dd class="font-medium text-head">+{{ quote.tax }}</dd>
+                        </div>
+
+                        <div class="flex items-baseline justify-between gap-3 pt-1.5 border-t border-line">
+                            <dt class="font-semibold text-head">{{ labels.pay?.total_due }}</dt>
+                            <dd class="text-[15px] font-bold text-head">{{ quote.total }}</dd>
+                        </div>
+                    </dl>
+
                     <!-- Full payment needs no amount typed: it is the bill,
                          and a receptionist should never be made to work out a
                          number the screen already knows. -->
-                    <div v-if="payType === 'full'" class="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12.5px]">
-                        <span class="text-sub">{{ labels.payment?.collecting }}</span>
-                        <span class="text-[15px] font-bold text-head">{{ money(estimate.total) }}</span>
-                        <span class="text-sub">· {{ labels.payment?.balance }} {{ money(0) }}</span>
+                    <div v-if="payType === 'full'"
+                         class="mt-3 rounded-lg border border-brand/30 bg-brand/5 px-4 py-3 text-center">
+                        <p class="text-[12px] font-semibold text-sub">{{ labels.payment?.collecting }}</p>
+                        <p class="text-[20px] font-bold text-head leading-tight mt-0.5">{{ money(estimate.total) }}</p>
+                        <p class="text-[12px] text-sub mt-0.5">{{ labels.payment?.balance }} {{ money(0) }}</p>
                     </div>
 
                     <!-- What is actually being charged now, stated before the
@@ -3111,9 +3597,9 @@ const summaryOf = (section) => {
                         <dd class="font-semibold text-head text-right">{{ chosenLocation.name }}</dd>
                     </div>
 
-                    <div v-if="resources.length" class="flex items-baseline justify-between gap-3">
+                    <div v-if="assignedRooms.length" class="flex items-baseline justify-between gap-3">
                         <dt class="text-sub">{{ labels.summary?.resource }}</dt>
-                        <dd class="font-semibold text-head text-right">{{ resources.join(', ') }}</dd>
+                        <dd class="font-semibold text-head text-right">{{ assignedRooms.join(', ') }}</dd>
                     </div>
 
                     <div v-if="chosen.length" class="pt-2.5 border-t border-line space-y-1.5">

@@ -13,9 +13,14 @@ use App\Models\BookingService;
 use App\Models\Client;
 use App\Models\ClientSettings;
 use App\Models\Location;
+use App\Models\Promotion;
+use App\Models\ReasonCode;
+use App\Models\Resource;
 use App\Models\Service;
 use App\Models\ServiceCategory;
+use App\Models\ServicePrice;
 use App\Models\Staff;
+use App\Models\TipSettings;
 use App\Support\BookingAvailability;
 use App\Support\BookingTotals;
 use App\Support\ClientActivityLog;
@@ -23,7 +28,9 @@ use App\Support\ClientBookingContext;
 use App\Support\ClientInsights;
 use App\Support\Currencies;
 use App\Support\Money;
+use App\Support\ResourceAllocator;
 use App\Support\TimeFormat;
+use App\Support\Tips;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -48,13 +55,53 @@ use Illuminate\Validation\ValidationException;
  */
 class BookingController extends Controller
 {
+    /**
+     * The views a desk actually works in.
+     *
+     * `primary` is the four that sit across the top; the rest live behind a
+     * More menu. A page with nine tabs across it is a page nobody reads the
+     * end of, and the four that matter are the four a receptionist uses
+     * between nine and six.
+     */
+    /**
+     * How far ahead an appointment still counts as "early".
+     *
+     * An hour: near enough that a client turning up is early rather than
+     * mistaken, and far enough that the desk can see who is coming next.
+     */
+    private const ARRIVAL_WINDOW = 60;
+
+    private const TABS = [
+        'today' => ['primary' => true],
+        'next-3' => ['primary' => true],
+        'month' => ['primary' => true],
+        'check-in' => ['primary' => true],
+        'all' => ['primary' => false],
+        'completed' => ['primary' => false],
+        'cancelled' => ['primary' => false],
+        'no-shows' => ['primary' => false],
+        'declined' => ['primary' => false],
+    ];
+
     public function index(Request $request): View
     {
         $this->allow($request, 'calendar.view');
 
+        $filters = $this->filters($request);
+        $month = CarbonImmutable::parse($filters['month'].'-01');
+
         return view('bookings.index', [
-            'filters' => $this->filters($request),
+            'filters' => $filters,
+            'tabs' => self::TABS,
+            'counts' => $this->tabCounts($request),
+            /* Only where it is worth the room: five numbers above a table
+               the reader is about to look at anyway is noise on every tab
+               except the one they work in all day. */
+            'summary' => $filters['tab'] === 'today' ? $this->todaySummary($request) : [],
+            'month' => $month,
             'staff' => Staff::query()->where('is_active', true)->orderBy('first_name')->get(),
+            'locations' => Location::query()->orderBy('name')->get(),
+            'services' => Service::query()->where('is_active', true)->orderBy('name')->get(),
             'hasBookings' => Booking::query()->exists(),
         ]);
     }
@@ -67,7 +114,7 @@ class BookingController extends Controller
         $filters = $this->filters($request);
 
         $bookings = Booking::query()
-            ->with(['client', 'staff', 'services', 'createdBy'])
+            ->with(['client', 'staff', 'services', 'createdBy', 'location'])
             ->when($filters['search'] !== '', fn (Builder $query) => $query->where(function (Builder $q) use ($filters) {
                 $like = '%'.$filters['search'].'%';
 
@@ -80,10 +127,17 @@ class BookingController extends Controller
                         ->orWhere('email', 'like', $like));
             }))
             ->when($filters['status'] !== '', fn (Builder $query) => $query->where('status', $filters['status']))
+            ->when($filters['payment'] !== '', fn (Builder $query) => $query->where('payment_status', $filters['payment']))
             ->when($filters['staff'] !== '', fn (Builder $query) => $query->where('staff_id', $filters['staff']))
+            ->when($filters['location'] !== '', fn (Builder $query) => $query->where('location_id', $filters['location']))
+            ->when($filters['service'] !== '', fn (Builder $query) => $query->whereHas(
+                'services', fn (Builder $line) => $line->where('service_id', $filters['service'])
+            ))
             ->when($filters['date'] !== '', fn (Builder $query) => $query->whereDate('date', $filters['date']))
-            ->orderByDesc('date')
-            ->orderBy('starts_at')
+            /* The tab last, so a filter the reader set inside it narrows
+               what the tab shows rather than replacing it. */
+            ->tap(fn (Builder $query) => $this->forTab($query, $filters['tab'], $filters['month']))
+            ->tap(fn (Builder $query) => $this->orderFor($query, $filters['tab']))
             ->paginate(
                 perPage: min(100, max(1, (int) $request->query('size', 25))),
                 page: max(1, (int) $request->query('page', 1)),
@@ -120,6 +174,14 @@ class BookingController extends Controller
                    there was nothing else to point at; there is now, and a
                    row that opens somebody's profile instead of the
                    appointment it names is a row that lies. */
+                'location' => $booking->location?->name,
+                /* Whether they are here yet, and — on the queue — how far off
+                   the appointment time they are. "12 min late" is what the
+                   desk acts on; the scheduled time alone makes them do the
+                   arithmetic themselves. */
+                'checkin' => $this->checkInLabel($booking),
+                'arrival' => $this->arrivalLabel($booking),
+                'arrival_class' => $this->arrivalClass($booking),
                 'url' => route('bookings.show', $booking),
                 'menu' => $this->rowMenu($booking),
             ])->all(),
@@ -225,7 +287,13 @@ class BookingController extends Controller
                     'category_id' => $service->service_category_id,
                     'minutes' => (int) $service->duration_minutes,
                     'price' => $service->priceLabel($currency),
-                    'price_minor' => (int) ($service->prices->firstWhere('currency_code', $currency)?->price_minor ?? 0),
+                    'price_minor' => $service->priceMinorFor($currency, 'card'),
+                    /* Both, so the screen can requote itself the moment
+                       somebody says the client is paying cash — without
+                       going back to the server for a number it already
+                       had. */
+                    'cash_price_minor' => $service->priceMinorFor($currency, 'cash'),
+                    'two_prices' => $service->hasTwoPricesIn($currency),
                     /* The chair, room or machine the service needs. Shown in
                        the summary because a booking that quietly needs the
                        only colour bar is a booking somebody has to know
@@ -554,6 +622,58 @@ class BookingController extends Controller
         ]);
     }
 
+    /**
+     * Which rooms one service could go in, and which are free.
+     *
+     * Asked by the booking screen whenever the day, the time, the branch or
+     * the services change — so it answers for one line at a time, which is
+     * the only shape that works for a booking with a massage at ten and a
+     * facial at eleven.
+     *
+     * Unavailable rooms come back rather than being dropped: a receptionist
+     * looking for Single Room 03 and not finding it will assume the mapping
+     * is wrong, where "unavailable" answers the question they actually had.
+     */
+    public function resources(Request $request): JsonResponse
+    {
+        $this->allow($request, 'appointments.create');
+
+        $data = $request->validate([
+            'service_id' => ['required', 'integer', $this->ownRow('services', $request)],
+            'date' => ['required', 'date_format:Y-m-d'],
+            'starts_at' => ['required', 'date_format:H:i'],
+            'location_id' => ['nullable', 'integer', $this->ownRow('locations', $request)],
+            /* The booking being edited does not clash with itself. */
+            'ignore' => ['nullable', 'integer'],
+        ]);
+
+        $service = Service::query()->findOrFail((int) $data['service_id']);
+
+        $options = ResourceAllocator::optionsForService(
+            $service,
+            $data['date'],
+            $data['starts_at'],
+            isset($data['location_id']) ? (int) $data['location_id'] : null,
+            isset($data['ignore']) ? (int) $data['ignore'] : null,
+        );
+
+        $free = $options->firstWhere('available', true);
+
+        return response()->json([
+            'options' => $options->all(),
+            /* What the screen would pick if nobody chose — the first free
+               one in preference order, which for a single massage means a
+               single room before a couple room. */
+            'assigned' => $free['id'] ?? null,
+            /* Whether this service needs a room at all. A service mapped to
+               nothing is not a service with no rooms free. */
+            'required' => $options->isNotEmpty(),
+            'message' => $options->isNotEmpty() && $free === null
+                ? __('bookings.resources.none_available')
+                : null,
+        ]);
+    }
+
     /** A row belonging to the business making the request, and no other. */
     private function ownRow(string $table, Request $request): Exists
     {
@@ -600,6 +720,9 @@ class BookingController extends Controller
             'payment_type' => ['nullable', Rule::in(config('bookings.payment_types'))],
             'deposit' => ['nullable', 'numeric', 'min:0'],
             'collection_method' => ['nullable', Rule::in(config('bookings.collection_methods'))],
+            /* How the client is paying, which decides which of the two
+               prices applies. Card unless somebody says otherwise. */
+            'payment_method' => ['nullable', Rule::in(ServicePrice::METHODS)],
             'waiver_reason' => ['nullable', 'string', 'max:300'],
             'confirmation' => ['nullable', Rule::in(config('bookings.confirmations'))],
             'notes' => ['nullable', 'string', 'max:2000'],
@@ -631,10 +754,17 @@ class BookingController extends Controller
 
         $currency = Currencies::resolve();
         $services = $this->chosenServices($data['services'] ?? [], $currency);
-        $totals = BookingTotals::of(
-            $services->map(fn (Service $service) => $this->priceOf($service, $currency)),
-            $currency,
-        );
+        $pricedFor = $this->pricedFor($data);
+        $prices = $services->map(fn (Service $service) => $this->priceOf($service, $currency, $pricedFor));
+
+        /* The same three answers as a booking taken in one go. A draft that
+           is being confirmed comes through here rather than store(), and a
+           tip agreed on the screen must not be lost on the way. */
+        [$promotion, $discountMinor] = $this->couponFor($data, $services, $prices, $currency, $request);
+
+        $totals = BookingTotals::of($prices, $currency, $discountMinor);
+
+        [$tipPercent, $tipMinor] = $this->tipFor($data, $totals->totalMinor);
 
         $step = $data['current_step'] ?? $lead?->current_step ?? 'service';
 
@@ -746,11 +876,25 @@ class BookingController extends Controller
             'date' => ['required', 'date_format:Y-m-d'],
             'starts_at' => ['required', 'date_format:H:i'],
             'services' => ['required', 'array', 'min:1'],
+            /* Which room each service should go in, where somebody chose
+               rather than letting the engine pick. Keyed by service id. */
+            'resources' => ['nullable', 'array'],
+            'resources.*' => ['nullable', 'integer'],
             'services.*' => ['integer', Rule::exists('services', 'id')],
             'source' => ['nullable', Rule::in(config('bookings.sources'))],
             'payment_type' => ['nullable', Rule::in(config('bookings.payment_types'))],
             'deposit' => ['nullable', 'numeric', 'min:0'],
             'collection_method' => ['nullable', Rule::in(config('bookings.collection_methods'))],
+            /* How the client is paying, which decides which of the two
+               prices applies. Card unless somebody says otherwise. */
+            'payment_method' => ['nullable', Rule::in(ServicePrice::METHODS)],
+            /* What was agreed while the booking was taken. Kept so the
+               till starts from it rather than from nothing: a
+               receptionist who settled fifteen per cent with the client
+               should not have to remember it at the counter. */
+            'coupon' => ['nullable', 'string', 'max:40'],
+            'tip_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'tip_amount' => ['nullable', 'numeric', 'min:0'],
             'waiver_reason' => ['nullable', 'string', 'max:300'],
             'confirmation' => ['nullable', Rule::in(config('bookings.confirmations'))],
             'notes' => ['nullable', 'string', 'max:2000'],
@@ -796,10 +940,22 @@ class BookingController extends Controller
            it afterwards reads what was stored rather than the price list,
            which is what stops a price edited in March rewriting what somebody
            was charged in February. */
-        $totals = BookingTotals::of(
-            $services->map(fn (Service $service) => (int) ($service->prices->firstWhere('currency_code', $currency)?->price_minor ?? 0)),
-            $currency,
-        );
+        /* Which of the two prices this booking is worked out at. Card
+           unless the money is actually being taken in cash. */
+        $pricedFor = $this->pricedFor($data);
+
+        $prices = $services->map(fn (Service $service) => $this->priceOf($service, $currency, $pricedFor));
+
+        /* The coupon, checked again here rather than trusted from the screen:
+           the quote the reader saw was advisory, and a promotion can be used
+           up between quoting it and pressing Confirm. */
+        [$promotion, $discountMinor] = $this->couponFor($data, $services, $prices, $currency, $request);
+
+        $totals = BookingTotals::of($prices, $currency, $discountMinor);
+
+        /* What was agreed as a tip. Not money yet — that lands on a payment
+           — but the answer the till should open with. */
+        [$tipPercent, $tipMinor] = $this->tipFor($data, $totals->totalMinor);
 
         /* A deposit larger than the bill is money the desk would have to give
            back before the appointment has even been worked. Refused here as
@@ -836,7 +992,7 @@ class BookingController extends Controller
             }
         }
 
-        $booking = DB::transaction(function () use ($data, $lead, $services, $minutes, $starts, $currency, $totals, $request, $depositMinor, $collectionMethod) {
+        $booking = DB::transaction(function () use ($data, $lead, $services, $minutes, $starts, $currency, $totals, $request, $depositMinor, $collectionMethod, $pricedFor, $promotion, $tipPercent, $tipMinor) {
             $attributes = [
                 'client_id' => $data['client_id'] ?? null,
                 'guest_name' => $data['guest_name'] ?? null,
@@ -844,6 +1000,19 @@ class BookingController extends Controller
                 'guest_email' => $data['guest_email'] ?? null,
                 'staff_id' => $data['staff_id'] ?? null,
                 'location_id' => $data['location_id'] ?? null,
+                /* Where it happens, decided here rather than asked for on the
+                   form. The receptionist chose a treatment and a time; which
+                   of six identical rooms it lands in is the building's
+                   business, and asking would be asking them to do the
+                   engine's arithmetic. Null where the business maps no
+                   resources, or where nothing is free — the slot reader has
+                   already refused the time in the second case. */
+                'resource_id' => ResourceAllocator::assign(
+                    $services->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                    $data['date'],
+                    $starts->format('H:i'),
+                    $minutes,
+                )?->id,
                 'date' => $data['date'],
                 'starts_at' => $starts->format('H:i'),
                 'ends_at' => $starts->addMinutes($minutes)->format('H:i'),
@@ -856,6 +1025,10 @@ class BookingController extends Controller
                 'tax_minor' => $totals->taxMinor,
                 'total_minor' => $totals->totalMinor,
                 'currency_code' => $currency,
+                'priced_for' => $pricedFor,
+                'promotion_id' => $promotion?->id,
+                'tip_percent' => $tipPercent,
+                'tip_minor' => $tipMinor,
                 /* Stated rather than left to the column default: the panel is
                    answered from this instance, and an attribute the database
                    filled in is one the reply would not have. */
@@ -892,7 +1065,7 @@ class BookingController extends Controller
                 'created_by' => $request->user()->id,
             ]);
 
-            $this->writeServiceLines($booking, $services, $currency);
+            $this->writeServiceLines($booking, $services, $currency, $this->chosenResources($data));
 
             /* A note about the person goes on the person. It is a different
                thing from the note about the appointment, which is why the
@@ -977,8 +1150,9 @@ class BookingController extends Controller
         $services = $this->chosenServices($data['services'], $currency);
         $minutes = (int) $services->sum(fn (Service $service) => (int) $service->duration_minutes);
         $starts = CarbonImmutable::parse($data['date'].' '.$data['starts_at']);
+        $pricedFor = $this->pricedFor($data);
         $totals = BookingTotals::of(
-            $services->map(fn (Service $service) => $this->priceOf($service, $currency)),
+            $services->map(fn (Service $service) => $this->priceOf($service, $currency, $pricedFor)),
             $currency,
         );
 
@@ -996,7 +1170,7 @@ class BookingController extends Controller
             'starts_at' => $booking->startsAt(),
         ];
 
-        DB::transaction(function () use ($booking, $data, $services, $minutes, $starts, $currency, $totals) {
+        DB::transaction(function () use ($booking, $data, $services, $minutes, $starts, $currency, $totals, $pricedFor, $promotion, $tipPercent, $tipMinor) {
             $booking->update([
                 'client_id' => $data['client_id'] ?? null,
                 'guest_name' => $data['guest_name'] ?? null,
@@ -1004,6 +1178,18 @@ class BookingController extends Controller
                 'guest_email' => $data['guest_email'] ?? null,
                 'staff_id' => $data['staff_id'] ?? null,
                 'location_id' => $data['location_id'] ?? null,
+                /* Worked out again, because both halves of the answer may
+                   have moved: the time, and what is being done in it. A
+                   massage that became a reflexology belongs in a chair.
+                   Ignoring itself, or it would be found to be holding the
+                   room it is asking for. */
+                'resource_id' => ResourceAllocator::assign(
+                    $services->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                    $data['date'],
+                    $starts->format('H:i'),
+                    $minutes,
+                    $booking->id,
+                )?->id ?? $booking->resource_id,
                 'date' => $data['date'],
                 'starts_at' => $starts->format('H:i'),
                 'ends_at' => $starts->addMinutes($minutes)->format('H:i'),
@@ -1015,6 +1201,10 @@ class BookingController extends Controller
                 'tax_minor' => $totals->taxMinor,
                 'total_minor' => $totals->totalMinor,
                 'currency_code' => $currency,
+                'priced_for' => $pricedFor,
+                'promotion_id' => $promotion?->id,
+                'tip_percent' => $tipPercent,
+                'tip_minor' => $tipMinor,
                 'notes' => $data['notes'] ?? null,
                 'confirmation' => $data['confirmation'] ?? $booking->confirmation,
             ]);
@@ -1023,7 +1213,7 @@ class BookingController extends Controller
                was chosen, and matching them up one by one would be work in
                aid of keeping ids nothing refers to. */
             $booking->services()->delete();
-            $this->writeServiceLines($booking, $services, $currency);
+            $this->writeServiceLines($booking, $services, $currency, $this->chosenResources($data));
         });
 
         $booking->refresh();
@@ -1311,14 +1501,64 @@ class BookingController extends Controller
 
         $booking->load([
             'client.bookingPreferences', 'client.preferences', 'client.phones', 'client.emails',
-            'staff', 'location', 'services.service.category', 'services.service.resources',
+            'staff', 'location', 'resource', 'services.service.category',
             'payments.recordedBy',
         ]);
 
         $client = $booking->client;
         $snapshot = $booking->client_snapshot ?? [];
 
+        /* What this reader can do to this booking now. Read once here rather
+           than asked per button in the template, because the same list drives
+           which dialogues get rendered at all. */
+        $actions = $booking->availableActions($request->user());
+
         return view('bookings.show', [
+            'actions' => $actions,
+
+            /* The business's own reason lists, one per act, and only the ones
+               they have switched on. Loaded only for the acts on offer: three
+               unused dropdowns of two hundred rows each is a page nobody
+               needs to be sent. */
+            'reasons' => collect($actions)
+                /* Not every act asks one. Arriving for an appointment does
+                   not need to be explained. */
+                ->filter(fn (string $action) => config('bookings.status_actions.'.$action.'.reason') !== null)
+                ->mapWithKeys(fn (string $action) => [
+                    $action => ReasonCode::query()
+                        ->ofType(config('bookings.status_actions.'.$action.'.reason'))
+                        ->usable()->get(),
+                ]),
+
+            /* Everything that has been done to this booking, newest first and
+               in the words the reasons had on the day. */
+            'history' => $booking->statusChanges()->with('changedBy')->newest()->get(),
+
+            /* When the client arrived, where they have. Read from the history
+               rather than from a column, so it still says what it said after
+               the appointment has moved on. */
+            'checkIn' => $booking->checkIn(),
+
+            /* Only where a reschedule is on offer, and only where this reader
+               may move the work to somebody else. */
+            /* Whoever could work it, plus whoever is working it now.
+
+               The second half is not redundant: a booking's own staff member
+               may since have been made inactive or stopped providing
+               services, and a list that leaves them out is one where moving
+               the appointment by an hour quietly reassigns it to nobody. */
+            'staffOptions' => in_array('reschedule', $actions, true) && $request->user()->hasPermission('appointments.edit', 'own')
+                ? Staff::query()
+                    ->where(fn (Builder $query) => $query
+                        ->where(fn (Builder $bookable) => $bookable
+                            ->where('is_active', true)->where('provides_services', true))
+                        ->orWhereKey($booking->staff_id))
+                    ->orderBy('first_name')->get()
+                : collect(),
+            'locationOptions' => in_array('reschedule', $actions, true) && $request->user()->hasPermission('appointments.edit', 'own')
+                ? Location::query()->orderBy('name')->get()
+                : collect(),
+
             'booking' => $booking,
             'totals' => BookingTotals::for($booking),
             /* What the Take Payment panel needs: the bill as the panel reads
@@ -1409,6 +1649,11 @@ class BookingController extends Controller
             'reference' => ['nullable', 'string', 'max:120'],
             'note' => ['nullable', 'string', 'max:255'],
             'manual' => ['nullable', 'boolean'],
+            /* The tip, in whole currency units like the amount beside it. Its
+               own field rather than folded into the amount, because it is not
+               the salon's money in the same way and a total that has absorbed
+               it can never be taken apart again. */
+            'tip' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         /* A card StyleDesk would have to charge itself needs a provider. A
@@ -1423,25 +1668,55 @@ class BookingController extends Controller
 
         $amount = (int) round(((float) $data['amount']) * 100);
         $received = isset($data['received']) ? (int) round(((float) $data['received']) * 100) : null;
+        $tip = isset($data['tip']) ? (int) round(((float) $data['tip']) * 100) : 0;
+
+        $tipPanel = Tips::panel($booking, TipSettings::forTenant($booking->tenant));
+
+        /* A tip on a bill where nothing is tipped is money nobody can account
+           for later, so it is refused rather than quietly kept. */
+        if ($tip > 0 && ! ($tipPanel['enabled'] ?? false)) {
+            throw ValidationException::withMessages([
+                'tip' => __('tips.panel.not_eligible'),
+            ]);
+        }
+
+        /* Where the business insists the client answers, a payment that
+           arrives without an answer has skipped the question. Nought is an
+           answer — but only where declining is on offer. */
+        if (($tipPanel['require_selection'] ?? false) && ! $request->has('tip')) {
+            throw ValidationException::withMessages([
+                'tip' => __('tips.panel.required'),
+            ]);
+        }
+
+        if ($tip === 0 && ($tipPanel['require_selection'] ?? false) && ! ($tipPanel['allow_no_tip'] ?? true)) {
+            throw ValidationException::withMessages([
+                'tip' => __('tips.panel.required'),
+            ]);
+        }
 
         /* Money handed over that is less than the bill is a part payment, not
            an error: the rest is still owed and the status will say so. What
            is refused is being given less than the line claims to be. */
-        if ($received !== null && $received < $amount) {
+        if ($received !== null && $received < $amount + $tip) {
             throw ValidationException::withMessages([
                 'received' => __('bookings.pay.short_cash'),
             ]);
         }
 
-        $payment = DB::transaction(function () use ($booking, $data, $amount, $received, $request) {
+        $payment = DB::transaction(function () use ($booking, $data, $amount, $received, $tip, $request) {
             $payment = $booking->payments()->create([
                 'tenant_id' => $booking->tenant_id,
                 'method' => $data['method'],
                 'status' => 'paid',
                 'amount_minor' => $amount,
+                'tip_minor' => $tip,
                 'currency_code' => $booking->currency_code,
                 'received_minor' => $received,
-                'change_minor' => $received === null ? null : max(0, $received - $amount),
+                /* Against the whole handover, tip included: a client
+                   handing over a hundred on an eighty-pound bill with a
+                   twenty-pound tip is owed nothing. */
+                'change_minor' => $received === null ? null : max(0, $received - $amount - $tip),
                 'reference' => $data['reference'] ?? null,
                 'note' => $data['note'] ?? null,
                 'paid_at' => now(),
@@ -1561,6 +1836,27 @@ class BookingController extends Controller
             'due' => $totals->money($booking->dueMinor()),
             'due_minor' => $booking->dueMinor(),
             'due_amount' => number_format($booking->dueMinor() / 100, 2, '.', ''),
+            /* What may be tipped on, and what to offer. Absent where the
+               business does not take tips or where nothing on the bill is
+               tipped — a section that appears empty is worse than one that
+               does not appear. */
+            'tips' => Tips::panel($booking, TipSettings::forTenant($booking->tenant)) + [
+                /* What was agreed when the booking was taken, so the till
+                   opens on it rather than on nothing. A percentage is worked
+                   out again against what is actually owed; an amount
+                   somebody typed is offered exactly as typed. */
+                'chosen_percent' => $booking->tip_percent,
+                'chosen_minor' => $booking->tip_percent === null ? $booking->tip_minor : null,
+                'currency' => (string) $booking->currency_code,
+                'labels' => [
+                    'title' => __('tips.panel.title'),
+                    'eligible' => __('tips.panel.eligible'),
+                    'custom' => __('tips.panel.custom'),
+                    'none' => __('tips.panel.none'),
+                    'selected' => __('tips.panel.selected'),
+                    'required' => __('tips.panel.required'),
+                ],
+            ],
             'payment_status' => $booking->payment_status,
             'payment_status_label' => $booking->paymentStatusLabel(),
             'payment_type' => $booking->payment_type,
@@ -1614,6 +1910,12 @@ class BookingController extends Controller
                 'by' => $payment->recordedBy?->name,
                 'change' => $payment->change_minor
                     ? BookingTotals::for($booking)->money((int) $payment->change_minor)
+                    : null,
+                /* The tip beside the bill rather than inside it: it is owed
+                   to whoever did the work, and a total that has absorbed it
+                   can never be taken apart again. */
+                'tip' => $payment->tip_minor
+                    ? BookingTotals::for($booking)->money((int) $payment->tip_minor)
                     : null,
             ])->values(),
             'urls' => [
@@ -1747,6 +2049,16 @@ class BookingController extends Controller
             'source' => ['nullable', Rule::in(config('bookings.sources'))],
             'confirmation' => ['nullable', Rule::in(config('bookings.confirmations'))],
             'notes' => ['nullable', 'string', 'max:2000'],
+
+            /* The same three the booking screen sends when it takes one in
+               a single go. A draft being confirmed comes through here, and a
+               tip agreed on screen must not be dropped on the way. */
+            'payment_method' => ['nullable', Rule::in(ServicePrice::METHODS)],
+            'coupon' => ['nullable', 'string', 'max:40'],
+            'tip_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'tip_amount' => ['nullable', 'numeric', 'min:0'],
+            'resources' => ['nullable', 'array'],
+            'resources.*' => ['nullable', 'integer'],
         ]);
     }
 
@@ -1768,9 +2080,99 @@ class BookingController extends Controller
             ->values();
     }
 
-    private function priceOf(Service $service, string $currency): int
+    /**
+     * What a service costs on this booking, paid this way.
+     *
+     * Card unless the booking is being settled in cash. Card is the default
+     * rather than the cheaper of the two: the screen has to quote *a* price
+     * before anybody has said how they are paying, and quoting the lower one
+     * and then charging more is the version a client complains about.
+     */
+    private function priceOf(Service $service, string $currency, string $method = 'card'): int
     {
-        return (int) ($service->prices->firstWhere('currency_code', $currency)?->price_minor ?? 0);
+        return $service->priceMinorFor($currency, $method);
+    }
+
+    /**
+     * The coupon this booking was taken with, and what it takes off.
+     *
+     * Checked here rather than trusted from the screen: the quote the reader
+     * saw was advisory, and a promotion can be used up, expire or stop
+     * applying between quoting it and pressing Confirm.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{0: ?Promotion, 1: int}
+     */
+    private function couponFor(array $data, $services, $prices, string $currency, Request $request): array
+    {
+        if (blank($data['coupon'] ?? null)) {
+            return [null, 0];
+        }
+
+        $promotion = Promotions::byCode((string) $data['coupon']);
+
+        if ($promotion === null) {
+            return [null, 0];
+        }
+
+        $lines = $services->values()->map(fn (Service $service, int $index) => [
+            'service_id' => (int) $service->id,
+            'category_id' => $service->service_category_id === null ? null : (int) $service->service_category_id,
+            'price_minor' => (int) $prices[$index],
+        ]);
+
+        $client = isset($data['client_id']) ? Client::query()->find($data['client_id']) : null;
+
+        $refusal = Promotions::refusal(
+            $promotion, $lines, $client,
+            isset($data['location_id']) ? (int) $data['location_id'] : null,
+        );
+
+        /* Refused at the last moment: the booking is still taken, at full
+           price. Losing the appointment over a coupon would be the wrong
+           trade. */
+        return $refusal === null
+            ? [$promotion, Promotions::discountMinor($promotion, $lines)]
+            : [null, 0];
+    }
+
+    /**
+     * The tip that was agreed, as a percentage and as an amount.
+     *
+     * A percentage is kept as a percentage so the till can work it out again
+     * against whatever is actually owed; an amount somebody typed is kept as
+     * the amount, because that was the decision.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{0: ?int, 1: ?int}
+     */
+    private function tipFor(array $data, int $totalMinor): array
+    {
+        if (isset($data['tip_amount'])) {
+            return [null, (int) round(((float) $data['tip_amount']) * 100)];
+        }
+
+        if (isset($data['tip_percent'])) {
+            $percent = (int) $data['tip_percent'];
+
+            return [$percent, Tips::percentOf($totalMinor, $percent)];
+        }
+
+        return [null, null];
+    }
+
+    /**
+     * Which price this booking is worked out at.
+     *
+     * Cash only where the money is actually being taken in cash. A booking
+     * that will be paid by card at the desk next week is a card booking, and
+     * pricing it as cash would quote a number nobody is going to charge.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function pricedFor(array $data): string
+    {
+        return ($data['payment_method'] ?? null) === 'cash' ? 'cash' : 'card';
     }
 
     /**
@@ -1781,14 +2183,59 @@ class BookingController extends Controller
      *
      * @param  Collection<int, Service>  $services
      */
-    private function writeServiceLines(Booking $booking, $services, string $currency): void
+    /**
+     * The rooms somebody chose, keyed by service.
+     *
+     * Only rows that actually name a room: a blank means "you decide", which
+     * is the usual answer and is not the same as a choice.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<int, int>
+     */
+    private function chosenResources(array $data): array
+    {
+        return collect($data['resources'] ?? [])
+            ->filter(fn ($resourceId) => $resourceId !== null && $resourceId !== '')
+            ->mapWithKeys(fn ($resourceId, $serviceId) => [(int) $serviceId => (int) $resourceId])
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int>  $chosenResources  service id => resource id
+     */
+    private function writeServiceLines(Booking $booking, $services, string $currency, array $chosenResources = []): void
     {
         foreach ($services as $index => $service) {
+            /* A room the receptionist picked, or the first free one in
+               preference order. Worked out per line rather than per booking:
+               a massage at ten and a facial at eleven are two rooms.
+
+               Ignoring this booking, so a service being re-saved does not
+               find itself holding the room it is asking for. */
+            $manual = array_key_exists($service->id, $chosenResources);
+
+            $resource = $manual
+                ? Resource::query()->find($chosenResources[$service->id])
+                : ResourceAllocator::assignForService(
+                    $service,
+                    $booking->date->toDateString(),
+                    $booking->startsAt(),
+                    $booking->location_id,
+                    $booking->id,
+                );
+
             $booking->services()->create([
                 'service_id' => $service->id,
+                'resource_id' => $resource?->id,
+                'resource_manual' => $manual && $resource !== null,
                 'name' => $service->name,
                 'minutes' => (int) $service->duration_minutes,
-                'price_minor' => $this->priceOf($service, $currency),
+                /* What was charged, and what each price was on the day.
+                   Prices change; last March's booking has to keep saying
+                   what last March's prices were. */
+                'price_minor' => $this->priceOf($service, $currency, $booking->priced_for ?: 'card'),
+                'card_price_minor' => $this->priceOf($service, $currency, 'card'),
+                'cash_price_minor' => $this->priceOf($service, $currency, 'cash'),
                 'sort_order' => $index,
             ]);
         }
@@ -1835,24 +2282,113 @@ class BookingController extends Controller
      */
     private function rowMenu(Booking $booking): array
     {
-        $canBook = request()->user()?->hasPermission('appointments.create', 'own') ?? false;
+        $user = request()->user();
+        $canBook = $user?->hasPermission('appointments.create', 'own') ?? false;
+
+        /* What can be done to this booking from where it has got to, decided
+           by the same list the booking page reads. An action offered here and
+           refused there would be a menu that lies.
+
+           They lead to the booking rather than acting from the row, because
+           every one of them asks a question first — a reason, a note, a new
+           time — and a dropdown is not the place to answer it. Check-in is
+           the exception, and it has its own button on the queue. */
+        $actions = collect($booking->availableActions($user))
+            ->map(fn (string $action) => [
+                'label' => __('bookings.status.'.$action.'.action'),
+                'url' => route('bookings.show', $booking).'#'.$action,
+            ])
+            ->all();
 
         return array_values(array_filter([
             ['label' => __('leads.actions.view_booking'), 'url' => route('bookings.show', $booking)],
             $booking->client
                 ? ['label' => __('leads.actions.view_client'), 'url' => route('clients.show', $booking->client)]
                 : null,
-            $canBook ? ['separator' => true] : null,
+            $actions === [] ? null : ['separator' => true],
+            ...$actions,
+            $canBook && $booking->client ? ['separator' => true] : null,
             /* Same shape again, prefilled with this client: "book again" is
                the commonest thing a desk does with a past appointment. */
             $canBook && $booking->client
                 ? ['label' => __('bookings.detail.book_again'), 'url' => route('bookings.create', ['client' => $booking->client_id])]
                 : null,
-            $canBook ? ['label' => __('bookings.detail.reschedule'), 'disabled' => true] : null,
-            $canBook ? ['label' => __('bookings.detail.cancel_booking'), 'disabled' => true] : null,
             ['separator' => true],
             ['label' => __('bookings.confirmation.print'), 'url' => route('bookings.receipt', $booking)],
         ]));
+    }
+
+    /** Whether the client is here yet. */
+    private function checkInLabel(Booking $booking): string
+    {
+        return match ($booking->status) {
+            'arrived' => __('bookings.tabs.arrival.checked_in'),
+            'completed' => __('bookings.tabs.arrival.done'),
+            'no-show' => __('bookings.tabs.arrival.absent'),
+            'confirmed' => $booking->isToday()
+                ? __('bookings.tabs.arrival.waiting')
+                : __('bookings.tabs.arrival.not_due'),
+            default => '—',
+        };
+    }
+
+    /**
+     * How far off the appointment time they are.
+     *
+     * "12 min late" is what somebody at the desk acts on. The scheduled time
+     * alone makes them read a clock and do the arithmetic themselves, forty
+     * times a morning.
+     *
+     * Only for today's bookings that nobody has arrived for: a completed
+     * appointment being nine minutes late is not news.
+     */
+    private function arrivalLabel(Booking $booking): ?string
+    {
+        if ($booking->status !== 'confirmed' || ! $booking->isToday()) {
+            return null;
+        }
+
+        $minutes = (int) round(now()->diffInMinutes(
+            $booking->date->copy()->setTimeFromTimeString($booking->startsAt()), false
+        ));
+
+        /* Only near the appointment. Somebody due at eight is not "266 min
+           early" at half three — they are simply later, and a column of
+           four-figure numbers is a column nobody reads. */
+        if ($minutes > self::ARRIVAL_WINDOW) {
+            return __('bookings.tabs.arrival.later');
+        }
+
+        if ($minutes > 0) {
+            return __('bookings.tabs.arrival.early', ['count' => $minutes]);
+        }
+
+        /* The minute either side of the hour is "now" rather than "1 min
+           late": a desk does not chase somebody who is not yet late. */
+        return $minutes >= -1
+            ? __('bookings.tabs.arrival.due')
+            : __('bookings.tabs.arrival.late', ['count' => abs($minutes)]);
+    }
+
+    /** Late enough to chase reads differently from merely due. */
+    private function arrivalClass(Booking $booking): ?string
+    {
+        if ($booking->status !== 'confirmed' || ! $booking->isToday()) {
+            return null;
+        }
+
+        $minutes = (int) round(now()->diffInMinutes(
+            $booking->date->copy()->setTimeFromTimeString($booking->startsAt()), false
+        ));
+
+        return match (true) {
+            $minutes > self::ARRIVAL_WINDOW => 'styledesk_badge--setup',
+            $minutes > 0 => 'styledesk_badge--info',
+            $minutes >= -1 => 'styledesk_badge--active',
+            /* Ten minutes is where a receptionist starts telephoning. */
+            $minutes >= -10 => 'styledesk_badge--attention',
+            default => 'styledesk_badge--danger',
+        };
     }
 
     /**
@@ -1873,15 +2409,129 @@ class BookingController extends Controller
     private function filters(Request $request): array
     {
         $status = (string) $request->query('status', '');
+        $payment = (string) $request->query('payment', '');
+        $tab = (string) $request->query('tab', '');
 
         return [
+            /* Today, because the question a front desk opens this page with
+               is "who is coming in", not "show me every appointment ever
+               taken". */
+            'tab' => array_key_exists($tab, self::TABS) ? $tab : 'today',
             'search' => trim((string) $request->query('search', '')),
             'status' => array_key_exists($status, config('bookings.statuses')) ? $status : '',
+            'payment' => array_key_exists($payment, config('bookings.payment_statuses')) ? $payment : '',
             'staff' => (string) $request->query('staff', ''),
+            'location' => (string) $request->query('location', ''),
+            'service' => (string) $request->query('service', ''),
             'date' => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query('date')) === 1
                 ? (string) $request->query('date')
                 : '',
+            /* Which month the Month tab is showing. Its own parameter rather
+               than a pair of dates, so the arrows either side of it have
+               something simple to move. */
+            'month' => preg_match('/^\d{4}-\d{2}$/', (string) $request->query('month')) === 1
+                ? (string) $request->query('month')
+                : now()->format('Y-m'),
         ];
+    }
+
+    /**
+     * Narrow the diary to the tab being read.
+     *
+     * The tabs are not saved searches. Each one is a question somebody at the
+     * desk actually asks — who is in today, what is coming, who has not
+     * arrived yet — and the ordering changes with it: a working view reads
+     * forward from now, and a historical one reads backwards from the most
+     * recent.
+     */
+    private function forTab(Builder $query, string $tab, string $month): Builder
+    {
+        $today = now()->startOfDay();
+
+        return match ($tab) {
+            'next-3' => $query->whereBetween('date', [
+                $today->copy()->addDay()->toDateString(),
+                $today->copy()->addDays(3)->toDateString(),
+            ]),
+
+            'month' => $query->whereBetween('date', [
+                CarbonImmutable::parse($month.'-01')->startOfMonth()->toDateString(),
+                CarbonImmutable::parse($month.'-01')->endOfMonth()->toDateString(),
+            ]),
+
+            /* The queue: today's confirmed bookings, which by definition are
+               the ones nobody has checked in yet — checking somebody in is
+               what moves them off this list. */
+            'check-in' => $query->whereDate('date', $today)->where('status', 'confirmed'),
+
+            'completed' => $query->where('status', 'completed'),
+            'cancelled' => $query->where('status', 'cancelled'),
+            'no-shows' => $query->where('status', 'no-show'),
+            'declined' => $query->where('status', 'declined'),
+
+            /* Every booking there has ever been. */
+            'all' => $query,
+
+            default => $query->whereDate('date', $today),
+        };
+    }
+
+    /** Forward for a working view, backwards for a historical one. */
+    private function orderFor(Builder $query, string $tab): Builder
+    {
+        return in_array($tab, ['today', 'next-3', 'check-in', 'month'], true)
+            ? $query->orderBy('date')->orderBy('starts_at')
+            : $query->orderByDesc('date')->orderBy('starts_at');
+    }
+
+    /**
+     * How many each tab would show, for the ones where a number helps.
+     *
+     * Not every tab: a count beside all nine would be noise, and the one that
+     * actually means "somebody has to do something" is the queue.
+     *
+     * @return array<string, int>
+     */
+    private function tabCounts(Request $request): array
+    {
+        $today = now()->startOfDay();
+
+        return [
+            'today' => Booking::query()->whereDate('date', $today)->whereNotIn('status', ['draft'])->count(),
+            'next-3' => Booking::query()->whereBetween('date', [
+                $today->copy()->addDay()->toDateString(),
+                $today->copy()->addDays(3)->toDateString(),
+            ])->whereNotIn('status', ['draft'])->count(),
+            'check-in' => Booking::query()->whereDate('date', $today)->where('status', 'confirmed')->count(),
+        ];
+    }
+
+    /**
+     * How today is going, in five numbers.
+     *
+     * Shown above the Today table and clickable, because "six waiting to
+     * check in" is only useful if pressing it shows you which six.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function todaySummary(Request $request): array
+    {
+        $today = now()->startOfDay();
+        $counts = Booking::query()
+            ->whereDate('date', $today)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $cards = [
+            ['key' => '', 'label' => __('bookings.tabs.summary.total'), 'count' => (int) $counts->except('draft')->sum()],
+            ['key' => 'arrived', 'label' => __('bookings.tabs.summary.checked_in'), 'count' => (int) ($counts['arrived'] ?? 0)],
+            ['key' => 'confirmed', 'label' => __('bookings.tabs.summary.pending'), 'count' => (int) ($counts['confirmed'] ?? 0)],
+            ['key' => 'completed', 'label' => __('bookings.tabs.summary.completed'), 'count' => (int) ($counts['completed'] ?? 0)],
+            ['key' => 'no-show', 'label' => __('bookings.tabs.summary.no_show'), 'count' => (int) ($counts['no-show'] ?? 0)],
+        ];
+
+        return $cards;
     }
 
     private function initialsOf(string $name): string
