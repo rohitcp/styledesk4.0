@@ -104,13 +104,25 @@
               <p data-error-for="job_title" role="alert" class="mt-1.5 text-[12px] text-danger"
                  @unless ($errors->has('job_title')) hidden @endunless>{{ $errors->first('job_title') }}</p>
             </div>
+            {{-- Handed out by the application, not typed.
+
+                 An identifier somebody invents is one two people invent
+                 differently — EMP-7, emp007, 7 — and the column stops being
+                 something anybody can search or sort by. Shown so the reader
+                 knows the number before they save, and read-only because it
+                 is not theirs to choose.
+
+                 No `name`, so it is not posted at all: a read-only input is a
+                 courtesy to the reader rather than a promise about the
+                 request, and the number is decided on the server either way. --}}
             <div>
               <label for="employee_ref" class="block text-[13px] font-medium text-ink mb-1.5">
-                {{ __('staff.fields.employee_ref') }} <span class="text-faint font-normal">{{ __('common.optional') }}</span>
+                {{ __('staff.fields.employee_ref') }}
               </label>
-              <input id="employee_ref" name="employee_ref" type="text" class="sd-input" value="{{ $staffValue('employee_ref') }}" data-rules="max:40">
-              <p data-error-for="employee_ref" role="alert" class="mt-1.5 text-[12px] text-danger"
-                 @unless ($errors->has('employee_ref')) hidden @endunless>{{ $errors->first('employee_ref') }}</p>
+              <input id="employee_ref" type="text" class="sd-input bg-hover font-mono text-sub cursor-not-allowed"
+                     value="{{ $staff?->employee_ref ?? $nextStaffRef ?? '' }}"
+                     readonly aria-readonly="true" tabindex="-1">
+              <p class="mt-1.5 text-[12px] text-faint">{{ __('staff.fields.employee_ref_hint') }}</p>
             </div>
           </div>
 

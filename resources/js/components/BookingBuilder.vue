@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import MultiSelect from './MultiSelect.vue';
+import PaymentPanel from './PaymentPanel.vue';
 
 /**
  * The New Booking screen.
@@ -25,8 +26,14 @@ const props = defineProps({
     newClientUrl: { type: String, required: true },
     /** Where four fields' worth of client is posted. */
     createClientUrl: { type: String, required: true },
-    /** Where a started-but-unfinished booking is noted down. */
-    leadUrl: { type: String, default: '' },
+    /** Where a walk-in's number and address are checked against the book. */
+    matchClientUrl: { type: String, default: '' },
+    /** Where the screen saves itself as it is filled in, as a booking lead. */
+    autosaveUrl: { type: String, default: '' },
+    /** Whether this reader may let a booking off its payment. */
+    canWaive: { type: Boolean, default: false },
+    /** Which times could actually be booked, asked again as choices change. */
+    availabilityUrl: { type: String, default: '' },
     /** The lead this screen was opened from, when it was opened from one. */
     lead: { type: Object, default: null },
     /** The client it is being taken for, where the screen knows already. */
@@ -68,7 +75,8 @@ const notes = ref('');
 const clientNote = ref('');
 const payType = ref('none');
 const deposit = ref('');
-const depositAction = ref('later');
+const collectionMethod = ref('later');
+const waiverReason = ref('');
 const confirmation = ref('both');
 const sending = ref(false);
 
@@ -116,63 +124,171 @@ function saveStep(step) {
     stepsDone.value = { ...stepsDone.value, [step]: true };
     open.value = STEPS[STEPS.indexOf(step) + 1] ?? '';
 
-    /* Every step reports in, not just the first: the lead is how the desk
-       sees where a call ended, and "they stopped at payment" is a different
-       call to return from "they stopped at service". */
-    noteLead(STEPS[STEPS.indexOf(step) + 1] ?? 'completed');
+    /* Nothing is posted from here. The auto-save is the only thing on this
+       screen that writes the lead, and `stepsDone` is part of what it saves —
+       so finishing a card is a change like any other and goes in with it. Two
+       writers would be two leads for one booking. */
 }
 
-/* The reference for a booking that has been started.
-   Kept so saving the service step twice edits one lead rather than leaving
-   two references for one conversation. */
+/* --------------------------------------------------------- the auto-save ---
+
+   The booking saves itself as it is filled in.
+
+   A booking is taken over the phone and a phone call is interrupted, so what
+   this protects is the work: the moment the screen knows who the appointment
+   is for it writes a booking lead and gets a reference back, and every later
+   change goes into that same record. A call that drops leaves a row under
+   Bookings → Leads that anybody can pick back up with Continue Booking.
+
+   A lead is not an appointment. It holds no slot, tells nobody anything, and
+   stays out of the diary until Confirm Booking turns it into a booking —
+   under the same reference it has been quoted under all along.
+
+   One record per attempt. There is exactly one writer on this screen, which
+   is what stops a booking leaving two rows behind it. */
 const lead = ref(null);
+const autosaveState = ref('');
+
+/* The one thing that has to be true before anything is written down. A row
+   saved before anybody is named is a lead nobody could match to a caller. */
+const hasClientInfo = computed(() => Boolean(client.value?.id) || guest.value.name.trim() !== '');
+
+/* Everything the lead carries, as one string. Compared rather than watched
+   field by field: it is one booking, and a watcher per answer is a dozen
+   watchers that can disagree about whether anything changed.
+
+   Without the id, which is not an answer anybody gave: including it would
+   make the first save's own reply look like a change and save again. */
+const draftState = computed(() => {
+    const { lead_id: id, ...answers } = autosaveBody();
+
+    return JSON.stringify(answers);
+});
+
+let autosaveTimer = null;
+let autosaveInFlight = false;
+let autosaveSaved = '';
+
+function autosaveBody() {
+    return {
+        lead_id: lead.value?.id ?? null,
+        client_id: client.value?.id ?? null,
+        guest_name: client.value ? null : (guest.value.name.trim() || null),
+        guest_phone: client.value ? null : (guest.value.phone || null),
+        guest_email: client.value ? null : (guest.value.email || null),
+        staff_id: staffId.value || null,
+        location_id: locationId.value || null,
+        date: date.value || null,
+        starts_at: start.value || null,
+        services: chosen.value.map((service) => service.id),
+        source: source.value,
+        payment_type: payType.value,
+        deposit: payType.value === 'deposit' ? (deposit.value || null) : null,
+        collection_method: payType.value === 'none' ? null : collectionMethod.value,
+        waiver_reason: collectionMethod.value === 'waive' ? waiverReason.value : null,
+        confirmation: confirmation.value,
+        notes: notes.value,
+        client_note: client.value ? clientNote.value : null,
+        /* How far through the five cards this got. It is what the leads queue
+           reads as "stopped at", and it is the difference between a call to
+           return about a price and one to return about a time. */
+        current_step: currentStep(),
+    };
+}
+
+/** The first card that has not been saved yet, or that the reader is on. */
+function currentStep() {
+    return STEPS.find((step) => ! stepsDone.value[step]) ?? 'completed';
+}
 
 /**
- * Write the lead down, in the background.
+ * Write the lead down.
  *
- * Deliberately not awaited by the step it belongs to: the next card is
- * already open by the time this returns, and a receptionist mid-call must
- * never be held up — or stopped — by a note being filed. A failure here is
- * silent for the same reason; the booking itself is what matters, and it is
- * still perfectly takeable without a lead behind it.
+ * One save at a time, and the last state wins: a receptionist typing through
+ * a debounce can put three changes in flight, and the record must end up
+ * holding the newest rather than whichever reply landed last. So a save that
+ * finds the screen has moved on runs again the moment it is finished.
+ *
+ * Never after the booking has been taken. From then on the appointment is
+ * real, the lead is converted, and `update()` is what edits it.
  */
-async function noteLead(step) {
-    /* Nothing to note until there is something to note it about. */
-    if (! props.leadUrl || ! chosen.value.length) {
+async function autosave() {
+    if (! props.autosaveUrl || ! hasClientInfo.value || booking.value || autosaveInFlight) {
         return;
     }
 
+    const sent = draftState.value;
+
+    /* Nothing has actually changed. Reached when a queued save is overtaken
+       by the answer it was going to send — a lead restored by Continue
+       Booking is the ordinary case — and writing the record back with what
+       it already holds would be a save nobody asked for. */
+    if (sent === autosaveSaved) {
+        return;
+    }
+
+    autosaveInFlight = true;
+    autosaveState.value = 'saving';
+
     try {
-        const { ok, json } = await send(props.leadUrl, {
-            lead_id: lead.value?.id ?? null,
-            client_id: client.value?.id ?? null,
-            guest_name: client.value ? null : (guest.value.name || null),
-            services: chosen.value.map((service) => service.id),
-            date: date.value,
-            current_step: step,
-            deposit: payType.value === 'deposit' ? deposit.value : null,
-        });
+        const { ok, json } = await send(props.autosaveUrl, autosaveBody());
 
         if (! ok) {
+            autosaveState.value = 'failed';
+
             return;
         }
 
-        const created = lead.value === null;
-
         lead.value = json.lead;
-
-        /* Said once, when the reference first exists. Saving the step again
-           after an edit is the same conversation, and a second toast about
-           it would read as a second booking. */
-        if (created) {
-            window.styledesk?.toast(
-                (props.labels.lead?.created ?? '').replace(':reference', json.lead.reference),
-            );
-        }
+        autosaveSaved = sent;
+        autosaveState.value = 'saved';
     } catch (error) {
-        /* Nothing to say: the note is not the booking. */
+        /* Offline, or the tab went to sleep mid-request. Said quietly and
+           tried again on the next change: a receptionist mid-call cannot act
+           on this, and a dialog over the booking would stop them working. */
+        autosaveState.value = 'failed';
+    } finally {
+        autosaveInFlight = false;
+    }
+
+    /* The screen moved while that was in the air, so the record is holding
+       something older than what is on it. Only after a save that worked: a
+       failure retried on its own would be a request every second for as long
+       as the connection is down, and the next change will try again anyway. */
+    if (autosaveState.value === 'saved' && draftState.value !== autosaveSaved) {
+        queueAutosave();
     }
 }
+
+/** Wait for the typing to stop. Long enough not to save a name a letter at a
+    time, short enough that "Saved" is true by the time anybody looks. */
+function queueAutosave() {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(autosave, 800);
+}
+
+watch(draftState, (now) => {
+    if (now === autosaveSaved) {
+        return;
+    }
+
+    queueAutosave();
+});
+
+onBeforeUnmount(() => clearTimeout(autosaveTimer));
+
+/** What the indicator says, or nothing at all until there is a lead. */
+const autosaveLabel = computed(() => {
+    if (autosaveState.value === 'saving') {
+        return props.labels.autosave?.saving ?? '';
+    }
+
+    if (autosaveState.value === 'failed') {
+        return props.labels.autosave?.failed ?? '';
+    }
+
+    return autosaveState.value === 'saved' ? (props.labels.autosave?.saved ?? '') : '';
+});
 
 // ----------------------------------------------------------------- client
 
@@ -211,7 +327,28 @@ watch(clientQuery, (term) => {
 
 const context = ref(null);
 
+/**
+ * Open on this client's own answers.
+ *
+ * A booking started from somebody's profile should arrive where they usually
+ * have it, with who they usually have it with. Only where nothing has been
+ * chosen yet: a receptionist who has already picked a branch is not
+ * overruled by a preference set months ago.
+ */
+function applyClientPreferences(found) {
+    if (found?.preferred_location_id && props.locations.some((place) => place.id === found.preferred_location_id)) {
+        locationId.value = found.preferred_location_id;
+    }
+
+    if (found?.preferred_staff_id && ! staffId.value
+        && props.staff.some((member) => member.id === found.preferred_staff_id)) {
+        staffId.value = found.preferred_staff_id;
+    }
+}
+
 async function chooseClient(found) {
+    applyClientPreferences(found);
+
     client.value = found;
     clientQuery.value = '';
     clientResults.value = [];
@@ -234,8 +371,106 @@ async function chooseClient(found) {
 }
 
 function clearClient() {
+    /* A note written against a client is not a note about the walk-in who
+       replaces them. Cleared with the client rather than left in a hidden
+       field, where it would be posted against whoever came next. */
+    clientNote.value = '';
+
     client.value = null;
     context.value = null;
+}
+
+// ------------------------------------------------------------------ walk-in
+
+/* A walk-in is a booking with a name and no record behind it, which is right
+   for somebody who came in once and wrong for a regular whose name the
+   receptionist typed instead of searching for. The second is easy to do and
+   expensive to undo: the history, the preferences and the preferred stylist
+   all stay on the record nobody used, and the desk ends up holding two of the
+   same person.
+
+   So the number and the address are checked against the book as they are
+   typed. A warning, never a block — two people share a phone, and a wrongly
+   merged history is not something a receptionist can unpick. */
+const guestMatches = ref([]);
+const guestSaved = ref(false);
+const guestChecking = ref(false);
+
+let guestTimer = null;
+
+/* What the check runs against. A name alone is not enough to claim two people
+   are one: this business has more than one Sarah. */
+const guestContact = computed(() => `${guest.value.phone.trim()}|${guest.value.email.trim()}`);
+
+async function findExistingClient() {
+    if (! props.matchClientUrl || guestContact.value === '|') {
+        guestMatches.value = [];
+
+        return;
+    }
+
+    guestChecking.value = true;
+
+    try {
+        const { ok, json } = await send(props.matchClientUrl, {
+            name: guest.value.name.trim() || null,
+            mobile: guest.value.phone.trim() || null,
+            email: guest.value.email.trim() || null,
+        });
+
+        guestMatches.value = ok ? (json.matches ?? []) : [];
+    } catch (error) {
+        /* The check is an assist, not a gate. A receptionist mid-call is not
+           helped by an error about a lookup they did not ask for. */
+        guestMatches.value = [];
+    } finally {
+        guestChecking.value = false;
+    }
+}
+
+/* Checked as it is typed, on a debounce: a number is worth checking the
+   moment it is whole, and not once per keystroke. */
+watch(guestContact, () => {
+    guestSaved.value = false;
+    clearTimeout(guestTimer);
+    guestTimer = setTimeout(findExistingClient, 500);
+});
+
+watch(() => guest.value.name, () => {
+    guestSaved.value = false;
+});
+
+onBeforeUnmount(() => clearTimeout(guestTimer));
+
+/**
+ * Save the walk-in's details.
+ *
+ * The screen has been saving as it goes, so this writes nothing the auto-save
+ * would not have. What it is for is the other half: it runs the check against
+ * the book before the receptionist moves on, and it says out loud that the
+ * details are in — which is what somebody who has just typed three fields is
+ * looking for, and what was missing here.
+ */
+async function saveGuest() {
+    if (! guest.value.name.trim()) {
+        return;
+    }
+
+    await findExistingClient();
+
+    /* Straight in rather than on the debounce: the reader asked for it. */
+    clearTimeout(autosaveTimer);
+    await autosave();
+
+    guestSaved.value = true;
+}
+
+/** Use the record instead of the walk-in. Their history is the whole point. */
+function useExistingClient(match) {
+    guestMatches.value = [];
+    guestSaved.value = false;
+    guest.value = { name: '', phone: '', email: '' };
+    chooseClient(match);
 }
 
 // ------------------------------------------------------- new client dialog
@@ -347,28 +582,145 @@ function bookAgain() {
 
 // ---------------------------------------------------------------- service
 
+/* ------------------------------------------- the service selector ---------
+
+   Choosing services is its own screen.
+
+   It used to be a list inside the Service card, which works for a salon with
+   twelve services and falls apart at a hundred: a 260px scroller inside a
+   form field, with the categories behind a combo and the booking's own
+   summary pushed below the fold. So the card now says only what has been
+   chosen, and choosing happens on a full page — categories down one side,
+   services down the other, one Save at the bottom.
+
+   The selection is drafted rather than applied as it is made. Ticking a
+   service is not a decision until the reader says so at the bottom of the
+   page, which is what makes Cancel mean anything — and what stops each tick
+   re-asking the server which times are still free. */
+const sheetOpen = ref(false);
+const sheetPicked = ref([]);
+const sheetCategory = ref('');
 const serviceQuery = ref('');
 
-/* Narrowed by category as well as by name: a salon with sixty services is
-   scrolled, not read, and "everything in Hair Color" is the way a
-   receptionist thinks about it when the client has not named the service. */
-const categoryIds = ref([]);
+/* The services this client is known to want, said by somebody at the desk.
+   Shown first in the selector, because a repeat booking is the commonest
+   thing a desk does and searching a hundred services for the same balayage
+   every time is the work this saves. */
+const favoriteServiceIds = computed(() => client.value?.favorite_service_ids ?? []);
 
-const matches = computed(() => {
-    const term = serviceQuery.value.trim().toLowerCase();
-    const picked = chosen.value.map((service) => service.id);
-    const categories = categoryIds.value.map(String);
+const favoriteServices = computed(() => favoriteServiceIds.value
+    .map((id) => props.services.find((service) => service.id === id))
+    .filter(Boolean));
 
-    return props.services
-        .filter((service) => !picked.includes(service.id))
-        .filter((service) => !categories.length || categories.includes(String(service.category_id)))
-        .filter((service) => !term || service.name.toLowerCase().includes(term));
+/** Only what this branch offers, which is the list every count is taken from. */
+const offeredHere = computed(() => props.services.filter((service) => ! locationId.value
+    /* An empty list means everywhere — Service::isOfferedAt() reads it the
+       same way — so a service that names no locations is offered at all. */
+    || ! service.location_ids?.length
+    || service.location_ids.map(String).includes(String(locationId.value))));
+
+/* All Services first, then the categories something is actually offered in,
+   each with what is in it. A count is what tells a receptionist whether the
+   category is worth opening. */
+const sheetCategories = computed(() => {
+    const counts = new Map();
+
+    offeredHere.value.forEach((service) => {
+        const key = String(service.category_id ?? '');
+
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+
+    return [
+        { id: '', name: props.labels.service?.all_services, count: offeredHere.value.length },
+        ...Object.entries(props.categories)
+            .filter(([id]) => counts.has(String(id)))
+            .map(([id, name]) => ({ id: String(id), name, count: counts.get(String(id)) })),
+    ];
 });
 
-function addService(service) {
-    chosen.value = [...chosen.value, service];
+/* What the second column shows. The search reaches across every category,
+   because somebody typing "balayage" is naming a service and not asking
+   where it is filed. */
+const sheetServices = computed(() => {
+    const term = serviceQuery.value.trim().toLowerCase();
+
+    return offeredHere.value
+        .filter((service) => term
+            || ! sheetCategory.value
+            || String(service.category_id ?? '') === sheetCategory.value)
+        .filter((service) => ! term || service.name.toLowerCase().includes(term));
+});
+
+const sheetPickedCount = computed(() => sheetPicked.value.length);
+
+const sheetMinutes = computed(() => sheetPicked.value
+    .reduce((sum, id) => sum + (props.services.find((one) => one.id === id)?.minutes ?? 0), 0));
+
+const sheetTotalMinor = computed(() => sheetPicked.value
+    .reduce((sum, id) => sum + (props.services.find((one) => one.id === id)?.price_minor ?? 0), 0));
+
+function openServiceSheet() {
+    /* Seeded from what the booking already holds, so the page opens on the
+       booking as it stands rather than on an empty one. */
+    sheetPicked.value = chosen.value.map((service) => service.id);
+    sheetCategory.value = '';
     serviceQuery.value = '';
+    sheetOpen.value = true;
 }
+
+function toggleSheetService(service) {
+    sheetPicked.value = sheetPicked.value.includes(service.id)
+        ? sheetPicked.value.filter((id) => id !== service.id)
+        : [...sheetPicked.value, service.id];
+}
+
+const isPicked = (service) => sheetPicked.value.includes(service.id);
+
+/**
+ * Take the selection.
+ *
+ * In the order they were ticked, which is the order they will be worked and
+ * the order the summary shows — not the order of the catalogue.
+ *
+ * Everything downstream follows from `chosen`: the duration, the bill, the
+ * chair or room it needs, and the times still free with all of that in it.
+ * Setting it here is what recalculates them, which is why nothing else has
+ * to be told.
+ */
+function saveServiceSheet() {
+    chosen.value = sheetPicked.value
+        .map((id) => props.services.find((service) => service.id === id))
+        .filter(Boolean);
+
+    sheetOpen.value = false;
+}
+
+/** Back to the booking, with the selection as it was. */
+function cancelServiceSheet() {
+    sheetOpen.value = false;
+}
+
+/* Escape leaves without applying, the way every other overlay on the screen
+   behaves — and the way a reader who opened it by accident expects. */
+function closeSheetOnEscape(event) {
+    if (event.key === 'Escape' && sheetOpen.value) {
+        cancelServiceSheet();
+    }
+}
+
+/* The page behind must not scroll under a full-screen selector: two
+   scrollbars, and a reader who closes the sheet to find the booking somewhere
+   else than they left it. */
+watch(sheetOpen, (isOpen) => {
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+});
+
+onMounted(() => document.addEventListener('keydown', closeSheetOnEscape));
+onBeforeUnmount(() => {
+    document.removeEventListener('keydown', closeSheetOnEscape);
+    document.body.style.overflow = '';
+});
 
 function removeService(service) {
     chosen.value = chosen.value.filter((one) => one.id !== service.id);
@@ -377,6 +729,32 @@ function removeService(service) {
 const minutes = computed(() => chosen.value.reduce((sum, service) => sum + service.minutes, 0));
 
 const totalMinor = computed(() => chosen.value.reduce((sum, service) => sum + service.price_minor, 0));
+
+/** "45 min", "2 hr", "2 hr 30 min" — as a person says a length out loud. */
+function durationLabel(count) {
+    const hours = Math.floor(count / 60);
+    const rest = count % 60;
+    const short = (labels) => (labels ?? ':count min').replace(':count', rest);
+
+    if (! hours) {
+        return short(props.labels.service?.minutes);
+    }
+
+    if (! rest) {
+        return (props.labels.service?.hours ?? ':count hr').replace(':count', hours);
+    }
+
+    return (props.labels.service?.hours_minutes ?? ':hours hr :minutes min')
+        .replace(':hours', hours)
+        .replace(':minutes', rest);
+}
+
+/** "1 service" / "4 services", so the card's summary reads as a sentence. */
+function serviceCountLabel(count) {
+    return count === 1
+        ? (props.labels.service?.count_one ?? '1 service')
+        : (props.labels.service?.count ?? ':count services').replace(':count', count);
+}
 
 const money = (minor) => props.currencySymbol + (minor / 100).toFixed(2);
 
@@ -524,28 +902,78 @@ function closePicker(event) {
  * carried through, so finishing now converts it rather than filing a second.
  */
 function resumeLead(from) {
-    lead.value = { id: from.id, reference: from.reference };
+    lead.value = { id: from.id, reference: from.reference, status_label: from.status_label };
 
     if (from.date) {
         date.value = from.date;
-        dateMode.value = 'custom';
+        dateMode.value = from.date === props.today ? 'today' : 'custom';
     }
 
-    chosen.value = props.services.filter((service) => from.service_ids.includes(service.id));
+    chosen.value = from.service_ids
+        .map((id) => props.services.find((service) => service.id === id))
+        /* A service withdrawn since the call cannot be rebooked, and a lead
+           that silently restored it would be a price nobody can charge. */
+        .filter(Boolean);
+
+    if (from.location_id) {
+        locationId.value = from.location_id;
+    }
+
+    if (from.staff_id) {
+        staffId.value = from.staff_id;
+    }
+
+    if (from.starts_at) {
+        start.value = from.starts_at;
+    }
+
+    source.value = from.source ?? source.value;
+    payType.value = from.payment_type ?? payType.value;
+    deposit.value = from.deposit ?? '';
+    collectionMethod.value = from.collection_method ?? collectionMethod.value;
+    waiverReason.value = from.waiver_reason ?? '';
+    confirmation.value = from.confirmation ?? confirmation.value;
+    notes.value = from.notes ?? '';
+    clientNote.value = from.client_note ?? '';
 
     if (from.client) {
         chooseClient(from.client);
     } else if (from.guest_name) {
         mode.value = 'walkin';
-        guest.value = { ...guest.value, name: from.guest_name };
+        guest.value = {
+            name: from.guest_name,
+            phone: from.guest_phone ?? '',
+            email: from.guest_email ?? '',
+        };
     }
 
-    /* Straight to the first unanswered question: the services are already
-       chosen, so what this call still needs is a time. */
+    /* Every card that was answered before, ticked. The screen is the one
+       they left, not a fresh one wearing their answers — a receptionist
+       picking this up should be looking at the first question still open. */
+    STEPS.forEach((step) => {
+        if (STEPS.indexOf(step) < STEPS.indexOf(from.current_step ?? 'service')) {
+            stepsDone.value = { ...stepsDone.value, [step]: true };
+        }
+    });
+
     if (chosen.value.length) {
         stepsDone.value = { ...stepsDone.value, service: true };
-        open.value = 'when';
     }
+
+    if (start.value) {
+        stepsDone.value = { ...stepsDone.value, when: true };
+    }
+
+    open.value = STEPS.find((step) => ! stepsDone.value[step]) ?? '';
+
+    /* Restored, not changed. Everything above set a ref the auto-save
+       watches, and letting it fire would write the lead straight back with
+       what it already holds — and show "Saving…" over a screen where nobody
+       has touched anything yet. */
+    nextTick(() => {
+        autosaveSaved = draftState.value;
+        autosaveState.value = 'saved';
+    });
 }
 
 onMounted(() => document.addEventListener('click', closePicker));
@@ -572,6 +1000,31 @@ const endsAt = computed(() => {
 
 const chosenStaff = computed(() => props.staff.find((member) => String(member.id) === String(staffId.value)));
 
+/**
+ * The team this branch can be booked with.
+ *
+ * Somebody with no location works across all of them — that is what the null
+ * means on a staff record — so they stay on the list wherever the booking is
+ * being taken. Hiding them would empty the picker for most businesses, which
+ * have one branch and never fill the column in.
+ */
+const bookableStaff = computed(() => props.staff.filter((member) => ! locationId.value
+    || ! member.location_id
+    || String(member.location_id) === String(locationId.value)));
+
+/* A stylist who does not work at the branch just chosen cannot stay chosen:
+   the booking would post a person who is not there. */
+watch(locationId, () => {
+    if (staffId.value && ! bookableStaff.value.some((member) => String(member.id) === String(staffId.value))) {
+        staffId.value = '';
+    }
+
+    /* And a service that branch does not offer goes with it, for the same
+       reason — it would be posted against a location that cannot do it. */
+    chosen.value = chosen.value.filter((service) => ! service.location_ids?.length
+        || service.location_ids.map(String).includes(String(locationId.value)));
+});
+
 // -------------------------------------------------------------- the whole
 
 const who = computed(() => {
@@ -595,6 +1048,16 @@ const blocker = computed(() => {
 
     if (!start.value) {
         return props.labels.blockers?.time;
+    }
+
+    /* A deposit larger than the bill is money the desk would have to give
+       back before the appointment has been worked. */
+    if (depositTooMuch.value) {
+        return props.labels.payment?.too_much;
+    }
+
+    if (waiverMissing.value) {
+        return props.labels.payment?.waiver_needed;
     }
 
     return null;
@@ -634,14 +1097,36 @@ const draft = ref(false);
    The estimate below is only for the summary, which has to show a total
    before there is a booking to read one from. */
 const stage = ref('summary');
+
+/* Reaching the confirmation takes the reader to the top of the page.
+   The panel is the first thing on it, and a screen that put the one fact
+   somebody wants — did that go through? — above a viewport still scrolled to
+   the payment card would be hiding it just as thoroughly as before. */
+watch(stage, (now) => {
+    /* The page turns grey behind the finished booking, so the document sits
+       on something rather than floating in the same white the form used. It
+       is the clearest signal that the workflow is over: nothing on this
+       screen is still waiting to be saved. */
+    document.body.classList.toggle('bg-hover', now === 'done');
+    document.getElementById('bookingFormHeader')?.classList.toggle('hidden', now === 'done');
+
+    if (now === 'done') {
+        nextTick(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    }
+});
+
+onBeforeUnmount(() => {
+    document.body.classList.remove('bg-hover');
+    document.getElementById('bookingFormHeader')?.classList.remove('hidden');
+});
 const booking = ref(null);
 const busy = ref(false);
 const failure = ref('');
-const method = ref('');
-const payment = ref({ amount: '', received: '', reference: '' });
-const card = ref({ name: '', number: '', expiry: '', cvv: '', zip: '' });
 const lastPayment = ref(null);
 const sentTo = ref('');
+/* Said on the confirmation rather than thrown: the appointment is real
+   whether or not the email got out, and the desk needs to know to ring. */
+const linkFailure = ref('');
 
 /* The bill before the booking exists, worked out the way the server works it
    out. Two implementations of one rule is a risk, so this one is used for
@@ -675,8 +1160,6 @@ const taxLabel = computed(() => {
 /* The chairs and rooms the chosen services need, named once each. */
 const resources = computed(() => [...new Set(chosen.value.flatMap((service) => service.resources ?? []))]);
 
-const chosenMethod = computed(() => props.methods.find((row) => row.key === method.value) ?? null);
-
 /**
  * "2:15 PM" or "14:15", from the stored "14:15".
  *
@@ -695,6 +1178,78 @@ function clock(slot) {
 }
 
 /**
+ * The times that could actually be booked, from the server.
+ *
+ * Seeded with what the page arrived holding, so the list is never empty while
+ * the first request is in flight, and replaced as soon as an answer comes
+ * back. The browser is deliberately not the thing that works this out: it
+ * would need every rota, closure, resource block and existing booking to do
+ * it, which is both a slower page and a description of the salon's whole day
+ * handed to anyone who opens the console.
+ */
+const availableTimes = ref([...props.times]);
+const availabilityMessage = ref('');
+const checkingTimes = ref(false);
+let availabilityTimer = null;
+let availabilityRequest = 0;
+
+async function refreshAvailability() {
+    if (! props.availabilityUrl) {
+        return;
+    }
+
+    const query = new URLSearchParams({ date: date.value });
+
+    if (locationId.value) query.set('location_id', String(locationId.value));
+    if (staffId.value) query.set('staff_id', String(staffId.value));
+    chosen.value.forEach((service) => query.append('service_ids[]', String(service.id)));
+
+    /* Numbered, because the answers can arrive out of order: a slow reply to
+       last week's date must not overwrite the times for the one on screen. */
+    const ticket = ++availabilityRequest;
+
+    checkingTimes.value = true;
+
+    try {
+        const response = await fetch(`${props.availabilityUrl}?${query.toString()}`, {
+            headers: { Accept: 'application/json' },
+        });
+
+        if (! response.ok || ticket !== availabilityRequest) {
+            return;
+        }
+
+        const payload = await response.json();
+
+        availableTimes.value = payload.slots ?? [];
+        availabilityMessage.value = payload.message ?? '';
+
+        /* A time that is no longer offered cannot stay chosen: it would post
+           a start the server has just said is unavailable. */
+        if (start.value && ! availableTimes.value.includes(start.value)) {
+            start.value = '';
+        }
+    } catch (error) {
+        /* A failed lookup leaves the last good answer on screen. Emptying the
+           list because the network blinked would read as a fully booked day. */
+    } finally {
+        if (ticket === availabilityRequest) {
+            checkingTimes.value = false;
+        }
+    }
+}
+
+/* Every one of these can empty the list, so every one of them asks again.
+   Debounced together: choosing three services is three changes and one
+   question. */
+watch([locationId, staffId, date, chosen], () => {
+    window.clearTimeout(availabilityTimer);
+    availabilityTimer = window.setTimeout(refreshAvailability, 200);
+}, { deep: true });
+
+onMounted(refreshAvailability);
+
+/**
  * The day's start times in three windows.
  *
  * Sixty-odd chips in one run is a wall to read, and a receptionist is nearly
@@ -706,18 +1261,47 @@ function clock(slot) {
 const timeGroups = computed(() => {
     const windows = { morning: [], afternoon: [], evening: [] };
 
-    props.times.forEach((slot) => {
+    availableTimes.value.forEach((slot) => {
         const hour = Number(slot.slice(0, 2));
 
         windows[hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'].push(slot);
     });
 
-    /* An empty window is left out rather than shown as a heading with nothing
-       under it: a salon that opens at noon has no morning. */
-    return Object.entries(windows)
-        .filter(([, slots]) => slots.length)
-        .map(([key, slots]) => ({ key, slots }));
+    /* All three are returned, empty ones included: the segmented control has
+       to draw a button for a part of the day with nothing in it — greyed, so
+       "nothing on Tuesday morning" is something the screen says rather than
+       something the reader infers from a missing button. Which of them is
+       shown is `period` below. */
+    return Object.entries(windows).map(([key, slots]) => ({ key, slots }));
 });
+
+/** Which part of the day is being looked at. */
+const period = ref('morning');
+
+const currentGroup = computed(() => timeGroups.value.find((group) => group.key === period.value) ?? null);
+
+/**
+ * Land on a part of the day that has something in it.
+ *
+ * A salon that opens at noon has no morning, and opening on an empty segment
+ * reads as a day with no availability at all. The first one with slots is
+ * chosen instead — and the same rule moves the reader off a segment that has
+ * just been emptied by a change of branch, staff member or date.
+ *
+ * A segment the reader chose themselves is left alone while it still has
+ * slots: being moved off a deliberate choice is worse than an empty list.
+ */
+function settlePeriod() {
+    const current = timeGroups.value.find((group) => group.key === period.value);
+
+    if (current?.slots.length) {
+        return;
+    }
+
+    period.value = (timeGroups.value.find((group) => group.slots.length) ?? timeGroups.value[0]).key;
+}
+
+watch(availableTimes, settlePeriod, { immediate: true });
 
 /**
  * Who this client is likely to want, named before the rest of the team.
@@ -737,18 +1321,88 @@ const suggestedStaff = computed(() => {
 
 const chosenLocation = computed(() => props.locations.find((place) => String(place.id) === String(locationId.value)) ?? null);
 
+/**
+ * The branch picker behind the card in the page header.
+ *
+ * A popover rather than a select: it carries a search box, which a salon with
+ * a dozen branches needs and a native select cannot have — and it is the same
+ * shape as every other searchable list in the app.
+ */
+const locationPickerOpen = ref(false);
+const locationQuery = ref('');
+
+const locationMatches = computed(() => {
+    const term = locationQuery.value.trim().toLowerCase();
+
+    return props.locations.filter((place) => ! term || place.name.toLowerCase().includes(term));
+});
+
+function openLocationPicker() {
+    locationQuery.value = '';
+    locationPickerOpen.value = true;
+}
+
+function chooseLocation(place) {
+    locationId.value = place.id;
+    locationPickerOpen.value = false;
+
+    /* Everything downstream is watched — the times, the team, the price list
+       — so nothing else has to be told. What does have to go is a start time
+       chosen against the branch being left: it may not be open then. */
+    start.value = '';
+}
+
+/* Clicking away closes it, like every other popover on the page. */
+function closeLocationPicker(event) {
+    if (! event.target.closest?.('[data-location-picker]')) {
+        locationPickerOpen.value = false;
+    }
+}
+
+onMounted(() => document.addEventListener('click', closeLocationPicker));
+onBeforeUnmount(() => document.removeEventListener('click', closeLocationPicker));
+
 const dueMinor = computed(() => booking.value?.due_minor ?? estimate.value.total);
+
+/* ------------------------------------------------------- the deposit -----
+
+   A deposit is part of the bill taken now against a booking worked later.
+   The rest is still owed, which is why the balance is stated beside it: a
+   number typed into a box with no balance under it is one nobody checks. */
+const depositMinor = computed(() => Math.round(Number(deposit.value || 0) * 100));
+
+/* Refused rather than silently clamped: a receptionist who typed 500 against
+   a $150 bill has made a mistake worth seeing, and a box that quietly
+   rewrote it to 150 would hide it. The server refuses it too. */
+const depositTooMuch = computed(() => payType.value === 'deposit'
+    && depositMinor.value > estimate.value.total);
+
+function setDepositPercent(percent) {
+    deposit.value = (Math.round(estimate.value.total * percent / 100) / 100).toFixed(2);
+}
+
+const depositIsPercent = (percent) => estimate.value.total > 0
+    && depositMinor.value === Math.round(estimate.value.total * percent / 100);
+
+/* ------------------------------------------- the collection method -------
+
+   How the money is actually collected, which is a different question from
+   how much. "Take a deposit" says what is owed now; this says whether it is
+   charged here, taken at the till, asked for by link, collected on arrival,
+   or written off. */
+const collectionMethods = ['collect-now', 'desk', 'link', 'later', 'waive'];
+
+const canWaive = computed(() => props.canWaive);
+
+/* Waiving needs a reason, because it is the one method that is a decision
+   rather than a mechanism — and a decision nobody wrote a reason for is one
+   nobody can answer for three months later. */
+const waiverMissing = computed(() => payType.value !== 'none'
+    && collectionMethod.value === 'waive'
+    && waiverReason.value.trim() === '');
 
 /* What is handed over minus what is owed. Shown live, because the number a
    receptionist needs is the one they are counting back into somebody's hand. */
-const changeDue = computed(() => {
-    const received = Math.round(Number(payment.value.received || 0) * 100);
-    const due = Math.round(Number(payment.value.amount || 0) * 100);
-
-    return received > due ? money(received - due) : money(0);
-});
-
-/** Everything the booking endpoints are told, in one shape. */
 function bookingBody() {
     return {
         client_id: client.value?.id ?? null,
@@ -763,10 +1417,13 @@ function bookingBody() {
         source: source.value,
         payment_type: payType.value,
         deposit: payType.value === 'deposit' ? deposit.value : null,
-        deposit_action: payType.value === 'deposit' ? depositAction.value : null,
+        collection_method: payType.value === 'none' ? null : collectionMethod.value,
+        waiver_reason: collectionMethod.value === 'waive' ? waiverReason.value : null,
         confirmation: confirmation.value,
         notes: notes.value,
         client_note: client.value ? clientNote.value : null,
+        /* The booking-in-progress this finishes. Converting it is what keeps
+           the reference the receptionist may already have read out. */
         lead_id: lead.value?.id ?? null,
     };
 }
@@ -802,6 +1459,11 @@ async function confirmBooking() {
         return;
     }
 
+    /* Nothing more is written as a draft from here. A save still queued
+       would be describing a booking that is about to stop being one. */
+    clearTimeout(autosaveTimer);
+    autosaveState.value = '';
+
     busy.value = true;
     failure.value = '';
 
@@ -819,50 +1481,32 @@ async function confirmBooking() {
     }
 
     booking.value = json.booking;
-    payment.value.amount = json.booking.due_amount;
-    stage.value = 'payment';
+    linkFailure.value = json.link_error ?? '';
+
+    /* Only Collect Now opens the payment card. Every other method is money
+       arriving somewhere else — at the till, by link, on the day, or not at
+       all — and a card demanding payment for a booking nobody is paying for
+       now is the screen refusing to believe what it was told. */
+    stage.value = payType.value !== 'none' && collectionMethod.value === 'collect-now'
+        ? 'payment'
+        : 'done';
 }
 
 /**
- * Write down a payment.
+ * A payment came back from the panel.
  *
- * `manual` is the difference between money StyleDesk took and money somebody
- * says arrived. Everything but a card on a connected provider is the second
- * kind, and the button that records it says so.
+ * The booking is replaced wholesale with what the server answered rather than
+ * adjusted here: what is paid and what is owed are its numbers, and a screen
+ * that did its own arithmetic on them would be a second opinion about money.
+ *
+ * Part paid stays on this screen with the rest still owing; settled in full
+ * moves on.
  */
-async function takePayment(manual) {
-    if (busy.value || ! booking.value) {
-        return;
-    }
+function onPaid(updated, entry) {
+    booking.value = updated;
+    lastPayment.value = entry;
 
-    busy.value = true;
-    failure.value = '';
-
-    const { ok, json } = await send(booking.value.urls.pay, {
-        method: method.value,
-        amount: payment.value.amount || booking.value.due_amount,
-        received: method.value === 'cash' ? (payment.value.received || null) : null,
-        reference: payment.value.reference || null,
-        manual,
-    });
-
-    busy.value = false;
-
-    if (! ok) {
-        failure.value = firstError(json) ?? props.labels.pay?.failed;
-
-        return;
-    }
-
-    booking.value = json.booking;
-    lastPayment.value = json.payment;
-    payment.value = { amount: json.booking.due_amount, received: '', reference: '' };
-    card.value = { name: '', number: '', expiry: '', cvv: '', zip: '' };
-
-    /* Part paid stays on this screen with the rest still owing; settled in
-       full moves on. */
-    if (json.booking.due_minor === 0) {
-        method.value = '';
+    if (updated.due_minor === 0) {
         stage.value = 'done';
     }
 }
@@ -917,6 +1561,8 @@ function startAnother() {
     client.value = null;
     context.value = null;
     guest.value = { name: '', phone: '', email: '' };
+    guestMatches.value = [];
+    guestSaved.value = false;
     mode.value = props.walkIn ? 'walkin' : 'booking';
     chosen.value = [];
     staffId.value = '';
@@ -930,10 +1576,16 @@ function startAnother() {
     confirmation.value = 'both';
     booking.value = null;
     lead.value = null;
+    /* A fresh screen is a fresh booking, so it gets its own reference. The
+       one just taken belongs to the appointment that was made with it. */
+    clearTimeout(autosaveTimer);
+    autosaveState.value = '';
+    autosaveSaved = '';
+    stepsDone.value = {};
     lastPayment.value = null;
     sentTo.value = '';
+    linkFailure.value = '';
     failure.value = '';
-    method.value = '';
     stage.value = 'summary';
     open.value = 'service';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -969,6 +1621,321 @@ const summaryOf = (section) => {
     <form :action="action" method="POST" class="contents" @submit="sending = true">
         <input type="hidden" name="_token" :value="csrf">
         <input type="hidden" name="client_id" :value="client?.id ?? ''">
+        <!-- The branch this booking is being taken at, in the page header.
+
+             Teleported: the title beside it is server rendered, and the card
+             has to change the moment the branch does. A second copy of the
+             chosen location in Blade would be one that goes stale.
+
+             The whole card is the control, not just the pencil — it is one
+             thing that does one thing, and a small icon is a small target. -->
+        <!-- ============================================ the service selector -->
+        <!-- A page rather than a dialog.
+
+             Choosing from a hundred services is the whole task for as long as
+             it lasts, so it gets the whole window: the categories fixed down
+             one side, the services scrolling down the other, and the header
+             and footer staying put so the count and the way out are never
+             scrolled off.
+
+             Teleported to <body> and fixed, rather than routed. The booking
+             underneath is a page of unsaved answers — a client, a draft lead,
+             a time somebody is holding on the phone — and a real navigation
+             would have to serialise and restore all of it to come back to the
+             screen the reader left. -->
+        <Teleport to="body">
+            <div v-if="sheetOpen" class="fixed inset-0 z-[70] bg-hover flex flex-col"
+                 role="dialog" aria-modal="true" :aria-label="labels.service?.select_title">
+                <!-- Header: the way back, the title, the search, the count. -->
+                <header class="shrink-0 bg-white border-b border-line">
+                    <div class="w-full px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center gap-x-4 gap-y-3">
+                        <button type="button" class="sd-iconbtn grid place-items-center shrink-0"
+                                :aria-label="labels.service?.close" @click="cancelServiceSheet">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+
+                        <h2 class="text-[17px] sm:text-[19px] font-bold text-head tracking-tight shrink-0">
+                            {{ labels.service?.select_title }}
+                        </h2>
+
+                        <!-- Takes the room that is left on a wide screen, and
+                             a line of its own below sm where a search sharing
+                             a row with a title is too narrow to read. -->
+                        <div class="relative order-last sm:order-none w-full sm:w-auto sm:flex-1 sm:min-w-[200px] sm:max-w-[420px]">
+                            <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.9"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+                            </span>
+                            <input v-model="serviceQuery" type="search" class="sd-input styledesk_input--prefixed"
+                                   :placeholder="labels.service?.search" :aria-label="labels.service?.search"
+                                   autocomplete="off">
+                        </div>
+
+                        <!-- Counted out loud, and live: the reader is picking
+                             several and the number is the thing they are
+                             keeping track of. -->
+                        <span class="ml-auto shrink-0 text-[13px] font-semibold"
+                              :class="sheetPickedCount ? 'text-brand' : 'text-sub'" aria-live="polite">
+                            {{ sheetPickedCount
+                                ? (sheetPickedCount === 1
+                                    ? labels.service?.selected_one
+                                    : (labels.service?.selected ?? '').replace(':count', sheetPickedCount))
+                                : labels.service?.selected_none }}
+                        </span>
+                    </div>
+                </header>
+
+                <!-- Mobile: the categories as a strip across the top rather
+                     than a column. Two narrow columns on a phone gives one
+                     that cannot hold a category name and one that cannot hold
+                     a service. -->
+                <div class="lg:hidden shrink-0 bg-white border-b border-line overflow-x-auto styledesk_scroll">
+                    <div class="flex gap-2 px-4 py-2.5 w-max">
+                        <button v-for="group in sheetCategories" :key="`m-${group.id}`" type="button"
+                                class="shrink-0 h-8 px-3 rounded-full border text-[12.5px] font-semibold transition-colors"
+                                :class="sheetCategory === group.id
+                                    ? 'border-brand bg-brand text-white'
+                                    : 'border-line bg-white text-sub hover:text-ink hover:bg-hover'"
+                                :aria-pressed="sheetCategory === group.id"
+                                @click="sheetCategory = group.id">
+                            {{ group.name }} ({{ group.count }})
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Two columns, each scrolling on its own, so the page
+                     itself never does. -->
+                <div class="flex-1 min-h-0 w-full px-4 sm:px-6 lg:px-8 py-4">
+                    <div class="h-full min-h-0 grid grid-cols-1 lg:grid-cols-10 gap-4">
+                        <!-- Column 1 — categories. Roughly 30%, fixed while
+                             the services beside it scroll. -->
+                        <nav class="hidden lg:flex lg:col-span-3 min-h-0 flex-col bg-white border border-line rounded-card overflow-hidden"
+                             :aria-label="labels.service?.categories">
+                            <p class="shrink-0 px-3.5 pt-3.5 pb-2 text-[11px] font-semibold uppercase tracking-wide text-faint">
+                                {{ labels.service?.categories }}
+                            </p>
+
+                            <ul class="flex-1 min-h-0 overflow-y-auto styledesk_scroll p-2 pt-0 space-y-0.5">
+                                <li v-for="group in sheetCategories" :key="group.id">
+                                    <button type="button"
+                                            class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-[13px] transition-colors"
+                                            :class="sheetCategory === group.id
+                                                ? 'bg-sel text-brand font-semibold'
+                                                : 'text-ink hover:bg-hover'"
+                                            :aria-current="sheetCategory === group.id ? 'true' : null"
+                                            @click="sheetCategory = group.id">
+                                        <span class="min-w-0 flex-1 truncate">{{ group.name }}</span>
+                                        <span class="shrink-0 text-[12px]"
+                                              :class="sheetCategory === group.id ? 'text-brand' : 'text-faint'">
+                                            {{ group.count }}
+                                        </span>
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+
+                        <!-- Column 2 — the services in it. -->
+                        <div class="lg:col-span-7 min-h-0 flex flex-col bg-white border border-line rounded-card overflow-hidden">
+                            <!-- What this client is known to want, first.
+                                 A repeat booking is the commonest thing a
+                                 desk does, and searching a hundred services
+                                 for the same balayage every time is the work
+                                 this saves. Only when nothing is being
+                                 searched or filtered — a favourite shown
+                                 under a category it is not in reads as a
+                                 mistake. -->
+                            <div v-if="favoriteServices.length && !serviceQuery.trim() && !sheetCategory"
+                                 class="shrink-0 border-b border-line bg-brand/[0.03] px-3 py-3">
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-brand">
+                                    {{ labels.service?.client_favorites }}
+                                </p>
+
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <button v-for="service in favoriteServices" :key="`fav-${service.id}`"
+                                            type="button"
+                                            class="inline-flex items-center gap-2 h-9 pl-2.5 pr-3 rounded-lg border text-[13px] transition-colors"
+                                            :class="isPicked(service)
+                                                ? 'border-brand bg-brand text-white'
+                                                : 'border-brand/30 bg-white text-head hover:bg-brand/5'"
+                                            :aria-pressed="isPicked(service)"
+                                            @click="toggleSheetService(service)">
+                                        <span aria-hidden="true">★</span>
+                                        <span class="font-semibold">{{ service.name }}</span>
+                                        <span :class="isPicked(service) ? 'text-white/80' : 'text-sub'">
+                                            {{ durationLabel(service.minutes) }} · {{ service.price }}
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <ul v-if="sheetServices.length"
+                                class="flex-1 min-h-0 overflow-y-auto styledesk_scroll divide-y divide-line">
+                                <li v-for="service in sheetServices" :key="service.id">
+                                    <!-- The whole row is the control. A tick
+                                         box on its own is a small target for
+                                         somebody working at a desk with a
+                                         client in front of them. -->
+                                    <button type="button"
+                                            class="w-full flex items-start gap-3 p-3 text-left transition-colors"
+                                            :class="isPicked(service) ? 'bg-brand/5' : 'hover:bg-hover'"
+                                            :aria-pressed="isPicked(service)"
+                                            @click="toggleSheetService(service)">
+                                        <span class="mt-0.5 h-[18px] w-[18px] rounded border grid place-items-center shrink-0 transition-colors"
+                                              :class="isPicked(service) ? 'bg-brand border-brand text-white' : 'border-line bg-white'"
+                                              aria-hidden="true">
+                                            <svg v-if="isPicked(service)" width="11" height="11" viewBox="0 0 24 24" fill="none">
+                                                <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </span>
+
+                                        <span class="min-w-0 flex-1">
+                                            <span class="block text-[13.5px] font-semibold text-head">{{ service.name }}</span>
+                                            <span class="block text-[12px] text-sub mt-0.5">
+                                                {{ durationLabel(service.minutes) }} · {{ service.price }}
+                                            </span>
+                                            <!-- The chair, room or machine it
+                                                 needs. Said here because it
+                                                 is a reason to pick one
+                                                 service over another. -->
+                                            <span v-if="service.resources?.length" class="block text-[12px] text-faint mt-0.5">
+                                                {{ (labels.service?.needs ?? 'Needs :names').replace(':names', service.resources.join(', ')) }}
+                                            </span>
+                                        </span>
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <p v-else class="p-4 text-[13px] text-sub">
+                                {{ serviceQuery.trim() ? labels.service?.none : labels.service?.nothing_here }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sticky footer: what it adds up to, and the two ways out.
+                     The running total is here because it is what the reader
+                     is deciding against — a fourth service is a different
+                     decision at ninety minutes than at three hours. -->
+                <footer class="shrink-0 bg-white border-t border-line">
+                    <div class="w-full px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center gap-3">
+                        <p v-if="sheetPickedCount" class="text-[12.5px] text-sub order-last sm:order-none w-full sm:w-auto">
+                            {{ durationLabel(sheetMinutes) }} ·
+                            <span class="font-semibold text-head">{{ money(sheetTotalMinor) }}</span>
+                        </p>
+
+                        <div class="ml-auto flex items-center gap-3">
+                            <button type="button" class="styledesk_action" @click="cancelServiceSheet">
+                                {{ labels.cancel }}
+                            </button>
+
+                            <button type="button"
+                                    class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors"
+                                    @click="saveServiceSheet">
+                                {{ labels.service?.save_close }}
+                            </button>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </Teleport>
+
+        <!-- The reference this booking is already saved under, and whether
+             the last change is in yet.
+
+             Teleported into the page header for the reason the location card
+             is: the title beside it is server rendered, and this has to
+             appear the moment the first save comes back.
+
+             Deliberately quiet. It is not an instruction and it is not a
+             result — it is the number a receptionist reaches for when the
+             call drops, and a status line that announced every save would be
+             the loudest thing on a screen somebody is working through while
+             talking to a client. -->
+        <Teleport v-if="lead && stage !== 'done'" to="#bookingRefSlot">
+            <div class="flex items-center gap-2.5 sm:justify-end" aria-live="polite">
+                <span class="text-[12px] font-semibold text-sub font-mono">
+                    {{ (labels.autosave?.reference ?? '').replace(':reference', lead.reference) }}
+                </span>
+
+                <!-- Draft, then In progress, and gone once the booking is
+                     taken. An auto-saved booking nobody finished must never
+                     read as an appointment somebody has been promised. -->
+                <span v-if="!booking" class="styledesk_badge styledesk_badge--setup shrink-0">
+                    {{ lead.status_label || labels.autosave?.draft }}
+                </span>
+
+                <span v-if="autosaveLabel" class="text-[12px] shrink-0"
+                      :class="autosaveState === 'failed' ? 'text-danger' : 'text-faint'">
+                    {{ autosaveLabel }}
+                </span>
+            </div>
+        </Teleport>
+
+        <Teleport v-if="chosenLocation && stage !== 'done'" to="#bookingLocationSlot">
+            <div class="relative w-full sm:w-auto" data-location-picker>
+                <button type="button"
+                        class="w-full sm:w-auto sm:min-w-[220px] flex items-center gap-3 text-left
+                               bg-white border border-line rounded-card px-3.5 py-2 hover:border-brand/40
+                               transition-colors cursor-pointer"
+                        :aria-expanded="locationPickerOpen" aria-haspopup="listbox"
+                        :title="labels.when?.change_location"
+                        @click="locationPickerOpen ? locationPickerOpen = false : openLocationPicker()">
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-[11px] font-semibold uppercase tracking-wide text-faint">
+                            {{ labels.when?.location }}
+                        </span>
+                        <span class="block text-[14px] font-semibold text-head truncate">
+                            {{ chosenLocation.name }}
+                        </span>
+                    </span>
+
+                    <span class="shrink-0 text-sub" aria-hidden="true">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                            <path d="M4 20h4L19 9l-4-4L4 16v4z" stroke="currentColor" stroke-width="1.7"
+                                  stroke-linejoin="round"/>
+                            <path d="M14.5 5.5l4 4" stroke="currentColor" stroke-width="1.7"/>
+                        </svg>
+                    </span>
+                </button>
+
+                <!-- One branch is not a choice, so there is nothing to open.
+                     The card still says where the booking is going, which is
+                     the other half of what it is for. -->
+                <div v-if="locationPickerOpen && locations.length > 1"
+                     class="absolute right-0 z-30 mt-1.5 w-full sm:w-[280px] bg-white border border-line
+                            rounded-card shadow-lg p-2">
+                    <!-- The search earns its place at a dozen branches and is
+                         harmless at three. -->
+                    <input v-if="locations.length > 6" v-model="locationQuery" type="search"
+                           class="sd-input mb-2" :placeholder="labels.when?.search_locations"
+                           :aria-label="labels.when?.search_locations">
+
+                    <ul class="max-h-[240px] overflow-y-auto styledesk_scroll" role="listbox">
+                        <li v-for="place in locationMatches" :key="place.id">
+                            <button type="button" role="option"
+                                    :aria-selected="String(place.id) === String(locationId)"
+                                    class="w-full text-left px-2.5 py-2 rounded-lg text-[13px] hover:bg-hover
+                                           transition-colors flex items-center gap-2"
+                                    :class="String(place.id) === String(locationId) ? 'text-brand font-semibold' : 'text-ink'"
+                                    @click="chooseLocation(place)">
+                                <span class="min-w-0 flex-1 truncate">{{ place.name }}</span>
+                                <svg v-if="String(place.id) === String(locationId)" width="14" height="14"
+                                     viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.2"
+                                          stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <p v-if="!locationMatches.length" class="px-2.5 py-2 text-[13px] text-sub">
+                        {{ labels.when?.no_locations }}
+                    </p>
+                </div>
+            </div>
+        </Teleport>
+
         <input type="hidden" name="guest_name" :value="client ? '' : guest.name">
         <input type="hidden" name="guest_phone" :value="client ? '' : guest.phone">
         <input type="hidden" name="guest_email" :value="client ? '' : guest.email">
@@ -980,14 +1947,231 @@ const summaryOf = (section) => {
         <input type="hidden" name="source" :value="source">
         <input type="hidden" name="payment_type" :value="payType">
         <input type="hidden" name="deposit" :value="payType === 'deposit' ? deposit : ''">
-        <input type="hidden" name="deposit_action" :value="payType === 'deposit' ? depositAction : ''">
+        <input type="hidden" name="collection_method" :value="payType === 'none' ? '' : collectionMethod">
+        <input type="hidden" name="waiver_reason" :value="collectionMethod === 'waive' ? waiverReason : ''">
         <input type="hidden" name="confirmation" :value="confirmation">
         <input type="hidden" name="notes" :value="notes">
         <input type="hidden" name="client_note" :value="client ? clientNote : ''">
         <input type="hidden" name="draft" :value="draft ? 1 : 0">
 
         <!-- ================================================ column 1 — client -->
-        <section class="lg:col-span-3" :aria-label="labels.sections?.client">
+        <!-- ============================================ the booking is taken -->
+        <!-- A document, not a screen.
+
+             What is left when a booking is finished is a record of it, so it
+             is shaped like one: a single white sheet, centred, on a grey
+             page. The form is gone rather than merely quiet, because the one
+             thing a receptionist must not wonder at this point is whether
+             something still needs saving.
+
+             Held to a readable measure instead of the full window. A receipt
+             stretched across 1600px is a receipt nobody can scan down. -->
+        <section v-if="stage === 'done'" class="lg:col-span-12 min-w-0 flex justify-center py-2 sm:py-6"
+                 :aria-label="labels.confirmation?.title">
+            <article class="w-full max-w-[820px] bg-white border border-line rounded-xl shadow-sm">
+
+                <!-- 1 · the answer, compactly. A full-width green alert says
+                     the same thing far louder than a finished document
+                     needs to. -->
+                <header class="p-6 sm:p-8 border-b border-line">
+                    <div class="flex items-start gap-3">
+                        <span class="shrink-0 h-8 w-8 rounded-full bg-brand/10 text-brand grid place-items-center" aria-hidden="true">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                                <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+
+                        <div class="min-w-0">
+                            <h1 class="text-[19px] sm:text-[21px] font-bold text-head tracking-tight">
+                                {{ labels.confirmation?.title }}
+                            </h1>
+                            <p class="text-[13px] text-sub mt-1">{{ labels.confirmation?.made }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-5">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-faint">
+                            {{ labels.summary?.reference }}
+                        </p>
+                        <p class="text-[20px] sm:text-[22px] font-bold font-mono text-head mt-0.5">{{ booking.reference }}</p>
+                    </div>
+                </header>
+
+                <!-- Anything that went wrong on the way out. The appointment
+                     is real either way, so these say what to do rather than
+                     pretending the booking failed. -->
+                <div v-if="linkFailure || failure || sentTo" class="px-6 sm:px-8 pt-5 space-y-2">
+                    <p v-if="linkFailure" class="sd-alert sd-alert--warn text-[12.5px]" role="alert">{{ linkFailure }}</p>
+                    <p v-if="failure" class="sd-alert sd-alert--danger text-[12.5px]" role="alert">{{ failure }}</p>
+                    <p v-if="sentTo" class="sd-alert sd-alert--success text-[12.5px]">{{ sentTo }}</p>
+                </div>
+
+                <!-- 2 · the appointment. Label left, answer right, on one
+                     line each where there is room and stacked where there is
+                     not — a two-column row squeezed onto a phone puts three
+                     words of label against two of answer. -->
+                <section class="p-6 sm:p-8">
+                    <h2 class="text-[11px] font-semibold uppercase tracking-wide text-faint">
+                        {{ labels.sections?.summary }}
+                    </h2>
+
+                    <dl class="mt-4 space-y-3.5 text-[13.5px]">
+                        <div class="sm:flex sm:items-baseline sm:justify-between sm:gap-6">
+                            <dt class="text-sub">{{ labels.summary?.client }}</dt>
+                            <dd class="font-semibold text-head sm:text-right min-w-0">{{ booking.client }}</dd>
+                        </div>
+                        <div class="sm:flex sm:items-baseline sm:justify-between sm:gap-6">
+                            <dt class="text-sub">{{ labels.summary?.services }}</dt>
+                            <dd class="font-semibold text-head sm:text-right min-w-0">
+                                {{ booking.services.map((row) => row.name).join(', ') }}
+                            </dd>
+                        </div>
+                        <div class="sm:flex sm:items-baseline sm:justify-between sm:gap-6">
+                            <dt class="text-sub">{{ labels.summary?.staff }}</dt>
+                            <dd class="font-semibold text-head sm:text-right">{{ booking.staff }}</dd>
+                        </div>
+                        <div class="sm:flex sm:items-baseline sm:justify-between sm:gap-6">
+                            <dt class="text-sub">{{ labels.summary?.when }}</dt>
+                            <!-- The day and the hours on their own lines: two
+                                 facts a reader checks separately. -->
+                            <dd class="font-semibold text-head sm:text-right">
+                                <span class="block">{{ booking.date }}</span>
+                                <span class="block">{{ booking.time }}</span>
+                            </dd>
+                        </div>
+                        <div v-if="booking.location" class="sm:flex sm:items-baseline sm:justify-between sm:gap-6">
+                            <dt class="text-sub">{{ labels.summary?.location }}</dt>
+                            <dd class="font-semibold text-head sm:text-right">{{ booking.location }}</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <!-- 3 · the money, laid out as a bill: the lines, then the
+                     rule, then the one number somebody has to act on. -->
+                <section class="px-6 sm:px-8 pb-6 sm:pb-8 pt-6 border-t border-line">
+                    <h2 class="text-[11px] font-semibold uppercase tracking-wide text-faint">
+                        {{ labels.detail?.payment_summary }}
+                    </h2>
+
+                    <dl class="mt-4 space-y-2.5 text-[13.5px]">
+                        <div class="flex items-baseline justify-between gap-6">
+                            <dt class="text-sub">{{ labels.pay?.booking_total }}</dt>
+                            <dd class="font-semibold text-head tabular-nums">{{ booking.total }}</dd>
+                        </div>
+                        <div class="flex items-baseline justify-between gap-6">
+                            <dt class="text-sub">{{ labels.summary?.paid }}</dt>
+                            <dd class="font-semibold text-head tabular-nums">{{ booking.paid }}</dd>
+                        </div>
+                        <div v-for="row in booking.payments" :key="row.method"
+                             class="flex items-baseline justify-between gap-6 text-[12.5px]">
+                            <dt class="text-faint pl-3">{{ row.method_label }}</dt>
+                            <dd class="text-sub tabular-nums">{{ row.amount }}</dd>
+                        </div>
+                    </dl>
+
+                    <!-- The one number somebody has to do something about. -->
+                    <div class="mt-4 pt-4 border-t border-line flex flex-wrap items-end justify-between gap-4">
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-faint">
+                                {{ booking.due_minor > 0 ? labels.confirmation?.amount_due : labels.summary?.due }}
+                            </p>
+                            <p class="text-[26px] font-bold tabular-nums leading-tight mt-0.5"
+                               :class="booking.due_minor > 0 ? 'text-danger' : 'text-head'">
+                                {{ booking.due }}
+                            </p>
+                        </div>
+
+                        <span class="styledesk_paystate" :class="`is-${booking.payment_status}`">
+                            {{ booking.payment_status_label }}
+                        </span>
+                    </div>
+
+                    <!-- Where a link was sent, and where it got to. -->
+                    <div v-if="booking.links?.length" class="mt-4 pt-4 border-t border-line">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-faint">
+                            {{ labels.payment?.link_status }}
+                        </p>
+                        <div v-for="row in booking.links" :key="row.id"
+                             class="mt-2 flex flex-wrap items-center gap-2 text-[12.5px]">
+                            <span class="styledesk_badge" :class="row.status_class">{{ row.status_label }}</span>
+                            <span class="font-semibold text-head">{{ row.amount }}</span>
+                            <span v-if="row.sent_to" class="text-sub truncate">{{ row.sent_to }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Waived, by whom and why: the one collection method
+                         that is a decision somebody has to answer for. -->
+                    <div v-if="booking.waiver" class="mt-4 pt-4 border-t border-line text-[12.5px]">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-faint">
+                            {{ labels.payment?.actions?.waive }}
+                        </p>
+                        <p class="text-ink mt-1">{{ booking.waiver.reason }}</p>
+                        <p class="text-faint mt-0.5">{{ booking.waiver.by }} · {{ booking.waiver.at }}</p>
+                    </div>
+
+                    <p v-if="lastPayment?.change" class="mt-4 text-[12.5px] text-sub">
+                        {{ labels.pay?.change }}: <span class="font-semibold text-head">{{ lastPayment.change }}</span>
+                    </p>
+                </section>
+
+                <!-- 4 · what to do with it. One thing to do, three ways to
+                     hand it over. -->
+                <footer class="px-6 sm:px-8 py-6 border-t border-line">
+                    <a :href="booking.urls.show"
+                       class="w-full h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white
+                              text-[13.5px] font-semibold flex items-center justify-center transition-colors">
+                        {{ labels.confirmation?.view }}
+                    </a>
+
+                    <!-- Stacked and full width, all of them. Three buttons
+                         sharing a row read as one decision split three ways;
+                         these are three separate things somebody might do
+                         with a finished booking, and each gets its own line
+                         and its own full-width target. -->
+                    <div class="mt-2 grid grid-cols-1 gap-2">
+                        <button type="button" class="styledesk_action w-full h-11 justify-center" :disabled="busy"
+                                @click="sendConfirmation('email')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/>
+                                <path d="M3.5 6.5l8.5 6 8.5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            {{ busy ? labels.confirmation?.sending : labels.confirmation?.send }}
+                        </button>
+
+                        <a :href="booking.urls.print" target="_blank" rel="noopener" class="styledesk_action w-full h-11 justify-center">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M7 9V4h10v5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                <rect x="4" y="9" width="16" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
+                                <path d="M7 14h10v6H7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                            </svg>
+                            {{ labels.confirmation?.print }}
+                        </a>
+
+                        <a :href="booking.urls.receipt" target="_blank" rel="noopener" class="styledesk_action w-full h-11 justify-center">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M12 4v11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                <path d="M8 11.5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                            {{ labels.confirmation?.receipt }}
+                        </a>
+                    </div>
+                </footer>
+
+                <!-- 5 · set apart by a rule of its own, because it is the one
+                     action that throws this document away. -->
+                <div class="px-6 sm:px-8 py-5 border-t border-line bg-hover/40 rounded-b-xl">
+                    <button type="button"
+                            class="w-full h-11 px-5 rounded-lg border border-brand text-brand
+                                   hover:bg-brand/5 text-[13.5px] font-semibold transition-colors"
+                            @click="startAnother">
+                        {{ labels.confirmation?.another }}
+                    </button>
+                </div>
+            </article>
+        </section>
+
+        <section v-show="stage !== 'done'" class="lg:col-span-3" :aria-label="labels.sections?.client">
             <div class="bg-white border border-line rounded-card overflow-hidden">
                 <div class="px-4 pt-4 pb-3 flex items-center justify-between gap-2">
                     <h2 class="text-[12px] font-semibold uppercase tracking-wide text-faint">
@@ -1173,7 +2357,42 @@ const summaryOf = (section) => {
                             <input id="guestEmail" v-model="guest.email" type="email" class="sd-input" autocomplete="off">
                         </div>
 
+                        <!-- Already on the book. A warning, never a block:
+                             two people share a phone, and a wrongly merged
+                             history is not something a receptionist can
+                             unpick. What it offers is the useful half — the
+                             record itself, one click away, because the
+                             history is the reason to want it. -->
+                        <div v-if="guestMatches.length" class="sd-alert sd-alert--warn" role="alert">
+                            <p class="font-semibold">{{ labels.client?.guest_known }}</p>
+
+                            <ul class="mt-1.5 space-y-1">
+                                <li v-for="match in guestMatches" :key="match.id">
+                                    <button type="button" class="font-semibold underline"
+                                            @click="useExistingClient(match)">{{ match.name }}</button>
+                                    <span class="text-[12px]"> · {{ match.mobile || match.email }}</span>
+                                </li>
+                            </ul>
+
+                            <p class="text-[12px] mt-1.5">{{ labels.client?.guest_known_hint }}</p>
+                        </div>
+
                         <p class="text-[12px] text-faint leading-relaxed">{{ labels.client?.guest_hint }}</p>
+
+                        <div class="flex flex-wrap items-center gap-3 pt-0.5">
+                            <button type="button" class="styledesk_action"
+                                    :disabled="!guest.name.trim() || guestChecking"
+                                    @click="saveGuest">
+                                {{ guestChecking ? labels.client?.guest_checking : labels.client?.guest_save }}
+                            </button>
+
+                            <!-- Says the details are in, which is the whole
+                                 job of the button beside it. Cleared the
+                                 moment any of the three is edited again. -->
+                            <span v-if="guestSaved && !guestChecking" class="text-[12px] font-semibold text-brand">
+                                {{ labels.client?.guest_saved }}
+                            </span>
+                        </div>
 
                         <button type="button" class="text-[12.5px] font-semibold text-link"
                                 @click="mode = 'booking'">{{ labels.client?.search_label }}</button>
@@ -1183,7 +2402,7 @@ const summaryOf = (section) => {
         </section>
 
         <!-- =============================================== column 2 — booking -->
-        <section class="lg:col-span-6 min-w-0 space-y-3" :aria-label="labels.sections?.service">
+        <section v-show="stage !== 'done'" class="lg:col-span-6 min-w-0 space-y-3" :aria-label="labels.sections?.service">
             <!-- Service -->
             <section class="bg-white border border-line rounded-card overflow-hidden">
                 <button type="button" class="styledesk_weekhead" :aria-expanded="open === 'service'"
@@ -1204,41 +2423,28 @@ const summaryOf = (section) => {
                 </button>
 
                 <div v-show="open === 'service'" class="p-4 pt-0">
-                    <!-- Clear of the header above it: the search is the first
-                         thing asked for in this section, not a continuation
-                         of the row that names it. -->
-                    <div class="relative mt-2.5">
-                        <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.9"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-                        </span>
-                        <input v-model="serviceQuery" type="search" class="sd-input styledesk_input--prefixed"
-                               :placeholder="labels.service?.search" autocomplete="off">
-                    </div>
+                    <!-- The card says what has been chosen and nothing else.
 
-                    <!-- Under the search rather than beside it: the two
-                         narrow the same list, and a filter on the same line
-                         as a search box reads as part of the search. -->
-                    <div class="mt-2.5">
-                        <MultiSelect :options="categories"
-                                     :model-value="categoryIds"
-                                     name="service_categories"
-                                     :placeholder="labels.service?.all_categories"
-                                     :search-placeholder="labels.service?.search_categories"
-                                     :aria-label="labels.service?.category"
-                                     :summary-label="labels.service?.category"
-                                     :show-primary="false"
-                                     @update:model-value="(values) => categoryIds = values" />
-                    </div>
+                         It used to hold the whole catalogue behind a search
+                         and a category combo, which works at twelve services
+                         and fails at a hundred: a 260px scroller inside a
+                         form, with the booking's own summary pushed below the
+                         fold. Choosing is now its own page; this is the
+                         answer it comes back with. -->
+                    <div v-if="chosen.length" class="mt-2.5">
+                        <p class="text-[12.5px] text-sub">
+                            <span class="font-semibold text-head">{{ serviceCountLabel(chosen.length) }}</span>
+                            · {{ durationLabel(minutes) }}
+                            · <span class="font-semibold text-head">{{ money(totalMinor) }}</span>
+                        </p>
 
-                    <div v-if="chosen.length" class="mt-3">
-                        <p class="text-[12px] font-semibold text-sub mb-1.5">{{ labels.service?.chosen }}</p>
-                        <ul class="space-y-1.5">
+                        <ul class="mt-2.5 space-y-1.5">
                             <li v-for="service in chosen" :key="service.id"
                                 class="flex items-center gap-2 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2">
                                 <span class="min-w-0 flex-1">
                                     <span class="block text-[13px] font-semibold text-head truncate">{{ service.name }}</span>
                                     <span class="block text-[12px] text-sub">
-                                        {{ (labels.service?.minutes ?? ':count min').replace(':count', service.minutes) }}
+                                        {{ durationLabel(service.minutes) }}
                                         <template v-if="service.price"> · {{ service.price }}</template>
                                     </span>
                                 </span>
@@ -1249,40 +2455,25 @@ const summaryOf = (section) => {
                                 </button>
                             </li>
                         </ul>
+
+                        <!-- What it needs, worked out from the services
+                             rather than asked for: a booking that quietly
+                             takes the only colour bar is one somebody has to
+                             know about. -->
+                        <p v-if="resources.length" class="mt-2.5 text-[12.5px] text-sub">
+                            {{ labels.summary?.resource }}: <span class="text-ink">{{ resources.join(', ') }}</span>
+                        </p>
                     </div>
 
-                    <ul v-if="matches.length" class="mt-3 border border-line rounded-lg divide-y divide-line max-h-[260px] overflow-y-auto styledesk_scroll">
-                        <li v-for="service in matches" :key="service.id">
-                            <button type="button" class="w-full flex items-center gap-2 p-2.5 text-left hover:bg-hover transition-colors"
-                                    @click="addService(service)">
-                                <span class="min-w-0 flex-1">
-                                    <span class="block text-[13px] font-medium text-head truncate">{{ service.name }}</span>
-                                    <span class="block text-[12px] text-sub">
-                                        {{ (labels.service?.minutes ?? ':count min').replace(':count', service.minutes) }}
-                                    </span>
-                                </span>
-                                <span class="text-[13px] font-semibold text-head shrink-0">{{ service.price }}</span>
-                            </button>
-                        </li>
-                    </ul>
-
-                    <p v-else class="mt-3 text-[12px] text-sub">
-                        {{ services.length ? labels.service?.none : labels.service?.empty }}
+                    <p v-else class="mt-2.5 text-[12.5px] text-sub">
+                        {{ services.length ? labels.service?.card_empty : labels.service?.empty }}
                     </p>
 
-                    <!-- What was chosen adds up to, and what it needs. The
-                         resource is worked out from the services rather than
-                         asked for: a booking that quietly takes the only
-                         colour bar is one somebody has to know about. -->
-                    <div v-if="chosen.length" class="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12.5px]">
-                        <span class="text-sub">
-                            {{ (labels.service?.minutes ?? ':count min').replace(':count', minutes) }}
-                        </span>
-                        <span class="font-semibold text-head">{{ money(totalMinor) }}</span>
-                        <span v-if="resources.length" class="text-sub">
-                            {{ labels.summary?.resource }}: <span class="text-ink">{{ resources.join(', ') }}</span>
-                        </span>
-                    </div>
+                    <button v-if="services.length" type="button"
+                            class="styledesk_action w-full justify-center mt-3"
+                            @click="openServiceSheet">
+                        {{ chosen.length ? labels.service?.change : labels.service?.add }}
+                    </button>
 
                     <!-- The way on. Every step ends with one, so the screen
                          has a default path through it. -->
@@ -1294,7 +2485,7 @@ const summaryOf = (section) => {
                 </div>
             </section>
 
-            <!-- Who with + when. The card stops clipping while it is open, or
+            <!-- Staff & time. The card stops clipping while it is open, or
                  it would cut the date picker off at its own bottom edge. -->
             <section class="bg-white border border-line rounded-card"
                      :class="open === 'when' ? 'overflow-visible' : 'overflow-hidden'">
@@ -1338,7 +2529,7 @@ const summaryOf = (section) => {
                         <div class="flex flex-wrap gap-1.5">
                             <button type="button" class="styledesk_pickchip" :class="{ 'is-on': staffId === '' }"
                                     @click="staffId = ''">{{ labels.when?.any }}</button>
-                            <button v-for="member in staff" :key="member.id" type="button"
+                            <button v-for="member in bookableStaff" :key="member.id" type="button"
                                     class="styledesk_pickchip" :class="{ 'is-on': String(staffId) === String(member.id) }"
                                     @click="staffId = member.id">{{ member.name }}</button>
                         </div>
@@ -1415,32 +2606,72 @@ const summaryOf = (section) => {
                         </div>
                     </div>
 
-                    <div class="grid sm:grid-cols-2 gap-4">
-                        <div v-if="locations.length > 1">
-                            <label for="bLocation" class="block text-[13px] font-medium text-ink mb-1.5">{{ labels.when?.location }}</label>
-                            <select id="bLocation" v-model="locationId" class="sd-input">
-                                <option v-for="place in locations" :key="place.id" :value="place.id">{{ place.name }}</option>
-                            </select>
-                        </div>
-                    </div>
+                    <!-- The branch used to be chosen here, in a select four
+                         scrolls down. It is the card in the page header now:
+                         it decides the hours, the rota, the services and the
+                         chairs, so it belongs where it can be seen without
+                         going looking — and two controls for one value is two
+                         places to change it and one of them to forget. -->
 
                     <div>
                         <label class="block text-[13px] font-medium text-ink mb-1.5">{{ labels.when?.time }}</label>
-                        <div class="max-h-[300px] overflow-y-auto styledesk_scroll space-y-2.5">
-                            <!-- A card each, so the part of the day being
-                                 looked at has an edge to it. Sixty chips in
-                                 one run is a wall, and "anything after lunch?"
-                                 is a question about one of these boxes. -->
-                            <div v-for="group in timeGroups" :key="group.key"
-                                 class="border border-line rounded-lg p-3">
-                                <p class="text-[11px] font-semibold uppercase tracking-wide text-faint mb-2">
+                        <div class="space-y-2.5">
+                            <!-- Why there is nothing to choose from.
+
+                                 A branch that is shut, an appointment too long
+                                 for the hours it would sit in, and a day that
+                                 is simply full are three different answers,
+                                 and the person on the phone needs the right
+                                 one — "we're closed on Sundays" ends the call
+                                 differently from "there's nothing left". -->
+                            <p v-if="!availableTimes.length && availabilityMessage"
+                               class="text-[13px] text-sub border border-line rounded-lg p-3">
+                                {{ availabilityMessage }}
+                            </p>
+
+                            <p v-else-if="!availableTimes.length && checkingTimes" class="text-[13px] text-faint p-3">
+                                {{ labels.when?.loading_times }}
+                            </p>
+
+                            <!-- One part of the day at a time.
+
+                                 Sixty chips in one run is a wall, and
+                                 "anything after lunch?" is a question about
+                                 one of these three. Three stacked cards
+                                 answered it by making the reader scroll past
+                                 the two they did not ask about; a segmented
+                                 control answers it by showing only the one
+                                 they did.
+
+                                 A part of the day with nothing free is
+                                 disabled rather than hidden — "nothing on
+                                 Tuesday morning" is a fact worth stating, and
+                                 a button that vanishes is one the reader
+                                 wonders about. -->
+                            <div v-if="timeGroups.some((group) => group.slots.length)"
+                                 class="sd-seg" role="tablist" :aria-label="labels.when?.time">
+                                <!-- The active state is drawn from aria-selected rather than from a
+                                     class of our own: .sd-seg__btn styles it that way already, and a
+                                     class doing the same job would be a second source of one truth. -->
+                                <button v-for="group in timeGroups" :key="group.key" type="button"
+                                        class="sd-seg__btn" role="tab"
+                                        :class="{ 'opacity-45 cursor-not-allowed': !group.slots.length }"
+                                        :aria-selected="period === group.key"
+                                        :disabled="!group.slots.length"
+                                        :title="group.slots.length ? null : labels.when?.none_in_period"
+                                        @click="period = group.key">
                                     {{ labels.when?.[group.key] }}
-                                </p>
-                                <div class="flex flex-wrap gap-1.5">
-                                    <button v-for="slot in group.slots" :key="slot" type="button"
-                                            class="styledesk_pickchip" :class="{ 'is-on': start === slot }"
-                                            @click="start = slot">{{ clock(slot) }}</button>
-                                </div>
+                                </button>
+                            </div>
+
+                            <!-- Only the chips scroll. The segmented control above
+                                 stays put: a filter that scrolls out of sight with
+                                 the thing it filters is one the reader loses. -->
+                            <div v-if="currentGroup?.slots.length"
+                                 class="max-h-[260px] overflow-y-auto styledesk_scroll flex flex-wrap gap-1.5 pr-1">
+                                <button v-for="slot in currentGroup.slots" :key="slot" type="button"
+                                        class="styledesk_pickchip" :class="{ 'is-on': start === slot }"
+                                        @click="start = slot">{{ clock(slot) }}</button>
                             </div>
                         </div>
                         <p v-if="endsAt" class="mt-2 text-[12px] text-sub">
@@ -1502,17 +2733,22 @@ const summaryOf = (section) => {
 
                     <!-- The note about the person, kept apart from the note
                          about the appointment: one is read on the day and the
-                         other for as long as they are a client. -->
-                    <div class="mt-4 pt-4 border-t border-line">
+                         other for as long as they are a client.
+
+                         Gone entirely for a walk-in, rather than shown greyed
+                         out. There is no profile to keep it on, so it is not
+                         a field that is temporarily unavailable — it is a
+                         field that does not apply, and a disabled box with a
+                         sentence explaining why is a question the reader has
+                         to read before they can dismiss it. -->
+                    <div v-if="client" class="mt-4 pt-4 border-t border-line">
                         <label for="bClientNote" class="block text-[13px] font-medium text-ink mb-1.5">
                             {{ labels.details?.client_note }}
                             <span class="font-normal text-sub">{{ labels.details?.client_note_aside }}</span>
                         </label>
                         <textarea id="bClientNote" v-model="clientNote" rows="2" class="sd-input h-auto py-2.5"
-                                  :disabled="!client" :placeholder="labels.details?.client_note_placeholder"></textarea>
-                        <p class="text-[12px] text-faint mt-1.5">
-                            {{ client ? labels.details?.client_note_hint : labels.details?.client_note_guest }}
-                        </p>
+                                  :placeholder="labels.details?.client_note_placeholder"></textarea>
+                        <p class="text-[12px] text-faint mt-1.5">{{ labels.details?.client_note_hint }}</p>
                     </div>
 
                     <!-- The way on. Every step ends with one, so the screen
@@ -1547,32 +2783,128 @@ const summaryOf = (section) => {
                 <div v-show="open === 'payment'" class="p-4 pt-0">
                     <fieldset class="mt-[5px]">
                         <legend class="block text-[13px] font-medium text-ink mb-2">{{ labels.payment?.type }}</legend>
-                        <div class="grid sm:grid-cols-2 gap-2">
-                            <button type="button" class="styledesk_optioncard" :class="{ 'is-on': payType === 'none' }"
-                                    @click="payType = 'none'">
-                                <span class="block text-[13px] font-semibold text-head">{{ labels.payment?.none }}</span>
-                                <span class="block text-[12px] text-sub">{{ labels.payment?.none_hint }}</span>
-                            </button>
-                            <button type="button" class="styledesk_optioncard" :class="{ 'is-on': payType === 'deposit' }"
-                                    @click="payType = 'deposit'">
-                                <span class="block text-[13px] font-semibold text-head">{{ labels.payment?.deposit }}</span>
-                                <span class="block text-[12px] text-sub">{{ labels.payment?.deposit_hint }}</span>
+                        <!-- Three answers, because they are three different
+                             acts: nothing now and the whole bill owed later,
+                             part of it now, or all of it now. -->
+                        <div class="grid sm:grid-cols-3 gap-2">
+                            <button v-for="option in ['none', 'deposit', 'full']" :key="option"
+                                    type="button" class="styledesk_optioncard" :class="{ 'is-on': payType === option }"
+                                    :aria-pressed="payType === option"
+                                    @click="payType = option">
+                                <span class="block text-[13px] font-semibold text-head">{{ labels.payment?.[option] }}</span>
+                                <span class="block text-[12px] text-sub">{{ labels.payment?.[`${option}_hint`] }}</span>
                             </button>
                         </div>
                     </fieldset>
 
-                    <div v-if="payType === 'deposit'" class="mt-4 grid sm:grid-cols-2 gap-4">
+                    <!-- Nothing to enter, and said so rather than left blank:
+                         an empty space under a chosen option reads as a form
+                         that has not finished loading. -->
+                    <p v-if="payType === 'none'" class="mt-3 text-[12.5px] text-sub">
+                        {{ labels.payment?.nothing_collected }}
+                    </p>
+
+                    <!-- Full payment needs no amount typed: it is the bill,
+                         and a receptionist should never be made to work out a
+                         number the screen already knows. -->
+                    <div v-if="payType === 'full'" class="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12.5px]">
+                        <span class="text-sub">{{ labels.payment?.collecting }}</span>
+                        <span class="text-[15px] font-bold text-head">{{ money(estimate.total) }}</span>
+                        <span class="text-sub">· {{ labels.payment?.balance }} {{ money(0) }}</span>
+                    </div>
+
+                    <!-- What is actually being charged now, stated before the
+                         booking exists. The total is the booking's worth and
+                         never changes; this is the number the till sees. -->
+                    <dl v-if="payType === 'deposit' && depositMinor > 0 && !depositTooMuch"
+                        class="mt-3 pt-3 border-t border-line space-y-1 text-[12.5px]">
+                        <div class="flex items-baseline justify-between gap-3">
+                            <dt class="text-sub">{{ labels.pay?.booking_total }}</dt>
+                            <dd class="font-medium text-head">{{ money(estimate.total) }}</dd>
+                        </div>
+                        <div class="flex items-baseline justify-between gap-3">
+                            <dt class="font-semibold text-head">{{ labels.pay?.collect_now }}</dt>
+                            <dd class="font-bold text-head">{{ money(depositMinor) }}</dd>
+                        </div>
+                        <div class="flex items-baseline justify-between gap-3">
+                            <dt class="text-sub">{{ labels.pay?.remaining }}</dt>
+                            <dd class="font-medium text-head">{{ money(Math.max(0, estimate.total - depositMinor)) }}</dd>
+                        </div>
+                    </dl>
+
+                    <div v-if="payType === 'deposit'" class="mt-4 sm:max-w-[280px]">
                         <div>
                             <label for="bDeposit" class="block text-[13px] font-medium text-ink mb-1.5">{{ labels.payment?.amount }}</label>
                             <input id="bDeposit" v-model="deposit" type="number" min="0" step="0.01" class="sd-input">
-                        </div>
-                        <div>
-                            <label for="bDepositAction" class="block text-[13px] font-medium text-ink mb-1.5">{{ labels.payment?.action }}</label>
-                            <select id="bDepositAction" v-model="depositAction" class="sd-input">
-                                <option v-for="(name, key) in labels.payment?.actions ?? {}" :key="key" :value="key">{{ name }}</option>
-                            </select>
+
+                            <!-- A deposit policy is written as a percentage
+                                 and typed as a number. The presets do that
+                                 arithmetic so nobody does it on a calculator
+                                 with a client waiting. -->
+                            <div class="mt-2 flex flex-wrap gap-1.5">
+                                <button v-for="percent in [25, 50, 100]" :key="percent" type="button"
+                                        class="h-7 px-2.5 rounded-full border text-[12px] font-semibold transition-colors"
+                                        :class="depositIsPercent(percent)
+                                            ? 'border-brand bg-brand text-white'
+                                            : 'border-line bg-white text-sub hover:text-ink hover:bg-hover'"
+                                        :disabled="!estimate.total"
+                                        @click="setDepositPercent(percent)">
+                                    {{ (labels.payment?.preset ?? ':percent%').replace(':percent', percent) }}
+                                </button>
+                            </div>
+
+                            <p v-if="depositTooMuch" class="mt-1.5 text-[12px] text-danger">
+                                {{ labels.payment?.too_much }}
+                            </p>
+
                         </div>
                     </div>
+
+                    <!-- Payment collection method.
+
+                         Asked only once there is something to collect: with
+                         "No Payment Now" chosen there is no money and so no
+                         method, and a control asking how to collect nothing
+                         is a question with no right answer. -->
+                    <fieldset v-if="payType !== 'none'" class="mt-4 pt-4 border-t border-line">
+                        <legend class="block text-[13px] font-medium text-ink mb-2">{{ labels.payment?.action }}</legend>
+
+                        <div class="grid sm:grid-cols-2 gap-2">
+                            <button v-for="how in collectionMethods" :key="how"
+                                    type="button" class="styledesk_optioncard"
+                                    :class="{ 'is-on': collectionMethod === how, 'opacity-55 cursor-not-allowed': how === 'waive' && !canWaive }"
+                                    :aria-pressed="collectionMethod === how"
+                                    :disabled="how === 'waive' && !canWaive"
+                                    :title="how === 'waive' && !canWaive ? labels.payment?.no_waive_permission : null"
+                                    @click="collectionMethod = how">
+                                <span class="block text-[13px] font-semibold text-head">{{ labels.payment?.actions?.[how] }}</span>
+                                <span class="block text-[12px] text-sub">{{ labels.payment?.action_hints?.[how] }}</span>
+                            </button>
+                        </div>
+
+                        <!-- Waiving is a decision somebody has to answer for,
+                             so it is the one method that asks why and keeps
+                             the name of whoever chose it. -->
+                        <div v-if="collectionMethod === 'waive'" class="mt-3">
+                            <label for="bWaiver" class="block text-[13px] font-medium text-ink mb-1.5">
+                                {{ labels.payment?.waiver_reason }}
+                            </label>
+                            <input id="bWaiver" v-model="waiverReason" type="text" maxlength="300" class="sd-input"
+                                   :placeholder="labels.payment?.waiver_placeholder">
+                            <p class="text-[12px] text-faint mt-1.5">{{ labels.payment?.waiver_hint }}</p>
+                            <p v-if="waiverMissing" class="text-[12px] text-danger mt-1.5">
+                                {{ labels.payment?.waiver_needed }}
+                            </p>
+                        </div>
+
+                        <p v-else-if="collectionMethod === 'collect-now'" class="mt-3 text-[12px] text-sub">
+                            {{ labels.payment?.collect_now_hint }}
+                        </p>
+
+                        <p v-else-if="collectionMethod === 'link'" class="mt-3 text-[12px] text-sub">
+                            {{ emailTo ? labels.payment?.action_hints?.link : labels.payment?.link_no_email }}
+                        </p>
+                    </fieldset>
 
                     <!-- The way on. Every step ends with one, so the screen
                          has a default path through it. -->
@@ -1737,7 +3069,7 @@ const summaryOf = (section) => {
              page for the money would take the receptionist off the screen
              holding everything they might still be asked about, and the shut
              heads keep the whole workflow readable while one step is open. -->
-        <section class="lg:col-span-3 lg:sticky lg:top-[73px] space-y-3" :aria-label="labels.sections?.summary">
+        <section v-show="stage !== 'done'" class="lg:col-span-3 lg:sticky lg:top-[73px] space-y-3" :aria-label="labels.sections?.summary">
 
             <!-- ---------------------------------------------------- 1 · summary -->
             <!-- Marked apart from the seven cards beside them: these two are
@@ -1873,148 +3205,40 @@ const summaryOf = (section) => {
                 <!-- v-if as well as v-show: the body reads the booking's own
                      figures, and there is no booking until one is taken. -->
                 <div v-if="booking" v-show="stage === 'payment'">
-                <div class="px-4 pt-4">
-                    <p class="text-[12px] text-sub">{{ labels.pay?.due }}</p>
-                    <p class="text-[26px] font-bold text-head leading-tight">{{ booking.due }}</p>
+                    <div class="px-4 pt-4">
+                        <p class="text-[12px] text-sub">{{ labels.pay?.collect_now }}</p>
+                        <p class="text-[26px] font-bold text-head leading-tight">{{ booking.collect ?? booking.due }}</p>
 
-                    <p v-if="booking.paid_minor > 0" class="text-[12px] text-sub mt-1">
-                        {{ (labels.pay?.partial ?? '')
-                            .replace(':paid', booking.paid)
-                            .replace(':total', booking.total)
-                            .replace(':due', booking.due) }}
-                    </p>
-                </div>
+                        <!-- The other half of the same sentence: $64.80
+                             now, $194.40 on the day. A deposit shown
+                             without the balance beside it reads as the
+                             whole bill, which is exactly the mistake
+                             this replaced. -->
+                        <dl class="mt-2 space-y-0.5 text-[12px]">
+                            <div class="flex items-baseline justify-between gap-3">
+                                <dt class="text-sub">{{ labels.pay?.booking_total }}</dt>
+                                <dd class="font-medium text-head">{{ booking.total }}</dd>
+                            </div>
+                            <div v-if="booking.paid_minor > 0" class="flex items-baseline justify-between gap-3">
+                                <dt class="text-sub">{{ labels.summary?.paid }}</dt>
+                                <dd class="font-medium text-head">{{ booking.paid }}</dd>
+                            </div>
+                            <div v-if="booking.remaining_minor > 0" class="flex items-baseline justify-between gap-3">
+                                <dt class="text-sub">{{ labels.pay?.remaining }}</dt>
+                                <dd class="font-medium text-head">{{ booking.remaining }}</dd>
+                            </div>
+                        </dl>
+                    </div>
 
                 <p v-if="failure" class="sd-alert sd-alert--danger mx-4 mt-3 text-[12.5px]" role="alert">{{ failure }}</p>
 
-                <!-- The ways this business can be paid. One that has not been
-                     set up is still shown, and says why it cannot be used:
-                     hiding it leaves somebody hunting for Venmo. -->
-                <div v-if="!method" class="p-4 space-y-1.5">
-                    <p class="text-[12px] font-medium text-ink">{{ labels.pay?.method }}</p>
-
-                    <button v-for="row in methods" :key="row.key" type="button"
-                            class="styledesk_paymethod" :disabled="!row.ready"
-                            @click="method = row.key">
-                        <span class="min-w-0">
-                            <span class="block text-[13px] font-semibold text-head">{{ row.name }}</span>
-                            <span class="block text-[11.5px] text-sub">
-                                {{ row.ready ? row.hint : labels.pay?.not_ready }}
-                            </span>
-                        </span>
-                        <svg v-if="row.ready" width="14" height="14" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
-                </div>
-
-                <div v-else class="p-4 space-y-3">
-                    <div class="flex items-center gap-2">
-                        <p class="min-w-0 flex-1 text-[13px] font-semibold text-head">{{ chosenMethod?.name }}</p>
-                        <button type="button" class="text-[12px] font-semibold text-link hover:underline"
-                                @click="method = ''">{{ labels.pay?.change_method }}</button>
-                    </div>
-
-                    <!-- Cash: what is owed, what was handed over, what goes back.
-                         The third is the number being counted into a hand. -->
-                    <template v-if="method === 'cash'">
-                        <div>
-                            <label for="pAmount" class="block text-[12px] font-medium text-ink mb-1">{{ labels.pay?.amount }}</label>
-                            <input id="pAmount" v-model="payment.amount" type="text" inputmode="decimal" class="sd-input">
-                        </div>
-                        <div>
-                            <label for="pGot" class="block text-[12px] font-medium text-ink mb-1">{{ labels.pay?.received }}</label>
-                            <input id="pGot" v-model="payment.received" type="text" inputmode="decimal" class="sd-input">
-                        </div>
-                        <div class="flex items-baseline justify-between gap-3 text-[13px]">
-                            <span class="text-sub">{{ labels.pay?.change }}</span>
-                            <span class="font-semibold text-head">{{ changeDue }}</span>
-                        </div>
-
-                        <button type="button" class="styledesk_paycta" :disabled="busy" @click="takePayment(true)">
-                            {{ busy ? labels.pay?.marking : labels.pay?.record }}
-                        </button>
-                    </template>
-
-                    <!-- Card. The form is the design system's, and it is only
-                         live where a provider is connected; with none, nothing
-                         here pretends to charge anything — the terminal beside
-                         the till took it, and this writes that down. -->
-                    <template v-else-if="method === 'card'">
-                        <p v-if="!chosenMethod?.charges" class="sd-alert sd-alert--warn text-[12.5px]">
-                            {{ labels.pay?.no_card_provider }}
-                        </p>
-
-                        <fieldset :disabled="!chosenMethod?.charges" class="space-y-3"
-                                  :class="{ 'opacity-55': !chosenMethod?.charges }">
-                            <div>
-                                <label for="cName" class="block text-[12px] font-medium text-ink mb-1">{{ labels.pay?.cardholder }}</label>
-                                <input id="cName" v-model="card.name" type="text" autocomplete="cc-name" class="sd-input">
-                            </div>
-                            <div>
-                                <label for="cNum" class="block text-[12px] font-medium text-ink mb-1">{{ labels.pay?.card_number }}</label>
-                                <input id="cNum" v-model="card.number" type="text" inputmode="numeric" autocomplete="cc-number"
-                                       placeholder="•••• •••• •••• ••••" class="sd-input">
-                            </div>
-                            <div class="grid grid-cols-3 gap-2">
-                                <div class="col-span-1">
-                                    <label for="cExp" class="block text-[12px] font-medium text-ink mb-1">{{ labels.pay?.expiry }}</label>
-                                    <input id="cExp" v-model="card.expiry" type="text" placeholder="MM/YY" autocomplete="cc-exp" class="sd-input">
-                                </div>
-                                <div class="col-span-1">
-                                    <label for="cCvv" class="block text-[12px] font-medium text-ink mb-1">{{ labels.pay?.cvv }}</label>
-                                    <input id="cCvv" v-model="card.cvv" type="text" inputmode="numeric" autocomplete="cc-csc" class="sd-input">
-                                </div>
-                                <div class="col-span-1">
-                                    <label for="cZip" class="block text-[12px] font-medium text-ink mb-1">{{ labels.pay?.zip }}</label>
-                                    <input id="cZip" v-model="card.zip" type="text" inputmode="numeric" autocomplete="postal-code" class="sd-input">
-                                </div>
-                            </div>
-
-                            <p class="text-[11.5px] text-faint">{{ labels.pay?.card_safe }}</p>
-
-                            <button type="button" class="styledesk_paycta" :disabled="busy" @click="takePayment(false)">
-                                {{ (labels.pay?.pay_amount ?? '').replace(':amount', booking.due) }}
-                            </button>
-                        </fieldset>
-
-                        <div class="pt-3 border-t border-line space-y-3">
-                            <div>
-                                <label for="cRef" class="block text-[12px] font-medium text-ink mb-1">{{ labels.pay?.reference }}</label>
-                                <input id="cRef" v-model="payment.reference" type="text" class="sd-input">
-                                <p class="text-[11.5px] text-faint mt-1">{{ labels.pay?.reference_hint }}</p>
-                            </div>
-
-                            <button type="button" class="styledesk_paycta styledesk_paycta--quiet" :disabled="busy"
-                                    @click="takePayment(true)">
-                                {{ busy ? labels.pay?.marking : labels.pay?.terminal }}
-                            </button>
-                        </div>
-                    </template>
-
-                    <!-- PayPal, Zelle, Cash App, Venmo: the business's own
-                         handle, read out, and then a person saying it arrived.
-                         Nothing here can verify a transfer, so nothing here
-                         claims to. -->
-                    <template v-else>
-                        <div class="styledesk_handle">
-                            <p class="text-[11px] uppercase tracking-wide text-faint">{{ chosenMethod?.name }}</p>
-                            <p class="text-[15px] font-semibold text-head mt-0.5 break-all">{{ chosenMethod?.handle }}</p>
-                            <p class="text-[11.5px] text-sub mt-1">{{ labels.pay?.handle_hint }}</p>
-                        </div>
-
-                        <div>
-                            <label for="hAmount" class="block text-[12px] font-medium text-ink mb-1">{{ labels.pay?.amount }}</label>
-                            <input id="hAmount" v-model="payment.amount" type="text" inputmode="decimal" class="sd-input">
-                        </div>
-                        <div>
-                            <label for="hRef" class="block text-[12px] font-medium text-ink mb-1">{{ labels.pay?.reference }}</label>
-                            <input id="hRef" v-model="payment.reference" type="text" class="sd-input">
-                        </div>
-
-                        <button type="button" class="styledesk_paycta" :disabled="busy" @click="takePayment(true)">
-                            {{ busy ? labels.pay?.marking : labels.pay?.mark_paid }}
-                        </button>
-                    </template>
-                </div>
+                <!-- The same panel the booking's own page takes money in.
+                     One component rather than two copies of the card form:
+                     this is the money path, and two of it would be two
+                     places to fix the day a method is added. -->
+                <PaymentPanel :booking="booking" :methods="methods" :csrf="csrf"
+                              :labels="{ ...labels, currency_symbol: currencySymbol }"
+                              @paid="onPaid" />
 
                 <div class="px-4 py-3.5 border-t border-line space-y-2">
                     <!-- Plenty of businesses take the money on the day, or on
@@ -2031,111 +3255,6 @@ const summaryOf = (section) => {
             </div>
 
             <!-- ----------------------------------------------- 3 · confirmation -->
-            <div v-if="stage === 'done'" class="bg-white border border-line rounded-card overflow-hidden">
-                <div class="styledesk_weekhead">
-                    <span class="styledesk_bookingtick is-done" aria-hidden="true">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </span>
-                    <span class="min-w-0 flex-1 text-left text-[13px] font-semibold text-head">
-                        {{ labels.confirmation?.title }}
-                    </span>
-                    <span class="text-[12px] font-semibold text-sub shrink-0">{{ booking.reference }}</span>
-                </div>
-
-                <div>
-                <div class="p-4">
-                    <!-- The card's own head already says it is confirmed. -->
-                    <p class="text-[12.5px] text-sub">{{ labels.confirmation?.made }}</p>
-
-                    <div class="styledesk_handle mt-3">
-                        <p class="text-[11px] uppercase tracking-wide text-faint">{{ labels.summary?.reference }}</p>
-                        <p class="text-[17px] font-bold text-head mt-0.5">{{ booking.reference }}</p>
-                    </div>
-
-                    <dl class="mt-3 space-y-2 text-[13px]">
-                        <div class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.summary?.client }}</dt>
-                            <dd class="font-semibold text-head text-right min-w-0 truncate">{{ booking.client }}</dd>
-                        </div>
-                        <div class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.summary?.services }}</dt>
-                            <dd class="text-head text-right min-w-0">{{ booking.services.map((row) => row.name).join(', ') }}</dd>
-                        </div>
-                        <div class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.summary?.staff }}</dt>
-                            <dd class="text-head text-right">{{ booking.staff }}</dd>
-                        </div>
-                        <div class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.summary?.when }}</dt>
-                            <dd class="text-head text-right">{{ booking.date }} · {{ booking.time }}</dd>
-                        </div>
-                        <div v-if="booking.location" class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.summary?.location }}</dt>
-                            <dd class="text-head text-right">{{ booking.location }}</dd>
-                        </div>
-
-                        <div class="pt-2 border-t border-line space-y-2">
-                            <div class="flex items-baseline justify-between gap-3">
-                                <dt class="text-sub">{{ labels.summary?.total }}</dt>
-                                <dd class="font-semibold text-head">{{ booking.total }}</dd>
-                            </div>
-                            <div v-if="booking.paid_minor > 0" class="flex items-baseline justify-between gap-3">
-                                <dt class="text-sub">{{ labels.summary?.paid }}</dt>
-                                <dd class="font-semibold text-head">{{ booking.paid }}</dd>
-                            </div>
-                            <div v-for="row in booking.payments" :key="row.method" class="flex items-baseline justify-between gap-3">
-                                <dt class="text-sub">{{ labels.confirmation?.payment }}</dt>
-                                <dd class="text-head">{{ row.method_label }}</dd>
-                            </div>
-                            <div class="flex items-baseline justify-between gap-3">
-                                <dt class="text-sub">{{ labels.pay?.title }}</dt>
-                                <dd>
-                                    <span class="styledesk_paystate" :class="`is-${booking.payment_status}`">
-                                        {{ booking.payment_status_label }}
-                                    </span>
-                                </dd>
-                            </div>
-                        </div>
-                    </dl>
-
-                    <!-- Money still owed is the one thing on this panel that
-                         somebody has to act on later, so it is said plainly
-                         rather than left to be inferred from a badge. -->
-                    <p v-if="booking.due_minor > 0" class="sd-alert sd-alert--warn mt-3 text-[12.5px]">
-                        {{ (labels.confirmation?.due_notice ?? '').replace(':amount', booking.due) }}
-                    </p>
-
-                    <p v-if="lastPayment?.change" class="text-[12.5px] text-sub mt-3">
-                        {{ labels.pay?.change }}: <span class="font-semibold text-head">{{ lastPayment.change }}</span>
-                    </p>
-
-                    <p v-if="sentTo" class="sd-alert sd-alert--info mt-3 text-[12.5px]">{{ sentTo }}</p>
-                    <p v-if="failure" class="sd-alert sd-alert--danger mt-3 text-[12.5px]" role="alert">{{ failure }}</p>
-                </div>
-
-                <div class="px-4 py-3.5 border-t border-line space-y-2">
-                    <a :href="booking.urls.show" class="block w-full h-11 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold text-center leading-[44px] transition-colors">
-                        {{ labels.confirmation?.view }}
-                    </a>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" class="styledesk_action justify-center" :disabled="busy"
-                                @click="sendConfirmation('email')">
-                            {{ busy ? labels.confirmation?.sending : labels.confirmation?.send }}
-                        </button>
-                        <a :href="booking.urls.print" target="_blank" rel="noopener" class="styledesk_action justify-center">
-                            {{ labels.confirmation?.print }}
-                        </a>
-                        <a :href="booking.urls.receipt" target="_blank" rel="noopener" class="styledesk_action justify-center">
-                            {{ labels.confirmation?.receipt }}
-                        </a>
-                        <button type="button" class="styledesk_action justify-center" @click="startAnother">
-                            {{ labels.confirmation?.another }}
-                        </button>
-                    </div>
-                </div>
-                </div>
-            </div>
         </section>
     </form>
 </template>

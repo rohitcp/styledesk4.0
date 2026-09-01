@@ -15,6 +15,7 @@ use App\Http\Controllers\ClientNoteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\ServiceController;
@@ -103,6 +104,22 @@ Route::get('/', function (Request $request) {
 Route::middleware(['tenant.route'])->get('book/{tenant}', function (Tenant $tenant) {
     return 'Public booking site for '.$tenant->name.' ('.$tenant->getTenantKey().')';
 })->name('booking.path');
+
+/*
+| Paying for an appointment, by link.
+|
+| Deliberately outside auth, like the booking site above: a client settling a
+| deposit is not a StyleDesk user and never will be. The token in the URL is
+| the whole credential, which is why it is 64 random characters and why the
+| page shows one appointment and nothing else — no client record, no history,
+| no way to reach anything the token does not name.
+|
+| Throttled by IP: an unauthenticated route that looks a token up is one
+| somebody will try to guess their way through.
+*/
+Route::middleware(['throttle:30,1'])
+    ->get('pay/{token}', [PaymentLinkController::class, 'show'])
+    ->name('booking.pay-link');
 
 /*
 | The access-code gate.
@@ -380,6 +397,9 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                 Route::get('/', 'index')->name('index');
                 Route::post('/', 'store')->name('store');
                 Route::post('reorder', 'reorder')->name('reorder');
+                /* Asked while somebody is typing a name, so it is throttled:
+                   the answer is cheap, and one request per keystroke is not. */
+                Route::get('name-in-use', 'nameInUse')->middleware('throttle:60,1')->name('name-in-use');
                 Route::patch('{serviceCategory}', 'update')->name('update');
                 Route::patch('{serviceCategory}/status', 'toggle')->name('toggle');
                 Route::delete('{serviceCategory}', 'destroy')->name('destroy');
@@ -758,6 +778,24 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             // Bound last: a literal segment must win over {client}, or
             // /clients/create would look up a client called "create" and 404.
             Route::get('{client}', 'show')->name('show');
+            /* The four figures at the top of the profile, asked for again
+               when the tab comes back to the front — a payment taken at the
+               till while this page sat open should not leave it showing
+               yesterday's numbers. */
+            Route::get('{client}/visit-summary', 'visitSummary')
+                ->middleware('throttle:60,1')
+                ->name('visit-summary');
+
+            /*
+            | The Services tab: what this client has booked, and what they
+            | are known to want. Two lists answered together and never
+            | merged — one is arithmetic over the diary, the other is a
+            | statement somebody made at the desk.
+            */
+            Route::get('{client}/services', 'services')->name('services');
+            Route::post('{client}/favorite-services', 'addFavoriteServices')->name('favorite-services.store');
+            Route::delete('{client}/favorite-services/{service}', 'removeFavoriteService')
+                ->name('favorite-services.destroy');
             Route::get('{client}/edit', 'edit')->name('edit');
             Route::patch('{client}', 'update')->name('update');
 
@@ -902,6 +940,12 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::get('create', 'create')->name('create');
             /* The rows the listing grid asks for, as JSON. */
             Route::get('data', 'data')->name('data');
+            /* Which times could actually be booked, for what has been chosen
+               so far. Asked again on every change to the location, services,
+               staff member or date, so it is throttled generously rather than
+               tightly: a receptionist adjusting a booking is meant to ask it
+               often. */
+            Route::get('availability', 'availability')->middleware('throttle:120,1')->name('availability');
             /* The client search behind the booking screen's first column,
                and the history panel that opens once one is chosen. */
             Route::get('clients', 'clients')->name('clients');
@@ -909,9 +953,20 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             /* Four fields' worth of client, added without leaving the
                booking that needs them. */
             Route::post('clients', 'storeClient')->name('clients.store');
+            /* Whether the walk-in being typed is already on the book. Posted
+               rather than asked in the query string: a phone number and an
+               email address in a URL is personal data written into every
+               access log on the way. Throttled like availability, because it
+               is asked on a debounce as somebody types. */
+            Route::post('clients/match', 'matchClient')->middleware('throttle:120,1')->name('clients.match');
             /* A booking somebody started, written the moment the services
                are settled so an abandoned call leaves a trace. */
             Route::post('leads', 'storeLead')->name('leads.store');
+            /* The booking screen saving itself as it is filled in. Throttled
+               like availability rather than tightly: it fires on a debounce
+               as a receptionist works, which is many saves per booking and
+               exactly the behaviour it is for. */
+            Route::post('draft', 'autosave')->middleware('throttle:120,1')->name('draft');
             Route::post('/', 'store')->name('store');
 
             /* One booking, and the two things done to it after it is taken:

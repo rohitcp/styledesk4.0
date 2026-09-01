@@ -70,9 +70,16 @@
         <h2 class="styledesk_infocard__title flex-1 min-w-0">{{ __('clients.module.workspace.bookings.next_appointment') }}</h2>
 
         {{-- There whether or not there is an appointment: booking one is the
-             thing this card is most often opened to do. --}}
+             thing this card is most often opened to do.
+
+             The plain card button, not the outlined brand one: filled with
+             the card's own accent — the same colour as its border, so it
+             reads as part of the card rather than a hole punched in it — and
+             with no hover repaint, because the colour is the button's
+             identity rather than a state. The same button the cards below
+             this one carry. --}}
         <a href="{{ route('bookings.create', ['client' => $client->id]) }}"
-           class="styledesk_cardbtn styledesk_cardbtn--brand sd-tip shrink-0"
+           class="styledesk_cardbtn sd-tip shrink-0"
            data-tip="{{ __('bookings.add.booking') }}"
            aria-label="{{ __('bookings.add.booking') }}">
             <x-icon name="plus" size="14" />
@@ -114,12 +121,11 @@
             </button>
         @endif
     @else
+        {{-- No second way in. The button in the card's own header is already
+             the way to book one, and a link repeating it underneath was two
+             controls for one action — the one under the empty line reading
+             as though it did something different. --}}
         <p class="text-[13px] text-sub mt-2">{{ __('clients.module.workspace.bookings.none_upcoming') }}</p>
-
-        <a href="{{ route('bookings.create', ['client' => $client->id]) }}"
-           class="text-[12px] font-semibold underline mt-2 inline-block">
-            {{ __('bookings.add.booking') }}
-        </a>
     @endif
 </section>
 

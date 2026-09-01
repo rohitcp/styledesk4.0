@@ -216,6 +216,63 @@ class ServiceCategoriesSettingsTest extends TestCase
      * The order is the record, so it is stated in full: two people dragging
      * at once would otherwise produce a list neither of them arranged.
      */
+    /**
+     * A–Z, whatever order somebody dragged them into.
+     *
+     * The listing is read to find one category among thirty. Sorting it by a
+     * hand-set order means every reader scans the whole list; sorting it by
+     * name means they look where the name would be.
+     */
+    public function test_the_listing_is_alphabetical_whatever_the_hand_set_order_says(): void
+    {
+        /* display_order deliberately runs against the alphabet, so a listing
+           that honoured it would come back in the opposite order. */
+        $zebra = ServiceCategory::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Zebra stripes', 'is_system' => false,
+            'status' => ServiceCategory::STATUS_ACTIVE, 'display_order' => 1,
+        ]);
+        $aura = ServiceCategory::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Aura reading', 'is_system' => false,
+            'status' => ServiceCategory::STATUS_ACTIVE, 'display_order' => 2,
+        ]);
+
+        $names = $this->actingAs($this->owner)
+            ->get(route('settings.services.index'))
+            ->assertOk()
+            ->viewData('categories')
+            ->pluck('name');
+
+        $this->assertSame(
+            $names->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all(),
+            $names->values()->all(),
+        );
+
+        $this->assertTrue($names->search('Aura reading') < $names->search('Zebra stripes'));
+    }
+
+    /**
+     * A table, not a hand-arranged list. Dragging is gone with the order it
+     * set: a grip that appears to work and moves nothing is worse than none.
+     */
+    public function test_the_listing_is_a_table_and_no_longer_offers_dragging(): void
+    {
+        $this->custom('Photo booth');
+
+        $page = $this->actingAs($this->owner)
+            ->get(route('settings.services.index'))
+            ->assertOk();
+
+        $page->assertSee('<table', false)
+            ->assertSee('Photo booth')
+            /* The count is what somebody wants before they deactivate one. */
+            ->assertSee(__('services.categories_ui.columns.services'))
+            ->assertDontSee('data-drag-handle', false)
+            ->assertDontSee('data-reorder-form', false)
+            ->assertDontSee('name="order[]"', false);
+    }
+
     public function test_categories_can_be_reordered(): void
     {
         $first = $this->system('hair');
@@ -251,5 +308,88 @@ class ServiceCategoriesSettingsTest extends TestCase
         $this->assertFalse(
             ServiceCategory::query()->assignable()->get()->contains('id', $category->id),
         );
+    }
+
+    // ------------------------------------------------- inline validation
+
+    /**
+     * The dialog checks itself as it is filled in, with the same module and
+     * the same messages as the resource form.
+     */
+    public function test_the_dialog_carries_the_live_validation_rules(): void
+    {
+        $page = $this->actingAs($this->owner)
+            ->get(route('settings.services.index'))
+            ->assertOk();
+
+        $page->assertSee('data-validate-form', false);
+        $page->assertSee('data-rules="required|max:80"', false);
+        $page->assertSee('data-remote-check', false);
+        /* The field the module paints into. Without it a rule fails silently:
+           the reader is refused with nothing said. */
+        $page->assertSee('data-error-for="name"', false);
+    }
+
+    public function test_the_name_check_reports_a_category_that_already_exists(): void
+    {
+        $existing = $this->system();
+
+        $this->actingAs($this->owner)
+            ->getJson(route('settings.services.name-in-use', ['value' => $existing->name]))
+            ->assertOk()
+            ->assertJson(['ok' => false]);
+    }
+
+    public function test_the_name_check_passes_a_free_name(): void
+    {
+        $this->actingAs($this->owner)
+            ->getJson(route('settings.services.name-in-use', ['value' => 'Sound baths']))
+            ->assertJson(['ok' => true]);
+    }
+
+    /**
+     * Editing a category and leaving its name alone is not a duplicate.
+     */
+    public function test_the_name_check_does_not_report_the_category_being_edited(): void
+    {
+        $existing = $this->system();
+
+        $this->actingAs($this->owner)
+            ->getJson(route('settings.services.name-in-use', [
+                'value' => $existing->name,
+                'ignore' => $existing->id,
+            ]))
+            ->assertJson(['ok' => true]);
+    }
+
+    /**
+     * Case is not what makes two headings different.
+     */
+    public function test_the_name_check_ignores_case(): void
+    {
+        $existing = $this->system();
+
+        $this->actingAs($this->owner)
+            ->getJson(route('settings.services.name-in-use', ['value' => mb_strtoupper($existing->name)]))
+            ->assertJson(['ok' => false]);
+    }
+
+    /**
+     * Another business's categories are not visible through this endpoint,
+     * which would otherwise answer "does this salon have a Colour category".
+     */
+    public function test_the_name_check_only_sees_this_business(): void
+    {
+        $other = Tenant::create(['name' => 'Other', 'slug' => 'other-cats']);
+        ServiceCategory::withoutGlobalScopes()->create([
+            'tenant_id' => $other->getTenantKey(),
+            'name' => 'Sound baths',
+            'status' => ServiceCategory::STATUS_ACTIVE,
+            'display_order' => 1,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->getJson(route('settings.services.name-in-use', ['value' => 'Sound baths']))
+            ->assertJson(['ok' => true]);
     }
 }

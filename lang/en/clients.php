@@ -381,17 +381,50 @@ return [
             'client_since' => 'Client since :date',
             'summary' => [
                 'last_visit' => 'Last visit',
-                'next_booking' => 'Next booking',
+                /* Renamed: what a receptionist reads it as. "Next booking"
+                   is the row in a list; "Next appointment" is the thing the
+                   client is actually coming in for. */
+                'next_appointment' => 'Next appointment',
                 'total_visits' => 'Total visits',
                 'lifetime_spend' => 'Lifetime spend',
-                'awaiting_bookings' => 'Counts appear once bookings arrive.',
+                /* Said in words rather than left as a dash: "No previous
+                   visits" is a fact about this client, a blank is a card
+                   that looks broken. */
+                'no_visits' => 'No previous visits',
+                'no_upcoming' => 'No upcoming appointment',
+                'no_visits_yet' => 'No completed visits yet',
+                'nothing_paid' => 'Nothing paid yet',
             ],
             'tabs' => [
                 'leads' => 'Leads',
                 'activity' => 'Activity',
                 'bookings' => 'Bookings',
+                'services' => 'Services',
                 'notes' => 'Notes',
                 'files' => 'Files',
+            ],
+            'services' => [
+                'favorites' => 'Favourite services',
+                'no_favorites' => 'No favourite services yet.',
+                'favorites_hint' => 'Mark the services this client usually has, so the next booking is one click rather than a search.',
+                'add_favorite' => '+ Add favourite service',
+                'remove_favorite' => 'Remove :name from favourites',
+                'choose_services' => 'Choose services',
+                'search_services' => 'Search services…',
+                'history' => 'Service history',
+                'no_history' => 'Nothing booked yet. This fills in from their appointments.',
+                'visits' => ':count visits',
+                'visits_one' => '1 visit',
+                'add_to_favorites' => 'Add to favourites',
+                'is_favorite' => 'Favourite',
+                'columns' => [
+                    'service' => 'Service',
+                    'category' => 'Category',
+                    'visits' => 'Visits',
+                    'last_booked' => 'Last booked',
+                    'last_provider' => 'Last provider',
+                    'favorite' => 'Favourite',
+                ],
             ],
             'quick' => [
                 'create_booking' => 'Create booking',
@@ -464,16 +497,84 @@ return [
                 'title' => 'Activity',
                 'search' => 'Search client activity…',
                 'filters' => [
-                    'all' => 'All',
+                    'all' => 'All activity',
                     'bookings' => 'Bookings',
                     'notes' => 'Notes',
-                    'messages' => 'Messages',
+                    'client' => 'Client updates',
+                    'tags' => 'Tags',
                     'payments' => 'Payments',
-                    'changes' => 'Changes',
                 ],
                 'none' => 'Nothing to show yet.',
                 'no_matches' => 'No activity matches that.',
-                'pending_modules' => 'Bookings, messages and payments join this timeline as those parts of StyleDesk arrive.',
+
+                /*
+                | One line per thing that can happen.
+                |
+                | Written as what happened rather than what somebody did:
+                | "Booking rescheduled" is the fact, and who did it is the
+                | line underneath, which is also where StyleDesk itself
+                | appears when nobody did.
+                */
+                'events' => [
+                    'booking_created' => 'Booking created',
+                    'booking_rescheduled' => 'Booking rescheduled',
+                    'booking_cancelled' => 'Booking cancelled',
+                    'note_added' => 'Note added',
+                    'note_updated' => 'Note updated',
+                    'note_deleted' => 'Note deleted',
+                    'note_marked_important' => 'Note marked important',
+                    'note_unmarked_important' => 'Note no longer important',
+                    'note_made_private' => 'Note made private',
+                    'note_made_shared' => 'Note made visible to the team',
+                    'client_updated' => 'Client information updated',
+                    'tag_added' => 'Tag added',
+                    'tag_removed' => 'Tag removed',
+                    'payment_due' => 'Payment due',
+                    'payment_received' => 'Payment received',
+                    'payment_partial' => 'Partial payment received',
+                ],
+
+                /* The field names a person would recognise on the form. */
+                'fields' => [
+                    'when' => 'Appointment',
+                    'first_name' => 'First name',
+                    'last_name' => 'Last name',
+                    'preferred_name' => 'Preferred name',
+                    'email' => 'Email address',
+                    'mobile' => 'Mobile number',
+                    'phone' => 'Phone number',
+                    'date_of_birth' => 'Date of birth',
+                    'address' => 'Address',
+                    'city' => 'City',
+                    'state' => 'State',
+                    'postal_code' => 'Postal code',
+                    'country' => 'Country',
+                    'status' => 'Client status',
+                    'preferred_location_id' => 'Preferred location',
+                    'preferred_staff_id' => 'Preferred staff',
+                    'gender' => 'Gender',
+                    'pronouns' => 'Pronouns',
+                    'comm_email' => 'Email contact',
+                    'comm_sms' => 'SMS contact',
+                    'comm_phone' => 'Phone contact',
+                    'marketing_email' => 'Marketing · email',
+                    'marketing_sms' => 'Marketing · SMS',
+                ],
+
+                'system' => 'StyleDesk System',
+                'by' => 'by :name',
+                'private_note' => 'Private note',
+                'private_hidden' => 'Hidden — you do not have access to this note.',
+                'fields_changed' => ':count fields changed',
+                'one_field_changed' => '1 field changed',
+                'view_changes' => 'View changes',
+                'hide_changes' => 'Hide changes',
+                'previous' => 'Previous',
+                'new' => 'New',
+                'empty_value' => 'Not set',
+                'view_booking' => 'View booking',
+                'refund_soon' => 'Refund — coming soon',
+                'refund_hint' => 'Refunds join this timeline when the feature arrives.',
             ],
             'bookings' => [
                 'all_dates' => 'All dates',

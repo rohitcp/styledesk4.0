@@ -84,6 +84,9 @@ return [
         'many' => ':count resources',
         'empty' => 'No resources found. Try changing your search or filters.',
         'clear' => 'Clear filters',
+        'no_matches' => 'No matching resources found',
+        'no_matches_hint' => 'Try a different keyword or clear your search.',
+        'clear_search' => 'Clear search',
     ],
 
     'add' => 'Add resource',

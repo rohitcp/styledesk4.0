@@ -84,6 +84,9 @@ return [
         'many' => ':count recursos',
         'empty' => 'No se encontraron recursos. Prueba a cambiar la búsqueda o los filtros.',
         'clear' => 'Borrar filtros',
+        'no_matches' => 'No se encontraron recursos',
+        'no_matches_hint' => 'Prueba otra palabra o borra la búsqueda.',
+        'clear_search' => 'Borrar búsqueda',
     ],
 
     'add' => 'Añadir recurso',

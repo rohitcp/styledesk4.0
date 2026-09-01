@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
 /**
@@ -322,6 +323,36 @@ class Staff extends Model
 
         return config('role_defaults.'.$this->role.'.name')
             ?? ucfirst(str_replace('-', ' ', (string) $this->role));
+    }
+
+    /**
+     * The next staff ID for this business.
+     *
+     * Handed out by the application rather than typed, for the reason a
+     * client reference is: an identifier somebody invents is one two people
+     * invent differently — EMP-7, emp007, 7 — and the column stops being
+     * something anybody can search or sort by.
+     *
+     * Taken as the highest issued plus one rather than a count, because a
+     * member who has left still holds their number: counting rows would hand
+     * the next hire an ID somebody else already has on file.
+     *
+     * Locked for the length of the transaction that reads it, so two people
+     * adding a member at once cannot both be told 14.
+     */
+    public static function nextRef(string $tenantId): string
+    {
+        $prefix = (string) config('staff.staff_id.prefix');
+        $padding = (int) config('staff.staff_id.padding');
+
+        $highest = DB::table('staff')
+            ->where('tenant_id', $tenantId)
+            ->where('employee_ref', 'like', $prefix.'%')
+            ->lockForUpdate()
+            ->selectRaw('max(cast(substring(employee_ref, ?) as unsigned)) as top', [mb_strlen($prefix) + 1])
+            ->value('top');
+
+        return $prefix.str_pad((string) ((int) $highest + 1), $padding, '0', STR_PAD_LEFT);
     }
 
     public function displayName(): string

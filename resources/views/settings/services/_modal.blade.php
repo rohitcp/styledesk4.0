@@ -18,12 +18,33 @@
             </button>
         </div>
 
-        <form method="POST" action="{{ route('settings.services.store') }}" data-category-form>
+        @php
+            /* Built here rather than inline: @json() cannot take a call with
+               nested parentheses — Blade's directive parser counts brackets
+               rather than reading PHP. */
+            $categoryMessages = App\Support\LiveValidation::messages([
+                'taken' => __('services.categories_ui.name_taken'),
+            ]);
+        @endphp
+
+        {{-- Live validation, the same module and the same messages as the
+             resource form. The rules live on the fields; this only says which
+             words to refuse them in. --}}
+        <form method="POST" action="{{ route('settings.services.store') }}" data-category-form
+              data-validate-form
+              data-validation-messages='@json($categoryMessages)'>
             @csrf
             <input type="hidden" name="_method" value="POST" data-category-method>
 
             <div class="styledesk_modal__body space-y-4">
-                <x-text-field name="name" :label="__('services.categories_ui.columns.name')" required maxlength="80" />
+                {{-- Checked against this business's other categories while it
+                     is typed: two categories with one name is a price list
+                     with two identical headings. The dialog is shared by add
+                     and edit, so the `ignore` on the end of this URL is
+                     rewritten by the script when a row is opened. --}}
+                <x-text-field name="name" :label="__('services.categories_ui.columns.name')" required maxlength="80"
+                              rules="required|max:80"
+                              :remote-check="route('settings.services.name-in-use')" />
 
                 <div>
                     <label for="categoryDescription" class="block text-[13px] font-medium text-ink mb-1.5">
@@ -31,7 +52,10 @@
                         <span class="text-faint font-normal">{{ __('common.optional') }}</span>
                     </label>
                     <textarea id="categoryDescription" name="description" rows="2" class="sd-input !h-auto py-2.5"
-                              maxlength="255"></textarea>
+                              data-rules="max:255" maxlength="255"></textarea>
+
+                    <p data-error-for="categoryDescription" role="alert"
+                       class="mt-1.5 text-[12px] text-danger" hidden></p>
                 </div>
 
                 {{-- Said only where it applies. A system category can be

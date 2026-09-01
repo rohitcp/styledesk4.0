@@ -238,10 +238,53 @@ class Service extends Model
             return $query;
         }
 
-        return $query->where(function (Builder $inner) use ($term) {
-            $inner->where('name', 'like', '%'.$term.'%')
-                ->orWhereHas('category', fn (Builder $category) => $category->where('name', 'like', '%'.$term.'%'));
+        $like = '%'.$term.'%';
+
+        return $query->where(function (Builder $inner) use ($term, $like) {
+            $inner->where('name', 'like', $like)
+                ->orWhere('description', 'like', $like)
+                ->orWhereHas('category', fn (Builder $category) => $category->where('name', 'like', $like))
+                /* The chair or room it needs. Somebody typing "colour bar"
+                   is asking which services need one, and answering only
+                   from the service's own name would say none of them. */
+                ->orWhereHas('resources', fn (Builder $resource) => $resource->where('resources.name', 'like', $like));
+
+            /* Typed as a word, matched as a state. "inactive" is a thing a
+                reader searches for; it is not a string in any column. */
+            foreach (self::statusMatches($term) as $isActive) {
+                $inner->orWhere('is_active', $isActive);
+            }
+
+            /* A price is typed the way it is read — 35, not 3500 — so the
+               stored minor units are compared as major ones. */
+            if (is_numeric($term)) {
+                $inner->orWhereHas('prices', fn (Builder $price) => $price
+                    ->whereRaw('cast(price_minor / 100 as char) like ?', [$like]));
+            }
         });
+    }
+
+    /**
+     * The statuses a search term names, if any.
+     *
+     * Matched on the start of the word rather than the whole of it, so "act"
+     * finds the active ones — and against the reader's own language, because
+     * that is what is on the screen they are searching.
+     *
+     * @return array<int, bool>
+     */
+    private static function statusMatches(string $term): array
+    {
+        $term = mb_strtolower($term);
+
+        return collect([
+            true => __('services.status.active'),
+            false => __('services.status.inactive'),
+        ])
+            ->filter(fn (string $label) => str_starts_with(mb_strtolower($label), $term))
+            ->keys()
+            ->map(fn ($key) => (bool) $key)
+            ->all();
     }
 
     /**

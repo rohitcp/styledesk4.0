@@ -297,10 +297,46 @@ function mount(Tabulator, el) {
                         : labels.results.many.replace(':count', total.toLocaleString());
             }
 
+            /* Said out loud so the search box can stop spinning. The grid
+               is what knows a request has finished — a timer in the box
+               would be guessing, and would guess wrong on a slow one. */
+            document.dispatchEvent(new CustomEvent('styledesk:grid-loaded', {
+                detail: { total },
+            }));
+
             return response;
         },
-        placeholder: `<span class="block text-[13px] text-sub">${escape(labels.empty)}</span>
-            <button type="button" class="styledesk_action styledesk_action--sm mt-3" data-grid-clear>${escape(labels.clear_filters)}</button>`,
+        /* A request that failed also finished. Without this the box spins
+           for ever on the one occasion the reader most needs to be told
+           something went wrong. */
+        ajaxError: () => document.dispatchEvent(new CustomEvent('styledesk:grid-loaded', { detail: { total: 0 } })),
+
+        /**
+         * What an empty list says depends on why it is empty.
+         *
+         * A search that found nothing and a filter that found nothing are two
+         * different dead ends: one is answered by a different word, the other
+         * by dropping a filter. Offering "clear filters" to somebody who
+         * mistyped a service name sends them to undo the wrong thing.
+         *
+         * A function rather than a string, so it is read at the moment it is
+         * shown instead of at the moment the grid was built.
+         */
+        placeholder: () => {
+            const typed = document.querySelector('[name="search"]')?.value.trim() ?? '';
+            const searching = typed.length >= 2 && labels.no_matches;
+
+            const line = searching ? labels.no_matches : labels.empty;
+            const hint = searching ? labels.no_matches_hint : '';
+            const action = searching ? labels.clear_search : labels.clear_filters;
+            /* Clearing the search leaves the filters alone; Clear filters
+               drops everything. They are not the same button. */
+            const attribute = searching ? 'data-search-clear' : 'data-grid-clear';
+
+            return `<span class="block text-[13px] text-sub">${escape(line)}</span>
+                ${hint ? `<span class="block text-[12px] text-faint mt-1">${escape(hint)}</span>` : ''}
+                <button type="button" class="styledesk_action styledesk_action--sm mt-3" ${attribute}>${escape(action)}</button>`;
+        },
         index: 'id',
 
         /* Columns leave in the order the page set out, worst first: the ones

@@ -90,6 +90,11 @@
             'columns' => [
                 ['field' => 'name', 'title' => __('leads.columns.who'), 'type' => 'primary', 'grow' => 2.4, 'min' => 200, 'responsive' => 0],
                 ['field' => 'services', 'title' => __('leads.columns.services'), 'grow' => 2.2, 'min' => 170, 'responsive' => 3],
+                /* Where it would be worked. A draft saved from the booking
+                   screen knows its branch, and a business with four of them
+                   cannot read this queue without it. First to be dropped as
+                   the table narrows, after the money. */
+                ['field' => 'location', 'title' => __('leads.columns.location'), 'grow' => 1.2, 'min' => 120, 'responsive' => 5],
                 ['field' => 'expected', 'title' => __('leads.columns.expected'), 'grow' => 1.2, 'min' => 120, 'responsive' => 2],
                 ['field' => 'total', 'title' => __('leads.columns.total'), 'width' => 110, 'responsive' => 4],
                 ['field' => 'started', 'title' => __('leads.columns.started'), 'grow' => 1.4, 'min' => 150, 'responsive' => 3],

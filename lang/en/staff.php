@@ -117,6 +117,7 @@ return [
         'job_title' => 'Job title',
         'job_title_placeholder' => 'Senior Stylist',
         'employee_ref' => 'Staff ID',
+        'employee_ref_hint' => 'Given automatically when the member is saved.',
         'avatar' => 'Profile image',
         'avatar_hint' => 'JPG, PNG or WEBP, up to 2 MB. Shown on the booking page and in the team list.',
         'bio' => 'Bio',

@@ -109,6 +109,7 @@ return [
         'job_title' => 'Puesto',
         'job_title_placeholder' => 'Estilista sénior',
         'employee_ref' => 'ID de empleado',
+        'employee_ref_hint' => 'Se asigna automáticamente al guardar.',
         'avatar' => 'Foto de perfil',
         'avatar_hint' => 'JPG, PNG o WEBP, hasta 2 MB. Se muestra en la página de reservas y en la lista del equipo.',
         'bio' => 'Biografía',

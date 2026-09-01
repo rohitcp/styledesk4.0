@@ -153,7 +153,11 @@ export function initListingFilters(root = document) {
      */
     function reload() {
         const params = new URLSearchParams();
-        const search = form.querySelector('[name="search"]')?.value.trim();
+        /* Under the minimum is no term at all — the same rule the box
+           applies as it is typed, so a reload from anywhere else agrees with
+           what the reader last saw. */
+        const typed = form.querySelector('[name="search"]')?.value.trim() ?? '';
+        const search = typed.length >= 2 ? typed : '';
 
         if (search) params.set('search', search);
 
@@ -173,7 +177,18 @@ export function initListingFilters(root = document) {
         window.history.replaceState({}, '', query ? `${form.action}?${query}` : form.action);
 
         if (grid?.styledeskGrid) {
-            grid.styledeskGrid.setData(query ? `${grid.dataset.url}?${query}` : grid.dataset.url);
+            /* The path only. The server bakes the filters it rendered with
+               into `data-url`, so appending to it produced a second question
+               mark — "?search=mas?status=active" — and everything after the
+               first one arrived as part of the search term. Harmless while
+               the page was only ever loaded bare; reachable the moment a
+               search rewrote the address and somebody reloaded it.
+
+               Nothing is lost by dropping it: every filter is read back off
+               the page a few lines above. */
+            const base = new URL(grid.dataset.url, window.location.origin);
+
+            grid.styledeskGrid.setData(query ? `${base.pathname}?${query}` : base.pathname);
         }
     }
 
@@ -222,6 +237,123 @@ export function initListingFilters(root = document) {
             paint();
             reload();
         }, 0);
+    }
+
+    /* ------------------------------------------------- the search box ---
+
+       Typed, not submitted.
+
+       It used to need Enter or a button press, which is a step nobody takes
+       until they have already given up scrolling. Now the list narrows as the
+       reader types — on a debounce, so a six-letter word is one request
+       rather than six.
+
+       Two characters before it starts: one letter matches most of the list,
+       and a request that returns almost everything is a request that answered
+       nothing. Clearing goes straight through, because "show me all of them
+       again" should not wait for a timer. */
+    const SEARCH_DEBOUNCE = 300;
+    const SEARCH_MINIMUM = 2;
+
+    const searchField = form.querySelector('[name="search"]');
+
+    if (searchField) {
+        /* What the grid was last asked for. Compared against, so a keystroke
+           that leaves the effective term unchanged — a trailing space, or a
+           second letter while still under the minimum — asks for nothing. */
+        let asked = searchField.value.trim();
+        let timer = null;
+
+        const busy = document.querySelector('[data-search-busy]');
+        const clear = form.querySelector('[data-search-clear]');
+
+        /* Nothing, or something worth asking about. A term under the minimum
+           is treated as no term at all rather than as a narrower one: the
+           reader is mid-word, and the list they want back is the whole one. */
+        const effective = () => {
+            const typed = searchField.value.trim();
+
+            return typed.length >= SEARCH_MINIMUM ? typed : '';
+        };
+
+        function paintSearch(loading = false) {
+            if (clear) {
+                clear.hidden = searchField.value === '';
+            }
+
+            if (busy) {
+                busy.hidden = ! loading;
+            }
+        }
+
+        function runSearch() {
+            const term = effective();
+
+            if (term === asked) {
+                paintSearch(false);
+
+                return;
+            }
+
+            asked = term;
+            paintSearch(true);
+
+            /* setData starts the list again at page one, which is what a new
+               search means: page 3 of the old results is not page 3 of
+               these. */
+            reload();
+        }
+
+        searchField.addEventListener('input', () => {
+            paintSearch(false);
+            window.clearTimeout(timer);
+
+            /* Cleared entirely: the whole list comes straight back rather
+               than after a wait nobody expects for undoing something. */
+            if (searchField.value.trim() === '') {
+                runSearch();
+
+                return;
+            }
+
+            timer = window.setTimeout(runSearch, SEARCH_DEBOUNCE);
+        });
+
+        /* Enter still works — it just no longer has to. Prevented so the form
+           does not navigate away from a list already showing the answer. */
+        searchField.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                window.clearTimeout(timer);
+                runSearch();
+            }
+
+            if (event.key === 'Escape' && searchField.value !== '') {
+                searchField.value = '';
+                window.clearTimeout(timer);
+                runSearch();
+            }
+        });
+
+        /* Delegated: there are two of these — the cross inside the field, and
+           the one the grid draws when a search has emptied the list — and the
+           second is replaced on every load, so a listener bound to it once
+           would stop working the first time the list redrew. */
+        document.addEventListener('click', (event) => {
+            if (! event.target.closest('[data-search-clear]')) {
+                return;
+            }
+
+            searchField.value = '';
+            window.clearTimeout(timer);
+            runSearch();
+            searchField.focus();
+        });
+
+        /* The grid says when it has finished, whatever finished it. */
+        document.addEventListener('styledesk:grid-loaded', () => paintSearch(false));
+
+        paintSearch(false);
     }
 
     /* Two ways out of a filtered list: the button beside the chips, and the

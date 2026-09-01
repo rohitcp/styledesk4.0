@@ -2,6 +2,8 @@
 paths:
   - 'app/{Models/StaffShift.php,Support/SchedulePeriod.php,Http/Controllers/**}'
   - 'app/{Models/Booking.php,Models/BookingPayment.php,Support/BookingTotals.php,Http/Controllers/BookingController.php}'
+  - 'app/{Models/Booking.php,Models/BookingLead.php,Support/BookingAvailability.php,Http/Controllers/BookingController.php,Http/Controllers/BookingLeadController.php}'
+  - 'app/{Models/BookingPaymentLink.php,Http/Controllers/PaymentLinkController.php,Http/Controllers/BookingController.php}'
 ---
 
 # Controllers
@@ -24,3 +26,27 @@ The bill is written onto the booking when it is taken (subtotal_minor / discount
 `payment_status` is NOT `status`. One is where the bill got to, the other where the appointment got to; a booking can be completed and unpaid, or paid for and months away. Payments are rows in `booking_payments` (a bill split across cash and a card is two rows), so what is paid is `paidMinor()`, and `settlePaymentStatus()` writes the derived status back for the listings to filter on.
 
 StyleDesk charges nothing. Every method except a card on a connected provider is money that changed hands elsewhere and is recorded here — `manual: true` on the pay endpoint. `config('bookings.card_provider')` is null by default, and with none the card form is shown but inert and the panel records what the terminal took. Never store or log card numbers, expiry or CVV; `reference` holds what the machine printed.
+
+## A booking in progress is a lead, not a draft booking
+The New Booking screen auto-saves into `booking_leads`, never into `bookings`. A booking being written is not an appointment: it holds no slot, tells nobody anything, and must not appear in the diary beside the ones actually taken.
+
+- `POST bookings/draft` (BookingController@autosave) writes the lead as soon as a `client_id` or a `guest_name` exists, and refuses (422) before that. It is the ONLY writer on that screen — `saveStep()` posts nothing. Two writers would leave two rows per booking attempt, which is exactly what must not happen.
+- The lead carries a `BK-YYYYMMDD-NNNNN` reference from `Booking::nextReference()`, issued once and never reissued. `store()` copies it onto the booking when the lead converts, so the number quoted on the phone is the number on the appointment. `nextReference()` scans BOTH tables — the same number lives in each, one after the other.
+- Lead status flow: `draft` → `in-progress` (once past the first card) → `converted`. `draft` is in `BookingLead::CHASEABLE`, so an abandoned one ages into follow-up/abandoned via `bookings:age-leads` like any other.
+- The lead holds the WHOLE booking (location, staff, starts_at, source, notes, client_note, payment_type, deposit, confirmation, and the priced services snapshot). Continue Booking = `bookings.create?lead={id}`; `create()` hands it all back and the Vue `resumeLead()` restores it, then re-seeds `autosaveSaved` on nextTick so restoring does not itself trigger a save.
+- `storeLead` (`POST bookings/leads`, BL- references) is the older lead-from-a-call path. The booking screen no longer calls it; do not reintroduce it there.
+- Availability: `dropBookedOver()` still excludes `draft` bookings (the separate "Save as draft" button). Leads are a different table, so they can never block a slot.
+- `availability()` must CAST staff_id/service_ids/ignore — the `integer` rule validates query strings but does not convert them, and `BookingAvailability::for()` is typed `?int`.
+
+## Booking money: payment type, collection method, and what to collect now
+Three separate questions, three separate fields. Do not collapse them.
+
+- **`payment_type`** (`none` | `deposit` | `full`) — how much is being collected. A deposit larger than the total is refused in `store()` and blocked in the browser.
+- **`collection_method`** (`collect-now` | `desk` | `link` | `later` | `waive`) — how it is collected. Renamed from `deposit_action`; the old `now` value migrated to `desk`. Cleared to null when `payment_type` is `none`: nothing to collect means no method. ONLY `collect-now` opens the payment card after Confirm.
+- **`collect_minor` / `collect_amount`** on `panel()` — what the till is asked for NOW, which is NOT `due_minor`. A deposit booking with nothing paid collects the deposit; after that it is simply the balance. Every amount field and CTA reads `collect_amount`, never `due_amount`. Charging the total on a deposit booking is the bug this exists to prevent — the panel header states Booking total / Amount to collect now / Remaining balance so the split is unmissable.
+
+Waiving is a decision, not a mechanism: it needs `payments.apply_discount` (NOT the booking permission — taking an appointment and letting somebody off paying are different authorities), a mandatory reason, and it stamps `waived_by`/`waived_at`.
+
+Payment links live in `booking_payment_links`, one row per ask. `sent`/`opened` are known from this side; `paid` is settled ONLY from `settleAgainst()` when money is recorded against the booking, because StyleDesk charges nothing — never let a link mark itself paid because somebody clicked it. `expired` is derived from the clock, so read `currentStatus()`, never the raw column. The public `/pay/{token}` route is outside auth and throttled; the token is the whole credential, so the page shows one appointment and the business's own payment handles, nothing else.
+
+The confirmation screen is full-width at the TOP of the create page (`stage === 'done'` hides the three columns via v-show and scrolls to top). It must never sit under the payment card.

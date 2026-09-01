@@ -50,6 +50,9 @@ return [
         'many' => ':count servicios',
         'empty' => 'No se encontraron servicios. Prueba a cambiar la búsqueda o los filtros.',
         'clear' => 'Borrar filtros',
+        'no_matches' => 'No se encontraron servicios',
+        'no_matches_hint' => 'Prueba otra palabra o borra la búsqueda.',
+        'clear_search' => 'Borrar búsqueda',
     ],
 
     'add_title' => 'Añadir un servicio',
@@ -152,6 +155,8 @@ return [
     'hours_minutes_short' => ':hours h :minutes min',
 
     'categories_ui' => [
+
+        'name_taken' => 'Ya tienes una categoría con este nombre.',
         'title' => 'Categorías de servicios',
         'intro' => 'Cómo se organiza tu lista de precios. StyleDesk aporta un conjunto inicial; desactiva las que no uses y añade las tuyas.',
         'add' => 'Añadir categoría',
@@ -183,6 +188,7 @@ return [
         'columns' => [
             'name' => 'Nombre de la categoría',
             'description' => 'Descripción',
+            'services' => 'Servicios',
             'type' => 'Tipo',
             'status' => 'Estado',
             'action' => 'Acción',

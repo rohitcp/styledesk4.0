@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\TimeFormat;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -40,12 +41,57 @@ class BookingLead extends Model
      *
      * Only these are chased: a lead somebody has already called, or one that
      * became a booking, is not a lead nobody has looked at.
+     *
+     * A draft is on the list because that is exactly what it is — a booking
+     * somebody started and walked away from — and an abandoned one should
+     * age into a call to return like any other.
      */
-    public const CHASEABLE = ['new', 'in-progress', 'awaiting-confirmation', 'awaiting-deposit'];
+    public const CHASEABLE = ['draft', 'new', 'in-progress', 'awaiting-confirmation', 'awaiting-deposit'];
+
+    /**
+     * Statuses that are the end of a lead, whatever else happens to it.
+     *
+     * Converted is an appointment; the other three are decisions somebody
+     * made. Everything else — including a lead already chased or called — is
+     * still a booking the desk can pick back up and finish.
+     */
+    public const SETTLED = ['converted', 'cancelled', 'lost', 'expired'];
+
+    /**
+     * Whether the booking screen may still open and write into this one.
+     *
+     * One rule, read by all three of the places that ask: the screen that
+     * reopens a lead, the auto-save that writes into it, and the confirm that
+     * converts it. Three lists would let a lead be openable but unsaveable,
+     * which is a screen that quietly says "Not saved" at everything typed.
+     */
+    public function isResumable(): bool
+    {
+        return ! in_array($this->status, self::SETTLED, true);
+    }
 
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /** Where it would be worked, and by whom, as far as anybody has said. */
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
+
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class);
+    }
+
+    /** "10:00 AM", where a time has been settled on. */
+    public function startsAtLabel(): ?string
+    {
+        return $this->starts_at === null
+            ? null
+            : TimeFormat::time(substr((string) $this->starts_at, 0, 5));
     }
 
     /** Whoever was at the desk when the call came in. */

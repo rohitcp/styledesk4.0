@@ -1,53 +1,52 @@
 {{--
-    The four figures §9 asks for, as four flat bordered cards.
+    The four figures at the top of a client's profile.
 
-    Two of them come from columns bookings will fill; the other two need a
-    bookings module to count at all. Rather than print an invented 24 visits
-    and $2,840, each says what is true now — a profile that states a figure
-    nobody can trace is worse than one that admits the number is not ready.
+    Last visit, next appointment, total visits, lifetime spend — each counted
+    from the diary and the till rather than from a column something else has
+    to remember to keep in step. See App\Support\ClientVisitSummary for what
+    each one counts and, more importantly, what each one refuses to count.
+
+    A Vue island rather than four Blade cards, because they go stale while
+    somebody else works: a payment taken at the till, a booking marked
+    complete in the diary. The island asks for them again when the tab comes
+    back to the front.
 --}}
 @php
-    $cards = [
-        [
-            'tone' => 'blue',
-            'label' => __('clients.module.workspace.summary.last_visit'),
-            'value' => $client->last_visit_at?->isoFormat('D MMM Y'),
-            'empty' => __('clients.module.never_visited'),
-        ],
-        [
-            'tone' => 'violet',
-            'label' => __('clients.module.workspace.summary.next_booking'),
-            'value' => $client->next_booking_at?->isoFormat('D MMM Y · h:mm A'),
-            'empty' => __('clients.module.nothing_booked'),
-        ],
-        [
-            'tone' => 'teal',
-            'label' => __('clients.module.workspace.summary.total_visits'),
-            'value' => null,
-            'empty' => __('clients.module.workspace.summary.awaiting_bookings'),
-        ],
-        [
-            'tone' => 'amber',
-            'label' => __('clients.module.workspace.summary.lifetime_spend'),
-            'value' => null,
-            'empty' => __('clients.module.workspace.summary.awaiting_bookings'),
+    $summaryProps = [
+        'url' => route('clients.visit-summary', $client),
+        'summary' => $visitSummary,
+        'labels' => [
+            'last_visit' => __('clients.module.workspace.summary.last_visit'),
+            'last_visit_empty' => __('clients.module.workspace.summary.no_visits'),
+            'next_appointment' => __('clients.module.workspace.summary.next_appointment'),
+            'next_appointment_empty' => __('clients.module.workspace.summary.no_upcoming'),
+            'total_visits' => __('clients.module.workspace.summary.total_visits'),
+            'total_visits_empty' => __('clients.module.workspace.summary.no_visits_yet'),
+            'lifetime_spend' => __('clients.module.workspace.summary.lifetime_spend'),
+            'lifetime_spend_empty' => __('clients.module.workspace.summary.nothing_paid'),
         ],
     ];
 @endphp
 
-{{-- Four across when the column can hold them, two when it cannot; equal
-     widths either way, so the row never reads as one card being more
-     important than the others. --}}
-<div class="styledesk_metrics">
-    @foreach ($cards as $card)
-        <div class="styledesk_metric styledesk_metric--{{ $card['tone'] }}">
-            <p class="styledesk_metric__label">{{ $card['label'] }}</p>
+<div data-vue-component="ClientVisitSummary" data-props='@json($summaryProps)'></div>
 
-            @if ($card['value'])
-                <p class="styledesk_metric__value">{{ $card['value'] }}</p>
-            @else
-                <p class="styledesk_metric__empty">{{ $card['empty'] }}</p>
-            @endif
-        </div>
-    @endforeach
-</div>
+{{-- Without the island the figures still have to be readable, so they are
+     stated in plain HTML rather than leaving an empty row. --}}
+<noscript>
+    <div class="styledesk_metrics">
+        @foreach ([['last_visit', 'blue'], ['next_appointment', 'violet'], ['total_visits', 'teal'], ['lifetime_spend', 'amber']] as [$key, $tone])
+            <div class="styledesk_metric styledesk_metric--{{ $tone }}">
+                <p class="styledesk_metric__label">{{ $summaryProps['labels'][$key] }}</p>
+
+                @if (! empty($visitSummary[$key]['value']))
+                    <p class="styledesk_metric__value {{ mb_strlen($visitSummary[$key]['value']) > 12 ? 'styledesk_metric__value--compact' : '' }}">{{ $visitSummary[$key]['value'] }}</p>
+                    @if (! empty($visitSummary[$key]['detail']))
+                        <p class="text-[12px] text-sub mt-0.5">{{ $visitSummary[$key]['detail'] }}</p>
+                    @endif
+                @else
+                    <p class="styledesk_metric__empty">{{ $summaryProps['labels'][$key.'_empty'] }}</p>
+                @endif
+            </div>
+        @endforeach
+    </div>
+</noscript>

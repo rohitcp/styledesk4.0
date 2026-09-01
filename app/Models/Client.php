@@ -195,6 +195,22 @@ class Client extends Model
         return $this->hasMany(Booking::class);
     }
 
+    /**
+     * The services this client is known to want.
+     *
+     * Said by somebody at the desk, not worked out from the diary. What they
+     * have actually booked is a different question with a different answer —
+     * see App\Support\ClientServiceHistory — and a favourite that appeared
+     * because a service was booked twice is a favourite nobody chose.
+     */
+    public function favoriteServices(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'client_favorite_services')
+            ->withPivot(['created_by'])
+            ->withTimestamps()
+            ->orderBy('services.name');
+    }
+
     public function preferences(): BelongsToMany
     {
         return $this->belongsToMany(ClientPreference::class);

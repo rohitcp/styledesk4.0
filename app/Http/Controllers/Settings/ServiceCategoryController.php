@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ServiceCategory;
 use App\Support\InputCase;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -35,7 +36,12 @@ class ServiceCategoryController extends Controller
         $categories = ServiceCategory::query()
             ->withCount('services')
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.$request->string('search').'%'))
-            ->orderBy('display_order')
+            /* A–Z, and only A–Z. This screen is read to find one category
+               among thirty — "where is Hair Colour" — and a list in an order
+               somebody arranged months ago is one every reader has to scan
+               end to end. The hand-set `display_order` still decides where
+               categories appear on the screens that offer them for choosing;
+               it is simply not what this reference list is sorted by. */
             ->orderBy('name')
             ->get();
 
@@ -153,6 +159,33 @@ class ServiceCategoryController extends Controller
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Is a category already called this?
+     *
+     * Asked while the reader types, so "you already have one of these" arrives
+     * beside the field instead of after a save they have to redo. The same
+     * question the unique rule asks on the way in — one of them without the
+     * other is how a dialog ends up accepting what the server refuses.
+     */
+    public function nameInUse(Request $request): JsonResponse
+    {
+        $name = trim((string) $request->query('value'));
+
+        if ($name === '') {
+            return response()->json(['ok' => true]);
+        }
+
+        $taken = ServiceCategory::query()
+            /* The category being edited is not a duplicate of itself. */
+            ->when($request->query('ignore'), fn ($query, $id) => $query->whereKeyNot($id))
+            ->whereRaw('lower(name) = ?', [mb_strtolower($name)])
+            ->exists();
+
+        return response()->json($taken
+            ? ['ok' => false, 'message' => __('services.categories_ui.name_taken')]
+            : ['ok' => true]);
+    }
+
     private function validated(Request $request, ?ServiceCategory $category = null): array
     {
         $data = $request->validate([

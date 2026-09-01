@@ -16,7 +16,7 @@ return [
     'all_statuses' => 'Todos los estados',
 
     'actions' => [
-        'complete' => 'Completar la reserva',
+        'complete' => 'Continuar reserva',
         'view_booking' => 'Ver reserva',
         'view_client' => 'Ver cliente',
     ],
@@ -25,6 +25,7 @@ return [
         'who' => 'Cliente',
         'services' => 'Pidió',
         'expected' => 'Para el',
+        'location' => 'Ubicación',
         'total' => 'Valor',
         'started' => 'Empezada',
         'step' => 'Se quedó en',
@@ -32,6 +33,7 @@ return [
     ],
 
     'statuses' => [
+        'draft' => ['label' => 'Borrador'],
         'new' => ['label' => 'Nueva'],
         'in-progress' => ['label' => 'En curso'],
         'awaiting-confirmation' => ['label' => 'Esperando al cliente'],
@@ -95,6 +97,7 @@ return [
         'date' => 'Fecha',
         'time' => 'Hora',
         'staff' => 'Con',
+        'location' => 'Ubicación',
         'notes' => 'Notas',
         'payment' => 'Pago',
         'estimated_total' => 'Total estimado',

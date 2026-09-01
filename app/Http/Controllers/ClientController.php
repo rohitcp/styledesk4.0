@@ -8,13 +8,19 @@ use App\Models\Booking;
 use App\Models\BookingLead;
 use App\Models\BookingService;
 use App\Models\Client;
+use App\Models\ClientActivity;
 use App\Models\ClientNote;
 use App\Models\ClientSettings;
 use App\Models\ClientTag;
+use App\Models\Location;
+use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
+use App\Support\ClientActivityLog;
 use App\Support\ClientBookingContext;
 use App\Support\ClientOptions;
+use App\Support\ClientServiceHistory;
+use App\Support\ClientVisitSummary;
 use App\Support\InputCase;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -426,6 +432,117 @@ class ClientController extends Controller
     }
 
     /**
+     * The Services tab: what they have booked, and what they are known to want.
+     *
+     * Two lists, answered together because the tab shows them together, but
+     * never merged. The history is arithmetic over the diary; the favourites
+     * are statements somebody made at the desk. A service can be in one, the
+     * other, or both.
+     */
+    public function services(Request $request, Client $client): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('clients.view', 'own'), 403);
+
+        return response()->json($this->serviceTab($client));
+    }
+
+    /**
+     * "This is what she always has."
+     *
+     * Marked by hand, and only by hand. A service booked six times is a fact
+     * about the diary; a favourite is somebody's judgement, and one that
+     * appeared on its own is one nobody can be asked about.
+     */
+    public function addFavoriteServices(Request $request, Client $client): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('clients.edit', 'own'), 403);
+
+        $data = $request->validate([
+            'services' => ['required', 'array', 'min:1'],
+            'services.*' => ['integer', Rule::exists('services', 'id')],
+        ]);
+
+        $tenantId = $client->tenant_id;
+
+        foreach ($data['services'] as $serviceId) {
+            /* Marking a favourite twice is the same statement, not a second
+               one — and it must not overwrite who said it first. */
+            $client->favoriteServices()->syncWithoutDetaching([
+                $serviceId => ['tenant_id' => $tenantId, 'created_by' => $request->user()->id],
+            ]);
+        }
+
+        return response()->json($this->serviceTab($client->fresh()));
+    }
+
+    /** Taken off by hand as well. Nothing ages a favourite out on its own. */
+    public function removeFavoriteService(Request $request, Client $client, Service $service): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('clients.edit', 'own'), 403);
+
+        $client->favoriteServices()->detach($service->id);
+
+        return response()->json($this->serviceTab($client->fresh()));
+    }
+
+    /**
+     * Both lists, in the shape the tab draws them.
+     *
+     * @return array<string, mixed>
+     */
+    private function serviceTab(Client $client): array
+    {
+        $client->load('favoriteServices.category');
+
+        return [
+            'favorites' => $client->favoriteServices->map(fn (Service $service) => [
+                'id' => $service->id,
+                'name' => $service->name,
+                'category' => $service->category?->name,
+            ])->values()->all(),
+            'history' => ClientServiceHistory::for($client),
+        ];
+    }
+
+    /**
+     * One entry per tag that actually moved.
+     *
+     * Both lists are handled the same way because they read the same way in
+     * the timeline: a tag went on, or a tag came off, and who did it. The
+     * kind is carried alongside so "High-Value Client" and a behavioural tag
+     * StyleDesk worked out for itself can still be told apart.
+     *
+     * @param  Collection<int|string, string>  $before
+     * @param  Collection<int|string, string>  $after
+     */
+    private function recordTagChanges(Client $client, $before, $after, string $kind, ?int $userId): void
+    {
+        $after->diffKeys($before)->each(
+            fn (string $label) => ClientActivityLog::tagAdded($client, $label, $kind, $userId)
+        );
+
+        $before->diffKeys($after)->each(
+            fn (string $label) => ClientActivityLog::tagRemoved($client, $label, $kind, $userId)
+        );
+    }
+
+    /**
+     * The four figures again, as JSON.
+     *
+     * The cards are read while somebody else is working: a payment taken at
+     * the till, a booking marked complete in the diary. Rather than leave a
+     * profile quietly showing yesterday's numbers, the row asks for them
+     * again when the tab comes back to the front — which is the moment the
+     * reader looks at it, and the only moment the answer matters.
+     */
+    public function visitSummary(Request $request, Client $client): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('clients.view', 'own'), 403);
+
+        return response()->json(['summary' => ClientVisitSummary::for($client)]);
+    }
+
+    /**
      * The client workspace.
      *
      * Three columns rather than a long form: who they are stays on screen
@@ -470,6 +587,15 @@ class ClientController extends Controller
                 ->each(fn (ClientNote $note) => $note->readable = $note->isVisibleTo($user))
             : collect();
 
+        /* The four figures at the top of the page, counted from the diary
+           and the till rather than from columns something else has to keep
+           in step. See App\Support\ClientVisitSummary for what each counts. */
+        $visitSummary = ClientVisitSummary::for($client);
+
+        /* The Services tab: what they have booked, and what they are known to
+           want. Two lists, never merged — see the tab's own component. */
+        $clientServices = $this->serviceTab($client);
+
         /* What this client has actually booked, so the panel's filters
            cannot offer a year, a month or a service that finds nothing —
            and so the leads tab appears only where there are leads. */
@@ -501,6 +627,16 @@ class ClientController extends Controller
             ->get();
 
         return view('clients.show', [
+            'visitSummary' => $visitSummary,
+            'clientServices' => $clientServices,
+            /* Whether this reader may take an appointment. The Create
+               Booking action is live for them and refused for everybody
+               else, rather than shown live and refused afterwards. */
+            'canBook' => $request->user()->hasPermission('appointments.create', 'own'),
+            /* Everything on the price list, for marking a favourite the
+               client has never booked — "this is what I always have", said
+               before there is any history to read it from. */
+            'bookableServices' => Service::query()->active()->inOrder()->pluck('name', 'id'),
             'nextBooking' => $upcoming->first(),
             'upcomingCount' => $upcoming->count(),
             'bookingYears' => $bookingDates
@@ -551,7 +687,7 @@ class ClientController extends Controller
             'noteAudience' => $canAddNotes
                 ? Staff::query()->whereNotNull('user_id')->with('user')->orderBy('first_name')->get()
                 : collect(),
-            'activity' => $this->activity($client, $notes, $canViewNotes),
+            'activity' => $this->activity($client),
             'canEdit' => $user->hasPermission('clients.edit', 'own'),
             'canArchive' => $user->hasPermission('clients.archive', 'own'),
             'canDelete' => $user->hasPermission('clients.delete', 'own'),
@@ -563,87 +699,27 @@ class ClientController extends Controller
     }
 
     /**
-     * The activity timeline, from what the app can actually witness.
+     * The client's history, as it was written down.
      *
-     * Today that is the record's own life: created, consent given, notes
-     * written, archived. Bookings, messages and payments will join it as
-     * those modules arrive — each is a real event with a real timestamp, and
-     * none of them is invented here to make the tab look busy.
+     * Read from `client_activities` rather than reconstructed from whatever
+     * still exists. The old timeline could only ever describe the present —
+     * a note somebody wrote and deleted left no trace, and "who changed this
+     * number" had no answer at all. These rows were written when the things
+     * happened, by whoever did them.
      *
-     * @param  Collection<int, ClientNote>  $notes
-     * @return Collection<int, array<string, mixed>>
+     * Capped rather than paged: a profile is opened to see what happened
+     * lately, and two hundred entries is a page nobody scrolls. The cap is
+     * stated in the view so a reader is never quietly shown a partial
+     * history and left to assume it is the whole one.
      */
-    private function activity(Client $client, $notes, bool $canViewNotes)
+    private function activity(Client $client)
     {
-        $events = collect();
-
-        $events->push([
-            'type' => 'changes',
-            'icon' => 'user',
-            'at' => $client->created_at,
-            'title' => __('clients.module.workspace.activity.created'),
-            'meta' => __('clients.module.workspace.activity.created_meta', ['ref' => $client->client_ref]),
-        ]);
-
-        if ($client->consent_recorded_at) {
-            $events->push([
-                'type' => 'changes',
-                'icon' => 'envelope',
-                'at' => $client->consent_recorded_at,
-                'title' => __('clients.module.workspace.activity.consent'),
-                'meta' => $client->consentRecordedBy?->name,
-            ]);
-        }
-
-        if ($canViewNotes) {
-            foreach ($notes as $note) {
-                $events->push([
-                    'type' => 'notes',
-                    'icon' => 'clipboard-list',
-                    'at' => $note->created_at,
-                    'title' => $note->is_important
-                        ? __('clients.module.workspace.activity.important_note')
-                        : __('clients.module.workspace.activity.note'),
-                    'meta' => $note->authorName(),
-                    /* A private note appears in the timeline as an event
-                       with no body: "a note was written" is not the secret,
-                       what it says is. */
-                    'body' => $note->readable ? $note->body : null,
-                ]);
-            }
-        }
-
-        if ($client->isArchived()) {
-            $events->push([
-                'type' => 'changes',
-                'icon' => 'box',
-                'at' => $client->updated_at,
-                'title' => __('clients.module.workspace.activity.archived'),
-                'meta' => null,
-            ]);
-        }
-
-        return $events->filter(fn (array $event) => $event['at'] !== null)
-            ->sortByDesc('at')
-            ->values();
-    }
-
-    public function edit(Request $request, Client $client): View
-    {
-        $this->authorizeClients($request, 'clients.edit', 'own');
-        $this->assertOwned($client, $request->user()->tenant);
-
-        $client->load(['preferences', 'tags', 'phones', 'emails']);
-
-        /**
-         * The client last, not first: formState carries a null `client` for
-         * the add screen, and spreading it after would blank the record this
-         * page exists to edit.
-         */
-        return view('clients.edit', [
-            ...$this->formState($request->user()->tenant),
-            'client' => $client,
-        ]);
+        return ClientActivity::query()
+            ->where('client_id', $client->id)
+            ->with(['user', 'booking'])
+            ->newest()
+            ->limit(200)
+            ->get();
     }
 
     public function update(Request $request, Client $client): RedirectResponse
@@ -656,6 +732,11 @@ class ClientController extends Controller
 
         $data = $this->validated($request, $settings, $tenant, $client);
 
+        /* What it said before the save. Compared field by field afterwards,
+           so the history can answer "who changed this number, and what was
+           it" rather than only "somebody saved this record". */
+        $before = $client->getOriginal();
+
         DB::transaction(function () use ($client, $data, $settings, $request, $tenant) {
             $client->forceFill([
                 ...$this->columns($data, $settings),
@@ -667,9 +748,83 @@ class ClientController extends Controller
             $this->syncContacts($client, $data, $settings);
         });
 
+        ClientActivityLog::clientUpdated(
+            $client,
+            $this->fieldChanges($before, $client->fresh()),
+            $request->user()->id,
+        );
+
         return redirect()
             ->route('clients.show', $client)
             ->with('toast', ['type' => 'success', 'message' => __('clients.module.saved')]);
+    }
+
+    /**
+     * What actually changed, in the reader's words.
+     *
+     * Only the fields a person would recognise on the form: `updated_at`
+     * moves on every save and says nothing, and a list that included it would
+     * report a change on a save that changed nothing.
+     *
+     * @param  array<string, mixed>  $before
+     * @return array<int, array{field: string, from: ?string, to: ?string}>
+     */
+    private function fieldChanges(array $before, Client $after): array
+    {
+        $watched = [
+            'first_name', 'last_name', 'preferred_name', 'email', 'mobile', 'phone',
+            'date_of_birth', 'address', 'city', 'state', 'postal_code', 'country',
+            'status', 'preferred_location_id', 'preferred_staff_id', 'gender', 'pronouns',
+            'comm_email', 'comm_sms', 'comm_phone', 'marketing_email', 'marketing_sms',
+        ];
+
+        $changes = [];
+
+        foreach ($watched as $field) {
+            if (! array_key_exists($field, $before)) {
+                continue;
+            }
+
+            $was = $before[$field];
+            $now = $after->getAttribute($field);
+
+            /* Loose on purpose: a date cast back out of the database is a
+               different object from the one that went in, and a strict
+               comparison would report every save as a change to everything. */
+            if ((string) $was === (string) $now) {
+                continue;
+            }
+
+            $changes[] = [
+                'field' => __('clients.module.workspace.activity.fields.'.$field),
+                'from' => self::readableValue($field, $was),
+                'to' => self::readableValue($field, $now),
+            ];
+        }
+
+        return $changes;
+    }
+
+    /**
+     * A stored value as somebody reads it.
+     *
+     * An id is not an answer: "3 → 7" tells a reader nothing about which
+     * branch somebody now prefers.
+     */
+    private static function readableValue(string $field, $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return match ($field) {
+            'preferred_location_id' => Location::query()->whereKey($value)->value('name'),
+            'preferred_staff_id' => Staff::query()->whereKey($value)->value('first_name'),
+            'comm_email', 'comm_sms', 'comm_phone', 'marketing_email', 'marketing_sms' => $value
+                ? __('clients.module.workspace.preferences.opted_in')
+                : __('clients.module.workspace.preferences.opted_out'),
+            default => (string) $value,
+        };
     }
 
     /**
@@ -715,8 +870,15 @@ class ClientController extends Controller
          */
         $keep = $client->tags()->where('is_active', false)->pluck('client_tags.id')->all();
 
+        /* Read before the sync, so the history says which tags moved rather
+           than that "the tags were saved" — which is not a thing anybody
+           needs to know a month later. */
+        $before = $client->tags()->pluck('label', 'client_tags.id');
+
         $client->tags()->sync(array_merge($keep, array_map('intval', $data['tags'] ?? [])));
         $client->load('tags');
+
+        $this->recordTagChanges($client, $before, $client->tags->pluck('label', 'id'), 'tag', $request->user()->id);
 
         $message = __('clients.module.workspace.tags.updated');
 
@@ -753,7 +915,17 @@ class ClientController extends Controller
             'tags.*' => [Rule::in($active)],
         ]);
 
+        $before = $client->behavioralTags()->pluck('label', 'tag_key');
+
         $client->syncBehavioralTags($data['tags'] ?? []);
+
+        $this->recordTagChanges(
+            $client->fresh(),
+            $before,
+            $client->fresh()->behavioralTags()->pluck('label', 'tag_key'),
+            'behavioural',
+            $request->user()->id,
+        );
 
         return back()->with('toast', [
             'type' => 'success',

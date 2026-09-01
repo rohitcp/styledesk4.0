@@ -24,13 +24,13 @@
             </a>
         @endif
 
-        {{-- Booking does not exist yet. Shown disabled rather than linking
-             nowhere: a menu item that silently does nothing is worse than one
-             that admits it is not ready. --}}
-        <span class="styledesk_rowmenu__item opacity-50 cursor-not-allowed" aria-disabled="true">
-            <x-icon name="calendar-check" size="14" />
-            {{ __('clients.module.workspace.quick.create_booking') }}
-        </span>
+        @if ($canBook)
+            <a href="{{ route('bookings.create', ['client' => $client->id]) }}"
+               class="styledesk_rowmenu__item" role="menuitem">
+                <x-icon name="calendar-check" size="14" />
+                {{ __('clients.module.workspace.quick.create_booking') }}
+            </a>
+        @endif
 
         @if ($canAddNotes)
             <button type="button" class="styledesk_rowmenu__item w-full" role="menuitem"

@@ -169,6 +169,58 @@ class ServicesTest extends TestCase
     }
 
     /**
+     * The search reaches past the name.
+     *
+     * Somebody typing "mas" is looking for the massage work whether the word
+     * is in the service's name, its category, its description or the room it
+     * needs — and a search that only reads the name answers "nothing found"
+     * to a question the list can plainly answer.
+     */
+    public function test_the_search_matches_more_than_the_service_name(): void
+    {
+        $colour = $this->category('Colour');
+        $room = $this->resource('Massage Room 1');
+
+        $deep = $this->service([
+            'name' => 'Deep tissue',
+            'description' => 'A firm massage for stubborn shoulders.',
+        ]);
+        $deep->resources()->sync([$room->id]);
+
+        $balayage = $this->service(['name' => 'Balayage', 'service_category_id' => $colour->id]);
+        $balayage->syncPrices([Currencies::primaryFor($this->tenant) => '120.00']);
+
+        $retired = $this->service(['name' => 'Perm', 'is_active' => false]);
+
+        $find = fn (string $term) => collect(
+            $this->actingAs($this->owner)
+                ->getJson(route('services.data', ['search' => $term]))
+                ->assertOk()
+                ->json('data')
+        )->pluck('name')->sort()->values()->all();
+
+        /* The description, and the room it needs. Neither is in the name. */
+        $this->assertSame(['Deep tissue'], $find('massage'));
+        $this->assertSame(['Deep tissue'], $find('Massage Room'));
+
+        /* The category. */
+        $this->assertSame(['Balayage'], $find('colour'));
+
+        /* The price, typed the way it is read. */
+        $this->assertSame(['Balayage'], $find('120'));
+
+        /* The status, typed as the word on the screen. */
+        $this->assertSame([$retired->name], $find(__('services.status.inactive')));
+
+        /* Case-insensitive and partial, both ways. */
+        $this->assertSame(['Balayage'], $find('BALAY'));
+        $this->assertSame(['Balayage'], $find('bala'));
+
+        /* Nothing typed is not a filter. */
+        $this->assertCount(3, $find(''));
+    }
+
+    /**
      * A service nobody may perform is offered by anyone, and one with no
      * locations is offered everywhere.
      *

@@ -57,10 +57,32 @@
             <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">
               <x-icon name="magnifying-glass" size="15" />
             </span>
-            <input name="search" type="search" class="sd-input styledesk_input--prefixed"
+            {{-- Typed, not submitted: the list narrows as the reader
+                 types, on a debounce. `type="text"` rather than "search",
+                 because the browser's own clear cross fires no event this
+                 can hear — the one below is the app's, and it works. --}}
+            <input name="search" type="text" class="sd-input styledesk_input--prefixed pr-16"
                    value="{{ $filters['search'] }}"
+                   autocomplete="off"
                    aria-label="{{ __('resources.search') }}"
                    placeholder="{{ __('resources.search') }}">
+
+            {{-- Spinning only while a request is actually in the air; the
+                 grid says when it lands. --}}
+            <span class="absolute right-9 top-1/2 -translate-y-1/2 text-faint pointer-events-none"
+                  data-search-busy hidden aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="animate-spin">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" opacity="0.25"/>
+                <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+            </span>
+
+            <button type="button" data-search-clear hidden
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded
+                           text-faint hover:text-ink hover:bg-hover transition-colors"
+                    aria-label="{{ __('common.clear') }}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            </button>
           </div>
 
           <div class="flex flex-col lg:flex-row lg:flex-wrap items-stretch lg:items-start gap-2 w-full lg:w-auto">
@@ -78,9 +100,6 @@
                      :options="$statusOptions"
                      class="w-full lg:w-[150px] shrink-0" />
 
-            <button type="submit" class="styledesk_search w-full lg:w-auto shrink-0">
-              {{ __('common.search') }}
-            </button>
           </div>
         </div>
 
@@ -111,6 +130,13 @@
               ],
               'clear_filters' => __('resources.results.clear'),
               'empty' => __('resources.results.empty'),
+              /* What an empty list says when a search emptied it,
+                 which is a different dead end from a filter doing
+                 it: one is answered by another word, the other by
+                 dropping a filter. */
+              'no_matches' => __('resources.results.no_matches'),
+              'no_matches_hint' => __('resources.results.no_matches_hint'),
+              'clear_search' => __('resources.results.clear_search'),
           ];
 
           $gridConfig = [

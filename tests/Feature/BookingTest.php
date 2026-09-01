@@ -1205,4 +1205,45 @@ class BookingTest extends TestCase
         /* One letter is everybody, which is not a search. */
         $this->assertSame([], $this->actingAs($owner)->getJson(route('bookings.clients').'?q=m')->json('data'));
     }
+
+    // ------------------------------------------------- the header location card
+
+    /**
+     * The branch is chosen from the page header, not from inside the time
+     * step: it decides the hours, the rota, the services and the chairs, so
+     * it belongs where it can be seen without going looking.
+     */
+    public function test_the_header_carries_a_slot_for_the_location_card(): void
+    {
+        $this->actingAs($this->owner())
+            ->get(route('bookings.create'))
+            ->assertOk()
+            ->assertSee('id="bookingLocationSlot"', false);
+    }
+
+    /**
+     * The screen is told where each service is offered and where each person
+     * works, so changing branch can narrow both without another request.
+     *
+     * Empty means everywhere in each case — a service naming no locations is
+     * offered at all of them, and staff with no location work across all of
+     * them — which is the convention Service::isOfferedAt() already reads.
+     */
+    public function test_the_screen_is_told_which_branch_services_and_staff_belong_to(): void
+    {
+        $owner = $this->owner();
+        $service = $this->service('Cut', 45, 4500);
+        $service->locations()->sync([$this->location->id]);
+
+        $staff = $this->staff();
+
+        $html = $this->actingAs($owner)->get(route('bookings.create'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('location_ids', $html);
+        $this->assertStringContainsString('location_id', $html);
+
+        /* The service's own branch travels with it, so a service offered at
+           one location only disappears from the list at the others. */
+        $this->assertStringContainsString((string) $this->location->id, $html);
+    }
 }

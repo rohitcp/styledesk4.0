@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
 use App\Models\Client;
 use App\Models\Role;
+use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
@@ -175,19 +177,231 @@ class ClientProfileTest extends TestCase
     }
 
     /**
-     * No invented figures.    /**
      * No invented figures.
      *
-     * There are no bookings, so the two counts say so rather than printing a
-     * number nobody could trace back to an appointment.
+     * This client has no bookings, so all four cards say what is true rather
+     * than printing a number nobody could trace back to an appointment — and
+     * each says it in its own words, because "no previous visits" and
+     * "nothing paid yet" are different facts about the same person.
      */
     public function test_counts_that_need_bookings_say_so_instead_of_guessing(): void
     {
         $this->actingAs($this->owner)
             ->get(route('clients.show', $this->client))
             ->assertOk()
-            ->assertSee('Counts appear once bookings arrive.')
-            ->assertSee('No visits yet');
+            ->assertSee('No previous visits')
+            ->assertSee('No upcoming appointment')
+            ->assertSee('No completed visits yet')
+            ->assertSee('Nothing paid yet');
+    }
+
+    /**
+     * The four figures, counted from the diary and the till.
+     *
+     * Each counts something different and each refuses something different,
+     * which is the whole reason they are four cards rather than one.
+     */
+    public function test_the_summary_cards_count_visits_and_money_actually_taken(): void
+    {
+        $service = Service::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Balayage', 'duration_minutes' => 90, 'is_active' => true,
+        ]);
+
+        $reference = 0;
+
+        $make = function (string $status, string $date, int $total) use ($service, &$reference) {
+            $booking = Booking::withoutGlobalScopes()->create([
+                'tenant_id' => $this->tenant->getTenantKey(),
+                'reference' => 'BK-TEST-'.++$reference,
+                'client_id' => $this->client->id,
+                'date' => $date, 'starts_at' => '10:00', 'ends_at' => '11:30', 'minutes' => 90,
+                'status' => $status, 'total_minor' => $total, 'currency_code' => 'USD',
+            ]);
+
+            $booking->services()->create([
+                'service_id' => $service->id, 'name' => 'Balayage',
+                'minutes' => 90, 'price_minor' => $total, 'sort_order' => 0,
+            ]);
+
+            return $booking;
+        };
+
+        $visited = $make('completed', '2026-08-01', 10000);
+        $make('completed', '2026-07-01', 5000);
+        /* None of these is a visit: one has not happened, one was called
+           off, and one is somebody who did not come. */
+        $make('confirmed', now()->addDays(7)->toDateString(), 8000);
+        $make('cancelled', '2026-06-01', 9000);
+        $make('no-show', '2026-05-01', 9000);
+
+        /* Money actually taken, less what went back out. A booking's total
+           is what somebody was billed, which is not what they paid. */
+        $visited->payments()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'method' => 'cash', 'status' => 'paid', 'amount_minor' => 10000,
+            'currency_code' => 'USD', 'paid_at' => now(),
+        ]);
+        $visited->payments()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'method' => 'cash', 'status' => 'refunded', 'amount_minor' => -2500,
+            'currency_code' => 'USD', 'paid_at' => now(),
+        ]);
+
+        $summary = $this->actingAs($this->owner)
+            ->getJson(route('clients.visit-summary', $this->client))
+            ->assertOk()
+            ->json('summary');
+
+        /* The last time they were actually in, and what for. */
+        $this->assertSame('1 Aug 2026', $summary['last_visit']['value']);
+        $this->assertSame('Balayage', $summary['last_visit']['detail']);
+
+        /* The next thing in the diary, with the time on it. */
+        $this->assertStringContainsString('10:00', $summary['next_appointment']['value']);
+
+        /* Two completed. The future, cancelled and no-show ones are not
+           visits however many rows they make. */
+        $this->assertSame('2', $summary['total_visits']['value']);
+
+        /* $100 taken, $25 given back. Not the $410 they were billed. */
+        $this->assertSame('$75.00', $summary['lifetime_spend']['value']);
+    }
+
+    /**
+     * Two lists, never merged.
+     *
+     * The history is arithmetic over the diary. A favourite is a statement
+     * somebody made at the desk — and a service booked six times does not
+     * become one on its own, because a favourite nobody chose is one nobody
+     * can be asked about.
+     */
+    public function test_service_history_is_grouped_and_favourites_stay_separate(): void
+    {
+        $colour = Service::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Balayage', 'duration_minutes' => 180, 'is_active' => true,
+        ]);
+        $cut = Service::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Cut & Finish', 'duration_minutes' => 45, 'is_active' => true,
+        ]);
+
+        $reference = 0;
+
+        $book = function (Service $service, string $status, string $date) use (&$reference) {
+            $booking = Booking::withoutGlobalScopes()->create([
+                'tenant_id' => $this->tenant->getTenantKey(),
+                'reference' => 'BK-SVC-'.++$reference,
+                'client_id' => $this->client->id,
+                'date' => $date, 'starts_at' => '10:00', 'ends_at' => '11:00', 'minutes' => 60,
+                'status' => $status, 'total_minor' => 5000, 'currency_code' => 'USD',
+            ]);
+
+            $booking->services()->create([
+                'service_id' => $service->id, 'name' => $service->name,
+                'minutes' => 60, 'price_minor' => 5000, 'sort_order' => 0,
+            ]);
+        };
+
+        $book($colour, 'completed', '2026-07-01');
+        $book($colour, 'completed', '2026-08-01');
+        $book($cut, 'completed', '2026-06-01');
+        /* Neither of these happened, so neither counts. */
+        $book($cut, 'cancelled', '2026-05-01');
+        $book($cut, 'draft', '2026-04-01');
+
+        $tab = $this->actingAs($this->owner)
+            ->getJson(route('clients.services', $this->client))
+            ->assertOk()
+            ->json();
+
+        /* One row per service, most booked first — not one row per
+           appointment. */
+        $this->assertSame(['Balayage', 'Cut & Finish'], collect($tab['history'])->pluck('name')->all());
+        $this->assertSame(2, $tab['history'][0]['visits']);
+        $this->assertSame('1 Aug 2026', $tab['history'][0]['last_booked']);
+        $this->assertSame(1, $tab['history'][1]['visits']);
+
+        /* Booked twice, and still not a favourite. */
+        $this->assertFalse($tab['history'][0]['is_favorite']);
+        $this->assertSame([], $tab['favorites']);
+
+        /* Somebody says so, and now it is one. */
+        $after = $this->actingAs($this->owner)
+            ->postJson(route('clients.favorite-services.store', $this->client), ['services' => [$colour->id]])
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(['Balayage'], collect($after['favorites'])->pluck('name')->all());
+        $this->assertTrue(collect($after['history'])->firstWhere('id', $colour->id)['is_favorite']);
+
+        /* Said twice is the same statement, not a second one. */
+        $this->actingAs($this->owner)
+            ->postJson(route('clients.favorite-services.store', $this->client), ['services' => [$colour->id]])
+            ->assertOk();
+
+        $this->assertSame(1, $this->client->favoriteServices()->count());
+
+        /* And taken off by hand as well. */
+        $removed = $this->actingAs($this->owner)
+            ->deleteJson(route('clients.favorite-services.destroy', [$this->client, $colour]))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame([], $removed['favorites']);
+    }
+
+    /**
+     * A favourite can be marked for a service this client has never booked —
+     * "this is what I always have", said before there is any history to read
+     * it from.
+     */
+    public function test_a_favourite_can_be_marked_without_any_booking_history(): void
+    {
+        $service = Service::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Balayage', 'duration_minutes' => 180, 'is_active' => true,
+        ]);
+
+        $tab = $this->actingAs($this->owner)
+            ->postJson(route('clients.favorite-services.store', $this->client), ['services' => [$service->id]])
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(['Balayage'], collect($tab['favorites'])->pluck('name')->all());
+        $this->assertSame([], $tab['history']);
+    }
+
+    /**
+     * Create Booking from a profile opens the booking screen on that client,
+     * carrying only the id — so a tab left open since Tuesday cannot bring
+     * Tuesday's phone number into today's booking.
+     */
+    public function test_create_booking_from_the_profile_preselects_the_client(): void
+    {
+        $service = Service::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Balayage', 'duration_minutes' => 180, 'is_active' => true,
+        ]);
+
+        $this->client->favoriteServices()->attach($service->id, [
+            'tenant_id' => $this->tenant->getTenantKey(),
+        ]);
+
+        $this->actingAs($this->owner)
+            ->get(route('clients.show', $this->client))
+            ->assertOk()
+            ->assertSee(route('bookings.create', ['client' => $this->client->id]), false);
+
+        /* Either spelling of the parameter reaches the same client. */
+        foreach (['client', 'client_id'] as $parameter) {
+            $this->actingAs($this->owner)
+                ->get(route('bookings.create').'?'.$parameter.'='.$this->client->id)
+                ->assertOk()
+                ->assertSee($this->client->displayName())
+                ->assertSee('"favorite_service_ids":['.$service->id.']', false);
+        }
     }
 
     public function test_a_note_can_be_added_and_appears_on_the_profile(): void
@@ -369,10 +583,14 @@ class ClientProfileTest extends TestCase
      * The identity chips, in the order the header promises.
      *
      * Status first because it changes how the rest is read, then how long
-     * they have been a client, then the facts that are looked up: birthday,
-     * phone, email, where they are seen. The reference is not among them —
-     * it belongs beside the name, and a test that only counted chips would
-     * not notice it drifting down here.
+     * they have been a client, then the two facts that are looked up and
+     * have nowhere else to be: the birthday, and which branch they are seen
+     * at. The reference is not among them — it belongs beside the name, and
+     * a test that only counted chips would not notice it drifting down here.
+     *
+     * The phone and the email are deliberately absent. Both live in the
+     * Contact card a column away, under labels and beside the copy buttons
+     * that make them usable; repeated here they only crowded the header.
      */
     public function test_the_identity_chips_keep_their_order(): void
     {
@@ -399,9 +617,19 @@ class ClientProfileTest extends TestCase
             ->assertOk();
 
         $this->assertMatchesRegularExpression(
-            '#Active.*?Client since.*?18 Aug 1987.*?\+1 202-555-1043.*?amelia@example\.test.*?Downtown#s',
+            '#Active.*?Client since.*?18 Aug 1987.*?Downtown#s',
             $response->getContent(),
         );
+
+        /* Not in the header, and still on the page: the Contact card is
+           where a number is read from, because that is where it is labelled
+           and where the copy button is. */
+        $header = substr($response->getContent(), 0, strpos($response->getContent(), '</header>'));
+
+        $this->assertStringNotContainsString('+1 202-555-1043', $header);
+        $this->assertStringNotContainsString('amelia@example.test', $header);
+        $response->assertSee('+1 202-555-1043');
+        $response->assertSee('amelia@example.test');
 
         /* The reference sits with the name, above every chip. */
         $this->assertMatchesRegularExpression(

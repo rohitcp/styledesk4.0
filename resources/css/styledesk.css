@@ -2977,6 +2977,17 @@ fieldset:disabled :where(button, input, select, textarea),
     line-height: 1.25;
 }
 
+/* A value that is a sentence rather than a number.
+   "4 Sep 2026 · 10:30 AM" is one fact and has to read as one line — broken
+   after the date it becomes two, and the stray "AM" underneath reads as a
+   second answer. Smaller so it fits, and never wrapped so it cannot half-fit. */
+.styledesk_metric__value--compact {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* What a card says when the figure does not exist yet. Deliberately not
    styled as a value: an explanation should not be mistaken for a number. */
 .styledesk_metric__empty {

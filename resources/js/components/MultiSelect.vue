@@ -167,10 +167,70 @@ const buttonLabel = computed(() => {
         : props.placeholder;
 });
 
+/**
+ * Where the panel sits, in viewport coordinates.
+ *
+ * The panel is rendered into <body> rather than inside this control, so it
+ * cannot be clipped by a card that hides its overflow — which is what
+ * happened on the booking screen, where the category list was cut off at the
+ * edge of the Service card. A portal trades one problem for one job: nothing
+ * clips it, and nothing positions it either, so it is measured against the
+ * button each time it opens.
+ *
+ * Fixed rather than absolute, so the numbers are the ones getBoundingClientRect
+ * already returns and no offset parent has to be found.
+ */
+const panel = ref(null);
+const panelStyle = ref({});
+
+/** The list's own height, so the panel cannot outgrow the screen. */
+const LIST_MAX = 300;
+
+function placePanel() {
+    const trigger = root.value?.querySelector('button');
+
+    if (! trigger) {
+        return;
+    }
+
+    const rect = trigger.getBoundingClientRect();
+    const gap = 4;
+
+    /* Never narrower than the field it belongs to, and never so narrow that a
+       long category name has nowhere to go. */
+    const width = Math.max(rect.width, 260);
+
+    /* Below by preference, above when the room below has run out — a list
+       that opens off the bottom of the window is one the reader scrolls the
+       page to read, losing the field it belongs to on the way. */
+    const roomBelow = window.innerHeight - rect.bottom;
+    const needed = LIST_MAX + 64;
+    const above = roomBelow < needed && rect.top > roomBelow;
+
+    panelStyle.value = {
+        position: 'fixed',
+        width: `${width}px`,
+        /* Stated again as a minimum, because the stylesheet carries
+           `min-width: 100%` from when the panel still lived inside the
+           control. Portalled into <body>, that 100% is the width of the page
+           and it beats the width set here — so every list opened as wide as
+           the window and ran off the right of it. */
+        minWidth: `${width}px`,
+        left: `${Math.min(Math.max(8, rect.left), window.innerWidth - width - 8)}px`,
+        top: above ? 'auto' : `${rect.bottom + gap}px`,
+        bottom: above ? `${window.innerHeight - rect.top + gap}px` : 'auto',
+        /* Above the app bar, which is z-30, and above the panels of the page
+           it is floating over. */
+        zIndex: 60,
+    };
+}
+
 function toggle() {
     open.value = !open.value;
 
     if (open.value) {
+        placePanel();
+
         /**
          * Only one panel open at a time.
          *
@@ -205,8 +265,28 @@ function onOtherOpen(event) {
 }
 
 function onDocumentClick(event) {
-    if (open.value && root.value && !root.value.contains(event.target)) {
-        open.value = false;
+    if (! open.value || ! root.value) {
+        return;
+    }
+
+    /* The panel is in <body>, so it is not inside this control's element any
+       more — a click in it would otherwise close the thing being clicked. */
+    if (root.value.contains(event.target) || panel.value?.contains(event.target)) {
+        return;
+    }
+
+    open.value = false;
+}
+
+/**
+ * Follow the field when the page moves under it.
+ *
+ * Capture, because the scroll that matters is often a container's rather than
+ * the window's — the booking screen scrolls a column, not the document.
+ */
+function onViewportChange() {
+    if (open.value) {
+        placePanel();
     }
 }
 
@@ -250,6 +330,8 @@ onMounted(() => {
     document.addEventListener('styledesk:filter-clear', onExternalClear);
     document.addEventListener('styledesk:filter-set', onExternalSet);
     document.addEventListener('styledesk:combo-open', onOtherOpen);
+    window.addEventListener('scroll', onViewportChange, true);
+    window.addEventListener('resize', onViewportChange);
     emit('primary-changed', primary.value);
 
     /**
@@ -273,6 +355,8 @@ onBeforeUnmount(() => {
     document.removeEventListener('styledesk:filter-clear', onExternalClear);
     document.removeEventListener('styledesk:filter-set', onExternalSet);
     document.removeEventListener('styledesk:combo-open', onOtherOpen);
+    window.removeEventListener('scroll', onViewportChange, true);
+    window.removeEventListener('resize', onViewportChange);
 });
 </script>
 
@@ -329,13 +413,26 @@ onBeforeUnmount(() => {
             </svg>
         </button>
 
-        <div v-if="open" class="styledesk_timepicker__panel" style="width: 320px">
-            <div class="p-2 border-b border-line">
-                <input ref="searchBox" v-model="query" type="text" class="sd-input h-9 text-[13px]"
-                       :placeholder="searchPlaceholder" autocomplete="off">
-            </div>
+        <!-- Rendered into <body>, not into this control.
 
-            <div class="max-h-[200px] overflow-y-auto">
+             A panel inside the control is clipped by any ancestor that hides
+             its overflow, and the cards on the booking screen do — the
+             category list was cut off at the edge of the Service card. A
+             portal is the reliable answer: nothing above it in the tree can
+             clip it, and the alternative is auditing every container the
+             component is ever placed inside. Its position is measured against
+             the button — see placePanel. -->
+        <Teleport to="body">
+            <div v-if="open" ref="panel" class="styledesk_timepicker__panel" :style="panelStyle">
+                <!-- Outside the scrolling list, not inside it: the search
+                     stays put while thirty categories move under it, which is
+                     what a business with thirty categories needs. -->
+                <div class="p-2 border-b border-line bg-white">
+                    <input ref="searchBox" v-model="query" type="text" class="sd-input h-9 text-[13px]"
+                           :placeholder="searchPlaceholder" autocomplete="off">
+                </div>
+
+                <div class="max-h-[300px] overflow-y-auto">
                 <button v-for="country in matches" :key="country.code" type="button" role="option"
                         :aria-selected="isSelected(country.code)"
                         class="styledesk_timepicker__opt flex items-center gap-2.5"
@@ -362,12 +459,13 @@ onBeforeUnmount(() => {
                     </svg>
                 </button>
 
-                <p v-if="!matches.length" class="px-3 py-2.5 text-[13px] text-sub">Nothing matches “{{ query }}”.</p>
-            </div>
+                    <p v-if="!matches.length" class="px-3 py-2.5 text-[13px] text-sub">Nothing matches “{{ query }}”.</p>
+                </div>
 
-            <div v-if="hint" class="styledesk_timepicker__foot">
-                <span class="text-[12px] text-sub">{{ hint }}</span>
+                <div v-if="hint" class="styledesk_timepicker__foot">
+                    <span class="text-[12px] text-sub">{{ hint }}</span>
+                </div>
             </div>
-        </div>
+        </Teleport>
     </div>
 </template>

@@ -15,10 +15,33 @@
     var addLabel = @json(__('services.categories_ui.add'));
     var editLabel = @json(__('services.categories_ui.edit'));
 
+    var nameField = form.querySelector('[name="name"]');
+    var checkUrl = @json(route('settings.services.name-in-use'));
+
+    /**
+     * Which row the duplicate-name check should ignore.
+     *
+     * One dialog serves add and edit, so the URL cannot be fixed in the
+     * markup: editing "Colour" and leaving the name alone would otherwise
+     * report it as already taken — by itself.
+     */
+    function aimNameCheck(ignoreId) {
+      nameField.setAttribute('data-remote-check', ignoreId ? checkUrl + '?ignore=' + ignoreId : checkUrl);
+    }
+
     function open() {
       modal.hidden = false;
       document.body.style.overflow = 'hidden';
-      form.querySelector('[name="name"]').focus();
+      nameField.focus();
+    }
+
+    /* A dialog reopened after a refusal must not still be showing it: the
+       fields have been reset, so the messages under them are about values
+       nobody can see any more. */
+    function clearErrors() {
+      if (window.SD && typeof window.SD.clearErrors === 'function') {
+        window.SD.clearErrors(form);
+      }
     }
 
     function close() {
@@ -29,6 +52,8 @@
     document.querySelectorAll('[data-category-add]').forEach(function (button) {
       button.addEventListener('click', function () {
         form.reset();
+        clearErrors();
+        aimNameCheck(null);
         form.setAttribute('action', addAction);
         method.value = 'POST';
         title.textContent = addLabel;
@@ -44,6 +69,8 @@
       var data = JSON.parse(button.getAttribute('data-category'));
 
       form.reset();
+      clearErrors();
+      aimNameCheck(data.id);
       form.setAttribute('action', editAction.replace('__ID__', data.id));
       method.value = 'PATCH';
       title.textContent = editLabel;
@@ -64,58 +91,4 @@
     });
   }());
 
-  /* Dragging a row to reorder.
-
-     The hidden inputs travel with their rows, so moving a row in the DOM is
-     what changes the order that posts — there is no second list to keep in
-     step with what the reader can see. */
-  (function () {
-    var list = document.querySelector('[data-category-list]');
-    if (!list) return;
-
-    var bar = document.querySelector('[data-reorder-bar]');
-    var dragging = null;
-
-    list.addEventListener('dragstart', function (e) {
-      var row = e.target.closest('[data-category-row]');
-      if (!row) return;
-
-      /* Not when the press started inside the row's menu. The whole row is
-         draggable, so pressing a menu item began a drag instead of clicking
-         it — the menu looked dead, and no amount of clicking fixed it. */
-      if (e.target.closest('[data-rowmenu]')) {
-        e.preventDefault();
-
-        return;
-      }
-
-      dragging = row;
-      row.classList.add('is-dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      /* Firefox will not start a drag without something on the transfer. */
-      e.dataTransfer.setData('text/plain', row.dataset.id);
-    });
-
-    list.addEventListener('dragend', function () {
-      if (dragging) dragging.classList.remove('is-dragging');
-      dragging = null;
-    });
-
-    list.addEventListener('dragover', function (e) {
-      if (!dragging) return;
-      e.preventDefault();
-
-      var over = e.target.closest('[data-category-row]');
-      if (!over || over === dragging) return;
-
-      /* Above or below, decided by which half of the row the pointer is in:
-         judging by the row alone makes the last position unreachable. */
-      var box = over.getBoundingClientRect();
-      var after = e.clientY > box.top + box.height / 2;
-
-      list.insertBefore(dragging, after ? over.nextSibling : over);
-
-      if (bar) bar.hidden = false;
-    });
-  }());
 </script>

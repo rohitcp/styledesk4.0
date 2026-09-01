@@ -44,7 +44,7 @@ class BookingLeadController extends Controller
         $filters = $this->filters($request);
 
         $leads = BookingLead::query()
-            ->with(['client', 'booking'])
+            ->with(['client', 'booking', 'location', 'staff'])
             /* Bookings that were taken are not leads. They are kept in the
                table for the reporting — how many calls became appointments
                — but this screen is a queue of work still to do, and a
@@ -81,6 +81,10 @@ class BookingLeadController extends Controller
                 'primary_badge' => $lead->reference,
                 'initials' => $this->initialsOf($lead->forName()),
                 'services' => collect($lead->services ?? [])->pluck('name')->implode(', '),
+                /* Where it would be worked. A draft saved from the booking
+                   screen knows its branch, and "which one" is the first
+                   question anybody asks of a row they are picking up. */
+                'location' => $lead->location?->name,
                 'expected' => $lead->expected_date?->translatedFormat('j M Y'),
                 'total' => Money::format($lead->total_minor / 100, $lead->currency_code),
                 'started' => $lead->created_at?->translatedFormat('j M Y · H:i'),
@@ -118,7 +122,7 @@ class BookingLeadController extends Controller
     {
         $this->allow($request);
 
-        $lead->load(['client.bookingPreferences', 'booking', 'createdBy', 'contactedBy', 'events.user']);
+        $lead->load(['client.bookingPreferences', 'booking', 'location', 'staff', 'createdBy', 'contactedBy', 'events.user']);
 
         $none = __('leads.drawer.not_selected');
         $services = collect($lead->services ?? []);
@@ -159,12 +163,16 @@ class BookingLeadController extends Controller
                     : $none,
                 __('leads.drawer.price') => $lead->total_minor > 0 ? $money((int) $lead->total_minor) : $none,
                 __('leads.drawer.date') => $lead->expected_date?->translatedFormat('l j F Y') ?? $none,
-                /* The two the booking screen has not asked for by the time
-                   most leads are written. Named rather than hidden, because
-                   what is missing is what the call is about. */
-                __('leads.drawer.time') => $none,
-                __('leads.drawer.staff') => $none,
-                __('leads.drawer.notes') => $lead->follow_up_note ?: $none,
+                /* Answered where the booking screen got that far, and named
+                   rather than hidden where it did not: what is missing is
+                   what the call is about. */
+                __('leads.drawer.time') => $lead->startsAtLabel() ?? $none,
+                __('leads.drawer.staff') => $lead->staff?->displayName() ?? $none,
+                __('leads.drawer.location') => $lead->location?->name ?? $none,
+                /* The note about the appointment, and the note the desk
+                   wrote about chasing the call. Two different things, and a
+                   drawer that showed only one loses whichever it dropped. */
+                __('leads.drawer.notes') => $lead->notes ?: ($lead->follow_up_note ?: $none),
             ],
 
             'payment' => [

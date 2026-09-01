@@ -79,7 +79,7 @@ return [
     'sections' => [
         'client' => 'Client',
         'service' => 'Service',
-        'when' => 'Who with + when',
+        'when' => 'Staff & time',
         'details' => 'Booking details',
         'payment' => 'Deposit / payment',
         'comms' => 'Communication',
@@ -98,6 +98,11 @@ return [
         'guest_phone' => 'Mobile',
         'guest_email' => 'Email',
         'guest_hint' => 'A walk-in is booked without a client record. Add the client instead if they are coming back.',
+        'guest_save' => 'Save walk-in details',
+        'guest_checking' => 'Checking…',
+        'guest_saved' => 'Saved',
+        'guest_known' => 'This may already be a client.',
+        'guest_known_hint' => 'Use their record instead and the booking keeps their history. Carry on as a walk-in if it is somebody else.',
     ],
 
     'service' => [
@@ -110,9 +115,44 @@ return [
         'empty' => 'No services yet. Add one first and the booking screen will offer it.',
         'minutes' => ':count min',
         'remove' => 'Remove :name',
+
+        /*
+        | The full-page selector.
+        |
+        | A salon with a hundred services cannot choose one from a list
+        | inside a form field, so choosing is its own screen: the categories
+        | down one side, the services down the other, and one Save at the
+        | bottom rather than a commit per service.
+        */
+        'add' => 'Add / Assign Service',
+        'change' => 'Add or change services',
+        'card_empty' => 'No services chosen yet.',
+        'select_title' => 'Select Services',
+        'close' => 'Back to the booking',
+        'categories' => 'Service Categories',
+        'all_services' => 'All Services',
+        'client_favorites' => 'Client favourites',
+        'selected' => ':count selected',
+        'selected_one' => '1 selected',
+        'selected_none' => 'Nothing selected',
+        'save_close' => 'Save & Close',
+        'nothing_here' => 'Nothing in this category.',
+        'hours' => ':count hr',
+        'hours_minutes' => ':hours hr :minutes min',
+        'count' => ':count services',
+        'count_one' => '1 service',
+        'needs' => 'Needs :names',
     ],
 
     'when' => [
+        'none_in_period' => 'Nothing free at this time of day.',
+        'change_location' => 'Change location',
+        'search_locations' => 'Search locations…',
+        'no_locations' => 'No location matches that search.',
+        'closed_date' => 'No booking times available — this location is closed on this date.',
+        'too_long' => 'These services do not fit inside this location’s opening hours on this date.',
+        'nothing_free' => 'Nothing is free on this date — the times are taken, or nobody is on shift for them.',
+        'loading_times' => 'Checking what is free…',
         'staff' => 'Team member',
         'any' => 'Any available',
         'date' => 'Date',
@@ -141,25 +181,60 @@ return [
         'client_note_aside' => '— kept on the client profile',
         'client_note_hint' => 'Saved to the client when the booking is confirmed. Everyone booking them sees it.',
         'client_note_placeholder' => 'Sensitive scalp — no heat directly on the roots.',
-        'client_note_guest' => 'A walk-in has no profile to keep a note on.',
         'choose_source' => 'Choose a source',
         'search_sources' => 'Search sources…',
     ],
 
     'payment' => [
-        'type' => 'Payment type',
-        'none' => 'Nothing now',
-        'none_hint' => 'Pay in full at the appointment.',
-        'deposit' => 'Take a deposit',
-        'deposit_hint' => 'Part now, the rest on the day.',
+        'type' => 'Payment option',
+        'none' => 'No Payment Now',
+        'none_hint' => 'Do not collect payment during booking.',
+        'deposit' => 'Take Deposit',
+        'deposit_hint' => 'Collect part of the booking total now.',
+        'full' => 'Full Payment',
+        'full_hint' => 'Collect the entire booking total now.',
         'amount' => 'Deposit amount',
-        'action' => 'How it is taken',
+        /* The two ways a desk says a deposit out loud. A percentage is what
+           a policy is written in; a number is what gets typed. */
+        'preset' => ':percent%',
+        'preset_custom' => 'Custom',
+        'too_much' => 'A deposit cannot be more than the booking total.',
+        'balance' => 'Balance due',
+        'collecting' => 'Collecting now',
+        'nothing_collected' => 'No payment will be collected for this booking.',
+        'action' => 'Payment collection method',
+        'choose_action' => 'Choose how it is collected',
+        'search_actions' => 'Search…',
+        'action_hint' => 'Only asked once there is something to collect.',
         'actions' => [
-            'now' => 'Taken at the desk',
-            'link' => 'Send a payment link',
-            'later' => 'Ask on arrival',
+            'collect-now' => 'Collect Now',
+            'desk' => 'Taken at the Desk',
+            'link' => 'Send Payment Link',
+            'later' => 'Ask on Arrival',
             'waive' => 'Waived',
         ],
+        'action_hints' => [
+            'collect-now' => 'Charge it here, before the booking is finished.',
+            'desk' => 'The desk takes it in person. The balance stays owing until it does.',
+            'link' => 'The client pays in their own time. Sent by email once the booking is taken.',
+            'later' => 'Collected when the client arrives. The balance stays owing.',
+            'waive' => 'Nothing is collected, on purpose. Recorded against your name.',
+        ],
+        'waiver_reason' => 'Why it is being waived',
+        'waiver_placeholder' => 'A regular whose colour went wrong last time.',
+        'waiver_hint' => 'Kept with your name and the date, so the decision can be answered for later.',
+        'waiver_needed' => 'Say why the payment is being waived.',
+        'no_waive_permission' => 'You cannot waive a payment. Ask a manager.',
+        'collect_now_hint' => 'The payment card opens as soon as the booking is taken.',
+        'link_sent' => 'Payment link sent to :to.',
+        'link_status' => 'Payment link',
+        'link_statuses' => [
+            'sent' => 'Sent',
+            'opened' => 'Opened',
+            'paid' => 'Paid',
+            'expired' => 'Expired',
+        ],
+        'link_no_email' => 'This client has no email address, so the link has nowhere to go.',
     ],
 
     'comms' => [
@@ -263,6 +338,21 @@ return [
         'created' => 'Booking reference :reference created. No action is needed right now.',
     ],
 
+    /*
+    | The booking saving itself as it is filled in.
+    |
+    | Said quietly and beside the reference, because it is not news: the
+    | receptionist is talking to somebody, and a save that announced itself
+    | every few seconds would be the loudest thing on the screen.
+    */
+    'autosave' => [
+        'reference' => 'Booking Ref: :reference',
+        'saving' => 'Saving…',
+        'saved' => 'Saved',
+        'failed' => 'Not saved',
+        'draft' => 'Draft',
+    ],
+
     'steps' => [
         'save' => 'Save & continue',
         'edit' => 'Edit',
@@ -277,6 +367,7 @@ return [
     ],
 
     'booked' => 'Booking confirmed for :name.',
+    'no_time_yet' => 'No time yet',
     'saved_draft' => 'Booking saved as a draft.',
 
     'empty' => 'No bookings match these filters.',
@@ -317,6 +408,8 @@ return [
         'notes' => 'Booking notes',
         'no_notes' => 'Nothing was noted about this appointment.',
         'payment_summary' => 'Payment summary',
+        'take_payment' => 'Take Payment',
+        'paid_in_full' => 'Paid in full',
         'transactions' => 'Payment transactions',
         'no_transactions' => 'No money has been taken against this booking yet.',
         'recorded_by' => 'recorded by :name',
@@ -332,6 +425,9 @@ return [
     'pay' => [
         'title' => 'Payment',
         'due' => 'Amount due',
+        'collect_now' => 'Amount to collect now',
+        'booking_total' => 'Booking total',
+        'remaining' => 'Remaining balance',
         'method' => 'How are they paying?',
         'change_method' => 'Change',
         'back' => 'Back to booking summary',
@@ -395,13 +491,42 @@ return [
         'sent' => 'Confirmation sent to :to.',
         'no_email' => 'This client has no email address on file.',
         'no_sms' => 'Text messages are not connected yet. Send it by email, or add an SMS account first.',
+        'link_failed' => 'The booking is made, but the payment link could not be emailed. Ring the client instead.',
         'due_notice' => 'Payment due :amount',
+        'amount_due' => 'Amount due',
     ],
 
     'email' => [
         'subject' => ':business — your appointment on :date',
         'headline' => 'Your appointment is confirmed',
         'intro' => 'Thanks, :name. Here are the details.',
+        'link_subject' => ':business — paying for your appointment on :date',
+        'link_headline' => 'How to pay for your appointment',
+        'link_intro' => 'Thanks, :name. Here is what is outstanding, and how to settle it.',
+        'link_amount' => 'Amount to pay',
+        'link_cta' => 'View payment details',
+        'link_expiry' => 'This link works until :when.',
+    ],
+
+    /*
+    | The page a client lands on from a payment link.
+    |
+    | Written for somebody who is not a StyleDesk user and never will be, so
+    | it says what is owed, where to send it, and nothing about the business's
+    | own workings.
+    */
+    'pay_link' => [
+        'title' => 'Paying for your appointment',
+        'amount' => 'Amount requested',
+        'balance' => 'Balance on this booking: :amount',
+        'how' => 'How to pay',
+        'reference_hint' => 'Please quote :reference so we can match it to your appointment.',
+        'no_handles' => 'Give us a call and we will take it over the phone.',
+        'expired' => 'This payment link has expired.',
+        'expired_hint' => 'Get in touch and we will send you a new one.',
+        'settled' => 'This booking is paid in full.',
+        'settled_hint' => 'Nothing further is owed. Thank you.',
+        'footer' => 'This link is for one appointment and does not sign you in to anything.',
     ],
 
     'validation' => [

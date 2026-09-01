@@ -48,7 +48,11 @@ class CreateStaffMember
                 'date_of_birth' => $data['date_of_birth'] ?? null,
                 'started_on' => $data['started_on'] ?? null,
                 'job_title' => $data['job_title'] ?? null,
-                'employee_ref' => $data['employee_ref'] ?? null,
+                /* Handed out here, not taken from the form. The field is
+                   read-only on screen, and a read-only field is a courtesy
+                   to the reader rather than a guarantee about the request —
+                   so the number is decided on this side of it. */
+                'employee_ref' => Staff::nextRef($tenant->getTenantKey()),
                 'bio' => $data['bio'] ?? null,
                 'avatar_path' => $data['avatar_path'] ?? null,
 

@@ -40,17 +40,48 @@ return [
     ],
 
     /*
-    | How the appointment is paid for. A deposit is money taken now against
-    | a booking worked later, which is a different thing from the bill.
+    | What is collected while the booking is being taken.
+    |
+    | Three answers, because they are three different acts: nothing now and
+    | the whole bill is owed later; part of it now against a booking worked
+    | later; or all of it now. A deposit is not a discount — the rest is
+    | still owed, and the balance is what the desk chases.
     */
-    'payment_types' => ['none', 'deposit'],
+    'payment_types' => ['none', 'deposit', 'full'],
 
     /*
-    | What to do about the deposit, once one is being asked for. Taking it
-    | at the desk and sending a link to pay it are different acts with
-    | different answers, and "waive" is the one that needs a reason.
+    | How the money is collected, once something is being collected.
+    |
+    | Five different acts, not five wordings of one. Collect Now charges it in
+    | the booking screen before the booking is finished; the desk takes it in
+    | person afterwards; a link asks the client to pay in their own time; on
+    | arrival is the answer a salon gives most often; and waiving is a
+    | decision somebody has to be accountable for, which is why it is the one
+    | that records a name, a date and a reason.
+    |
+    | Only meaningful when something is being collected at all. With
+    | `payment_type` of `none` there is nothing to collect and no method.
     */
-    'deposit_actions' => ['now', 'link', 'later', 'waive'],
+    'collection_methods' => ['collect-now', 'desk', 'link', 'later', 'waive'],
+
+    /*
+    | How long a payment link stands before it stops working. Long enough to
+    | survive a weekend, short enough that a link found in an old inbox is
+    | not a way into somebody's appointment.
+    */
+    'payment_link_hours' => (int) env('BOOKING_PAYMENT_LINK_HOURS', 72),
+
+    /*
+    | Where a payment link can get to. Sent and opened are the two this side
+    | can know; paid is settled from the money against the booking, because
+    | StyleDesk takes none itself; expired is the clock.
+    */
+    'payment_link_statuses' => [
+        'sent' => ['class' => 'styledesk_badge--info'],
+        'opened' => ['class' => 'styledesk_badge--setup'],
+        'paid' => ['class' => 'styledesk_badge--active'],
+        'expired' => ['class' => 'styledesk_badge--soon'],
+    ],
 
     /*
     | How the client is told. None is a real answer: a walk-in standing at
@@ -104,6 +135,10 @@ return [
     | and a brand-coloured status list means nothing at all.
     */
     'lead_statuses' => [
+        /* A booking still being written on the New Booking screen, saving
+           itself as it goes. It becomes 'in-progress' the moment the client
+           moves past the first card, and 'converted' when it is confirmed. */
+        'draft' => ['class' => 'styledesk_badge--setup', 'mvp' => true],
         'new' => ['class' => 'styledesk_badge--info', 'mvp' => true],
         'in-progress' => ['class' => 'styledesk_badge--info', 'mvp' => true],
         'awaiting-confirmation' => ['class' => 'styledesk_badge--setup', 'mvp' => true],

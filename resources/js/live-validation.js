@@ -307,7 +307,21 @@ export function initLiveValidation(root = document) {
             return !message;
         };
 
-        fieldsOf(form).forEach((field) => {
+        /**
+         * Listeners go on every field with rules, hidden ones included.
+         *
+         * fieldsOf() is the right answer for "what is this form asking for
+         * right now" and the wrong one for "what should be watched": a dialog
+         * is `hidden` when the page loads, so binding only to what is visible
+         * at that moment left every field in a modal unwatched for the life of
+         * the page — the reader typed, left the field, and nothing was ever
+         * checked until they pressed Save.
+         *
+         * A listener on a hidden field costs nothing, because a field nobody
+         * can focus never blurs. What must stay filtered is validation itself,
+         * which sdValidate() below still takes from fieldsOf().
+         */
+        Array.from(form.querySelectorAll('[data-rules]')).forEach((field) => {
             /* On leaving the field, never before: a form that turns red as it
                is opened is telling somebody off for nothing. */
             field.addEventListener('blur', () => {

@@ -320,6 +320,68 @@ class StaffSectionTest extends TestCase
             ->assertDontSee('<table', false);
     }
 
+    /**
+     * The staff ID is handed out, not typed.
+     *
+     * An identifier somebody invents is one two people invent differently —
+     * EMP-7, emp007, 7 — and the column stops being something anybody can
+     * search or sort by.
+     */
+    public function test_the_staff_id_is_generated_and_never_taken_from_the_form(): void
+    {
+        $owner = $this->owner();
+
+        /* The form shows the number before it is saved, and shows it as a
+           field nobody can type into. */
+        $this->actingAs($owner)
+            ->get(route('settings.staff.create'))
+            ->assertOk()
+            ->assertSee('EMP-0001')
+            ->assertSee('readonly', false)
+            ->assertDontSee('name="employee_ref"', false);
+
+        /* Sent anyway, the way a crafted request would: the server decides
+           the number regardless, because a read-only field is a courtesy to
+           the reader and not a promise about the request. */
+        $this->actingAs($owner)
+            ->post(route('settings.staff.store'), $this->payload(['employee_ref' => 'MINE-999']))
+            ->assertRedirect();
+
+        $first = Staff::withoutGlobalScopes()->latest('id')->firstOrFail();
+
+        $this->assertSame('EMP-0001', $first->employee_ref);
+
+        /* The next one carries on from it. */
+        $this->actingAs($owner)
+            ->post(route('settings.staff.store'), $this->payload([
+                'first_name' => 'rosa', 'email' => 'rosa@acme.test',
+            ]))
+            ->assertRedirect();
+
+        $this->assertSame('EMP-0002', Staff::withoutGlobalScopes()->latest('id')->firstOrFail()->employee_ref);
+    }
+
+    /**
+     * Once given, it stays. An identifier that can be edited is not one
+     * anybody can be found by.
+     */
+    public function test_the_staff_id_cannot_be_changed_afterwards(): void
+    {
+        $owner = $this->owner();
+        $member = $this->staffMember(['employee_ref' => 'EMP-0007']);
+
+        $this->actingAs($owner)
+            ->patch(route('settings.staff.update', $member), $this->payload([
+                'first_name' => 'Renamed',
+                'email' => $member->email,
+                'employee_ref' => 'MINE-999',
+            ]))
+            ->assertRedirect();
+
+        $this->assertSame('EMP-0007', $member->fresh()->employee_ref);
+        $this->assertSame('Renamed', $member->fresh()->first_name);
+    }
+
     public function test_the_grid_rows_carry_what_the_columns_need(): void
     {
         $owner = $this->owner();
@@ -575,5 +637,40 @@ class StaffSectionTest extends TestCase
 
         $this->actingAs($owner)->get('http://styledesk.test/settings/staff/create')
             ->assertOk()->assertSee('Shift Rule');
+    }
+
+    /**
+     * The Staff module and App Settings are two addresses for one form.
+     *
+     * Everything the contact fields gained — the shared email rules, a
+     * searchable dialling-code picker per number, the live checks — has to be
+     * true at both, because there is one view behind them. Asserted here so
+     * that a change made "on the settings screen" cannot quietly be a change
+     * to only one of the two doors.
+     */
+    public function test_both_doors_render_the_same_validated_contact_fields(): void
+    {
+        $owner = $this->owner();
+        $staff = $this->staffMember(['role_id' => $this->roleId('service-provider')]);
+
+        $urls = [
+            'module' => route('staff.edit', $staff),
+            'settings' => route('settings.staff.edit', $staff),
+        ];
+
+        foreach ($urls as $door => $url) {
+            $html = $this->actingAs($owner)->get($url)->assertOk()->getContent();
+
+            foreach ([
+                'data-validate-form',
+                'data-rules="required|email|max:255"',
+                'data-error-for="email"',
+                'name="phone_country" data-phone-country-value',
+                'name="secondary_phone_country" data-phone-country-value',
+                'name="emergency_contact_phone_country" data-phone-country-value',
+            ] as $marker) {
+                $this->assertStringContainsString($marker, $html, "The {$door} door is missing {$marker}.");
+            }
+        }
     }
 }

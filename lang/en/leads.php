@@ -20,7 +20,7 @@ return [
     'all_statuses' => 'All statuses',
 
     'actions' => [
-        'complete' => 'Complete booking',
+        'complete' => 'Continue booking',
         'view_booking' => 'View booking',
         'view_client' => 'View client',
     ],
@@ -29,6 +29,7 @@ return [
         'who' => 'Client',
         'services' => 'Asked for',
         'expected' => 'Wanted for',
+        'location' => 'Location',
         'total' => 'Value',
         'started' => 'Started',
         'step' => 'Stopped at',
@@ -41,6 +42,7 @@ return [
     | ring them, "deposit & payment" says what to ring about.
     */
     'statuses' => [
+        'draft' => ['label' => 'Draft'],
         'new' => ['label' => 'New'],
         'in-progress' => ['label' => 'In progress'],
         'awaiting-confirmation' => ['label' => 'Awaiting client'],
@@ -113,6 +115,7 @@ return [
         'date' => 'Date',
         'time' => 'Time',
         'staff' => 'With',
+        'location' => 'Location',
         'notes' => 'Notes',
         'payment' => 'Payment',
         'estimated_total' => 'Estimated total',

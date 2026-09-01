@@ -1615,7 +1615,11 @@ class StaffController extends Controller
                 $staff->fill([
                     ...collect($data)->only([
                         'first_name', 'middle_name', 'last_name', 'preferred_name', 'pronouns',
-                        'job_title', 'employee_ref', 'bio', 'avatar_path',
+                        /* Not `employee_ref`: an identifier that can be
+                           edited is not one anybody can be found by, and the
+                           field is read-only on screen. It is set once, when
+                           the member is created. */
+                        'job_title', 'bio', 'avatar_path',
                         'email', 'work_email', 'phone', 'phone_country', 'phone_type',
                         'secondary_phone', 'secondary_phone_country', 'address',
                         'emergency_contact_name', 'emergency_contact_phone',
@@ -1729,7 +1733,6 @@ class StaffController extends Controller
             'preferred_name' => ['nullable', 'string', 'max:100'],
             'pronouns' => ['nullable', Rule::in(array_keys(config('staff.pronouns')))],
             'job_title' => ['nullable', 'string', 'max:100'],
-            'employee_ref' => ['nullable', 'string', 'max:40'],
 
             /* A birthday is in the past and a first day may be in the future
                — someone hired to start next month is still added today. */
@@ -1894,6 +1897,12 @@ class StaffController extends Controller
         return [
             'shiftRulesOn' => $shiftRulesOn,
             'shiftRules' => $shiftRules,
+            /* The number this member will be given, shown before they are
+               saved. A preview rather than a reservation: nothing holds it,
+               so two people on the Add form at once are shown the same one
+               and the second is given the next — which is decided in the
+               transaction that writes the row, not here. */
+            'nextStaffRef' => $staff?->employee_ref ?? Staff::nextRef($request->user()->tenant->getTenantKey()),
             /* Every active rule and the branches each is restricted to, so the
                form can narrow the list when the location changes without
                asking the server again. */

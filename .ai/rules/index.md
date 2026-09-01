@@ -4,5 +4,10 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
-| app/{Models/StaffShift.php,Support/SchedulePeriod.php,Http/Controllers/**}, app/{Models/Booking.php,Models/BookingPayment.php,Support/BookingTotals.php,Http/Controllers/BookingController.php} | .ai/rules/controllers.md |
+| resources/js/components/{BookingBuilder.vue,MultiSelect.vue} | .ai/rules/components.md |
+| app/{Models/StaffShift.php,Support/SchedulePeriod.php,Http/Controllers/**}, app/{Models/Booking.php,Models/BookingPayment.php,Support/BookingTotals.php,Http/Controllers/BookingController.php}, app/{Models/Booking.php,Models/BookingLead.php,Support/BookingAvailability.php,Http/Controllers/BookingController.php,Http/Controllers/BookingLeadController.php}, app/{Models/BookingPaymentLink.php,Http/Controllers/PaymentLinkController.php,Http/Controllers/BookingController.php} | .ai/rules/controllers.md |
 | ** | .ai/rules/general.md |
+| resources/js/{listing-filters.js,data-grid.js} | .ai/rules/js.md |
+| app/{Models/ClientActivity.php,Support/ClientActivityLog.php} | .ai/rules/models.md |
+| app/{Support/ClientServiceHistory.php,Models/Client.php,Http/Controllers/ClientController.php} | .ai/rules/support-controllers.md |
+| app/Support/ClientVisitSummary.php | .ai/rules/support.md |

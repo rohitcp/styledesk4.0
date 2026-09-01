@@ -6,43 +6,51 @@
     bill settled half in cash and half on a card is one of the first and two
     of the second.
 
-    Read-only. Money is taken on the booking screen, and a page that could
-    also take it would be a second place for the same mistake.
+    The summary is a Vue island rather than Blade, because it has to change
+    the moment a payment lands: a booking is very often paid for somewhere
+    other than the screen it was taken on — a deposit on the phone in March,
+    the balance at the desk in April — and sending the reader back through a
+    page load to see it is a reload in the middle of a conversation.
 --}}
 <section>
     <h2 class="styledesk_heading">{{ __('bookings.detail.payment_summary') }}</h2>
 
-    <dl class="mt-3 bg-white border border-line rounded-card p-4 space-y-2.5 text-[13px]">
-        @foreach ($totals->lines() as $line)
-            <div class="flex items-baseline justify-between gap-4">
-                <dt class="{{ ($line['strong'] ?? false) ? 'font-semibold text-head' : 'text-sub' }}">{{ $line['label'] }}</dt>
-                <dd class="{{ ($line['strong'] ?? false) ? 'font-bold text-head' : 'font-medium text-head' }}">{{ $line['value'] }}</dd>
-            </div>
-        @endforeach
+    <div class="mt-3">
+        @if ($canTakePayment)
+            @php
+                $payProps = [
+                    'booking' => $panel,
+                    'methods' => $payMethods,
+                    'csrf' => csrf_token(),
+                    'currencySymbol' => \App\Support\Money::symbol($booking->currency_code),
+                    /* Only the copy this island uses. The whole file would
+                       put the validation strings and the toasts in the DOM. */
+                    'labels' => \Illuminate\Support\Arr::only(__('bookings'), [
+                        'summary', 'detail', 'pay', 'methods', 'payment_statuses', 'cancel', 'payment',
+                    ]),
+                ];
+            @endphp
 
-        @if ($booking->deposit_minor > 0)
-            <div class="flex items-baseline justify-between gap-4">
-                <dt class="text-sub">{{ __('bookings.summary.deposit') }}</dt>
-                <dd class="font-medium text-head">{{ $totals->money((int) $booking->deposit_minor) }}</dd>
-            </div>
+            <div data-vue-component="TakePayment" data-props='@json($payProps)'></div>
+
+            {{-- The island is what takes the money; without it the figures
+                 still have to be readable, so they are stated in plain HTML
+                 rather than leaving a blank card. --}}
+            <noscript>
+                @include('bookings.partials._payment-figures')
+            </noscript>
+        @else
+            {{-- A reader who may not take a booking may not take money
+                 against one either. They still get the figures. --}}
+            @include('bookings.partials._payment-figures')
         @endif
-
-        <div class="flex items-baseline justify-between gap-4 pt-2.5 border-t border-line">
-            <dt class="text-sub">{{ __('bookings.summary.paid') }}</dt>
-            <dd class="font-medium text-head">{{ $totals->money($booking->paidMinor()) }}</dd>
-        </div>
-
-        {{-- The line anybody opening this page is usually looking for, so it
-             is stated even when it is nothing. --}}
-        <div class="flex items-baseline justify-between gap-4">
-            <dt class="font-semibold text-head">{{ __('bookings.summary.due') }}</dt>
-            <dd class="font-bold {{ $booking->dueMinor() > 0 ? 'text-danger' : 'text-head' }}">
-                {{ $totals->money($booking->dueMinor()) }}
-            </dd>
-        </div>
-    </dl>
+    </div>
 </section>
 
+{{-- The island renders the transactions where it is mounted, so this is
+     the fallback for the two readers who get no island: somebody without
+     permission to take money, and somebody without JavaScript. --}}
+@if (! $canTakePayment)
 <section>
     <h2 class="styledesk_heading">{{ __('bookings.detail.transactions') }}</h2>
 
@@ -83,3 +91,4 @@
         </ul>
     @endif
 </section>
+@endif

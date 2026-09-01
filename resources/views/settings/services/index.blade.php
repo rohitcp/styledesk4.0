@@ -50,23 +50,31 @@
       @if ($categories->isEmpty())
         <p class="text-[13px] text-sub mt-6">{{ __('services.categories_ui.no_matches') }}</p>
       @else
-        {{-- One form holding the whole order. The order is the record, so it
-             is stated in full rather than as a pair of swapped ids — two
-             people dragging at once would otherwise produce a list neither of
-             them arranged. --}}
-        <form method="POST" action="{{ route('settings.services.reorder') }}" data-reorder-form class="mt-5">
-          @csrf
+        {{-- A table, in A–Z order.
 
-          <div class="bg-white border border-line rounded-card overflow-hidden">
-            <div class="styledesk_catrow styledesk_catrow--slim styledesk_catrow--head">
-              <span></span>
-              <span>{{ __('services.categories_ui.columns.name') }}</span>
-              <span class="hidden md:block">{{ __('services.categories_ui.columns.type') }}</span>
-              <span>{{ __('services.categories_ui.columns.status') }}</span>
-              <span class="sr-only">{{ __('services.categories_ui.columns.action') }}</span>
-            </div>
+             It was a hand-arranged list you dragged rows around in. A table
+             is what this actually is — five facts per category, read down a
+             column — and alphabetical is how somebody finds "Hair Colour"
+             among thirty without reading all thirty.
 
-            <div data-category-list>
+             Dragging is gone with it: a list that re-sorts itself by name
+             cannot also be one you arrange by hand, and a grip that appears
+             to work and does nothing is worse than no grip. The order
+             categories appear in when a service is being filed is still the
+             hand-set one — see the note on the controller. --}}
+        <div class="sd-tablewrap bg-white border border-line rounded-card mt-5">
+          <table class="sd-table sd-table--cards" style="min-width: 640px">
+            <thead>
+              <tr>
+                <th scope="col">{{ __('services.categories_ui.columns.name') }}</th>
+                <th scope="col">{{ __('services.categories_ui.columns.type') }}</th>
+                <th scope="col" class="sd-table__num">{{ __('services.categories_ui.columns.services') }}</th>
+                <th scope="col">{{ __('services.categories_ui.columns.status') }}</th>
+                <th scope="col"><span class="sr-only">{{ __('services.categories_ui.columns.action') }}</span></th>
+              </tr>
+            </thead>
+
+            <tbody>
               @foreach ($categories as $category)
                 @php
                     /* Assembled here rather than inline in the attribute:
@@ -81,89 +89,89 @@
                     ];
                 @endphp
 
-                <div class="styledesk_catrow styledesk_catrow--slim" draggable="true" data-category-row data-id="{{ $category->id }}">
-                  <span class="styledesk_catrow__grip" data-drag-handle aria-hidden="true" title="{{ __('services.categories_ui.reorder_hint') }}">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>
-                  </span>
+                <tr>
+                  <td>
+                    <span class="sd-cell__label">{{ __('services.categories_ui.columns.name') }}</span>
+                    <span class="min-w-0">
+                      <span class="block text-[14px] font-medium text-head">{{ $category->name }}</span>
+                      @if ($category->description)
+                        <span class="block text-[12px] text-sub">{{ $category->description }}</span>
+                      @endif
+                    </span>
+                  </td>
 
-                  <span class="min-w-0">
-                    <span class="block text-[14px] text-head truncate">{{ $category->name }}</span>
-                    @if ($category->description)
-                      <span class="block text-[12px] text-sub truncate">{{ $category->description }}</span>
-                    @endif
-                  </span>
-
-                  <span class="hidden md:block">
+                  <td>
+                    <span class="sd-cell__label">{{ __('services.categories_ui.columns.type') }}</span>
                     <span class="styledesk_metachip">
                       {{ $category->isSystem() ? __('services.categories_ui.system') : __('services.categories_ui.custom') }}
                     </span>
-                  </span>
+                  </td>
 
-                  <span>
+                  {{-- What is actually filed under it, which is the number
+                       somebody wants before they deactivate anything. --}}
+                  <td class="sd-table__num">
+                    <span class="sd-cell__label">{{ __('services.categories_ui.columns.services') }}</span>
+                    <span class="text-head">{{ $category->services_count }}</span>
+                  </td>
+
+                  <td>
+                    <span class="sd-cell__label">{{ __('services.categories_ui.columns.status') }}</span>
                     <span class="styledesk_badge {{ $category->isActive() ? 'styledesk_badge--active' : 'styledesk_badge--soon' }}">
                       {{ $category->isActive() ? __('services.categories_ui.active') : __('services.categories_ui.inactive') }}
                     </span>
-                  </span>
+                  </td>
 
-                  <span class="styledesk_rowmenu" data-rowmenu>
-                    {{-- The same control the listing grids use, so a row of
-                         categories and a row of clients are acted on through
-                         one recognisable button rather than two. --}}
-                    <button type="button" class="styledesk_rowmenu__button" data-rowmenu-button
-                            aria-haspopup="true" aria-expanded="false"
-                            aria-label="{{ __('services.categories_ui.actions_for', ['name' => $category->name]) }}">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>
-                      </svg>
-                    </button>
-
-                    <span class="styledesk_rowmenu__pop" data-rowmenu-pop hidden role="menu">
-                      <button type="button" class="styledesk_rowmenu__item w-full" role="menuitem"
-                              data-category-edit data-category='@json($editable)'>
-                        {{ __('common.edit') }}
+                  <td class="text-right">
+                    <span class="styledesk_rowmenu" data-rowmenu>
+                      {{-- The same control the listing grids use, so a row of
+                           categories and a row of clients are acted on through
+                           one recognisable button rather than two. --}}
+                      <button type="button" class="styledesk_rowmenu__button" data-rowmenu-button
+                              aria-haspopup="true" aria-expanded="false"
+                              aria-label="{{ __('services.categories_ui.actions_for', ['name' => $category->name]) }}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>
+                        </svg>
                       </button>
 
-                      <button type="submit" form="categoryToggle{{ $category->id }}" class="styledesk_rowmenu__item w-full" role="menuitem">
-                        {{ $category->isActive() ? __('services.categories_ui.deactivate') : __('services.categories_ui.activate') }}
-                      </button>
-
-                      {{-- Absent for a system category rather than shown
-                           disabled: it is not a thing that will become
-                           possible, and a greyed row invites the reader to
-                           work out why. --}}
-                      @unless ($category->isSystem())
-                        <span class="styledesk_rowmenu__rule" role="separator"></span>
-
-                        <button type="submit" form="categoryDelete{{ $category->id }}" role="menuitem"
-                                class="styledesk_rowmenu__item styledesk_rowmenu__item--danger w-full"
-                                data-confirm-title="{{ __('services.categories_ui.delete') }}"
-                                data-confirm="{{ __('services.categories_ui.delete_confirm', ['name' => $category->name]) }}"
-                                data-confirm-label="{{ __('services.categories_ui.delete') }}"
-                                data-confirm-tone="danger">
-                          {{ __('services.categories_ui.delete') }}
+                      <span class="styledesk_rowmenu__pop" data-rowmenu-pop hidden role="menu">
+                        <button type="button" class="styledesk_rowmenu__item w-full" role="menuitem"
+                                data-category-edit data-category='@json($editable)'>
+                          {{ __('common.edit') }}
                         </button>
-                      @endunless
+
+                        <button type="submit" form="categoryToggle{{ $category->id }}" class="styledesk_rowmenu__item w-full" role="menuitem">
+                          {{ $category->isActive() ? __('services.categories_ui.deactivate') : __('services.categories_ui.activate') }}
+                        </button>
+
+                        {{-- Absent for a system category rather than shown
+                             disabled: it is not a thing that will become
+                             possible, and a greyed row invites the reader to
+                             work out why. --}}
+                        @unless ($category->isSystem())
+                          <span class="styledesk_rowmenu__rule" role="separator"></span>
+
+                          <button type="submit" form="categoryDelete{{ $category->id }}" role="menuitem"
+                                  class="styledesk_rowmenu__item styledesk_rowmenu__item--danger w-full"
+                                  data-confirm-title="{{ __('services.categories_ui.delete') }}"
+                                  data-confirm="{{ __('services.categories_ui.delete_confirm', ['name' => $category->name]) }}"
+                                  data-confirm-label="{{ __('services.categories_ui.delete') }}"
+                                  data-confirm-tone="danger">
+                            {{ __('services.categories_ui.delete') }}
+                          </button>
+                        @endunless
+                      </span>
                     </span>
-                  </span>
-
-                  <input type="hidden" name="order[]" value="{{ $category->id }}">
-                </div>
+                  </td>
+                </tr>
               @endforeach
-            </div>
-          </div>
+            </tbody>
+          </table>
+        </div>
 
-          {{-- Only offered once something has moved: a Save that does nothing
-               is a Save the reader learns to ignore. --}}
-          <div class="mt-3 flex items-center gap-3" data-reorder-bar hidden>
-            <button type="submit" class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-              {{ __('services.categories_ui.save_order') }}
-            </button>
-            <p class="text-[12px] text-sub">{{ __('services.categories_ui.order_changed') }}</p>
-          </div>
-        </form>
-
-        {{-- The per-row forms, outside the reorder form: a form inside a form
-             is not a thing HTML has, and the browser silently drops it. --}}
+        {{-- The per-row forms, kept out of the table: a form is not
+             something a <tr> may contain, and the browser silently drops
+             one that is. Each row's menu reaches its form by id. --}}
         @foreach ($categories as $category)
           <form id="categoryToggle{{ $category->id }}" method="POST" action="{{ route('settings.services.toggle', $category) }}" class="hidden">
             @csrf @method('PATCH')

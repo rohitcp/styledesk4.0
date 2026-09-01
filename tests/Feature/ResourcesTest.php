@@ -91,6 +91,64 @@ class ResourcesTest extends TestCase
         $this->assertSame(2, $couples->default_capacity);
     }
 
+    /**
+     * The search reaches past the name.
+     *
+     * "Riverside" is how somebody looks for the chairs at Riverside, and
+     * "maintenance" is how they look for what is out of action. Neither word
+     * is in any resource's name, and a search that only read the name would
+     * answer nothing to both.
+     */
+    public function test_the_search_matches_more_than_the_resource_name(): void
+    {
+        $riverside = $this->tenant->locations()->create([
+            'name' => 'Riverside', 'address_line1' => '1 River St', 'city' => 'Austin',
+            'postal_code' => '78701', 'country' => 'US', 'timezone' => 'America/Chicago',
+        ]);
+
+        $category = ResourceCategory::withoutGlobalScopes()
+            ->where('tenant_id', $this->tenant->getTenantKey())
+            ->firstOrFail();
+
+        $chair = $this->resource([
+            'name' => 'Chair 1',
+            'code' => 'CH-001',
+            'location_id' => $riverside->id,
+            'description' => 'By the window.',
+        ]);
+
+        $bar = $this->resource([
+            'name' => 'Colour bar',
+            'resource_category_id' => $category->id,
+            'availability_status' => 'maintenance',
+        ]);
+
+        $retired = $this->resource(['name' => 'Old basin', 'is_active' => false]);
+
+        $find = fn (string $term) => collect(
+            $this->actingAs($this->owner)
+                ->getJson(route('resources.data', ['search' => $term]))
+                ->assertOk()
+                ->json('data')
+        )->pluck('name')->sort()->values()->all();
+
+        /* The code, the branch and the description — none of them the name. */
+        $this->assertSame(['Chair 1'], $find('CH-001'));
+        $this->assertSame(['Chair 1'], $find('riverside'));
+        $this->assertSame(['Chair 1'], $find('window'));
+
+        /* The category it is filed under. */
+        $this->assertContains('Colour bar', $find($category->name));
+
+        /* Availability and status, typed as the words on the screen. */
+        $this->assertSame(['Colour bar'], $find(__('resources.form.availability.maintenance')));
+        $this->assertSame([$retired->name], $find(__('resources.form.inactive')));
+
+        /* Case-insensitive and partial. */
+        $this->assertSame(['Chair 1'], $find('ch-0'));
+        $this->assertSame(['Colour bar'], $find('COLOUR B'));
+    }
+
     // ------------------------------------------------------------- the page
 
     /**

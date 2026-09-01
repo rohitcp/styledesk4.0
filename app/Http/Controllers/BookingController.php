@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Mail\BookingConfirmationMail;
+use App\Mail\BookingPaymentLinkMail;
 use App\Models\Booking;
 use App\Models\BookingLead;
+use App\Models\BookingPaymentLink;
 use App\Models\BookingService;
 use App\Models\Client;
 use App\Models\ClientSettings;
@@ -14,7 +16,9 @@ use App\Models\Location;
 use App\Models\Service;
 use App\Models\ServiceCategory;
 use App\Models\Staff;
+use App\Support\BookingAvailability;
 use App\Support\BookingTotals;
+use App\Support\ClientActivityLog;
 use App\Support\ClientBookingContext;
 use App\Support\ClientInsights;
 use App\Support\Currencies;
@@ -30,6 +34,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -135,18 +140,25 @@ class BookingController extends Controller
 
         $currency = Currencies::resolve();
 
-        /* A lead being returned to: the screen opens with the client and the
-           services that were chosen when the call dropped, and finishing it
-           converts that lead rather than opening a second one. */
+        /* A booking being picked back up. Continue Booking on a lead reopens
+           this screen with everything that was saved into it, and finishing
+           it converts that lead — under its own reference — rather than
+           starting a second attempt at the same appointment. */
         $lead = BookingLead::query()
             ->with('client')
-            ->whereNotIn('status', ['converted', 'cancelled', 'lost', 'expired'])
+            ->whereNotIn('status', BookingLead::SETTLED)
             ->find($request->query('lead'));
 
         /* A booking started from somebody's profile arrives with them
            already chosen: the receptionist asked for it from a page that
            knows who it is for, and asking again is asking twice. */
-        $forClient = $lead?->client ?? Client::query()->find($request->query('client'));
+        /* Either spelling of the parameter. Only the id travels — the
+           client is read back from it here, so a profile left open in a tab
+           since Tuesday cannot carry Tuesday's phone number into today's
+           booking. */
+        $forClient = $lead?->client ?? Client::query()
+            ->with(['favoriteServices', 'preferredStaff', 'preferredLocation'])
+            ->find($request->query('client') ?? $request->query('client_id'));
 
         return view('bookings.create', [
             'client' => $forClient === null ? null : [
@@ -156,10 +168,24 @@ class BookingController extends Controller
                 'ref' => $forClient->client_ref,
                 'mobile' => $forClient->mobile,
                 'email' => $forClient->email,
+                /* What this client is known to want, and where and with whom
+                   they usually have it. Carried so the screen opens on their
+                   answers rather than on the defaults — which is the whole
+                   point of starting a booking from their profile. */
+                'favorite_service_ids' => $forClient->favoriteServices->pluck('id')->values(),
+                'preferred_staff_id' => $forClient->preferred_staff_id,
+                'preferred_location_id' => $forClient->preferred_location_id,
             ],
+            /* Everything that was answered before the call dropped. The
+               screen is restored from this rather than started again: a
+               receptionist picking somebody else's call back up should not
+               have to ask which branch, which stylist and what time for a
+               second time. */
             'lead' => $lead === null ? null : [
                 'id' => $lead->id,
                 'reference' => $lead->reference,
+                'status' => $lead->status,
+                'status_label' => $lead->statusLabel(),
                 'client' => $lead->client === null ? null : [
                     'id' => $lead->client->id,
                     'name' => $lead->client->displayName(),
@@ -169,12 +195,30 @@ class BookingController extends Controller
                     'email' => $lead->client->email,
                 ],
                 'guest_name' => $lead->guest_name,
+                'guest_phone' => $lead->guest_phone,
+                'guest_email' => $lead->guest_email,
                 'service_ids' => collect($lead->services ?? [])->pluck('id')->filter()->values()->all(),
+                'location_id' => $lead->location_id,
+                'staff_id' => $lead->staff_id,
                 'date' => $lead->expected_date?->toDateString(),
+                'starts_at' => $lead->starts_at === null ? null : substr((string) $lead->starts_at, 0, 5),
+                'source' => $lead->source,
+                'payment_type' => $lead->payment_type,
+                /* Back as the field shows it, not as it is stored: the form
+                   asks for 25, the column holds 2500. */
+                'deposit' => $lead->deposit_minor > 0
+                    ? number_format($lead->deposit_minor / 100, 2, '.', '')
+                    : null,
+                'collection_method' => $lead->collection_method,
+                'waiver_reason' => $lead->waiver_reason,
+                'confirmation' => $lead->confirmation,
+                'notes' => $lead->notes,
+                'client_note' => $lead->client_note,
+                'current_step' => $lead->current_step,
             ],
             'walkIn' => $request->boolean('walk-in'),
             'currency' => $currency,
-            'services' => Service::query()->active()->with(['prices', 'resources'])->inOrder()->get()
+            'services' => Service::query()->active()->with(['prices', 'resources', 'locations'])->inOrder()->get()
                 ->map(fn (Service $service) => [
                     'id' => $service->id,
                     'name' => $service->name,
@@ -187,6 +231,11 @@ class BookingController extends Controller
                        only colour bar is a booking somebody has to know
                        about. */
                     'resources' => $service->resources->pluck('name')->values(),
+                    /* Where it is offered. Empty means everywhere — the
+                       convention Service::offeredAt() already reads — so the
+                       screen filters on a non-empty list and leaves the rest
+                       alone. */
+                    'location_ids' => $service->locations->pluck('id')->values(),
                 ])->values(),
             /* Only the categories something is actually offered in: a list of
                every category the product ships with is a filter that mostly
@@ -205,6 +254,11 @@ class BookingController extends Controller
                     'name' => $member->displayName(),
                     'initials' => $member->initials(),
                     'title' => $member->job_title,
+                    /* Which branch they work at. Null is not "nowhere": staff
+                       without a location are the ones who work across all of
+                       them, and hiding them when a branch is chosen would
+                       empty the list for most businesses. */
+                    'location_id' => $member->location_id,
                 ])->values(),
             'locations' => Location::query()->orderByDesc('is_primary')->orderBy('name')->get(),
             /* What the third column needs to ask for money: the ways this
@@ -362,6 +416,76 @@ class BookingController extends Controller
     }
 
     /**
+     * Is this walk-in already on file?
+     *
+     * A walk-in is booked without a client record, which is right for
+     * somebody who came in once and is wrong for a regular whose name the
+     * receptionist typed rather than searched for. The second is easy to do
+     * and expensive to undo: their history, their preferences and their
+     * preferred stylist all stay attached to the record nobody used, and the
+     * desk ends up with two of the same person.
+     *
+     * So the number and the address are checked against the book as they are
+     * typed, using the same duplicate engine the client form runs — one set
+     * of rules, which the business configures once.
+     *
+     * A warning, never a block. Two people share a phone; a family shares an
+     * address; and a wrongly merged history is not something a receptionist
+     * can unpick. The reader decides which of the two this is.
+     *
+     * Posted rather than asked in the query string: a phone number and an
+     * email address in a URL is personal data written into every access log
+     * between here and the server.
+     */
+    public function matchClient(Request $request): JsonResponse
+    {
+        $this->allow($request, 'appointments.create');
+
+        $data = $request->validate([
+            'name' => ['nullable', 'string', 'max:120'],
+            'mobile' => ['nullable', 'string', 'max:40'],
+            'email' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $tenant = $request->user()->tenant;
+        $settings = ClientSettings::forTenant($tenant);
+
+        /* Nothing to match on. A name alone is not enough to claim two people
+           are one — this business has more than one Sarah — and the rules the
+           duplicate engine runs on are the number and the address. */
+        if (blank($data['mobile'] ?? null) && blank($data['email'] ?? null)) {
+            return response()->json(['matches' => []]);
+        }
+
+        /* The business turned the warning off. Answering anyway would be this
+           screen overruling a setting every other screen obeys. */
+        if (! $settings->duplicate_warning) {
+            return response()->json(['matches' => []]);
+        }
+
+        $matches = Client::possibleDuplicates(
+            $tenant->getTenantKey(),
+            [
+                'first_name' => $data['name'] ?? null,
+                'emails' => array_filter([$data['email'] ?? null]),
+                'phones' => array_filter([$data['mobile'] ?? null]),
+            ],
+            $settings->duplicate_rules ?? [],
+        );
+
+        return response()->json([
+            'matches' => $matches->map(fn (Client $match) => [
+                'id' => $match->id,
+                'name' => $match->displayName($settings->name_format),
+                'initials' => $match->initials(),
+                'ref' => $match->client_ref,
+                'mobile' => $match->mobile,
+                'email' => $match->email,
+            ])->values()->all(),
+        ]);
+    }
+
+    /**
      * Everything the booking screen knows about one client.
      *
      * Fetched when a client is chosen rather than shipped with the page: it
@@ -375,6 +499,229 @@ class BookingController extends Controller
         return response()->json(
             ClientBookingContext::for($client->load('bookingPreferences'))->toArray(),
         );
+    }
+
+    /**
+     * The times this booking could start at, for what has been chosen so far.
+     *
+     * Asked again whenever the location, the services, the staff member or
+     * the date changes, because each of them can empty the list — and a list
+     * of times that ignores them is a list of appointments the person on the
+     * phone will be told about afterwards.
+     *
+     * Worked out on the server for the same reason the totals are: the
+     * browser would have to be handed every rota, closure, block and existing
+     * booking to answer it, which is both a slower page and a description of
+     * the salon's day given to anyone who opens the console.
+     */
+    public function availability(Request $request): JsonResponse
+    {
+        $this->allow($request, 'appointments.create');
+
+        $data = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            /* Scoped to this business's own rows, not merely to rows that
+               exist: an unscoped `exists` accepts another salon's location id
+               and the answer, whatever it came out as, would be an answer
+               about their day. */
+            'location_id' => ['nullable', 'integer', $this->ownRow('locations', $request)],
+            'staff_id' => ['nullable', 'integer', $this->ownRow('staff', $request)],
+            'service_ids' => ['array'],
+            'service_ids.*' => ['integer', $this->ownRow('services', $request)],
+            /* The booking being edited does not clash with itself. */
+            'ignore' => ['nullable', 'integer'],
+        ]);
+
+        $location = isset($data['location_id'])
+            ? Location::query()->find($data['location_id'])
+            : null;
+
+        /* Cast, not trusted. These arrive as query-string text and the
+           `integer` rule only checks that they look like numbers — it does
+           not turn "5" into 5, and the availability reader is typed. */
+        $availability = BookingAvailability::for(
+            $location,
+            $data['date'],
+            isset($data['staff_id']) ? (int) $data['staff_id'] : null,
+            array_map('intval', $data['service_ids'] ?? []),
+            isset($data['ignore']) ? (int) $data['ignore'] : null,
+        );
+
+        return response()->json($availability + [
+            'message' => $availability['reason'] === null
+                ? null
+                : __('bookings.when.'.$availability['reason']),
+        ]);
+    }
+
+    /** A row belonging to the business making the request, and no other. */
+    private function ownRow(string $table, Request $request): Exists
+    {
+        return Rule::exists($table, 'id')
+            ->where('tenant_id', $request->user()->tenant?->getTenantKey());
+    }
+
+    /**
+     * Keep the booking being written down, as it is written.
+     *
+     * A booking is taken over the phone, and a phone call is interrupted. The
+     * screen saves what it has as soon as it knows who the appointment is for
+     * — a name is the one thing that makes the rest worth keeping — and saves
+     * again as the answers arrive, so a call that drops leaves something the
+     * desk can ring back about instead of nothing at all.
+     *
+     * What it saves into is a lead, not a booking. A booking in progress is
+     * not an appointment: it holds no slot, tells nobody anything, and has no
+     * business in the diary beside the ones that were actually taken. It
+     * lives in Bookings → Leads until somebody confirms it, and `store()`
+     * turns it into an appointment then — under the same reference.
+     *
+     * One row per attempt. The reference is handed out on the first save and
+     * every later save writes into the same lead, because a receptionist who
+     * has read a number out over the phone has to be able to find it.
+     */
+    public function autosave(Request $request): JsonResponse
+    {
+        $this->allow($request, 'appointments.create');
+
+        $data = $request->validate([
+            'lead_id' => ['nullable', 'integer', Rule::exists('booking_leads', 'id')],
+            'client_id' => ['nullable', 'integer', Rule::exists('clients', 'id')],
+            'guest_name' => ['nullable', 'string', 'max:120'],
+            'guest_phone' => ['nullable', 'string', 'max:40'],
+            'guest_email' => ['nullable', 'email', 'max:255'],
+            'staff_id' => ['nullable', 'integer', Rule::exists('staff', 'id')],
+            'location_id' => ['nullable', 'integer', Rule::exists('locations', 'id')],
+            'date' => ['nullable', 'date_format:Y-m-d'],
+            'starts_at' => ['nullable', 'date_format:H:i'],
+            'services' => ['nullable', 'array'],
+            'services.*' => ['integer', Rule::exists('services', 'id')],
+            'source' => ['nullable', Rule::in(config('bookings.sources'))],
+            'payment_type' => ['nullable', Rule::in(config('bookings.payment_types'))],
+            'deposit' => ['nullable', 'numeric', 'min:0'],
+            'collection_method' => ['nullable', Rule::in(config('bookings.collection_methods'))],
+            'waiver_reason' => ['nullable', 'string', 'max:300'],
+            'confirmation' => ['nullable', Rule::in(config('bookings.confirmations'))],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'client_note' => ['nullable', 'string', 'max:2000'],
+            /* How far through the five cards the booking has got. */
+            'current_step' => ['nullable', Rule::in(config('bookings.lead_steps'))],
+        ]);
+
+        /* The one thing that has to be there. A row saved before anybody is
+           named is a lead nobody could ever match to a caller, and the queue
+           would collect one for every screen that was opened and closed. */
+        if (empty($data['client_id']) && trim((string) ($data['guest_name'] ?? '')) === '') {
+            throw ValidationException::withMessages([
+                'client_id' => __('bookings.validation.who'),
+            ]);
+        }
+
+        /* Only a lead still being worked on, and exactly the set the screen
+           was allowed to open with. One already converted is an appointment,
+           and one somebody cancelled or wrote off is a decision the screen
+           does not get to reverse by being left open. Any narrower here and a
+           lead the desk can reopen is one that says "Not saved" at every
+           answer typed into it. */
+        $lead = empty($data['lead_id'])
+            ? null
+            : BookingLead::query()->whereNotIn('status', BookingLead::SETTLED)->find($data['lead_id']);
+
+        abort_if(! empty($data['lead_id']) && $lead === null, 404);
+
+        $currency = Currencies::resolve();
+        $services = $this->chosenServices($data['services'] ?? [], $currency);
+        $totals = BookingTotals::of(
+            $services->map(fn (Service $service) => $this->priceOf($service, $currency)),
+            $currency,
+        );
+
+        $step = $data['current_step'] ?? $lead?->current_step ?? 'service';
+
+        $attributes = [
+            'client_id' => $data['client_id'] ?? null,
+            'guest_name' => $data['guest_name'] ?? null,
+            'guest_phone' => $data['guest_phone'] ?? null,
+            'guest_email' => $data['guest_email'] ?? null,
+            'location_id' => $data['location_id'] ?? null,
+            'staff_id' => $data['staff_id'] ?? null,
+            /* A snapshot rather than a relation, as the lead has always kept
+               them: it records what was asked for, and a service deleted next
+               month must not empty it. */
+            'services' => $services->map(fn (Service $service) => [
+                'id' => $service->id,
+                'name' => $service->name,
+                'minutes' => (int) $service->duration_minutes,
+                'price_minor' => $this->priceOf($service, $currency),
+            ])->all(),
+            'minutes' => (int) $services->sum(fn (Service $service) => (int) $service->duration_minutes),
+            'subtotal_minor' => $totals->subtotalMinor,
+            'discount_minor' => $totals->discountMinor,
+            'tax_minor' => $totals->taxMinor,
+            'total_minor' => $totals->totalMinor,
+            'currency_code' => $currency,
+            'expected_date' => $data['date'] ?? null,
+            'starts_at' => $data['starts_at'] ?? null,
+            'source' => $data['source'] ?? 'front-desk',
+            'payment_type' => $data['payment_type'] ?? 'none',
+            'deposit_minor' => (int) round(((float) ($data['deposit'] ?? 0)) * 100),
+            'collection_method' => $data['collection_method'] ?? null,
+            'waiver_reason' => ($data['collection_method'] ?? null) === 'waive'
+                ? ($data['waiver_reason'] ?? null)
+                : null,
+            'confirmation' => $data['confirmation'] ?? null,
+            'notes' => $data['notes'] ?? null,
+            'client_note' => $data['client_note'] ?? null,
+            'current_step' => $step,
+            /* Touched, so the ageing that turns a quiet lead into a call to
+               chase measures from the last thing that happened. */
+            'last_activity_at' => now(),
+        ];
+
+        $created = $lead === null;
+        $movedOn = $lead !== null && $lead->current_step !== $step;
+
+        if ($lead === null) {
+            $lead = BookingLead::create($attributes + [
+                /* A booking's own number, not a lead's. This is a booking
+                   being written rather than a note about a call, the desk
+                   reads the reference out while it is still a draft, and the
+                   appointment it becomes has to answer to it afterwards. */
+                'reference' => Booking::nextReference(),
+                'status' => 'draft',
+                'created_by' => $request->user()->id,
+            ]);
+
+            $lead->note('created');
+        } else {
+            /* Moving past the first card is the difference between a booking
+               somebody started and one they are working through. Anything
+               further along than that — a lead already chased, or called —
+               is left where a person put it: the desk's judgement outranks
+               the screen's. */
+            $lead->update($attributes + [
+                'status' => in_array($lead->status, ['draft', 'new', 'in-progress'], true)
+                    ? ($step === 'service' ? $lead->status : 'in-progress')
+                    : $lead->status,
+            ]);
+        }
+
+        /* Only a step that actually moved. A card saved twice is the same
+           conversation carrying on, and a timeline that recorded every
+           keystroke would bury the two lines anybody reads. */
+        if ($movedOn) {
+            $lead->note('step', $lead->current_step);
+        }
+
+        return response()->json([
+            'lead' => [
+                'id' => $lead->id,
+                'reference' => $lead->reference,
+                'status' => $lead->status,
+                'status_label' => $lead->statusLabel(),
+                'saved_at' => $lead->updated_at?->toIso8601String(),
+            ],
+        ], $created ? 201 : 200);
     }
 
     /**
@@ -403,12 +750,15 @@ class BookingController extends Controller
             'source' => ['nullable', Rule::in(config('bookings.sources'))],
             'payment_type' => ['nullable', Rule::in(config('bookings.payment_types'))],
             'deposit' => ['nullable', 'numeric', 'min:0'],
-            'deposit_action' => ['nullable', Rule::in(config('bookings.deposit_actions'))],
+            'collection_method' => ['nullable', Rule::in(config('bookings.collection_methods'))],
+            'waiver_reason' => ['nullable', 'string', 'max:300'],
             'confirmation' => ['nullable', Rule::in(config('bookings.confirmations'))],
             'notes' => ['nullable', 'string', 'max:2000'],
             'client_note' => ['nullable', 'string', 'max:2000'],
             'draft' => ['nullable', 'boolean'],
-            /* The lead this booking grew out of, where the screen wrote one. */
+            /* The booking-in-progress this is the end of. The screen has been
+               auto-saving into it, and it carries the reference the desk may
+               already have read out over the phone. */
             'lead_id' => ['nullable', 'integer', Rule::exists('booking_leads', 'id')],
         ]);
 
@@ -419,6 +769,15 @@ class BookingController extends Controller
                 'client_id' => __('bookings.validation.who'),
             ]);
         }
+
+        /* The booking-in-progress this finishes, where there is one. Its
+           reference becomes the appointment's — that is the whole promise of
+           the draft: the number quoted on the phone is the number on the
+           booking. Only one still being worked on: a lead already converted
+           is an appointment that exists. */
+        $lead = empty($data['lead_id'])
+            ? null
+            : BookingLead::query()->whereNotIn('status', BookingLead::SETTLED)->find($data['lead_id']);
 
         $currency = Currencies::resolve();
 
@@ -442,9 +801,43 @@ class BookingController extends Controller
             $currency,
         );
 
-        $booking = DB::transaction(function () use ($data, $services, $minutes, $starts, $currency, $totals, $request) {
-            $booking = Booking::create([
-                'reference' => $this->reference(),
+        /* A deposit larger than the bill is money the desk would have to give
+           back before the appointment has even been worked. Refused here as
+           well as in the browser, because the browser is where it is easy to
+           check and the server is where it has to be true. */
+        $depositMinor = (int) round(((float) ($data['deposit'] ?? 0)) * 100);
+
+        if (($data['payment_type'] ?? 'none') === 'deposit' && $depositMinor > $totals->totalMinor) {
+            throw ValidationException::withMessages([
+                'deposit' => __('bookings.payment.too_much'),
+            ]);
+        }
+
+        /* Nothing to collect means no method to collect it by. Cleared rather
+           than refused: the screen hides the question when the answer stops
+           applying, and a form that errored on a field it had just hidden
+           would be arguing with itself. */
+        $collectionMethod = ($data['payment_type'] ?? 'none') === 'none'
+            ? null
+            : ($data['collection_method'] ?? 'later');
+
+        /* Waiving is a decision somebody has to be accountable for, so it
+           needs both a person allowed to make it and a reason worth reading
+           back. The permission is the money one rather than the booking one:
+           taking an appointment and letting somebody off paying for it are
+           not the same authority. */
+        if ($collectionMethod === 'waive') {
+            abort_unless($request->user()->hasPermission('payments.apply_discount', 'own'), 403);
+
+            if (trim((string) ($data['waiver_reason'] ?? '')) === '') {
+                throw ValidationException::withMessages([
+                    'waiver_reason' => __('bookings.payment.waiver_needed'),
+                ]);
+            }
+        }
+
+        $booking = DB::transaction(function () use ($data, $lead, $services, $minutes, $starts, $currency, $totals, $request, $depositMinor, $collectionMethod) {
+            $attributes = [
                 'client_id' => $data['client_id'] ?? null,
                 'guest_name' => $data['guest_name'] ?? null,
                 'guest_phone' => $data['guest_phone'] ?? null,
@@ -469,8 +862,11 @@ class BookingController extends Controller
                 'payment_status' => 'unpaid',
                 'paid_minor' => 0,
                 'payment_type' => $data['payment_type'] ?? 'none',
-                'deposit_minor' => (int) round(((float) ($data['deposit'] ?? 0)) * 100),
-                'deposit_action' => $data['deposit_action'] ?? null,
+                'deposit_minor' => $depositMinor,
+                'collection_method' => $collectionMethod,
+                'waiver_reason' => $collectionMethod === 'waive' ? ($data['waiver_reason'] ?? null) : null,
+                'waived_by' => $collectionMethod === 'waive' ? $request->user()->id : null,
+                'waived_at' => $collectionMethod === 'waive' ? now() : null,
                 'notes' => $data['notes'] ?? null,
                 /* The client as they are today. Tags and insights are worked
                    out from the diary and move as the person does; this
@@ -481,18 +877,22 @@ class BookingController extends Controller
                 /* A draft has been promised to nobody, so it is not confirmed
                    however the form was filled in. */
                 'confirmed_at' => ($data['draft'] ?? false) ? null : now(),
+            ];
+
+            /* The draft's own number, carried onto the appointment it became.
+               A booking that was quoted as BK-…-00125 on the phone and then
+               filed under a second number is a booking the caller cannot ask
+               about. Only a reference that was issued as one — a lead written
+               the old way carries a BL- number, which is a record of a call
+               and not a booking's name. */
+            $booking = Booking::create($attributes + [
+                'reference' => str_starts_with((string) $lead?->reference, 'BK-')
+                    ? $lead->reference
+                    : Booking::nextReference(),
                 'created_by' => $request->user()->id,
             ]);
 
-            foreach ($services as $index => $service) {
-                $booking->services()->create([
-                    'service_id' => $service->id,
-                    'name' => $service->name,
-                    'minutes' => (int) $service->duration_minutes,
-                    'price_minor' => (int) ($service->prices->firstWhere('currency_code', $currency)?->price_minor ?? 0),
-                    'sort_order' => $index,
-                ]);
-            }
+            $this->writeServiceLines($booking, $services, $currency);
 
             /* A note about the person goes on the person. It is a different
                thing from the note about the appointment, which is why the
@@ -508,10 +908,8 @@ class BookingController extends Controller
             /* The conversation this came from is finished. Marked rather
                than deleted: a lead that became a booking is the useful half
                of any answer about how many did not. */
-            if (! empty($data['lead_id'])) {
-                $lead = BookingLead::query()->find($data['lead_id']);
-
-                $lead?->update([
+            if ($lead) {
+                $lead->update([
                     'status' => 'converted',
                     'current_step' => 'completed',
                     'booking_id' => $booking->id,
@@ -519,18 +917,34 @@ class BookingController extends Controller
                     'last_activity_at' => now(),
                 ]);
 
-                $lead?->note('converted', $booking->reference, $request->user()->id);
+                $lead->note('converted', $booking->reference, $request->user()->id);
             }
 
             return $booking;
         });
+
+        /* Written to the client's history the moment it exists. The profile
+           used to reconstruct its timeline from whatever still existed, which
+           can only ever say what is true now — this says what happened. */
+        ClientActivityLog::bookingCreated($booking);
+        ClientActivityLog::paymentDue($booking);
+
+        /* The client was told a link is on its way, so it goes now rather
+           than on a queue — the same reason the confirmation is sent inline.
+           A failure here does not undo the booking: the appointment is real,
+           and the panel says the link did not go so the desk can ring
+           instead. */
+        $linkError = $collectionMethod === 'link' ? $this->sendPaymentLink($booking, $request) : null;
 
         /* The booking screen asks in JSON and stays where it is: the third
            column moves from summary to payment without the receptionist
            losing the page, and a redirect would throw away the context the
            whole screen exists to keep. */
         if ($request->expectsJson()) {
-            return response()->json(['booking' => $this->panel($booking)], 201);
+            return response()->json([
+                'booking' => $this->panel($booking->fresh()),
+                'link_error' => $linkError,
+            ], 201);
         }
 
         return redirect()->route('bookings.index')->with('toast', [
@@ -568,6 +982,20 @@ class BookingController extends Controller
             $currency,
         );
 
+        /* Read before the row moves. "Rescheduled" without the previous time
+           answers half the question, and the half it drops is the one
+           somebody is usually looking for. */
+        $was = [
+            'date' => $booking->date?->isoFormat('D MMM Y'),
+            'time' => $booking->timeLabel(),
+            /* The start alone decides whether this was a reschedule. The
+               label beside it carries the end time too, and the end moves
+               whenever a service is added — lengthening an appointment is
+               not a change to when the client is due. */
+            'on' => $booking->date?->toDateString(),
+            'starts_at' => $booking->startsAt(),
+        ];
+
         DB::transaction(function () use ($booking, $data, $services, $minutes, $starts, $currency, $totals) {
             $booking->update([
                 'client_id' => $data['client_id'] ?? null,
@@ -598,7 +1026,16 @@ class BookingController extends Controller
             $this->writeServiceLines($booking, $services, $currency);
         });
 
-        return response()->json(['booking' => $this->panel($booking->fresh())]);
+        $booking->refresh();
+
+        /* Only when it actually moved. Editing a booking's services is not a
+           reschedule, and an entry saying it was would be a history nobody
+           can trust to mean what it says. */
+        if ($booking->date?->toDateString().' '.$booking->startsAt() !== $was['on'].' '.$was['starts_at']) {
+            ClientActivityLog::bookingRescheduled($booking, $was, $request->user()->id);
+        }
+
+        return response()->json(['booking' => $this->panel($booking)]);
     }
 
     /**
@@ -884,6 +1321,17 @@ class BookingController extends Controller
         return view('bookings.show', [
             'booking' => $booking,
             'totals' => BookingTotals::for($booking),
+            /* What the Take Payment panel needs: the bill as the panel reads
+               it, and the ways this business can be paid. The same payload
+               the booking screen's third column is answered with, so one
+               component serves both. */
+            'panel' => $this->panel($booking),
+            /* Not `methods`: this view already has one of those. The client
+               partials it reuses build a `$methods` of communication
+               channels in their own @php block, and a second variable of
+               that name is the first one silently replaced. */
+            'payMethods' => $this->paymentMethods(),
+            'canTakePayment' => $request->user()->hasPermission('appointments.create', 'own'),
             'client' => $client,
             'settings' => ClientSettings::forTenant($request->user()->tenant),
 
@@ -1002,6 +1450,14 @@ class BookingController extends Controller
 
             $booking->load('payments')->settlePaymentStatus();
 
+            ClientActivityLog::paymentReceived($payment, $booking);
+
+            /* A link is only ever paid because money arrived, so this is the
+               one place that can say so. Every open link is offered the same
+               news: a booking asked for twice has two of them. */
+            $booking->paymentLinks()->whereNotIn('status', ['paid'])->get()
+                ->each(fn (BookingPaymentLink $link) => $link->settleAgainst($booking));
+
             return $payment;
         });
 
@@ -1069,8 +1525,16 @@ class BookingController extends Controller
      */
     private function panel(Booking $booking): array
     {
-        $booking->loadMissing(['client', 'staff', 'location', 'services', 'payments']);
+        $booking->loadMissing(['client', 'staff', 'location', 'services', 'payments.recordedBy', 'paymentLinks', 'waivedBy']);
         $totals = BookingTotals::for($booking);
+
+        /* A deposit is collected once. After it is in, "what to collect now"
+           is simply whatever is still owed. */
+        $collectMinor = $booking->payment_type === 'deposit'
+            && $booking->deposit_minor > 0
+            && $booking->paidMinor() === 0
+                ? min((int) $booking->deposit_minor, $booking->dueMinor())
+                : $booking->dueMinor();
 
         return [
             'id' => $booking->id,
@@ -1099,11 +1563,58 @@ class BookingController extends Controller
             'due_amount' => number_format($booking->dueMinor() / 100, 2, '.', ''),
             'payment_status' => $booking->payment_status,
             'payment_status_label' => $booking->paymentStatusLabel(),
+            'payment_type' => $booking->payment_type,
+            'deposit_minor' => (int) $booking->deposit_minor,
+            'collection_method' => $booking->collection_method,
+            'collection_label' => $booking->collection_method
+                ? __('bookings.payment.actions.'.$booking->collection_method)
+                : null,
+            /* Who let this booking off the money, and why. Read back beside
+               the bill, because a waived deposit with nobody's name against
+               it is a decision nobody can answer for. */
+            'waiver' => $booking->waived_at === null ? null : [
+                'reason' => $booking->waiver_reason,
+                'by' => $booking->waivedBy?->name,
+                'at' => $booking->waived_at->translatedFormat('j M Y · H:i'),
+            ],
+            /* The requests to pay that went out, newest first. */
+            'links' => $booking->paymentLinks->map(fn (BookingPaymentLink $link) => [
+                'id' => $link->id,
+                'amount' => BookingTotals::for($booking)->money((int) $link->amount_minor),
+                'status' => $link->currentStatus(),
+                'status_label' => $link->statusLabel(),
+                'status_class' => $link->statusClass(),
+                'sent_to' => $link->sent_to,
+                'sent_at' => $link->sent_at?->translatedFormat('j M Y · H:i'),
+            ])->values(),
+            /* What to ask for now, which is not always what is owed.
+               A booking taken with a deposit collects the deposit today and
+               chases the balance later — asking for the whole bill because
+               that is what the booking is worth would be the screen charging
+               somebody money they were told they did not owe yet. Once the
+               deposit is in, what is left is simply the balance. */
+            'collect_minor' => $collectMinor,
+            'collect_amount' => number_format($collectMinor / 100, 2, '.', ''),
+            'collect' => $totals->money($collectMinor),
+            /* What is still owed after this one is taken, which is the other
+               half of the same sentence: $64.80 now, $194.40 on the day. */
+            'remaining' => $totals->money(max(0, $booking->dueMinor() - $collectMinor)),
+            'remaining_minor' => max(0, $booking->dueMinor() - $collectMinor),
+            /* What actually happened, not just what is owed: a bill settled
+               half in cash and half on a card is one total and two rows, and
+               the desk reads the rows to answer "did that go through". */
             'payments' => $booking->payments->map(fn ($payment) => [
+                'id' => $payment->id,
                 'method' => $payment->method,
                 'method_label' => $payment->methodLabel(),
                 'amount' => $payment->amountLabel(),
                 'reference' => $payment->reference,
+                'status_label' => __('bookings.payment_statuses.'.$payment->status.'.label'),
+                'at' => $payment->paid_at?->translatedFormat('j M Y · H:i'),
+                'by' => $payment->recordedBy?->name,
+                'change' => $payment->change_minor
+                    ? BookingTotals::for($booking)->money((int) $payment->change_minor)
+                    : null,
             ])->values(),
             'urls' => [
                 'show' => route('bookings.show', $booking),
@@ -1113,6 +1624,68 @@ class BookingController extends Controller
                 'confirmation' => route('bookings.confirmation', $booking),
             ],
         ];
+    }
+
+    /**
+     * Ask the client to pay, by link.
+     *
+     * The amount is what this booking is collecting rather than what it is
+     * worth: a deposit link asks for the deposit. Copied onto the link so it
+     * keeps asking for that after somebody adds a service — what was quoted
+     * is not rewritten by what changed afterwards.
+     *
+     * Email only, for the reason the confirmation is: text messages need a
+     * sending account this business has not connected, and a button that
+     * silently does nothing is worse than one that says why it cannot.
+     *
+     * Returns what went wrong, or null. Never throws: the appointment has
+     * already been taken, and a booking rolled back because an email bounced
+     * would be the wrong half undone.
+     */
+    private function sendPaymentLink(Booking $booking, Request $request): ?string
+    {
+        $to = $booking->client?->email ?: $booking->guest_email;
+
+        if (! $to) {
+            return __('bookings.payment.link_no_email');
+        }
+
+        $amount = $booking->payment_type === 'deposit' && $booking->deposit_minor > 0
+            ? min((int) $booking->deposit_minor, $booking->dueMinor())
+            : $booking->dueMinor();
+
+        if ($amount <= 0) {
+            return null;
+        }
+
+        $link = $booking->paymentLinks()->create([
+            'tenant_id' => $booking->tenant_id,
+            'amount_minor' => $amount,
+            'currency_code' => $booking->currency_code,
+            'token' => BookingPaymentLink::newToken(),
+            'status' => 'sent',
+            'channel' => 'email',
+            'sent_to' => $to,
+            'sent_at' => now(),
+            'expires_at' => now()->addHours((int) config('bookings.payment_link_hours')),
+            'created_by' => $request->user()->id,
+        ]);
+
+        try {
+            Mail::to($to)->send(new BookingPaymentLinkMail(
+                $link->load('booking.services'),
+                tenant()?->name ?? config('app.name'),
+            ));
+        } catch (\Throwable $exception) {
+            /* The row stays. "We tried to send this and the mail bounced" is
+               a more useful thing for the desk to find than no record at
+               all, and the status says it never got anywhere. */
+            report($exception);
+
+            return __('bookings.confirmation.link_failed');
+        }
+
+        return null;
     }
 
     /**
@@ -1309,21 +1882,6 @@ class BookingController extends Controller
                 ? (string) $request->query('date')
                 : '',
         ];
-    }
-
-    /**
-     * A short, human reference for one booking.
-     *
-     * Said over the phone more often than it is read, so it avoids the
-     * characters that sound alike — no O against 0, no I against 1.
-     */
-    private function reference(): string
-    {
-        do {
-            $reference = 'BK-'.substr(str_shuffle('ACDEFGHJKLMNPQRTUVWXY2346789'), 0, 6);
-        } while (Booking::query()->where('reference', $reference)->exists());
-
-        return $reference;
     }
 
     private function initialsOf(string $name): string

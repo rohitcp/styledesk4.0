@@ -35,6 +35,7 @@ class Booking extends Model
             'date' => 'date',
             'is_walk_in' => 'boolean',
             'confirmed_at' => 'datetime',
+            'waived_at' => 'datetime',
             'client_snapshot' => 'array',
         ];
     }
@@ -73,6 +74,18 @@ class Booking extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(BookingPayment::class)->orderBy('id');
+    }
+
+    /** The requests to pay that were sent out, newest first. */
+    public function paymentLinks(): HasMany
+    {
+        return $this->hasMany(BookingPaymentLink::class)->latest('id');
+    }
+
+    /** Whoever let this booking off the money, where somebody did. */
+    public function waivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'waived_by');
     }
 
     /**
@@ -154,12 +167,55 @@ class Booking extends Model
         return substr((string) $this->ends_at, 0, 5);
     }
 
-    /** "10:00 AM – 11:30 AM", in the reader's own locale. */
+    /**
+     * "10:00 AM – 11:30 AM", in the reader's own locale.
+     *
+     * A draft saved before a time was chosen has none, and says so. Showing
+     * 12:00 AM there would put an appointment in the small hours of every
+     * listing that reads this.
+     */
     public function timeLabel(): string
     {
+        if ($this->startsAt() === '' || $this->endsAt() === '') {
+            return __('bookings.no_time_yet');
+        }
+
         return $this->date->copy()->setTimeFromTimeString($this->startsAt())->translatedFormat('g:i A')
             .' – '
             .$this->date->copy()->setTimeFromTimeString($this->endsAt())->translatedFormat('g:i A');
+    }
+
+    /**
+     * A reference that can be read out over the phone.
+     *
+     * Handed out the moment the booking screen has a name to save under, and
+     * never handed out again: the number a receptionist has already read to
+     * somebody has to survive every later save, and the booking a lead
+     * becomes keeps the number the lead was quoted under. Dated so it can be
+     * found without a search, and numbered within the day so two references
+     * taken an hour apart sort in the order they were taken.
+     *
+     * Counted across both tables, because a booking in progress lives in
+     * `booking_leads` and the appointment it becomes lives here — the same
+     * number in both, one after the other. Taking the highest either has
+     * reached is what stops the second one being issued twice.
+     */
+    public static function nextReference(): string
+    {
+        $prefix = 'BK-'.now()->format('Ymd').'-';
+
+        $issued = self::withTrashed()->where('reference', 'like', $prefix.'%')->pluck('reference')
+            ->merge(BookingLead::query()->where('reference', 'like', $prefix.'%')->pluck('reference'));
+
+        /* One day's worth, which is a page of rows rather than a table, so
+           the highest is read in PHP instead of in four dialects of SQL. */
+        $number = (int) $issued->map(fn (string $reference) => (int) substr($reference, strlen($prefix)))->max();
+
+        do {
+            $reference = $prefix.str_pad((string) ++$number, 5, '0', STR_PAD_LEFT);
+        } while ($issued->contains($reference));
+
+        return $reference;
     }
 
     public function statusLabel(): string

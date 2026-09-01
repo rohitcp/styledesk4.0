@@ -55,13 +55,25 @@
           <span class="styledesk_action__label">{{ __('common.back') }}</span>
         </a>
 
-        {{-- The primary action, disabled until there is a booking module to
-             open. A button that looks live and is not costs more than one
-             that admits it is coming. --}}
-        <button type="button" disabled aria-disabled="true"
-                class="h-9 px-4 rounded-lg bg-brand text-white text-[13px] font-semibold opacity-50 cursor-not-allowed min-w-0 truncate">
-          {{ __('clients.module.workspace.quick.create_booking') }}
-        </button>
+        {{-- The primary action. Only the id goes in the URL: the booking
+             screen reads the client back from it, so a profile left open in
+             a tab since Tuesday cannot carry Tuesday's phone number into
+             today's booking. --}}
+        @if ($canBook)
+          <a href="{{ route('bookings.create', ['client' => $client->id]) }}"
+             class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold
+                    inline-flex items-center min-w-0 truncate transition-colors">
+            {{ __('clients.module.workspace.quick.create_booking') }}
+          </a>
+        @else
+          {{-- A reader who may not take an appointment is told so, rather
+               than given a button that refuses them afterwards. --}}
+          <span class="h-9 px-4 rounded-lg bg-brand text-white text-[13px] font-semibold opacity-50
+                       cursor-not-allowed inline-flex items-center min-w-0 truncate"
+                aria-disabled="true">
+            {{ __('clients.module.workspace.quick.create_booking') }}
+          </span>
+        @endif
 
         @include('clients.partials._actions-menu')
       </div>
@@ -102,19 +114,13 @@
             </span>
           @endif
 
-          @if ($canViewContact && $primaryPhone)
-            <a href="tel:{{ $primaryPhone->number }}" class="styledesk_metachip styledesk_metachip--phone"
-               data-tip="{{ __('clients.module.workspace.contact.call') }}">
-              {{ $primaryPhone->number }}
-            </a>
-          @endif
+          {{-- The phone and the email used to sit here.
 
-          @if ($canViewContact && $primaryEmail)
-            <a href="mailto:{{ $primaryEmail->email }}" class="styledesk_metachip styledesk_metachip--email"
-               data-tip="{{ __('clients.module.workspace.contact.send_email') }}">
-              {{ $primaryEmail->email }}
-            </a>
-          @endif
+               They are the two chips nobody reads off a header: both are in
+               the Contact card a column away, under labels, beside the copy
+               buttons and the "view all numbers" link that make them usable.
+               Repeated here they only crowded the facts that have nowhere
+               else to be — the birthday, and which branch they are seen at. --}}
 
           @if ($client->preferredLocation)
             <a href="{{ route('settings.locations.show', $client->preferredLocation) }}"

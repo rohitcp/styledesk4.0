@@ -108,6 +108,20 @@ return [
         'archived' => ['label' => 'Archived', 'class' => 'styledesk_badge--soon'],
     ],
 
+    /*
+    | The staff ID.
+    |
+    | Handed out by the application rather than typed, for the reason a client
+    | reference is: an identifier somebody invents is one two people invent
+    | differently — EMP-7, emp007, 7 — and the column stops being something
+    | anybody can search or sort by. Configurable because a business arriving
+    | with its own numbering will want its own prefix.
+    */
+    'staff_id' => [
+        'prefix' => env('STAFF_ID_PREFIX', 'EMP-'),
+        'padding' => (int) env('STAFF_ID_PADDING', 4),
+    ],
+
     'sorts' => [
         'name' => 'Name',
         'recent' => 'Recently added',

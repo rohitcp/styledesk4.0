@@ -87,10 +87,65 @@ class Resource extends Model
             return $query;
         }
 
-        return $query->where(function (Builder $inner) use ($term) {
-            $inner->where('name', 'like', '%'.$term.'%')
-                ->orWhereHas('category', fn (Builder $category) => $category->where('name', 'like', '%'.$term.'%'));
+        $like = '%'.$term.'%';
+
+        return $query->where(function (Builder $inner) use ($term, $like) {
+            $inner->where('name', 'like', $like)
+                ->orWhere('code', 'like', $like)
+                ->orWhere('description', 'like', $like)
+                ->orWhereHas('category', fn (Builder $category) => $category->where('name', 'like', $like))
+                /* Which branch it is at. "Riverside" is a way somebody looks
+                   for the chairs at Riverside, not only for the branch. */
+                ->orWhereHas('location', fn (Builder $location) => $location->where('name', 'like', $like));
+
+            /* Typed as words, matched as states. "Maintenance" and "retired"
+               are things a reader searches for; neither is a string in the
+               column that decides them. */
+            foreach (self::availabilityMatches($term) as $status) {
+                $inner->orWhere('availability_status', $status);
+            }
+
+            foreach (self::statusMatches($term) as $isActive) {
+                $inner->orWhere('is_active', $isActive);
+            }
         });
+    }
+
+    /**
+     * The availability states a search term names, if any.
+     *
+     * Matched on the start of the word and against the reader's own language,
+     * because the label is what is on the screen they are searching.
+     *
+     * @return array<int, string>
+     */
+    private static function availabilityMatches(string $term): array
+    {
+        $term = mb_strtolower($term);
+
+        return collect(__('resources.form.availability'))
+            ->filter(fn (string $label) => str_starts_with(mb_strtolower($label), $term))
+            ->keys()
+            ->all();
+    }
+
+    /**
+     * Whether the business still has it at all, as a word.
+     *
+     * @return array<int, bool>
+     */
+    private static function statusMatches(string $term): array
+    {
+        $term = mb_strtolower($term);
+
+        return collect([
+            true => __('resources.form.active'),
+            false => __('resources.form.inactive'),
+        ])
+            ->filter(fn (string $label) => str_starts_with(mb_strtolower($label), $term))
+            ->keys()
+            ->map(fn ($key) => (bool) $key)
+            ->all();
     }
 
     /**

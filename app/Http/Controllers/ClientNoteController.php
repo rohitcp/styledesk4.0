@@ -8,6 +8,7 @@ use App\Contracts\TenantStorageContract;
 use App\Models\Client;
 use App\Models\ClientNote;
 use App\Models\Staff;
+use App\Support\ClientActivityLog;
 use App\Support\NoteHtml;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -48,6 +49,8 @@ class ClientNoteController extends Controller
 
         $this->syncAccess($note, $data);
 
+        ClientActivityLog::noteAdded($note);
+
         return $this->respond($request, $client, $note, __('clients.module.workspace.notes.added'));
     }
 
@@ -66,6 +69,14 @@ class ClientNoteController extends Controller
 
         $data = $this->validated($request);
 
+        /* Read before the save. Marking a note important and rewording it are
+           different things to find in a history, so they are recorded as
+           different entries — and neither can be told from the other once the
+           row has already moved. */
+        $wasImportant = (bool) $note->is_important;
+        $wasPrivate = (bool) $note->is_private;
+        $wasBody = (string) $note->body;
+
         $note->forceFill([
             'body' => $data['body'],
             'format' => 'html',
@@ -74,6 +85,20 @@ class ClientNoteController extends Controller
         ])->save();
 
         $this->syncAccess($note, $data);
+
+        $actor = $request->user()->id;
+
+        if ($wasBody !== (string) $note->body) {
+            ClientActivityLog::noteUpdated($note);
+        }
+
+        if ($wasImportant !== (bool) $note->is_important) {
+            ClientActivityLog::noteImportanceChanged($note, (bool) $note->is_important, $actor);
+        }
+
+        if ($wasPrivate !== (bool) $note->is_private) {
+            ClientActivityLog::notePrivacyChanged($note, (bool) $note->is_private, $actor);
+        }
 
         return $this->respond($request, $client, $note, __('clients.module.workspace.notes.updated'));
     }
@@ -89,6 +114,11 @@ class ClientNoteController extends Controller
          * Deleting is refused for the same reason reading is.
          */
         abort_unless($note->isVisibleTo($request->user()), 403);
+
+        /* Written before the row goes: afterwards there is nothing left to
+           read the body off, and "a note was deleted" without saying which
+           is an entry that answers nothing. */
+        ClientActivityLog::noteDeleted($note, $request->user()->id);
 
         $note->delete();
 
