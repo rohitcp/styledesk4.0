@@ -540,4 +540,37 @@ class ServicePricingTest extends TestCase
             ->assertOk()
             ->assertSee('"chosen_percent":20', false);
     }
+
+    /**
+     * The deposit value field follows the deposit type.
+     *
+     * An amount is money and wears the currency symbol; a percentage is not.
+     * A reader who has just chosen "percentage" and sees a $ in the box will
+     * type dollars.
+     */
+    public function test_the_deposit_field_offers_both_units(): void
+    {
+        $html = $this->actingAs($this->owner)
+            ->get(route('services.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString(__('services.deposit_amount'), $html);
+        $this->assertStringContainsString(__('services.deposit_percent'), $html);
+
+        /* Both affordances are rendered; the script shows whichever the type
+           calls for, so neither needs a round trip to appear. */
+        $this->assertStringContainsString('styledesk_input__suffix', $html);
+        $this->assertStringContainsString('data-deposit-value-field', $html);
+        $this->assertStringContainsString('data-deposit-type', $html);
+    }
+
+    /** The switch inside the Price card carries no card of its own. */
+    public function test_the_deposit_toggle_is_bare_inside_the_price_card(): void
+    {
+        $this->actingAs($this->owner)
+            ->get(route('services.create'))
+            ->assertOk()
+            ->assertSee('styledesk_toggle--bare', false);
+    }
 }

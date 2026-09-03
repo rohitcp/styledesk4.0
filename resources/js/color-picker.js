@@ -72,4 +72,62 @@ export function initDepositToggles(root = document) {
             fields.hidden = !toggle.checked;
         }
     });
+
+    syncDepositUnits(root);
+}
+
+/**
+ * The deposit value field follows the deposit type.
+ *
+ * An amount is money and wears the currency symbol; a percentage is not, and
+ * wearing one would be a field that lies about what it holds — a reader who
+ * has just chosen "percentage" and sees a $ in the box will type dollars.
+ *
+ * The type combo posts a hidden input rather than firing events on a field, so
+ * the DOM is watched instead of listened to. Same reason the email editor
+ * watches its own controls.
+ */
+function syncDepositUnits(root) {
+    const rows = root.querySelectorAll('[data-deposit-row]');
+
+    if (!rows.length) {
+        return;
+    }
+
+    const apply = (row) => {
+        const type = row.querySelector('[data-deposit-type] input[type="hidden"]')?.value ?? 'percent';
+        const field = row.querySelector('[data-deposit-value-field]');
+
+        if (!field) {
+            return;
+        }
+
+        const fixed = type === 'fixed';
+        const input = field.querySelector('[data-deposit-value]');
+        const label = field.querySelector('[data-deposit-label]');
+
+        field.querySelector('[data-deposit-prefix]').hidden = !fixed;
+        field.querySelector('[data-deposit-suffix]').hidden = fixed;
+        input.classList.toggle('styledesk_input--prefixed', fixed);
+
+        /* The label carries the unit too. Somebody filling this in from the
+           keyboard never sees the symbol in the box. */
+        const wording = fixed ? field.dataset.amountLabel : field.dataset.percentLabel;
+
+        if (wording) {
+            label.textContent = wording;
+            input.setAttribute('aria-label', wording);
+        }
+    };
+
+    rows.forEach((row) => {
+        apply(row);
+
+        /* Attributes, because Vue writes the hidden input's value as one. */
+        new MutationObserver(() => apply(row)).observe(row, {
+            attributes: true,
+            subtree: true,
+            attributeFilter: ['value'],
+        });
+    });
 }

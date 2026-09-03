@@ -301,6 +301,17 @@
     padding-left: 2rem;
 }
 
+/* The mirror of the prefix, for a unit that follows the number: 25%. */
+.styledesk_input__suffix {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: #6b7280;
+    pointer-events: none;
+}
+
 .styledesk_input__prefix {
     position: absolute;
     left: 0.75rem;
@@ -3593,6 +3604,30 @@ fieldset:disabled :where(button, input, select, textarea),
 }
 
 .styledesk_toggle:hover { background: var(--color-hover); }
+
+/* Bare — the switch without the card around it.
+
+   The boxed form is right for a list of settings, where each needs its own
+   edge to sit in. Inside a card that is already about one thing, the box is a
+   second border around a single row and reads as a panel that failed to
+   render. */
+.styledesk_toggle--bare {
+    padding: 0;
+    border: 0;
+    background: none;
+}
+
+/* Every state the boxed form paints, unpainted.
+
+   Hover and checked both tint the row, and a bare switch that stays flat until
+   it is turned on and then grows a coloured band is worse than either — the
+   band is the card this variant exists to remove, arriving late. The switch
+   itself still turns brand-coloured, which is what says "on". */
+.styledesk_toggle--bare:hover,
+.styledesk_toggle--bare:has(.styledesk_toggle__input:checked) {
+    border: 0;
+    background: none;
+}
 
 .styledesk_toggle__input {
     position: absolute;

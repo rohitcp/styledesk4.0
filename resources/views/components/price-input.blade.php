@@ -158,25 +158,63 @@
                         <div class="w-[150px]">
                             <span class="block text-[12px] text-sub mb-1">{{ __('services.deposit_type') }}</span>
 
-                            <x-combo :name="'deposit['.$code.'][type]'"
+                            <x-combo data-deposit-type
+                                     :name="'deposit['.$code.'][type]'"
                                      :options="['fixed' => __('services.deposit_types.fixed'), 'percent' => __('services.deposit_types.percent')]"
                                      :selected="$depositFor($code, 'type', 'percent')"
                                      :ariaLabel="__('services.deposit_type')" />
                         </div>
 
-                        <div>
-                            <label for="deposit_{{ $code }}" class="block text-[12px] text-sub mb-1">{{ __('services.deposit_value') }}</label>
-                            <input id="deposit_{{ $code }}" type="text" inputmode="decimal" class="sd-input w-[130px]"
-                                   name="deposit[{{ $code }}][value]"
-                                   value="{{ $depositFor($code, 'value') }}"
-                                   aria-label="{{ __('services.deposit_value') }}" autocomplete="off">
+                        {{-- The value field follows the type beside it: an
+                             amount is money and wears the currency symbol; a
+                             percentage is not, and wearing one would be a
+                             field that lies about what it holds. Both the
+                             label and the affordance change, because a reader
+                             who has just chosen "percentage" and sees a $ in
+                             the box will type dollars. --}}
+                        @php $depositType = $depositFor($code, 'type', 'percent'); @endphp
+
+                        <div data-deposit-value-field
+                             data-amount-label="{{ __('services.deposit_amount') }}"
+                             data-percent-label="{{ __('services.deposit_percent') }}">
+                            <label for="deposit_{{ $code }}" class="block text-[12px] text-sub mb-1">
+                                <span data-deposit-label>
+                                    {{ $depositType === 'fixed'
+                                        ? __('services.deposit_amount')
+                                        : __('services.deposit_percent') }}
+                                </span>
+                            </label>
+
+                            <div class="relative w-[130px]">
+                                <span data-deposit-prefix aria-hidden="true"
+                                      class="styledesk_input__prefix pointer-events-none text-sub"
+                                      @unless ($depositType === 'fixed') hidden @endunless>
+                                    {{ App\Support\Money::symbol($code) }}
+                                </span>
+
+                                <span data-deposit-suffix aria-hidden="true"
+                                      class="styledesk_input__suffix pointer-events-none text-sub"
+                                      @if ($depositType === 'fixed') hidden @endif>%</span>
+
+                                <input id="deposit_{{ $code }}" type="text" inputmode="decimal"
+                                       @class(['sd-input w-[130px]', 'styledesk_input--prefixed' => $depositType === 'fixed'])
+                                       data-deposit-value
+                                       name="deposit[{{ $code }}][value]"
+                                       value="{{ $depositFor($code, 'value') }}"
+                                       aria-label="{{ $depositType === 'fixed' ? __('services.deposit_amount') : __('services.deposit_percent') }}"
+                                       autocomplete="off">
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- The switch below the row it governs. --}}
+                {{-- The switch below the row it governs, and without a card
+                     around it: this already sits inside the Price card, and a
+                     box around one row inside another box reads as a panel
+                     that failed to render. --}}
                 <div class="mt-2.5">
-                    <x-toggle :name="'deposit['.$code.'][required]'" :label="__('services.deposit_required')"
+                    <x-toggle class="styledesk_toggle--bare"
+                              :name="'deposit['.$code.'][required]'" :label="__('services.deposit_required')"
                               :checked="$depositOn" data-deposit-toggle />
                 </div>
 

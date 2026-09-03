@@ -114,6 +114,8 @@ return [
     'deposit_required' => 'Deposit required',
     'deposit_type' => 'Deposit type',
     'deposit_value' => 'Deposit amount',
+    'deposit_amount' => 'Deposit amount',
+    'deposit_percent' => 'Deposit %',
     'deposit_type_required' => 'Choose whether the deposit is a fixed amount or a percentage.',
     'deposit_value_required' => 'Enter how much the deposit is.',
     'deposit_percent_range' => 'A deposit percentage cannot be more than 100%.',
