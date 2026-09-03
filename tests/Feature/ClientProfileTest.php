@@ -654,4 +654,47 @@ class ClientProfileTest extends TestCase
             ->get(route('clients.show', $theirs))
             ->assertNotFound();
     }
+
+    /**
+     * The edit screen opens.
+     *
+     * The route and the view both existed; the controller method did not, so
+     * every Edit link 500'd with "Call to undefined method".
+     */
+    public function test_the_edit_screen_opens_with_the_client_filled_in(): void
+    {
+        $client = $this->client;
+
+        $this->actingAs($this->owner)
+            ->get(route('clients.edit', $client))
+            ->assertOk()
+            ->assertSee(__('clients.module.edit_title'))
+            /* Filled in from the record, not a blank create form — which is
+               what an array union would have produced, since formState
+               returns a null client for the create screen to use. */
+            ->assertViewHas('client', fn ($viewClient) => $viewClient !== null
+                && $viewClient->is($client))
+            ->assertSee($client->first_name, false);
+    }
+
+    /**
+     * Another business's client cannot be opened for editing.
+     *
+     * Every system role holds clients.edit — the guard that matters here is
+     * ownership, not permission, and a form that opened on somebody else's
+     * record would be one save away from rewriting it.
+     */
+    public function test_the_edit_screen_refuses_another_businesss_client(): void
+    {
+        $other = Tenant::create(['name' => 'Other Salon', 'slug' => 'other-edit']);
+
+        $theirs = $other->clients()->create([
+            'client_ref' => Client::nextRef($other->getTenantKey()),
+            'first_name' => 'Someone', 'last_name' => 'Else',
+        ]);
+
+        $this->actingAs($this->owner)
+            ->get(route('clients.edit', $theirs))
+            ->assertNotFound();
+    }
 }

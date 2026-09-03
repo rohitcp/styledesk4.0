@@ -722,6 +722,33 @@ class ClientController extends Controller
             ->get();
     }
 
+    /**
+     * The form for changing an existing client.
+     *
+     * The same form the create screen renders, given a client to fill it in
+     * from — `formState` returns `'client' => null` precisely so this can
+     * override it, and one form for both is what stops the two drifting apart
+     * the first time a field is added.
+     *
+     * Guarded like `update`, not like `create`: reaching the form is reaching
+     * the ability to change the record, and a screen that opens for somebody
+     * whose save will be refused is a screen that wastes their time and then
+     * loses their work.
+     */
+    public function edit(Request $request, Client $client): View
+    {
+        $this->authorizeClients($request, 'clients.edit', 'own');
+        $this->assertOwned($client, $request->user()->tenant);
+
+        /* array_merge, not `+`: array union keeps the LEFT value on a
+           duplicate key, and formState returns 'client' => null — so the
+           union would quietly hand the view a null client and render the
+           create form instead. */
+        return view('clients.edit', array_merge($this->formState($request->user()->tenant), [
+            'client' => $client->load(['phones', 'emails', 'preferences', 'tags']),
+        ]));
+    }
+
     public function update(Request $request, Client $client): RedirectResponse
     {
         $this->authorizeClients($request, 'clients.edit', 'own');
