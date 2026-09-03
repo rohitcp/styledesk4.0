@@ -66,6 +66,23 @@ class PaymentGatewayManager
 
         $class = config('payments.gateways.'.$key.'.driver');
 
-        return $this->resolved[$key] = $class && class_exists($class) ? app($class) : null;
+        if (! $class || ! class_exists($class)) {
+            return $this->resolved[$key] = null;
+        }
+
+        /*
+         * A driver whose deployment-level prerequisites are missing is not
+         * built at all.
+         *
+         * Constructing it would mean constructing its SDK client, and those
+         * refuse an empty key by throwing — so a deployment with no Stripe
+         * secret could not even render the settings screen that explains it
+         * has no Stripe secret.
+         */
+        if (method_exists($class, 'isConfigured') && ! $class::isConfigured()) {
+            return $this->resolved[$key] = null;
+        }
+
+        return $this->resolved[$key] = app($class);
     }
 }

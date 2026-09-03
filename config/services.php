@@ -57,6 +57,23 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    /*
+    | Stripe Connect.
+    |
+    | One StyleDesk platform account; each business connects its own account
+    | under it, and money goes to the salon's bank rather than through
+    | StyleDesk's. See App\Payments\StripeGateway.
+    |
+    | Absent keys disable the processor rather than breaking it: the settings
+    | card says "not available yet" instead of offering a Connect button that
+    | lands on a Stripe error page.
+    */
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

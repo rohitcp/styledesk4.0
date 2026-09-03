@@ -35,15 +35,18 @@ use App\Http\Controllers\Settings\EmailTemplateController;
 use App\Http\Controllers\Settings\GmailConnectionController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
+use App\Http\Controllers\Settings\PaymentSettingsController;
 use App\Http\Controllers\Settings\ReasonCodeController;
 use App\Http\Controllers\Settings\ResourceCategoryController;
 use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\ServiceCategoryController as SettingsServiceCategoryController;
 use App\Http\Controllers\Settings\ShiftRuleController;
 use App\Http\Controllers\Settings\StaffController;
+use App\Http\Controllers\Settings\StripeConnectController;
 use App\Http\Controllers\Settings\TipController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\StaffScheduleBoardController;
+use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
 use App\Http\Controllers\VerificationEmailController;
@@ -51,6 +54,7 @@ use App\Http\Controllers\VerifyEmailLinkController;
 use App\Http\Middleware\RequireAccessCode;
 use App\Models\StoredFile;
 use App\Models\Tenant;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -707,6 +711,42 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
             });
 
         /*
+        | App Settings → Payments: whether the business takes money, who
+        | processes it, and what it will accept.
+        |
+        | The screen never names a processor's API — App\Payments owns that,
+        | which is what lets Square arrive without this page changing.
+        */
+        Route::controller(PaymentSettingsController::class)
+            ->prefix('payments')
+            ->name('payments.')
+            ->group(function () {
+                Route::get('/', 'show')->name('show');
+                Route::patch('/', 'update')->name('update');
+            });
+
+        /*
+        | Connecting a business's own Stripe account under the StyleDesk
+        | platform. Stripe hosts the onboarding — identity, bank details and
+        | tax information are exactly what Connect exists to keep out of the
+        | platform.
+        */
+        Route::controller(StripeConnectController::class)
+            ->prefix('payments/stripe')
+            ->name('payments.stripe.')
+            ->group(function () {
+                Route::get('connect', 'connect')->name('connect');
+
+                /* The other route in: a business that already has Stripe and
+                   supplies its own key. Throttled — it is a form that talks to
+                   Stripe on every submit. */
+                Route::post('keys', 'saveKeys')->middleware('throttle:10,1')->name('keys');
+                Route::get('return', 'return')->name('return');
+                Route::get('dashboard', 'dashboard')->name('dashboard');
+                Route::delete('/', 'disconnect')->name('disconnect');
+            });
+
+        /*
         | App Settings → Email Templates: the wording StyleDesk uses when it
         | writes to a business's clients.
         |
@@ -1337,3 +1377,14 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::post('images', 'image')->name('images');
         });
 });
+
+/*
+| Stripe's own callbacks.
+|
+| Outside every group: Stripe is not a signed-in user, carries no session and
+| cannot answer a CSRF token. The signature on the request is what proves it,
+| and the controller refuses anything it cannot verify.
+*/
+Route::post('webhooks/stripe', StripeWebhookController::class)
+    ->withoutMiddleware([PreventRequestForgery::class])
+    ->name('webhooks.stripe');

@@ -10,6 +10,7 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Stripe\StripeClient;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,6 +30,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        /**
+         * One Stripe client, built from the platform's own secret.
+         *
+         * Bound rather than constructed inside the gateway so a test can swap
+         * it for a fake — and so the key is read in one place, which is the
+         * only place it should ever appear.
+         */
+        $this->app->singleton(StripeClient::class, fn () => new StripeClient([
+            'api_key' => (string) config('services.stripe.secret'),
+            'stripe_version' => '2024-06-20',
+        ]));
+
         /* Storage is asked for by contract, so a test can hand a feature a
            different implementation and nothing in the feature changes. */
         $this->app->singleton(TenantStorageContract::class, TenantStorageService::class);

@@ -300,6 +300,8 @@ return [
                     'name' => 'Payments',
                     'description' => 'Accepted payment methods, deposits, payment behaviour and defaults.',
                     'icon' => 'credit-card',
+                    'route' => 'settings.payments.show',
+                    'status' => 'active',
                     'keywords' => ['card', 'deposit', 'stripe', 'cash', 'checkout', 'pay'],
                 ],
                 [

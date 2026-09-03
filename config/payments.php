@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 use App\Payments\ManualGateway;
+use App\Payments\StripeGateway;
 
 return [
 
@@ -43,8 +44,8 @@ return [
          * "coming soon".
          */
         'stripe' => [
-            'driver' => null,
-            'available' => false,
+            'driver' => StripeGateway::class,
+            'available' => true,
         ],
 
         /* Square — Phase 2. Many salons already own the readers. */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Payments\PaymentGatewayManager;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -64,6 +65,7 @@ class Tenant extends BaseTenant
             'shift_rules_enabled' => 'boolean',
             'client_email_enabled' => 'boolean',
             'payments_enabled' => 'boolean',
+            'accepted_methods' => 'array',
         ];
     }
 
@@ -112,6 +114,9 @@ class Tenant extends BaseTenant
             'payment_gateway',
             'payment_account_id',
             'payments_enabled',
+            'accepted_methods',
+            'default_deposit_type',
+            'default_deposit_value',
 
             // Business settings screen. Every one of these needs to be here:
             // a column missing from this list is silently written into the
@@ -444,6 +449,29 @@ class Tenant extends BaseTenant
     public function disabledBy(): BelongsTo
     {
         return $this->belongsTo(BackofficeAdmin::class, 'disabled_by');
+    }
+
+    /**
+     * The payment methods this business takes.
+     *
+     * Null means it has never said, which is not the same as none: a salon
+     * that has not opened the payments screen still takes cash. The gateway's
+     * own list is the answer until somebody narrows it.
+     *
+     * @return array<int, string>
+     */
+    public function acceptedMethods(): array
+    {
+        $available = app(PaymentGatewayManager::class)->for($this)->methods();
+
+        if ($this->accepted_methods === null) {
+            return $available;
+        }
+
+        /* Intersected rather than trusted: a method that was accepted before
+           the business changed processor may no longer be takeable, and
+           offering it would be offering something the till cannot complete. */
+        return array_values(array_intersect($this->accepted_methods, $available));
     }
 
     public function onboarding(): HasOne
