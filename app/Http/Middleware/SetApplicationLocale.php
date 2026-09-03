@@ -22,7 +22,17 @@ class SetApplicationLocale
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $locale = Locale::forUser($request->user());
+        /**
+         * The salon guard by name, not whichever guard happens to be default.
+         *
+         * `$request->user()` resolves the default guard, and the platform
+         * console authenticates a BackofficeAdmin — not a User — so an
+         * untyped call hands Locale::forUser the wrong model and the request
+         * dies with a TypeError. An administrator has no tenant and no
+         * language preference anyway; naming 'web' lets the console settle on
+         * the fallback, which is what it should do.
+         */
+        $locale = Locale::forUser($request->user('web'));
 
         app()->setLocale($locale);
 

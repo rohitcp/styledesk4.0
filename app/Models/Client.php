@@ -196,6 +196,17 @@ class Client extends Model
     }
 
     /**
+     * Every email this business has sent them.
+     *
+     * Not `emails` — that is the addresses on the record, and one word apart
+     * from the messages sent to them is how the two get confused.
+     */
+    public function emailMessages(): HasMany
+    {
+        return $this->hasMany(ClientEmailMessage::class);
+    }
+
+    /**
      * The services this client is known to want.
      *
      * Said by somebody at the desk, not worked out from the diary. What they

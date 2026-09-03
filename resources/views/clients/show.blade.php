@@ -263,6 +263,10 @@
       </aside>
     </div>
   </main>
+  {{-- Rendered once per profile, opened by the Email action in the contact
+       row. Outside the columns so it is never clipped by one of their
+       scrollers. --}}
+  @include('clients.partials._email-drawer')
 @endsection
 
 @push('scripts')
@@ -614,6 +618,151 @@
             }, 1600);
           });
         });
+      });
+    }());
+
+    /*
+     * Send Email.
+     *
+     * Everything is fetched when the drawer opens rather than rendered with
+     * the page: a profile is opened many times a day and written from rarely.
+     * Nothing here is a rule — the server validates the same things again,
+     * because a screen is a convenience and an endpoint is the boundary.
+     */
+    (function () {
+      const drawer = document.querySelector('[data-email-drawer]');
+      const trigger = document.querySelector('[data-send-email]');
+
+      if (!drawer || !trigger) {
+        return;
+      }
+
+      const form = drawer.querySelector('[data-email-form]');
+      const subject = drawer.querySelector('[data-email-subject]');
+      const message = drawer.querySelector('[data-email-message]');
+      const templates = drawer.querySelector('[data-email-template]');
+      const bookings = drawer.querySelector('[data-email-booking]');
+      const submit = drawer.querySelector('[data-email-submit]');
+      const blocked = drawer.querySelector('[data-email-blocked]');
+      const failure = drawer.querySelector('[data-email-error]');
+
+      let loaded = null;
+
+      function show(el, text) {
+        el.textContent = text || '';
+        el.hidden = !text;
+      }
+
+      function close() {
+        drawer.hidden = true;
+      }
+
+      async function open() {
+        drawer.hidden = false;
+        show(failure, '');
+        subject.value = '';
+        message.value = '';
+
+        try {
+          const response = await fetch(trigger.dataset.composeUrl, {
+            headers: { Accept: 'application/json' },
+          });
+          loaded = await response.json();
+        } catch (error) {
+          show(failure, @json(__('client_email.errors.failed')));
+          return;
+        }
+
+        drawer.querySelector('[data-email-to-name]').textContent = loaded.to.name || '';
+        drawer.querySelector('[data-email-to-address]').textContent = loaded.to.email || '';
+        drawer.querySelector('[data-email-from-label]').textContent = loaded.from.label || '';
+        drawer.querySelector('[data-email-from-address]').textContent = loaded.from.email || '';
+
+        /* A drawer that cannot send says why and locks its own button, rather
+           than letting somebody write a message that has nowhere to go. */
+        show(blocked, loaded.blocked);
+        submit.disabled = Boolean(loaded.blocked);
+
+        templates.length = 1;
+        (loaded.templates || []).forEach(function (template) {
+          const option = document.createElement('option');
+          option.value = template.key;
+          option.textContent = template.name;
+          templates.appendChild(option);
+        });
+
+        bookings.length = 1;
+        (loaded.bookings || []).forEach(function (booking) {
+          const option = document.createElement('option');
+          option.value = booking.id;
+          option.textContent = booking.label;
+          bookings.appendChild(option);
+        });
+      }
+
+      /* Choosing a template fills the two fields in. It replaces what is
+         there: a template merged into a half-written message is neither. */
+      templates.addEventListener('change', function () {
+        const chosen = (loaded?.templates || []).find(function (t) { return t.key === templates.value; });
+
+        if (chosen) {
+          subject.value = chosen.subject;
+          message.value = chosen.body;
+        }
+      });
+
+      trigger.addEventListener('click', open);
+
+      drawer.querySelectorAll('[data-email-close]').forEach(function (button) {
+        button.addEventListener('click', close);
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !drawer.hidden) {
+          close();
+        }
+      });
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        if (submit.disabled) {
+          return;
+        }
+
+        submit.disabled = true;
+        show(failure, '');
+
+        try {
+          const response = await fetch(trigger.dataset.sendUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+            },
+            body: JSON.stringify({
+              subject: subject.value,
+              message: message.value,
+              template_key: templates.value || null,
+              booking_id: bookings.value || null,
+            }),
+          });
+
+          const json = await response.json().catch(function () { return {}; });
+
+          if (!response.ok) {
+            show(failure, Object.values(json?.errors ?? {}).flat()[0] || json?.message || '');
+            return;
+          }
+
+          close();
+          window.location.reload();
+        } catch (error) {
+          show(failure, @json(__('client_email.errors.failed')));
+        } finally {
+          submit.disabled = false;
+        }
       });
     }());
   </script>

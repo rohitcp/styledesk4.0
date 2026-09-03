@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\TimeFormat;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -124,6 +125,10 @@ class BookingStatusChange extends Model
             return null;
         }
 
-        return $date->isoFormat('D MMM Y').' · '.CarbonImmutable::parse($time)->isoFormat('h:mm A');
+        /* Through TimeFormat rather than a hard-coded 'h:mm A': 12-hour is the
+           default, not the only answer, and a business that chose a 24-hour
+           clock reading "2:09 PM" on this one line would be right to call it a
+           fault. */
+        return $date->isoFormat('D MMM Y').' · '.CarbonImmutable::parse($time)->format(TimeFormat::clock());
     }
 }

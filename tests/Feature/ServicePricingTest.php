@@ -123,6 +123,26 @@ class ServicePricingTest extends TestCase
         $this->assertStringNotContainsString('Cash', (string) $this->service(6500)->pricingLabel('USD'));
     }
 
+    /**
+     * The listing asks for the two prices separately.
+     *
+     * A service charging the same either way still answers the cash question
+     * with a price. A blank cell there would read as "no cash price", which
+     * is the one thing it does not mean.
+     */
+    public function test_each_price_is_offered_on_its_own_for_the_listing(): void
+    {
+        $two = $this->service(10500, 10000);
+
+        $this->assertSame('$105.00', $two->priceLabel('USD'));
+        $this->assertSame('$100.00', $two->cashPriceLabel('USD'));
+
+        $one = $this->service(6500);
+
+        $this->assertSame('$65.00', $one->priceLabel('USD'));
+        $this->assertSame('$65.00', $one->cashPriceLabel('USD'));
+    }
+
     // ------------------------------------------------------------- the form
 
     public function test_both_prices_are_saved_from_the_form(): void
@@ -204,6 +224,38 @@ class ServicePricingTest extends TestCase
 
         $this->assertSame('cash', $booking->priced_for);
         $this->assertSame(10000, (int) $booking->total_minor);
+    }
+
+    /**
+     * The till is told which price list the booking was totalled against.
+     *
+     * A cash booking settled on a card collects the cash total for a card
+     * sale, and the salon is short the difference on every service that
+     * charges two prices — so the payment panel holds the method to cash,
+     * and this is what it reads to know.
+     */
+    public function test_the_payment_panel_is_told_the_booking_was_priced_in_cash(): void
+    {
+        $service = $this->service(10500, 10000);
+
+        $this->actingAs($this->owner)->post(route('bookings.store'), [
+            'guest_name' => 'Someone',
+            'location_id' => $this->location->id,
+            'date' => now()->addDay()->toDateString(),
+            'starts_at' => '10:00',
+            'services' => [$service->id],
+            'payment_method' => 'cash',
+        ])->assertRedirect();
+
+        $booking = Booking::withoutGlobalScopes()->firstOrFail();
+
+        $panel = $this->actingAs($this->owner)
+            ->get(route('bookings.show', $booking))
+            ->assertOk()
+            ->viewData('panel');
+
+        $this->assertSame('cash', $panel['priced_for']);
+        $this->assertSame(10000, $panel['collect_minor']);
     }
 
     /**

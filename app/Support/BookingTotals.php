@@ -154,6 +154,97 @@ class BookingTotals
     }
 
     /** "8%" rather than "8.00%", which reads like a precision nobody set. */
+    /**
+     * The bill as the till reads it: every line, including the empty ones.
+     *
+     * `lines()` above leaves out a line worth nothing on purpose — a discount
+     * of $0.00 is a discount nobody gave, and a tax line on a business that
+     * charges no tax is a question its receipts should not raise. The payment
+     * summary is the opposite case: somebody is deciding whether money is owed
+     * and why, and a line that is absent because it is nothing looks exactly
+     * like a line the page failed to render.
+     *
+     * It lives here rather than in the controller because three readers need
+     * the same answer — the Vue island, the no-JavaScript fallback, and
+     * somebody without permission to take money — and three copies of this
+     * arithmetic is two chances for the figures to disagree on one screen.
+     *
+     * @return array<int, array{key: string, label: string, value: string, strong?: bool, negative?: bool}>
+     */
+    public function breakdownFor(Booking $booking): array
+    {
+        $discount = (int) $booking->discount_minor;
+        $paid = $booking->paidMinor();
+        $tipPaid = (int) $booking->payments->sum('tip_minor');
+
+        $lines = [[
+            'key' => 'subtotal',
+            'label' => __('bookings.summary.subtotal'),
+            'value' => $this->money((int) ($booking->subtotal_minor ?: $booking->total_minor)),
+        ], [
+            /* Named "coupon" when one was actually applied, because that is
+               what the reader is looking for; a discount given by hand has no
+               coupon to name and stays "discount". */
+            'key' => 'discount',
+            'label' => $booking->promotion_id
+                ? __('bookings.summary.coupon')
+                : __('bookings.summary.discount'),
+            'value' => $discount > 0 ? '−'.$this->money($discount) : $this->money(0),
+            'negative' => $discount > 0,
+        ], [
+            'key' => 'tax',
+            'label' => $this->taxIncludedLabel(),
+            'value' => $this->money((int) $booking->tax_minor),
+        ], [
+            'key' => 'total',
+            'label' => __('bookings.summary.total'),
+            'value' => $this->money((int) $booking->total_minor),
+            'strong' => true,
+        ]];
+
+        /* Only once there is one. A tip line reading nil on a bill nobody has
+           tipped invites the desk to think a tip was refused rather than never
+           offered — and the panel asks for one either way. */
+        if ($tipPaid > 0) {
+            $lines[] = [
+                'key' => 'tip_paid',
+                'label' => __('bookings.summary.tip_paid'),
+                'value' => $this->money($tipPaid),
+            ];
+        }
+
+        $lines[] = [
+            'key' => 'paid',
+            'label' => __('bookings.summary.paid'),
+            'value' => $paid > 0 ? '−'.$this->money($paid) : $this->money(0),
+            'negative' => $paid > 0,
+        ];
+
+        $lines[] = [
+            'key' => 'due',
+            'label' => __('bookings.summary.due_now'),
+            'value' => $this->money($booking->dueMinor()),
+            'strong' => true,
+        ];
+
+        return $lines;
+    }
+
+    /**
+     * How the tax line should be named, whether or not there is any tax.
+     *
+     * The pay card states every line including the empty ones, so it needs the
+     * label even when the figure is nil — and the label is not a constant: a
+     * business whose prices include tax says something different from one that
+     * adds it on.
+     */
+    public function taxIncludedLabel(): string
+    {
+        return $this->taxIncluded
+            ? __('bookings.summary.tax_included', ['rate' => $this->rateLabel()])
+            : __('bookings.summary.tax', ['rate' => $this->rateLabel()]);
+    }
+
     private function rateLabel(): string
     {
         return rtrim(rtrim(number_format($this->taxRate, 2), '0'), '.').'%';

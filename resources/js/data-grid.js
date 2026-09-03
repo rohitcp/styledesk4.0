@@ -459,7 +459,14 @@ function buildMenu() {
         }
 
         if (!item.method || item.method === 'GET') {
-            return `<a href="${escape(item.url)}" class="styledesk_rowmenu__item" role="menuitem">${escape(item.label)}</a>`;
+            /* `target` is opt-in per entry. rel is not optional with it:
+               a new tab opened without noopener can reach back at the page
+               that opened it through window.opener. */
+            const target = item.target
+                ? ` target="${escape(item.target)}" rel="noopener noreferrer"`
+                : '';
+
+            return `<a href="${escape(item.url)}"${target} class="styledesk_rowmenu__item" role="menuitem">${escape(item.label)}</a>`;
         }
 
         /* Anything that changes something is a button that posts, never a

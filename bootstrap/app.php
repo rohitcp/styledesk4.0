@@ -1,12 +1,17 @@
 <?php
 
+use App\Http\Middleware\AuthenticateBackoffice;
 use App\Http\Middleware\EnforceSessionTimeout;
+use App\Http\Middleware\EnsureBusinessIsActive;
 use App\Http\Middleware\EnsureCanManageSettings;
 use App\Http\Middleware\EnsureOnboardingIsComplete;
 use App\Http\Middleware\InitializeTenancyFromRoute;
 use App\Http\Middleware\InitializeTenancyFromUser;
 use App\Http\Middleware\RedirectIfOnboarded;
 use App\Http\Middleware\RequireAccessCode;
+use App\Http\Middleware\RequireBackofficePermission;
+use App\Http\Middleware\RequireBackofficeVerification;
+use App\Http\Middleware\ScopeSessionCookieToHost;
 use App\Http\Middleware\SetApplicationLocale;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
@@ -14,6 +19,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Stancl\Tenancy\Middleware\InitializeTenancyBySubdomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -25,6 +31,21 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
+        /*
+         * The platform console, mounted under its own prefix and name.
+         *
+         * Registered here rather than included from web.php so it carries the
+         * web group (sessions, CSRF) and nothing else — in particular no
+         * tenancy middleware, because a StyleDesk administrator belongs to no
+         * salon and scoping the console to one would be wrong in a way that
+         * is hard to see.
+         */
+        then: function (): void {
+            Route::middleware('web')
+                ->prefix('backoffice')
+                ->name('backoffice.')
+                ->group(base_path('routes/backoffice.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         /**
@@ -62,8 +83,33 @@ return Application::configure(basePath: dirname(__DIR__))
          * drop a cookie. Appended to the web group so it covers every page a
          * signed-in person can reach.
          */
+        /**
+         * Before StartSession, which reads session.domain when it builds the
+         * cookie. Prepended rather than appended for that reason alone.
+         */
+        $middleware->web(prepend: [
+            ScopeSessionCookieToHost::class,
+        ]);
+
+        /**
+         * Behind a tunnel or a load balancer the scheme and host arrive in
+         * forwarded headers. Without trusting them Laravel builds http:// URLs
+         * for an https:// request, and an OAuth redirect_uri built that way
+         * will not match what was registered.
+         */
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             EnforceSessionTimeout::class,
+
+            /**
+             * A business the platform has switched off has no working
+             * sessions. In the group rather than on routes because the three
+             * ways in that skip the login form — an existing session, a
+             * remember-me cookie, a passkey — are exactly the ones a route
+             * list would miss.
+             */
+            EnsureBusinessIsActive::class,
 
             /**
              * The closed door in front of sign-in and sign-up.
@@ -103,6 +149,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
             'onboarded' => EnsureOnboardingIsComplete::class,
             'not-onboarded' => RedirectIfOnboarded::class,
+
+            /* The platform console. `backoffice.auth` answers who — and, on
+               every request, whether they are still allowed to be. */
+            'backoffice.auth' => AuthenticateBackoffice::class,
+            'backoffice.can' => RequireBackofficePermission::class,
+            'backoffice.verified' => RequireBackofficeVerification::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

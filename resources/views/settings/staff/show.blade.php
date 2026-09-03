@@ -185,7 +185,7 @@
                       {{ str_replace(['staff.', '_'], ['', ' '], $entry->action) }}
                     </p>
                     <p class="styledesk_timeline__meta">
-                      {{ $entry->created_at->format('j M Y, H:i') }}
+                      {{ \App\Support\TimeFormat::dateTime($entry->created_at, ', ') }}
                       &middot; {{ $entry->actor_name ?? 'someone since removed' }}
                     </p>
                   </li>

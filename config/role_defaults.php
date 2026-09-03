@@ -42,6 +42,13 @@ return [
         'description' => 'Full operational and administrative access, except protected Owner-only actions.',
         'display_order' => 1,
         'permissions' => [
+            /* Email. Admin matches Owner: full access, Gmail included. */
+            'email.view_history' => 'all',
+            'email.send' => 'all',
+            'email.manage_templates' => 'all',
+            'email.manage_settings' => 'all',
+            'email.connect_gmail' => 'all',
+            'email.disconnect_gmail' => 'all',
             'dashboard.view' => 'all',
             'dashboard.view_revenue' => 'all',
             'dashboard.view_bookings' => 'all',
@@ -203,6 +210,12 @@ return [
         'description' => 'Day-to-day operations, staff, services, clients and reporting for their locations.',
         'display_order' => 2,
         'permissions' => [
+            /* Email. A manager runs the floor and the messages that go with
+               it, and owns the templates the desk sends from — but not who the
+               business sends as, which is an owner's decision. */
+            'email.view_history' => 'all',
+            'email.send' => 'all',
+            'email.manage_templates' => 'all',
             'dashboard.view' => 'all',
             'dashboard.view_bookings' => 'location',
             'dashboard.view_checkin' => 'location',
@@ -311,6 +324,10 @@ return [
         'description' => 'Appointments, clients, bookings, check-in and check-out, and front-desk activities.',
         'display_order' => 3,
         'permissions' => [
+            /* Email. The desk sends and reads; it does not decide what the
+               templates say. */
+            'email.view_history' => 'all',
+            'email.send' => 'all',
             'dashboard.view' => 'all',
             'dashboard.view_bookings' => 'location',
             'dashboard.view_checkin' => 'location',

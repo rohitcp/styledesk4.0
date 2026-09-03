@@ -13,6 +13,7 @@ use App\Http\Controllers\BookingQuoteController;
 use App\Http\Controllers\BookingStatusController;
 use App\Http\Controllers\ClientBookingPreferenceController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ClientEmailController;
 use App\Http\Controllers\ClientNoteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ResourceController;
+use App\Http\Controllers\SalesController;
 use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceImageController;
@@ -28,6 +30,9 @@ use App\Http\Controllers\Settings\BusinessHoursController;
 use App\Http\Controllers\Settings\BusinessSettingsController;
 use App\Http\Controllers\Settings\ClientSettingsController;
 use App\Http\Controllers\Settings\CurrencyController;
+use App\Http\Controllers\Settings\EmailSettingsController;
+use App\Http\Controllers\Settings\EmailTemplateController;
+use App\Http\Controllers\Settings\GmailConnectionController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
 use App\Http\Controllers\Settings\ReasonCodeController;
@@ -545,6 +550,7 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
                    parameter is reached by matching "create" as an id. */
                 Route::get('create', 'create')->name('create');
                 Route::post('/', 'store')->name('store');
+
                 /* Whether the business uses shift rules at all. Its own
                    address rather than a field on the rule form: it is a
                    decision about the feature, not about any one rule. */
@@ -682,6 +688,82 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
         | ask for adding, editing, deactivating and reordering them, none of
         | which belongs in a form that saves forty other switches.
         */
+        /*
+        | App Settings → Email: how the business writes to its clients.
+        |
+        | The switch is the point of the screen. A salon that has not set a
+        | sender up should not be able to put mail in a client's inbox by
+        | accident, so the feature is opted into rather than out of.
+        */
+        Route::controller(EmailSettingsController::class)
+            ->prefix('email')
+            ->name('email.')
+            ->group(function () {
+                Route::get('/', 'show')->name('show');
+                Route::patch('/', 'update')->name('update');
+
+                // Throttled: it is a button that sends mail.
+                Route::post('test', 'test')->middleware('throttle:6,1')->name('test');
+            });
+
+        /*
+        | App Settings → Email Templates: the wording StyleDesk uses when it
+        | writes to a business's clients.
+        |
+        | Keyed by the template's own key rather than an id, because most of
+        | them have no row: the catalogue is code, and only a customised
+        | template is in the database.
+        */
+        Route::controller(EmailTemplateController::class)
+            ->prefix('email-templates')
+            ->name('email-templates.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+
+                /* Before {key}, or "create" is read as a template called
+                   "create" and 404s on every business that has no such row. */
+                Route::get('create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+
+                /* The live preview for a template that has no key yet. On its
+                   own path so it cannot be read as a template called
+                   "preview". */
+                Route::post('preview', 'previewDraft')->name('preview-draft');
+
+                /* A test send for a template that has no key yet. Both test
+                   routes mail what is on the screen rather than what is
+                   stored — see the controller for why. */
+                Route::post('test', 'test')->middleware('throttle:6,1')->name('test-draft');
+
+                Route::get('{key}', 'edit')->name('edit');
+                Route::patch('{key}', 'update')->name('update');
+                Route::post('{key}/duplicate', 'duplicate')->name('duplicate');
+
+                /* The live preview: unsaved form values in, the real email
+                   HTML out. POST because it carries the whole draft. */
+                Route::post('{key}/preview', 'preview')->name('preview');
+                Route::post('{key}/test', 'test')->middleware('throttle:6,1')->name('test');
+
+                Route::patch('{key}/toggle', 'toggle')->name('toggle');
+                Route::delete('{key}', 'reset')->name('reset');
+            });
+
+        /*
+        | Connect Gmail.
+        |
+        | Under the same settings group, so the handshake is only ever
+        | completed by somebody signed into the business it is for — the
+        | callback reads the tenant from the user, not from the request.
+        */
+        Route::controller(GmailConnectionController::class)
+            ->prefix('email/gmail')
+            ->name('email.gmail.')
+            ->group(function () {
+                Route::get('connect', 'connect')->name('connect');
+                Route::get('callback', 'callback')->name('callback');
+                Route::delete('/', 'disconnect')->name('disconnect');
+            });
+
         Route::controller(ClientSettingsController::class)
             ->prefix('clients')
             ->name('clients.')
@@ -816,6 +898,40 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::patch('{promotion}/status', 'toggle')->name('toggle');
         });
 
+    /*
+    | Sales — what was sold, what was collected, what is still owed.
+    |
+    | One row per payment rather than per booking: a bill settled half in cash
+    | and half on a card is two transactions against one appointment, and the
+    | desk reads the rows to answer "did that card payment go through".
+    */
+    Route::controller(SalesController::class)
+        ->prefix('sales')
+        ->name('sales.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+
+            /* The table's rows. Behind the same permission as the page: an
+               endpoint that hands out transactions is the page, whatever
+               shape it returns them in. */
+            Route::get('data', 'data')->name('data');
+
+            /* The two drawers this table opens besides the booking's own.
+               Same shape, same renderer — see App\Http\Controllers\SalesController. */
+            Route::get('clients/{client}', 'clientDrawer')->name('client-drawer');
+            Route::get('receipts/{payment}', 'receiptDrawer')->name('receipt-drawer');
+        });
+
+    Route::controller(ClientEmailController::class)
+        ->prefix('clients/{client}/emails')
+        ->name('clients.emails.')
+        ->group(function () {
+            Route::get('compose', 'compose')->name('compose');
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->middleware('throttle:30,1')->name('store');
+            Route::get('{email}', 'show')->name('show');
+        });
+
     Route::controller(ClientController::class)
         ->prefix('clients')
         ->name('clients.')
@@ -847,6 +963,16 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
 
             // Bound last: a literal segment must win over {client}, or
             // /clients/create would look up a client called "create" and 404.
+            /*
+            | Writing to a client, and reading what has been written.
+            |
+            | Before the {client} show route in the file but registered on
+            | their own controller — Laravel matches on the pattern, and
+            | `clients/{client}/emails` cannot collide with `clients/{client}`
+            | whatever the order. Sending and reading are separate
+            | permissions, checked in the controller rather than here, because
+            | one route group cannot carry two.
+            */
             Route::get('{client}', 'show')->name('show');
             /* The four figures at the top of the profile, asked for again
                when the tab comes back to the front — a payment taken at the

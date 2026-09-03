@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BackofficeAdmin;
 use App\Models\User;
 
 return [
@@ -42,6 +43,19 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        /*
+         * The platform's own console.
+         *
+         * A guard of its own, not a role on 'web'. A StyleDesk employee
+         * belongs to no tenant, and keeping the two apart means a stolen
+         * salon session can never reach the console that can suspend a
+         * salon: different table, different provider, different cookie.
+         */
+        'backoffice' => [
+            'driver' => 'session',
+            'provider' => 'backoffice_admins',
+        ],
     ],
 
     /*
@@ -65,6 +79,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'backoffice_admins' => [
+            'driver' => 'eloquent',
+            'model' => BackofficeAdmin::class,
         ],
 
         // 'users' => [
@@ -97,6 +116,26 @@ return [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
             'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        /*
+         * Its own broker AND its own table, so a reset link issued for one
+         * console can never be redeemed against the other.
+         *
+         * The table is the half that actually enforces it. Laravel's token
+         * repository keys on the email address with no guard column, so two
+         * brokers sharing one table share one row per address: a salon owner
+         * and an administrator with the same address would hand each other
+         * working reset links. The broker alone does not separate them.
+         *
+         * Shorter than the salon app's hour, for the same reason the console's
+         * session is shorter than the salon's.
+         */
+        'backoffice_admins' => [
+            'provider' => 'backoffice_admins',
+            'table' => 'backoffice_password_reset_tokens',
+            'expire' => 30,
             'throttle' => 60,
         ],
     ],

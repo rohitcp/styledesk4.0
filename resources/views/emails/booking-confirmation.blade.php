@@ -1,91 +1,93 @@
 {{--
     The client's copy of an appointment.
 
-    Inline styles and a table layout, for the same reason as every other mail
-    in the app: a class-based layout arrives unstyled in most inboxes, and
-    this one is read on a phone on the way out of the salon.
+    Read on a phone on the way out of the salon, so the two things somebody
+    actually needs — when, and where — are stated where the eye lands, and the
+    money is answered plainly rather than left for them to work out.
 --}}
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('bookings.email.headline') }}</title>
-</head>
-<body style="margin:0; padding:0; background-color:#f6f7f9; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#0f0f10;">
+@php
+    $ink = '#0f0f10';
+    $muted = '#6b7280';
+    $line = '#e5e7eb';
+    $owing = $booking->dueMinor() > 0;
 
-    <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
-        {{ $booking->date->translatedFormat('l j F') }} · {{ $booking->timeLabel() }}
-    </div>
+    $details = array_filter([
+        __('bookings.summary.services') => $booking->services->pluck('name')->implode(', '),
+        __('bookings.summary.staff') => $booking->staff?->displayName() ?? __('bookings.any_staff'),
+        __('bookings.summary.location') => $booking->location?->name,
+        __('bookings.summary.reference') => $booking->reference,
+    ]);
+@endphp
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:#f6f7f9;">
+<x-mail.business :brand="$brand"
+                 :headline="__('bookings.email.headline')"
+                 :greeting="__('bookings.email.intro', ['name' => $booking->clientName()])"
+                 :preheader="$booking->date->translatedFormat('l j F').' · '.$booking->timeLabel()"
+                 :footer-lines="$footerLines">
+
+    {{-- When, first and largest. Everything else on this page is a detail of
+         an appointment somebody has to turn up to. --}}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="width:100%; background-color:#f7f7fa; border-radius:10px;">
         <tr>
-            <td align="center" style="padding:24px 12px;">
-                <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
-                       style="width:560px; max-width:100%; background-color:#ffffff; border:1px solid #e5e7eb; border-radius:10px;">
-                    <tr>
-                        <td style="padding:24px 24px 8px 24px;">
-                            <p style="margin:0; font-size:13px; color:#6b7280;">{{ $businessName }}</p>
-                            <h1 style="margin:6px 0 0 0; font-size:20px; line-height:1.3; color:#0f0f10;">
-                                {{ __('bookings.email.headline') }}
-                            </h1>
-                            <p style="margin:8px 0 0 0; font-size:14px; color:#4b5563;">
-                                {{ __('bookings.email.intro', ['name' => $booking->clientName()]) }}
-                            </p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td style="padding:16px 24px 0 24px;">
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; font-size:14px;">
-                                @foreach ([
-                                    __('bookings.summary.reference') => $booking->reference,
-                                    __('bookings.summary.services') => $booking->services->pluck('name')->implode(', '),
-                                    __('bookings.summary.staff') => $booking->staff?->displayName() ?? __('bookings.any_staff'),
-                                    __('bookings.summary.when') => $booking->date->translatedFormat('l j F Y').' · '.$booking->timeLabel(),
-                                    __('bookings.summary.location') => $booking->location?->name,
-                                ] as $label => $value)
-                                    @if ($value)
-                                        <tr>
-                                            <td style="padding:6px 0; color:#6b7280; width:40%;">{{ $label }}</td>
-                                            <td style="padding:6px 0; color:#0f0f10; font-weight:600;">{{ $value }}</td>
-                                        </tr>
-                                    @endif
-                                @endforeach
-                            </table>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td style="padding:16px 24px 24px 24px;">
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                                   style="width:100%; font-size:14px; border-top:1px solid #e5e7eb; margin-top:8px;">
-                                @foreach ($totals->lines() as $line)
-                                    <tr>
-                                        <td style="padding:6px 0; color:{{ ($line['strong'] ?? false) ? '#0f0f10' : '#6b7280' }};">{{ $line['label'] }}</td>
-                                        <td align="right" style="padding:6px 0; color:#0f0f10; font-weight:{{ ($line['strong'] ?? false) ? '700' : '600' }};">{{ $line['value'] }}</td>
-                                    </tr>
-                                @endforeach
-
-                                {{-- What is settled and what is not. A confirmation that
-                                     says nothing about money leaves the client to guess
-                                     whether they still owe it. --}}
-                                <tr>
-                                    <td style="padding:6px 0; color:#6b7280;">
-                                        {{ $booking->dueMinor() > 0 ? __('bookings.summary.due') : __('bookings.summary.paid') }}
-                                    </td>
-                                    <td align="right" style="padding:6px 0; color:{{ $booking->dueMinor() > 0 ? '#b45309' : '#15803d' }}; font-weight:700;">
-                                        {{ $booking->dueMinor() > 0 ? $due : $paid }}
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-
-                <p style="margin:16px 0 0 0; font-size:12px; color:#9ca3af;">{{ $businessName }}</p>
+            <td style="padding:20px 22px;">
+                <p style="margin:0 0 4px 0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.6px; color:{{ $muted }};">
+                    {{ __('bookings.summary.when') }}
+                </p>
+                <p style="margin:0; font-size:19px; line-height:1.35; font-weight:700; color:{{ $ink }};">
+                    {{ $booking->date->translatedFormat('l j F Y') }}
+                </p>
+                <p style="margin:2px 0 0 0; font-size:16px; line-height:1.4; font-weight:600; color:{{ $brand['primary'] }};">
+                    {{ $booking->timeLabel() }}
+                </p>
             </td>
         </tr>
     </table>
-</body>
-</html>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin-top:8px;">
+        @foreach ($details as $label => $value)
+            <tr>
+                <td class="sd-key" width="34%" style="width:34%; padding:12px 12px 12px 0; font-size:14px; color:{{ $muted }}; border-bottom:1px solid {{ $line }}; vertical-align:top;">
+                    {{ $label }}
+                </td>
+                <td class="sd-val" style="padding:12px 0; font-size:14px; font-weight:600; color:{{ $ink }}; border-bottom:1px solid {{ $line }}; vertical-align:top;">
+                    {{ $value }}
+                </td>
+            </tr>
+        @endforeach
+    </table>
+
+    {{-- What it comes to, line by line. A confirmation that states only a
+         total is one the client cannot check against what they were told at
+         the desk. --}}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin-top:24px;">
+        @foreach ($totals->lines() as $totalLine)
+            @php $strong = $totalLine['strong'] ?? false; @endphp
+            <tr>
+                <td style="padding:5px 0; font-size:14px; color:{{ $strong ? $ink : $muted }}; {{ $strong ? 'font-weight:600; padding-top:12px; border-top:1px solid '.$line.';' : '' }}">
+                    {{ $totalLine['label'] }}
+                </td>
+                <td align="right" style="padding:5px 0; font-size:{{ $strong ? '16px' : '14px' }}; font-weight:{{ $strong ? '700' : '600' }}; color:{{ $ink }}; {{ $strong ? 'padding-top:12px; border-top:1px solid '.$line.';' : '' }}">
+                    {{ $totalLine['value'] }}
+                </td>
+            </tr>
+        @endforeach
+    </table>
+
+    {{-- Settled, or not. A confirmation that says nothing about money leaves
+         the client to guess whether they still owe it — and somebody who has
+         already paid should not arrive expecting to pay again. --}}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="width:100%; margin-top:18px; background-color:{{ $owing ? '#fdf6ec' : '#eff8f1' }}; border-radius:10px;">
+        <tr>
+            <td style="padding:14px 18px; font-size:14px; font-weight:600; color:{{ $owing ? '#8a4b09' : '#166534' }};">
+                {{ $owing ? __('bookings.summary.due') : __('bookings.summary.paid') }}
+            </td>
+            <td align="right" style="padding:14px 18px; font-size:16px; font-weight:700; color:{{ $owing ? '#8a4b09' : '#166534' }};">
+                {{ $owing ? $due : $paid }}
+            </td>
+        </tr>
+    </table>
+
+    <x-slot:closing>{{ __('bookings.email.footer_note') }}</x-slot:closing>
+</x-mail.business>

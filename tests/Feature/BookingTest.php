@@ -8,11 +8,14 @@ use App\Models\BookingLead;
 use App\Models\BookingReview;
 use App\Models\Client;
 use App\Models\Location;
+use App\Models\Resource;
+use App\Models\ResourceCategory;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
+use App\Support\BookingTotals;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -776,6 +779,44 @@ class BookingTest extends TestCase
             ->json('groups'));
     }
 
+    /**
+     * The profile reads a client's history forward in time.
+     *
+     * Oldest first, months in the same direction, so the list never doubles
+     * back on itself — and so two visits on one day read in the order they
+     * happened rather than the reverse.
+     */
+    public function test_a_clients_bookings_read_oldest_first(): void
+    {
+        $owner = $this->owner();
+        $client = $this->client();
+        $service = $this->service('Cut', 45, 8500);
+
+        /* Taken out of order on purpose: the answer must not depend on which
+           was written down first. */
+        foreach ([['+9 days', '13:00'], ['+2 days', '11:30'], ['+9 days', '09:00'], ['+40 days', '10:00']] as [$when, $at]) {
+            $this->actingAs($owner)->postJson(route('bookings.store'), [
+                'client_id' => $client->id,
+                'date' => now()->modify($when)->format('Y-m-d'),
+                'starts_at' => $at,
+                'services' => [$service->id],
+            ])->assertCreated();
+        }
+
+        $groups = $this->actingAs($owner)->getJson(route('bookings.for-client', $client))
+            ->assertOk()
+            ->json('groups');
+
+        $when = collect($groups)->flatMap(fn (array $group) => collect($group['bookings'])->pluck('when'))->all();
+
+        $this->assertSame([
+            now()->modify('+2 days')->format('j M Y').' · 11:30 AM',
+            now()->modify('+9 days')->format('j M Y').' · 9:00 AM',
+            now()->modify('+9 days')->format('j M Y').' · 1:00 PM',
+            now()->modify('+40 days')->format('j M Y').' · 10:00 AM',
+        ], $when);
+    }
+
     /** The drawer a booking card opens, over whatever listing opened it. */
     public function test_a_booking_answers_the_drawer_in_the_same_shape_a_lead_does(): void
     {
@@ -832,6 +873,77 @@ class BookingTest extends TestCase
            the database filled in but the instance never saw would show up
            here as a raw translation key. It did, once. */
         $this->assertSame('Unpaid', $panel['payment_status_label']);
+    }
+
+    /**
+     * The till reads the whole bill, including the lines worth nothing.
+     *
+     * The summary card drops an empty line on purpose — a discount of $0.00 is
+     * a discount nobody gave. The pay card must not: somebody about to take
+     * money has to see that tax really is nil and that no coupon was applied,
+     * rather than wonder whether the line is missing or the figure is.
+     */
+    public function test_the_pay_card_states_every_line_of_the_bill(): void
+    {
+        $owner = $this->owner();
+        $booking = $this->takenBooking($owner);
+
+        $breakdown = collect(
+            $this->actingAs($owner)->postJson(route('bookings.pay', $booking), [
+                'method' => 'cash',
+                'amount' => '0.01',
+            ])->assertCreated()->json('booking.breakdown')
+        )->keyBy('key');
+
+        /* Every line is present whether or not it carries a figure. */
+        $this->assertSame(
+            ['subtotal', 'discount', 'tax', 'total', 'paid', 'due'],
+            $breakdown->keys()->all()
+        );
+
+        $this->assertSame('Discount', $breakdown['discount']['label']);
+        $this->assertSame('−$0.01', $breakdown['paid']['value']);
+        $this->assertTrue($breakdown['total']['strong']);
+        $this->assertTrue($breakdown['due']['strong']);
+    }
+
+    /**
+     * The card on the page and the card in the panel are one set of figures.
+     *
+     * There are three readers of this bill — the Vue island, the
+     * no-JavaScript fallback, and somebody without permission to take money —
+     * and they read it from one builder for exactly this reason.
+     */
+    public function test_the_payment_summary_on_the_page_states_the_same_lines(): void
+    {
+        $owner = $this->owner();
+        $booking = $this->takenBooking($owner);
+
+        $totals = BookingTotals::for($booking);
+
+        $labels = collect($totals->breakdownFor($booking->load('payments')))->pluck('label');
+
+        $page = $this->actingAs($owner)->get(route('bookings.show', $booking))->assertOk();
+
+        foreach ($labels as $label) {
+            $page->assertSee($label, false);
+        }
+    }
+
+    /** A tip line appears once there is a tip, and not before. */
+    public function test_the_pay_card_shows_a_tip_only_once_one_has_been_taken(): void
+    {
+        $owner = $this->owner();
+        $booking = $this->takenBooking($owner);
+
+        $before = collect(
+            $this->actingAs($owner)->postJson(route('bookings.pay', $booking), [
+                'method' => 'cash',
+                'amount' => '0.01',
+            ])->assertCreated()->json('booking.breakdown')
+        )->pluck('key');
+
+        $this->assertNotContains('tip_paid', $before);
     }
 
     /**
@@ -986,6 +1098,88 @@ class BookingTest extends TestCase
     }
 
     /** A booking taken through the panel, ready to be paid for. */
+    /**
+     * The confirmation is the salon's email, not StyleDesk's.
+     *
+     * A client booked with the salon and has never heard of us: an email in
+     * our colours, signed with our name, reads as somebody else writing about
+     * their appointment. The brand colour is the tenant's, the footer is the
+     * salon's own address, and nothing in it says StyleDesk.
+     */
+    public function test_the_confirmation_email_is_branded_as_the_business(): void
+    {
+        $owner = $this->owner();
+        $this->tenant->forceFill(['brand_primary' => '#8a1538'])->save();
+
+        $booking = $this->takenBooking($owner);
+        $booking->load(['services', 'staff', 'location', 'client', 'tenant']);
+
+        $html = (new BookingConfirmationMail($booking, $this->tenant->name))->render();
+
+        $this->assertStringContainsString('#8a1538', $html);
+        $this->assertStringContainsString($this->tenant->name, $html);
+        $this->assertStringContainsString($booking->reference, $html);
+        /* The one thing a client's confirmation must never carry. */
+        $this->assertStringNotContainsString('StyleDesk', $html);
+    }
+
+    /**
+     * A booking names the room it was given, not every room it could have had.
+     *
+     * The drawer and the detail page both used to list the service's whole
+     * eligibility pool, which on a spa with eight massage rooms read as
+     * though one client had been handed the building.
+     */
+    public function test_a_booking_names_the_room_it_was_given(): void
+    {
+        $owner = $this->owner();
+        $client = $this->client();
+
+        /* The business already has the default categories; this is one of
+           them on a tenant that has been through onboarding. */
+        $category = ResourceCategory::withoutGlobalScopes()->firstOrCreate(
+            ['tenant_id' => $this->tenant->getTenantKey(), 'key' => 'massage-room'],
+            ['name' => 'Massage room', 'group' => 'rooms', 'default_capacity' => 1]
+        );
+
+        $rooms = collect(['Room 1', 'Room 2', 'Room 3'])->map(fn (string $name, int $index) => Resource::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'resource_category_id' => $category->id,
+            'location_id' => $this->location->id,
+            'code' => 'ROOM-'.($index + 1), 'name' => $name,
+            'capacity' => 1, 'position' => $index + 1,
+            'is_active' => true, 'availability_status' => 'available',
+        ]));
+
+        $service = $this->service('Massage', 60, 9000);
+        $service->forceFill(['requires_resource' => true])->save();
+        $service->resources()->sync($rooms->mapWithKeys(fn (Resource $room) => [$room->id => ['priority' => 1]])->all());
+
+        $id = $this->actingAs($owner)->postJson(route('bookings.store'), [
+            'client_id' => $client->id,
+            'location_id' => $this->location->id,
+            'date' => now()->addDay()->toDateString(),
+            'starts_at' => '14:30',
+            'services' => [$service->id],
+        ])->assertCreated()->json('booking.id');
+
+        $booking = Booking::withoutGlobalScopes()->with('services')->findOrFail($id);
+        $given = $rooms->firstWhere('id', $booking->services->first()->resource_id);
+
+        $this->assertNotNull($given, 'the booking was given no room at all');
+
+        $row = $this->actingAs($owner)->getJson(route('bookings.drawer', $booking))
+            ->assertOk()
+            ->json('sections.0.rows.'.__('bookings.summary.resource'));
+
+        $this->assertSame($given->name, $row);
+
+        /* The pool, and not one room of it more. */
+        foreach ($rooms->reject(fn (Resource $room) => $room->is($given)) as $other) {
+            $this->assertStringNotContainsString($other->name, (string) $row);
+        }
+    }
+
     private function takenBooking(User $owner): Booking
     {
         $client = $this->client();

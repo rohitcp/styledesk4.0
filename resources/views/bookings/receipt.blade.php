@@ -100,5 +100,12 @@
     <div class="actions">
         <button type="button" onclick="window.print()">{{ __('bookings.confirmation.print') }}</button>
     </div>
+    @if ($autoPrint ?? false)
+        <script>
+            /* After load, not on parse: printing a page whose logo has not
+               arrived yet produces a receipt with a gap where it belongs. */
+            window.addEventListener('load', function () { window.print(); });
+        </script>
+    @endif
 </body>
 </html>

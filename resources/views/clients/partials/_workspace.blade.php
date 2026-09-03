@@ -230,6 +230,10 @@
             $bookingLabels = [
                 'bookings' => __('clients.module.workspace.tabs.bookings'),
                 'leads' => __('leads.title'),
+                'when' => __('clients.module.workspace.bookings.when'),
+                'all_bookings' => __('clients.module.workspace.bookings.all_bookings'),
+                'upcoming' => __('clients.module.workspace.bookings.upcoming'),
+                'completed' => __('clients.module.workspace.bookings.completed'),
                 'all_dates' => __('clients.module.workspace.bookings.all_dates'),
                 'all_services' => __('clients.module.workspace.bookings.all_services'),
                 'search_services' => __('bookings.service.search_categories'),
@@ -271,20 +275,41 @@
                 ]);
             @endphp
 
-            <div class="flex flex-wrap items-end gap-2 mt-3" data-booking-filters>
-                <div class="w-full sm:w-[150px]">
+            {{-- Upcoming or completed, as a compact control sized to its
+                 own labels rather than a bar stretched across the panel:
+                 it is a two-way switch beside three dropdowns, and a
+                 full-width one would read as the heading of everything
+                 under it. Neither is pressed to begin with, which is the
+                 whole history — the third answer, and the one somebody
+                 wants when they are looking for a cancellation. --}}
+            <div class="sd-subnav mt-3" role="group" data-booking-when
+                 aria-label="{{ $bookingLabels['when'] }}">
+                @foreach (['' => 'all_bookings', 'upcoming' => 'upcoming', 'completed' => 'completed'] as $value => $key)
+                    <button type="button" class="sd-subnav__item" data-when="{{ $value }}"
+                            @if ($value === '') aria-current="page" @endif>
+                        {{ $bookingLabels[$key] }}
+                    </button>
+                @endforeach
+            </div>
+
+            {{-- Compact, and narrowed to what each answer actually needs: a
+                 year is four characters and had a field wide enough for a
+                 service name. Three filters beside the segment read as one
+                 band of controls rather than as a form to fill in. --}}
+            <div class="sd-compact flex flex-wrap items-end gap-2 mt-2.5" data-booking-filters>
+                <div class="w-full sm:w-[110px]">
                     <x-combo name="booking_year" :options="$bookingYears"
                              :selected="now()->format('Y')"
                              :placeholder="__('clients.module.workspace.bookings.all_years')" />
                 </div>
 
-                <div class="w-full sm:w-[170px]">
+                <div class="w-full sm:w-[140px]">
                     <x-combo name="booking_month" :options="$months"
                              :selected="now()->format('m')"
                              :placeholder="__('clients.module.workspace.bookings.all_months')" />
                 </div>
 
-                <div class="w-full sm:w-[220px]">
+                <div class="w-full sm:w-[190px]">
                     <x-combo name="booking_service" :options="$bookingServices"
                              :placeholder="$bookingLabels['all_services']" />
                 </div>

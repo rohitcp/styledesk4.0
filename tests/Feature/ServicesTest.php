@@ -157,7 +157,7 @@ class ServicesTest extends TestCase
 
         $this->assertSame('Balayage', $row['name']);
         $this->assertSame('Colour', $row['category']);
-        $this->assertSame('1 h 30 min', $row['duration']);
+        $this->assertSame('1 hr 30 min', $row['duration']);
         $this->assertStringContainsString('120.00', $row['price']);
         /* Two stylists, so a count rather than two names. */
         $this->assertSame(trans_choice('services.staff_count', 2), $row['staff']);
@@ -633,7 +633,7 @@ class ServicesTest extends TestCase
             ->get(route('services.show', $service))
             ->assertOk()
             ->assertSee('Balayage')
-            ->assertSee('1 h 30 min')
+            ->assertSee('1 hr 30 min')
             ->assertSee('120.00')
             ->assertSee('Ada Stylist')
             ->assertSee('Downtown')

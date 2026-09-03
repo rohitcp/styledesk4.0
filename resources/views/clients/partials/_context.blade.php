@@ -21,7 +21,26 @@
             $phone = $canViewContact ? $primaryPhone?->number : null;
         @endphp
 
-        @if ($email)
+        @php
+            /* Email opens the drawer rather than the reader's mail client
+               once the business has switched client email on: a message sent
+               from here is on the client's record, and one sent from Outlook
+               is not. Falls back to mailto: when the feature is off, so the
+               button never becomes dead furniture. */
+            $canSendEmail = \App\Support\ClientEmailSender::enabledFor(auth()->user()?->tenant)
+                && auth()->user()?->hasPermission('email.send', 'own');
+        @endphp
+
+        @if ($email && $canSendEmail)
+            <button type="button" data-send-email
+                    data-compose-url="{{ route('clients.emails.compose', $client) }}"
+                    data-send-url="{{ route('clients.emails.store', $client) }}"
+                    class="styledesk_action styledesk_action--sm justify-center"
+                    data-tip="{{ __('clients.module.workspace.contact.send_email') }}">
+                <x-icon name="envelope" size="13" />
+                <span class="truncate">{{ __('clients.module.workspace.contact.email_short') }}</span>
+            </button>
+        @elseif ($email)
             <a href="mailto:{{ $email }}" class="styledesk_action styledesk_action--sm justify-center"
                data-tip="{{ __('clients.module.workspace.contact.send_email') }}">
                 <x-icon name="envelope" size="13" />

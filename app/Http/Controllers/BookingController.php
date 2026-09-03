@@ -21,6 +21,8 @@ use App\Models\ServiceCategory;
 use App\Models\ServicePrice;
 use App\Models\Staff;
 use App\Models\TipSettings;
+use App\Payments\PaymentGatewayManager;
+use App\Payments\PaymentRequest;
 use App\Support\BookingAvailability;
 use App\Support\BookingTotals;
 use App\Support\ClientActivityLog;
@@ -28,6 +30,7 @@ use App\Support\ClientBookingContext;
 use App\Support\ClientInsights;
 use App\Support\Currencies;
 use App\Support\Money;
+use App\Support\Promotions;
 use App\Support\ResourceAllocator;
 use App\Support\TimeFormat;
 use App\Support\Tips;
@@ -1151,10 +1154,17 @@ class BookingController extends Controller
         $minutes = (int) $services->sum(fn (Service $service) => (int) $service->duration_minutes);
         $starts = CarbonImmutable::parse($data['date'].' '.$data['starts_at']);
         $pricedFor = $this->pricedFor($data);
-        $totals = BookingTotals::of(
-            $services->map(fn (Service $service) => $this->priceOf($service, $currency, $pricedFor)),
-            $currency,
-        );
+        $prices = $services->map(fn (Service $service) => $this->priceOf($service, $currency, $pricedFor));
+
+        /* The same three answers as a booking taken in one go. A draft
+           being confirmed comes through here rather than store(), and a
+           tip or coupon agreed on the screen must not be lost on the
+           way. */
+        [$promotion, $discountMinor] = $this->couponFor($data, $services, $prices, $currency, $request);
+
+        $totals = BookingTotals::of($prices, $currency, $discountMinor);
+
+        [$tipPercent, $tipMinor] = $this->tipFor($data, $totals->totalMinor);
 
         /* Read before the row moves. "Rescheduled" without the previous time
            answers half the question, and the half it drops is the one
@@ -1246,6 +1256,12 @@ class BookingController extends Controller
         $service = (int) $request->query('service', 0);
         $month = (string) $request->query('month', '');
         $year = (string) $request->query('year', '');
+        /* Which half of the history. Two questions, never one list: "when
+           are they next in" is asked while somebody is on the phone, and
+           "what have they had done" is asked while somebody is in the
+           chair. Anything else — cancelled, no-show, declined — is in
+           neither, and is read from the full list with the segment off. */
+        $when = (string) $request->query('when', '');
 
         $bookings = Booking::query()
             ->with(['staff', 'services'])
@@ -1260,12 +1276,25 @@ class BookingController extends Controller
                August" is not what anybody meant by it. */
             ->when($month === '' && preg_match('/^\d{4}$/', $year) === 1, fn (Builder $query) => $query
                 ->whereYear('date', (int) $year))
-            ->orderByDesc('date')
-            ->orderByDesc('starts_at')
+            /* Today counts as upcoming whatever the clock says: a 2pm
+               appointment is still the answer to "when are they next in" at
+               half past, because they are in the chair. */
+            ->when($when === 'upcoming', fn (Builder $query) => $query
+                ->whereDate('date', '>=', now()->toDateString())
+                ->whereIn('status', ['pending', 'confirmed', 'arrived']))
+            ->when($when === 'completed', fn (Builder $query) => $query
+                ->where('status', 'completed'))
+            /* Forward in time: a client's history is read as a story of
+               what they have had done, and a story is read from its
+               beginning. The months group in the same direction, so the
+               list never doubles back on itself. */
+            ->orderBy('date')
+            ->orderBy('starts_at')
             ->get();
 
-        /* Grouped by the month they happened in, newest first: that is how
-           anybody reads a history, and a flat list of forty is a scroll. */
+        /* Grouped by the month they happened in. A flat list of forty is a
+           scroll; twelve labelled months is a thing somebody can find a
+           visit in. */
         $groups = $bookings
             ->groupBy(fn (Booking $booking) => $booking->date->format('Y-m'))
             ->map(fn ($month, string $key) => [
@@ -1340,7 +1369,7 @@ class BookingController extends Controller
     {
         $this->allow($request, 'calendar.view');
 
-        $booking->load(['client', 'staff', 'location', 'services.service.resources', 'payments.recordedBy', 'createdBy']);
+        $booking->load(['client', 'staff', 'location', 'services.resource', 'resource', 'payments.recordedBy', 'createdBy']);
         $totals = BookingTotals::for($booking);
         $none = __('leads.drawer.not_selected');
 
@@ -1361,9 +1390,18 @@ class BookingController extends Controller
                         __('bookings.summary.services') => $booking->services->pluck('name')->implode(', '),
                         __('bookings.summary.staff') => $booking->staff?->displayName() ?? __('bookings.any_staff'),
                         __('bookings.summary.location') => $booking->location?->name ?: $none,
+                        /* The rooms this booking was given, not every room
+                           its services could have used — which on a spa with
+                           six of them read as though one client had been
+                           handed the whole building. Older bookings recorded
+                           one room for the whole appointment, so they answer
+                           from the booking itself. */
                         __('bookings.summary.resource') => $booking->services
-                            ->flatMap(fn ($line) => $line->service?->resources->pluck('name') ?? collect())
-                            ->unique()->implode(', ') ?: $none,
+                            ->map(fn ($line) => $line->resource?->name)
+                            ->filter()
+                            ->unique()
+                            ->implode(', ')
+                            ?: ($booking->resource?->name ?: $none),
                         __('bookings.details.note') => $booking->notes ?: $none,
                         __('leads.drawer.created_by') => $booking->createdBy?->name ?: $none,
                     ],
@@ -1383,7 +1421,7 @@ class BookingController extends Controller
             'transactions' => $booking->payments->map(fn ($payment) => [
                 'label' => $payment->methodLabel(),
                 'amount' => $payment->amountLabel(),
-                'at' => $payment->paid_at?->translatedFormat('j M Y · H:i'),
+                'at' => TimeFormat::dateTime($payment->paid_at),
                 'by' => $payment->recordedBy?->name,
                 'reference' => $payment->reference,
             ])->values(),
@@ -1501,7 +1539,7 @@ class BookingController extends Controller
 
         $booking->load([
             'client.bookingPreferences', 'client.preferences', 'client.phones', 'client.emails',
-            'staff', 'location', 'resource', 'services.service.category',
+            'staff', 'location', 'resource', 'services.service.category', 'services.resource',
             'payments.recordedBy',
         ]);
 
@@ -1623,6 +1661,11 @@ class BookingController extends Controller
             'booking' => $booking->load(['client', 'staff', 'location', 'services', 'payments']),
             'totals' => BookingTotals::for($booking),
             'isReceipt' => $request->boolean('receipt'),
+            /* Opened straight into the print dialogue, which is what every
+               browser offers as "Save as PDF". The same page either way — a
+               separate PDF renderer would be a second document that could
+               disagree with the one on screen. */
+            'autoPrint' => $request->boolean('print'),
         ]);
     }
 
@@ -1704,37 +1747,38 @@ class BookingController extends Controller
             ]);
         }
 
-        $payment = DB::transaction(function () use ($booking, $data, $amount, $received, $tip, $request) {
-            $payment = $booking->payments()->create([
-                'tenant_id' => $booking->tenant_id,
-                'method' => $data['method'],
-                'status' => 'paid',
-                'amount_minor' => $amount,
-                'tip_minor' => $tip,
-                'currency_code' => $booking->currency_code,
-                'received_minor' => $received,
-                /* Against the whole handover, tip included: a client
-                   handing over a hundred on an eighty-pound bill with a
-                   twenty-pound tip is owed nothing. */
-                'change_minor' => $received === null ? null : max(0, $received - $amount - $tip),
-                'reference' => $data['reference'] ?? null,
-                'note' => $data['note'] ?? null,
-                'paid_at' => now(),
-                'recorded_by' => $request->user()->id,
-            ]);
+        /*
+         * Through the gateway, not straight into the table.
+         *
+         * Today every path lands on the manual gateway, which records money
+         * that arrived by other means — which is exactly what this method did
+         * before. The seam is what matters: when a processor is connected,
+         * this line stops changing and ManualGateway stops being the answer.
+         * See App\Payments\PaymentGateway.
+         */
+        $gateway = app(PaymentGatewayManager::class)->for($booking->tenant);
 
-            $booking->load('payments')->settlePaymentStatus();
+        $payment = $gateway->charge($booking, new PaymentRequest(
+            amountMinor: $amount,
+            method: $data['method'],
+            tipMinor: $tip,
+            receivedMinor: $received,
+            reference: $data['reference'] ?? null,
+            note: $data['note'] ?? null,
+            userId: $request->user()?->id,
+        ));
 
-            ClientActivityLog::paymentReceived($payment, $booking);
+        /* What the gateway does not: the client's history, and the requests
+           to pay that this payment answers. Both belong to StyleDesk rather
+           than to whoever moved the money, so they sit here rather than in
+           every implementation of the interface. */
+        ClientActivityLog::paymentReceived($payment, $booking);
 
-            /* A link is only ever paid because money arrived, so this is the
-               one place that can say so. Every open link is offered the same
-               news: a booking asked for twice has two of them. */
-            $booking->paymentLinks()->whereNotIn('status', ['paid'])->get()
-                ->each(fn (BookingPaymentLink $link) => $link->settleAgainst($booking));
-
-            return $payment;
-        });
+        /* A link is only ever paid because money arrived, so this is the one
+           place that can say so. Every open link is offered the same news: a
+           booking asked for twice has two of them. */
+        $booking->paymentLinks()->whereNotIn('status', ['paid'])->get()
+            ->each(fn (BookingPaymentLink $link) => $link->settleAgainst($booking));
 
         return response()->json([
             'booking' => $this->panel($booking->fresh()),
@@ -1871,7 +1915,7 @@ class BookingController extends Controller
             'waiver' => $booking->waived_at === null ? null : [
                 'reason' => $booking->waiver_reason,
                 'by' => $booking->waivedBy?->name,
-                'at' => $booking->waived_at->translatedFormat('j M Y · H:i'),
+                'at' => TimeFormat::dateTime($booking->waived_at),
             ],
             /* The requests to pay that went out, newest first. */
             'links' => $booking->paymentLinks->map(fn (BookingPaymentLink $link) => [
@@ -1881,7 +1925,7 @@ class BookingController extends Controller
                 'status_label' => $link->statusLabel(),
                 'status_class' => $link->statusClass(),
                 'sent_to' => $link->sent_to,
-                'sent_at' => $link->sent_at?->translatedFormat('j M Y · H:i'),
+                'sent_at' => TimeFormat::dateTime($link->sent_at),
             ])->values(),
             /* What to ask for now, which is not always what is owed.
                A booking taken with a deposit collects the deposit today and
@@ -1889,6 +1933,23 @@ class BookingController extends Controller
                that is what the booking is worth would be the screen charging
                somebody money they were told they did not owe yet. Once the
                deposit is in, what is left is simply the balance. */
+            /* Which price list the booking was totalled against. The till
+               is held to it: a cash booking settled on a card collects the
+               cash total for a card sale, and the salon is short the
+               difference on every service that charges two prices. */
+            'priced_for' => $booking->priced_for,
+
+            /* The whole bill, line by line, for the till.
+               The summary card omits a line worth nothing on purpose — a
+               discount of $0.00 is a discount nobody gave. The pay card is
+               the opposite case: somebody is about to take money and has to
+               be able to see that tax really is nil and no coupon was
+               applied, rather than wonder whether the line is missing or the
+               figure is. So every line is stated here, zeros included. */
+            'breakdown' => $totals->breakdownFor($booking),
+            'tip_paid_minor' => (int) $booking->payments->sum('tip_minor'),
+            'tip_paid' => $totals->money((int) $booking->payments->sum('tip_minor')),
+
             'collect_minor' => $collectMinor,
             'collect_amount' => number_format($collectMinor / 100, 2, '.', ''),
             'collect' => $totals->money($collectMinor),
@@ -1906,7 +1967,7 @@ class BookingController extends Controller
                 'amount' => $payment->amountLabel(),
                 'reference' => $payment->reference,
                 'status_label' => __('bookings.payment_statuses.'.$payment->status.'.label'),
-                'at' => $payment->paid_at?->translatedFormat('j M Y · H:i'),
+                'at' => TimeFormat::dateTime($payment->paid_at),
                 'by' => $payment->recordedBy?->name,
                 'change' => $payment->change_minor
                     ? BookingTotals::for($booking)->money((int) $payment->change_minor)

@@ -6,12 +6,15 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
@@ -93,6 +96,35 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::confirmPasswordView(fn () => view('auth.confirm-password'));
         Fortify::twoFactorChallengeView(fn () => view('auth.two-factor-challenge'));
         Fortify::verifyEmailView(fn () => view('auth.verify-email'));
+
+        /**
+         * Credentials first, then whether the business is still switched on.
+         *
+         * Enforcement lives in EnsureBusinessIsActive, which covers the ways
+         * in that never reach this callback — an existing session, a
+         * remember-me cookie, a passkey. This exists so that somebody typing
+         * the right password into the form is told what has happened, rather
+         * than being logged in and bounced straight back here by the
+         * middleware with no explanation.
+         *
+         * Returning null falls through to Fortify's own failed-login handling,
+         * so throttling and the generic message are unchanged.
+         */
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $user = User::where(Fortify::username(), $request->{Fortify::username()})->first();
+
+            if (! $user || ! Hash::check((string) $request->password, $user->password)) {
+                return null;
+            }
+
+            if ($user->tenant?->isDisabled()) {
+                throw ValidationException::withMessages([
+                    Fortify::username() => __('auth.business_disabled'),
+                ]);
+            }
+
+            return $user;
+        });
 
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);

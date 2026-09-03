@@ -194,6 +194,15 @@ return [
                     'keywords' => ['customer', 'contact', 'guest', 'record', 'tags', 'preferences', 'consent'],
                 ],
                 [
+                    'key' => 'email',
+                    'name' => 'Email',
+                    'description' => 'How you send email to your clients, and who it comes from.',
+                    'icon' => 'envelope',
+                    'route' => 'settings.email.show',
+                    'status' => 'active',
+                    'keywords' => ['send email', 'gmail', 'sender', 'reply to', 'templates', 'message'],
+                ],
+                [
                     'key' => 'client-booking',
                     'name' => 'Client Booking',
                     'description' => 'The client-facing booking experience and what clients can do themselves.',
@@ -268,6 +277,8 @@ return [
                     'name' => 'Email Templates',
                     'description' => 'Confirmation, reminder, cancellation, reschedule, invitation and welcome emails.',
                     'icon' => 'envelope-open-text',
+                    'route' => 'settings.email-templates.index',
+                    'status' => 'active',
                     'keywords' => ['template', 'confirmation', 'reminder', 'welcome', 'invitation', 'wording'],
                 ],
                 [

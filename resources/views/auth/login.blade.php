@@ -29,6 +29,17 @@
         </div>
     @endif
 
+    @if (session(\App\Http\Middleware\EnsureBusinessIsActive::FLAG))
+        {{-- The business was switched off mid-session. Said here rather than
+             left as a password that silently stopped working. --}}
+        <div class="sd-alert sd-alert--warn mt-6" role="status">
+            <div class="flex items-start gap-2.5">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" class="shrink-0 mt-px" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 8v4.5M12 15.5v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <p class="min-w-0">{{ __('auth.business_disabled') }}</p>
+            </div>
+        </div>
+    @endif
+
     {{--
         Method switcher. "Magic link" has no backend yet, so the tab is
         rendered in the prototype's styling but disabled rather than wired to

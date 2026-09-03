@@ -117,6 +117,25 @@ class Service extends Model
         ]);
     }
 
+    /**
+     * What this costs in cash, in one currency.
+     *
+     * A service priced the same either way answers with that price rather
+     * than with nothing: the question "what does this cost in cash" has an
+     * answer for every service, and a blank column would read as though it
+     * had none.
+     */
+    public function cashPriceLabel(string $currency): ?string
+    {
+        $price = $this->prices->firstWhere('currency_code', $currency);
+
+        if ($price === null) {
+            return null;
+        }
+
+        return Money::symbol($currency).($price->hasTwoPrices() ? $price->cashAmount() : $price->amount());
+    }
+
     /** Whether card and cash actually differ for this currency. */
     public function hasTwoPricesIn(string $currency): bool
     {
@@ -387,8 +406,10 @@ class Service extends Model
     /**
      * A duration a person reads, rather than a count of minutes.
      *
-     * "1h 30m", not "90 minutes": the first is how the time is said out loud
-     * when a client asks how long they will be here.
+     * "1 hr 30 min", not "90 min": the first is how the time is said out loud
+     * when a client asks how long they will be here. The edit screen takes
+     * minutes, because a number box can hold nothing else — so it prints this
+     * same label under the field, and the two screens agree.
      */
     public function durationLabel(?int $minutes = null): string
     {

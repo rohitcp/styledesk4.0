@@ -6,11 +6,25 @@
     JavaScript. Kept as its own partial so the numbers cannot say one thing
     here and another in the island beside it.
 --}}
-<dl class="bg-white border border-line rounded-card p-4 space-y-2.5 text-[13px]">
-    @foreach ($totals->lines() as $line)
-        <div class="flex items-baseline justify-between gap-4">
-            <dt class="{{ ($line['strong'] ?? false) ? 'font-semibold text-head' : 'text-sub' }}">{{ $line['label'] }}</dt>
-            <dd class="{{ ($line['strong'] ?? false) ? 'font-bold text-head' : 'font-medium text-head' }}">{{ $line['value'] }}</dd>
+<div class="bg-white border border-brand rounded-card overflow-hidden">
+<dl class="p-4 space-y-2 text-[13px]">
+    {{-- The same lines the island states, from the same builder, so the two
+         cannot drift apart. Zeros included: a line absent because it is
+         nothing looks like a line the page failed to render. --}}
+    @foreach ($totals->breakdownFor($booking) as $line)
+        @php $strong = $line['strong'] ?? false; @endphp
+        <div @class([
+            'flex items-baseline justify-between gap-4',
+            'pt-2.5 mt-0.5 border-t border-line' => $strong,
+        ])>
+            <dt class="{{ $strong ? 'font-semibold text-head' : 'text-sub' }}">{{ $line['label'] }}</dt>
+            <dd @class([
+                'font-bold' => $strong,
+                'font-medium' => ! $strong,
+                'text-emerald-700' => $line['negative'] ?? false,
+                'text-danger' => $line['key'] === 'due' && $booking->dueMinor() > 0,
+                'text-head' => ! ($line['negative'] ?? false) && ! ($line['key'] === 'due' && $booking->dueMinor() > 0),
+            ])>{{ $line['value'] }}</dd>
         </div>
     @endforeach
 
@@ -21,22 +35,9 @@
         </div>
     @endif
 
-    <div class="flex items-baseline justify-between gap-4 pt-2.5 border-t border-line">
-        <dt class="text-sub">{{ __('bookings.summary.paid') }}</dt>
-        <dd class="font-medium text-head">{{ $totals->money($booking->paidMinor()) }}</dd>
-    </div>
-
-    {{-- The line anybody opening this page is usually looking for, so it is
-         stated even when it is nothing. --}}
-    <div class="flex items-baseline justify-between gap-4">
-        <dt class="font-semibold text-head">{{ __('bookings.summary.due') }}</dt>
-        <dd class="font-bold {{ $booking->dueMinor() > 0 ? 'text-danger' : 'text-head' }}">
-            {{ $totals->money($booking->dueMinor()) }}
-        </dd>
-    </div>
-
-    <div class="flex items-baseline justify-between gap-4 pt-2.5 border-t border-line">
+    <div class="flex items-baseline justify-between gap-4 pt-2.5 mt-0.5 border-t border-line">
         <dt class="text-sub">{{ __('bookings.detail.payment_status') }}</dt>
         <dd><span class="styledesk_badge {{ $booking->paymentStatusClass() }}">{{ $booking->paymentStatusLabel() }}</span></dd>
     </div>
 </dl>
+</div>

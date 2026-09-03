@@ -34,6 +34,39 @@ const panel = ref(null);
 
 const settled = computed(() => booking.value.due_minor <= 0);
 
+/* What the panel below is currently asking for, mirrored up here so the
+   breakdown and the button never disagree. The panel owns the inputs; this
+   only reads what it reports. */
+const draft = ref({ amount: null, tip: 0 });
+
+const additionalTipMinor = computed(() => draft.value.tip ?? 0);
+
+/* The amount typed, or the whole balance when nothing has been typed yet —
+   the same default the panel opens on. */
+const collectTodayMinor = computed(() => {
+    const amount = draft.value.amount;
+    const base = amount === null || amount === ''
+        ? (booking.value.collect_minor ?? booking.value.due_minor)
+        : Math.round(parseFloat(amount) * 100);
+
+    return (Number.isFinite(base) ? Math.max(0, base) : 0) + additionalTipMinor.value;
+});
+
+/* What is still owed after this one is taken. The tip is not a debt, so it
+   is not subtracted from the balance. */
+const remainingAfterMinor = computed(() => Math.max(
+    0,
+    booking.value.due_minor - (collectTodayMinor.value - additionalTipMinor.value),
+));
+
+function money(minor) {
+    return (props.currencySymbol ?? '') + (minor / 100).toFixed(2);
+}
+
+function onDraft(next) {
+    draft.value = next;
+}
+
 /* The word beside a tip on a past payment. Read from the booking's own tip
    payload so it is translated once, on the server, like everything else. */
 const tipLabel = computed(() => booking.value.tips?.labels?.selected ?? '');
@@ -44,6 +77,7 @@ function openPanel() {
     }
 
     open.value = true;
+    draft.value = { amount: null, tip: 0 };
     panel.value?.reset();
 }
 
@@ -74,129 +108,164 @@ onBeforeUnmount(() => document.removeEventListener('keydown', closeOnEscape));
 
 <template>
     <div>
-        <!-- The summary. Read from this island rather than rendered in Blade
-             because it has to change the moment a payment lands, and a second
-             copy in the page would be the one that goes stale. -->
-        <dl class="bg-white border border-line rounded-card p-4 space-y-2.5 text-[13px]">
-            <div v-for="line in booking.lines" :key="line.key" class="flex items-baseline justify-between gap-4">
-                <dt :class="line.strong ? 'font-semibold text-head' : 'text-sub'">{{ line.label }}</dt>
-                <dd :class="line.strong ? 'font-bold text-head' : 'font-medium text-head'">{{ line.value }}</dd>
-            </div>
+        <!-- One card, not three.
+             The bill, how the money is meant to arrive, and the button that
+             takes it are one thought — the desk reads down them in that order
+             and acts at the bottom. As three bordered boxes they read as three
+             unrelated widgets, and the button floated free of the figures it
+             was about.
 
-            <div v-if="booking.deposit_minor > 0" class="flex items-baseline justify-between gap-4">
-                <dt class="text-sub">{{ labels.summary?.deposit }}</dt>
-                <dd class="font-medium text-head">{{ currencySymbol }}{{ (booking.deposit_minor / 100).toFixed(2) }}</dd>
-            </div>
+             The brand border is the one card on this page drawn in the primary
+             colour, and deliberately so: money owed is what the column is
+             opened for. The dividers inside it stay neutral — a card outlined
+             and subdivided in the same strong colour reads as a warning.
 
-            <div class="flex items-baseline justify-between gap-4 pt-2.5 border-t border-line">
-                <dt class="text-sub">{{ labels.summary?.paid }}</dt>
-                <dd class="font-medium text-head">{{ booking.paid }}</dd>
-            </div>
+             Read from this island rather than rendered in Blade because it has
+             to change the moment a payment lands, and a second copy in the
+             page would be the one that goes stale. -->
+        <div class="bg-white border border-brand rounded-card overflow-hidden">
+            <dl class="p-4 space-y-2 text-[13px]">
+                <!-- Every line of the bill, zeros included. Somebody reading this
+                     card is answering "what is owed and why", and a line that is
+                     absent because it is nothing looks the same as a line the page
+                     failed to render. -->
+                <div v-for="line in booking.breakdown" :key="line.key"
+                     class="flex items-baseline justify-between gap-4"
+                     :class="line.strong ? 'pt-2.5 mt-0.5 border-t border-line' : ''">
+                    <dt :class="line.strong ? 'font-semibold text-head' : 'text-sub'">{{ line.label }}</dt>
+                    <dd :class="[
+                        line.strong ? 'font-bold' : 'font-medium',
+                        line.negative ? 'text-emerald-700' : '',
+                        line.key === 'due' && booking.due_minor > 0 ? 'text-danger' : (line.negative ? '' : 'text-head'),
+                    ]">{{ line.value }}</dd>
+                </div>
 
-            <!-- The line anybody opening this page is usually looking for, so
-                 it is stated even when it is nothing. -->
-            <div class="flex items-baseline justify-between gap-4">
-                <dt class="font-semibold text-head">{{ labels.summary?.due }}</dt>
-                <dd class="font-bold" :class="booking.due_minor > 0 ? 'text-danger' : 'text-head'">{{ booking.due }}</dd>
-            </div>
+                <div v-if="booking.deposit_minor > 0" class="flex items-baseline justify-between gap-4">
+                    <dt class="text-sub">{{ labels.summary?.deposit }}</dt>
+                    <dd class="font-medium text-head">{{ currencySymbol }}{{ (booking.deposit_minor / 100).toFixed(2) }}</dd>
+                </div>
 
-            <div class="flex items-baseline justify-between gap-4 pt-2.5 border-t border-line">
-                <dt class="text-sub">{{ labels.detail?.payment_status }}</dt>
-                <dd>
-                    <span class="styledesk_badge" :class="settled ? 'styledesk_badge--active' : 'styledesk_badge--setup'">
-                        {{ booking.payment_status_label }}
-                    </span>
-                </dd>
-            </div>
-        </dl>
-
-        <!-- How this booking's money is meant to arrive, and where the asking
-             got to. A balance sitting unpaid means something different when a
-             link went out on Tuesday than when the desk is collecting it on
-             the day. -->
-        <div v-if="booking.collection_label || booking.links.length || booking.waiver"
-             class="mt-3 bg-white border border-line rounded-card p-4 space-y-2.5 text-[13px]">
-            <div v-if="booking.collection_label" class="flex items-baseline justify-between gap-4">
-                <dt class="text-sub">{{ labels.payment?.action }}</dt>
-                <dd class="font-medium text-head">{{ booking.collection_label }}</dd>
-            </div>
-
-            <div v-for="row in booking.links" :key="row.id"
-                 class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                <span class="text-sub">{{ labels.payment?.link_status }}</span>
-                <span class="flex items-center gap-2">
-                    <span class="styledesk_badge" :class="row.status_class">{{ row.status_label }}</span>
-                    <span class="font-medium text-head">{{ row.amount }}</span>
-                </span>
-                <span v-if="row.sent_to" class="w-full text-[12px] text-faint truncate">
-                    {{ row.sent_to }} · {{ row.sent_at }}
-                </span>
-            </div>
-
-            <div v-if="booking.waiver" class="pt-2.5 border-t border-line">
-                <p class="font-medium text-head">{{ labels.payment?.actions?.waive }}</p>
-                <p class="text-[12.5px] text-sub mt-0.5">{{ booking.waiver.reason }}</p>
-                <p class="text-[12px] text-faint mt-0.5">{{ booking.waiver.by }} · {{ booking.waiver.at }}</p>
-            </div>
-        </div>
-
-        <!-- One button, and it says which of the two states it is in. A Take
-             Payment that is merely greyed out leaves the reader wondering
-             whether they lack a permission; "Paid in full" answers it. -->
-        <button v-if="!settled" type="button"
-                class="mt-3 w-full h-10 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors"
-                @click="openPanel">
-            {{ labels.detail?.take_payment }}
-        </button>
-
-        <p v-else class="mt-3 flex items-center justify-center gap-1.5 h-10 rounded-lg bg-brand/5 border border-brand/25 text-[13px] font-semibold text-brand">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            {{ labels.detail?.paid_in_full }}
-        </p>
-
-        <!-- What actually happened. Part of the island rather than the page
-             around it, because a payment just taken has to appear here
-             without a reload — a transactions list that still says "nothing
-             yet" under a summary saying Paid is the page contradicting
-             itself. -->
-        <section class="mt-6">
-            <h2 class="styledesk_heading">{{ labels.detail?.transactions }}</h2>
-
-            <p v-if="!booking.payments.length" class="mt-2 text-[13px] text-sub">
-                {{ labels.detail?.no_transactions }}
-            </p>
-
-            <ul v-else class="mt-3 space-y-2">
-                <li v-for="entry in booking.payments" :key="entry.id"
-                    class="bg-white border border-line rounded-card p-4">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="min-w-0">
-                            <p class="text-[13.5px] font-semibold text-head">{{ entry.method_label }}</p>
-                            <p class="text-[12px] text-sub mt-0.5">
-                                {{ entry.at }}
-                                <template v-if="entry.by">
-                                    · {{ (labels.detail?.recorded_by ?? '').replace(':name', entry.by) }}
-                                </template>
-                            </p>
-
-                            <p v-if="entry.reference" class="text-[12px] text-faint mt-1 font-mono">{{ entry.reference }}</p>
-
-                            <p v-if="entry.change" class="text-[12px] text-sub mt-1">
-                                {{ labels.pay?.change }}: {{ entry.change }}
-                            </p>
-                        </div>
-
-                        <div class="text-right shrink-0">
-                            <p class="text-[13.5px] font-semibold text-head">{{ entry.amount }}</p>
-                            <p v-if="entry.tip" class="text-[11.5px] text-sub">{{ tipLabel }} {{ entry.tip }}</p>
-                            <span class="styledesk_paystate is-paid mt-1">{{ entry.status_label }}</span>
-                        </div>
+                <!-- What the till is about to take, while it is being entered.
+                     Shown only with the panel open: an "additional tip" line on a
+                     closed card is a figure about nothing. -->
+                <template v-if="open">
+                    <div v-if="additionalTipMinor > 0" class="flex items-baseline justify-between gap-4">
+                        <dt class="text-sub">{{ labels.summary?.additional_tip }}</dt>
+                        <dd class="font-medium text-head">{{ money(additionalTipMinor) }}</dd>
                     </div>
-                </li>
-            </ul>
-        </section>
+
+                    <div class="flex items-baseline justify-between gap-4 pt-2.5 mt-0.5 border-t border-line">
+                        <dt class="font-semibold text-head">{{ labels.summary?.collect_today }}</dt>
+                        <dd class="font-bold text-head">{{ money(collectTodayMinor) }}</dd>
+                    </div>
+
+                    <div v-if="remainingAfterMinor > 0" class="flex items-baseline justify-between gap-4">
+                        <dt class="text-sub">{{ labels.pay?.remaining }}</dt>
+                        <dd class="font-medium text-head">{{ money(remainingAfterMinor) }}</dd>
+                    </div>
+                </template>
+
+                <div class="flex items-baseline justify-between gap-4 pt-2.5 mt-0.5 border-t border-line">
+                    <dt class="text-sub">{{ labels.detail?.payment_status }}</dt>
+                    <dd>
+                        <span class="styledesk_badge" :class="settled ? 'styledesk_badge--active' : 'styledesk_badge--setup'">
+                            {{ booking.payment_status_label }}
+                        </span>
+                    </dd>
+                </div>
+            </dl>
+
+            <!-- How this booking's money is meant to arrive, and where the asking
+                 got to. A balance sitting unpaid means something different when a
+                 link went out on Tuesday than when the desk is collecting it on
+                 the day. -->
+            <div v-if="booking.collection_label || booking.links.length || booking.waiver"
+                 class="px-4 py-3 border-t border-line bg-[#fbfbfc] space-y-2.5 text-[13px]">
+                <div v-if="booking.collection_label" class="flex items-baseline justify-between gap-4">
+                    <dt class="text-sub">{{ labels.payment?.action }}</dt>
+                    <dd class="font-medium text-head">{{ booking.collection_label }}</dd>
+                </div>
+
+                <div v-for="row in booking.links" :key="row.id"
+                     class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                    <span class="text-sub">{{ labels.payment?.link_status }}</span>
+                    <span class="flex items-center gap-2">
+                        <span class="styledesk_badge" :class="row.status_class">{{ row.status_label }}</span>
+                        <span class="font-medium text-head">{{ row.amount }}</span>
+                    </span>
+                    <span v-if="row.sent_to" class="w-full text-[12px] text-faint truncate">
+                        {{ row.sent_to }} · {{ row.sent_at }}
+                    </span>
+                </div>
+
+                <div v-if="booking.waiver" class="pt-2.5 border-t border-line">
+                    <p class="font-medium text-head">{{ labels.payment?.actions?.waive }}</p>
+                    <p class="text-[12.5px] text-sub mt-0.5">{{ booking.waiver.reason }}</p>
+                    <p class="text-[12px] text-faint mt-0.5">{{ booking.waiver.by }} · {{ booking.waiver.at }}</p>
+                </div>
+            </div>
+
+            <!-- The act, at the foot of the figures it is about. One button,
+                 and it says which of the two states it is in: a Take Payment
+                 that is merely greyed out leaves the reader wondering whether
+                 they lack a permission; "Paid in full" answers it. -->
+            <div class="p-3 border-t border-line">
+                <button v-if="!settled" type="button"
+                        class="w-full h-10 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors"
+                        @click="openPanel">
+                    {{ labels.detail?.take_payment }}
+                </button>
+
+                <p v-else class="flex items-center justify-center gap-1.5 h-10 rounded-lg bg-brand/5 border border-brand/25 text-[13px] font-semibold text-brand">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    {{ labels.detail?.paid_in_full }}
+                </p>
+            </div>
+
+            <!-- What actually happened, in the same card as what is owed.
+                 Part of the island rather than the page around it, because a
+                 payment just taken has to appear here without a reload — a
+                 transactions list still saying "nothing yet" under a summary
+                 saying Paid is the page contradicting itself. -->
+            <section class="px-4 py-3.5 border-t border-line">
+                <h2 class="text-[12px] font-semibold uppercase tracking-wide text-sub">{{ labels.detail?.transactions }}</h2>
+
+                <p v-if="!booking.payments.length" class="mt-1.5 text-[12.5px] text-sub">
+                    {{ labels.detail?.no_transactions }}
+                </p>
+
+                <ul v-else class="mt-2.5 space-y-2">
+                    <li v-for="entry in booking.payments" :key="entry.id"
+                        class="border border-line rounded-lg p-3">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-[13px] font-semibold text-head">{{ entry.method_label }}</p>
+                                <p class="text-[12px] text-sub mt-0.5">
+                                    {{ entry.at }}
+                                    <template v-if="entry.by">
+                                        · {{ (labels.detail?.recorded_by ?? '').replace(':name', entry.by) }}
+                                    </template>
+                                </p>
+
+                                <p v-if="entry.reference" class="text-[12px] text-faint mt-1 font-mono">{{ entry.reference }}</p>
+
+                                <p v-if="entry.change" class="text-[12px] text-sub mt-1">
+                                    {{ labels.pay?.change }}: {{ entry.change }}
+                                </p>
+                            </div>
+
+                            <div class="text-right shrink-0">
+                                <p class="text-[13px] font-semibold text-head">{{ entry.amount }}</p>
+                                <p v-if="entry.tip" class="text-[11.5px] text-sub">{{ tipLabel }} {{ entry.tip }}</p>
+                                <span class="styledesk_paystate is-paid mt-1">{{ entry.status_label }}</span>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </section>
+        </div>
 
         <!-- A side panel rather than a page. Taking the balance is a minute's
              work against a booking somebody is already reading, and sending
@@ -227,18 +296,37 @@ onBeforeUnmount(() => document.removeEventListener('keydown', closeOnEscape));
                                  without the balance beside it reads as the
                                  whole bill, which is exactly the mistake
                                  this replaced. -->
-                            <dl class="mt-2 space-y-0.5 text-[12px]">
-                                <div class="flex items-baseline justify-between gap-3">
-                                    <dt class="text-sub">{{ labels.pay?.booking_total }}</dt>
-                                    <dd class="font-medium text-head">{{ booking.total }}</dd>
+                            <!-- The whole bill, not a summary of it. Somebody
+                                 about to take money has to see that tax really
+                                 is nil and that no coupon was applied, rather
+                                 than guess from a line that is not there. -->
+                            <dl class="mt-3 rounded-card border border-line bg-[#fbfbfc] p-3 space-y-1 text-[12px]">
+                                <div v-for="line in booking.breakdown" :key="line.key"
+                                     class="flex items-baseline justify-between gap-3"
+                                     :class="line.strong ? 'pt-1.5 mt-1.5 border-t border-line' : ''">
+                                    <dt :class="line.strong ? 'font-semibold text-head' : 'text-sub'">{{ line.label }}</dt>
+                                    <dd :class="[
+                                        line.strong ? 'font-bold text-head text-[13px]' : 'font-medium',
+                                        line.negative ? 'text-emerald-700' : 'text-head',
+                                    ]">{{ line.value }}</dd>
                                 </div>
-                                <div v-if="booking.paid_minor > 0" class="flex items-baseline justify-between gap-3">
-                                    <dt class="text-sub">{{ labels.summary?.paid }}</dt>
-                                    <dd class="font-medium text-head">{{ booking.paid }}</dd>
+
+                                <!-- The two figures that move while the panel is
+                                     open. Kept with the rest of the bill so the
+                                     desk reads one column, not two. -->
+                                <div v-if="additionalTipMinor > 0" class="flex items-baseline justify-between gap-3">
+                                    <dt class="text-sub">{{ labels.summary?.additional_tip }}</dt>
+                                    <dd class="font-medium text-head">{{ money(additionalTipMinor) }}</dd>
                                 </div>
-                                <div v-if="booking.remaining_minor > 0" class="flex items-baseline justify-between gap-3">
+
+                                <div class="flex items-baseline justify-between gap-3 pt-1.5 mt-1.5 border-t border-line">
+                                    <dt class="font-semibold text-head">{{ labels.summary?.collect_today }}</dt>
+                                    <dd class="font-bold text-head text-[13px]">{{ money(collectTodayMinor) }}</dd>
+                                </div>
+
+                                <div v-if="remainingAfterMinor > 0" class="flex items-baseline justify-between gap-3">
                                     <dt class="text-sub">{{ labels.pay?.remaining }}</dt>
-                                    <dd class="font-medium text-head">{{ booking.remaining }}</dd>
+                                    <dd class="font-medium text-head">{{ money(remainingAfterMinor) }}</dd>
                                 </div>
                             </dl>
                         </div>
@@ -246,9 +334,9 @@ onBeforeUnmount(() => document.removeEventListener('keydown', closeOnEscape));
                         <!-- The same panel the booking screen takes money in.
                              One component, so the card form and the method
                              list cannot drift apart between the two. -->
-                        <PaymentPanel ref="panel" :booking="booking" :methods="methods" :csrf="csrf"
+                        <PaymentPanel ref="panel" :booking="booking" :methods="methods" :csrf="csrf" :priced-for="booking.priced_for"
                                       :labels="{ ...labels, currency_symbol: currencySymbol }"
-                                      @paid="onPaid" />
+                                      @draft="onDraft" @paid="onPaid" />
                     </div>
                 </div>
             </div>

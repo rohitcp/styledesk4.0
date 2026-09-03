@@ -12,7 +12,7 @@
 
   <div class="grid grid-cols-3 lg:grid-cols-6 gap-3 mt-3">
     @foreach ($data->bookingsToday() as $metric)
-      <a href="{{ route('bookings.index', ['tab' => $metric['tab']]) }}"
+      <a href="{{ route('bookings.index', $metric['query']) }}"
          class="rounded-lg border border-line px-3 py-2.5 hover:border-brand transition-colors">
         <p class="text-[18px] font-bold text-head leading-tight">{{ $metric['count'] }}</p>
         <p class="text-[11px] text-sub mt-0.5">{{ __('dashboard.bookings_today.'.$metric['key']) }}</p>

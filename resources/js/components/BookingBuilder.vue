@@ -252,9 +252,6 @@ async function refreshQuote() {
             body: JSON.stringify({
                 services: chosen.value.map((service) => service.id),
                 payment_method: paymentMethod.value,
-        coupon: appliedCoupon.value || null,
-        tip_percent: customTip.value === '' ? tipPercent.value : null,
-        tip_amount: customTip.value === '' ? null : customTip.value,
                 client_id: client.value?.id ?? null,
                 location_id: locationId.value || null,
                 coupon: appliedCoupon.value || null,
@@ -436,7 +433,7 @@ function autosaveBody() {
         ),
         source: source.value,
         payment_type: payType.value,
-        deposit: payType.value === 'deposit' ? (deposit.value || null) : null,
+        deposit: payType.value === 'deposit' ? (depositMinor.value / 100).toFixed(2) : null,
         collection_method: payType.value === 'none' ? null : collectionMethod.value,
         payment_method: paymentMethod.value,
         waiver_reason: collectionMethod.value === 'waive' ? waiverReason.value : null,
@@ -1655,20 +1652,54 @@ const dueMinor = computed(() => booking.value?.due_minor ?? estimate.value.total
    A deposit is part of the bill taken now against a booking worked later.
    The rest is still owed, which is why the balance is stated beside it: a
    number typed into a box with no balance under it is one nobody checks. */
-const depositMinor = computed(() => Math.round(Number(deposit.value || 0) * 100));
+/*
+ * What the booking actually comes to, tip and discount included.
+ *
+ * The quote is the server's answer and the estimate is the screen's own
+ * arithmetic while one is still in flight. The deposit is worked out against
+ * this rather than the bare service total: a client leaving a deposit on a
+ * hundred-and-fifteen-pound visit is leaving it on a hundred and fifteen.
+ */
+const payableMinor = computed(() => quote.value?.total_minor ?? estimate.value.total);
+
+/*
+ * The deposit, as a percentage where one was chosen.
+ *
+ * Kept as the percentage rather than as the figure it worked out to, which
+ * is the whole point: a fifteen per cent deposit on a bill that then grows a
+ * tip is fifteen per cent of the new bill. Storing the amount would freeze it
+ * at whatever the bill happened to be when the button was pressed, and the
+ * desk would collect the wrong number without anything looking wrong.
+ *
+ * Null means somebody typed an amount instead, and a typed amount is a
+ * decision — it stays exactly as typed. Same rule as the tip.
+ */
+const depositPercent = ref(null);
+
+const depositMinor = computed(() => (depositPercent.value === null
+    ? Math.round(Number(deposit.value || 0) * 100)
+    : Math.round(payableMinor.value * depositPercent.value / 100)));
+
+/** What is still owed after the deposit — the number the desk chases later. */
+const remainingMinor = computed(() => Math.max(0, payableMinor.value - depositMinor.value));
 
 /* Refused rather than silently clamped: a receptionist who typed 500 against
    a $150 bill has made a mistake worth seeing, and a box that quietly
    rewrote it to 150 would hide it. The server refuses it too. */
 const depositTooMuch = computed(() => payType.value === 'deposit'
-    && depositMinor.value > estimate.value.total);
+    && depositMinor.value > payableMinor.value);
 
 function setDepositPercent(percent) {
-    deposit.value = (Math.round(estimate.value.total * percent / 100) / 100).toFixed(2);
+    depositPercent.value = percent;
+    deposit.value = '';
 }
 
-const depositIsPercent = (percent) => estimate.value.total > 0
-    && depositMinor.value === Math.round(estimate.value.total * percent / 100);
+/** Typing an amount is choosing an amount, so the percentage stops. */
+function typeDepositAmount() {
+    depositPercent.value = null;
+}
+
+const depositIsPercent = (percent) => depositPercent.value === percent;
 
 /* ------------------------------------------- the collection method -------
 
@@ -1700,10 +1731,31 @@ function bookingBody() {
         date: date.value,
         starts_at: start.value,
         services: chosen.value.map((service) => service.id),
+        /* Only the rooms somebody chose. A blank means "you decide", which is
+           the usual answer and is not the same as a choice. */
+        resources: Object.fromEntries(
+            Object.entries(rooms.value)
+                .filter(([, room]) => ! room.auto && room.id)
+                .map(([serviceId, room]) => [serviceId, room.id]),
+        ),
         source: source.value,
         payment_type: payType.value,
-        deposit: payType.value === 'deposit' ? deposit.value : null,
+        deposit: payType.value === 'deposit' ? (depositMinor.value / 100).toFixed(2) : null,
         collection_method: payType.value === 'none' ? null : collectionMethod.value,
+        /*
+         * Everything the screen settled about the money, and not only what it
+         * settled about the time.
+         *
+         * This used to send neither the method, the coupon nor the tip, so a
+         * booking quoted at cash prices with a coupon on it was written down
+         * at card prices with no coupon: the screen said one number and the
+         * diary held another. The quote endpoint was being told all three;
+         * only the save was not.
+         */
+        payment_method: paymentMethod.value,
+        coupon: appliedCoupon.value || null,
+        tip_percent: customTip.value === '' ? tipPercent.value : null,
+        tip_amount: customTip.value === '' ? null : customTip.value,
         waiver_reason: collectionMethod.value === 'waive' ? waiverReason.value : null,
         confirmation: confirmation.value,
         notes: notes.value,
@@ -2453,6 +2505,20 @@ const summaryOf = (section) => {
                             @click="startAnother">
                         {{ labels.confirmation?.another }}
                     </button>
+
+                    <!-- The way out of this screen. The page's own Back link
+                         is hidden once the booking is taken, so without this
+                         the only ways off a finished confirmation are the
+                         booking itself or starting another one — and someone
+                         who has finished booking usually wants neither. -->
+                    <a :href="cancelUrl"
+                       class="mt-2 w-full h-11 px-5 rounded-lg text-[13px] font-semibold text-sub
+                              hover:text-ink hover:bg-hover flex items-center justify-center gap-1.5 transition-colors">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        {{ labels.confirmation?.to_list }}
+                    </a>
                 </div>
             </article>
         </section>
@@ -3186,108 +3252,6 @@ const summaryOf = (section) => {
                         <p class="mt-1.5 text-[11.5px] text-faint">{{ labels.pay?.paying_by_hint }}</p>
                     </div>
 
-                    <!-- The coupon.
-
-                         Validated on the server, because the rules are the
-                         business's own and the browser cannot be handed the
-                         promotions table to check them against. -->
-                    <div v-if="chosen.length" class="mt-4 pt-3.5 border-t border-line">
-                        <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.pay?.coupon }}</p>
-
-                        <div v-if="quote?.coupon" class="flex items-center gap-2 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2">
-                            <span class="min-w-0 flex-1">
-                                <span class="block text-[12.5px] font-semibold text-head font-mono">{{ quote.coupon.code }}</span>
-                                <span class="block text-[11.5px] text-sub">{{ quote.coupon.name }} · {{ quote.coupon.label }}</span>
-                            </span>
-                            <span class="text-[13px] font-semibold text-head shrink-0">−{{ quote.discount }}</span>
-                            <button type="button" class="text-[12px] font-semibold text-link hover:underline shrink-0"
-                                    @click="removeCoupon">{{ labels.pay?.remove_coupon }}</button>
-                        </div>
-
-                        <div v-else class="flex gap-2">
-                            <input v-model="couponCode" type="text" class="sd-input font-mono uppercase"
-                                   :placeholder="labels.pay?.coupon_placeholder"
-                                   @keydown.enter.prevent="applyCoupon">
-                            <button type="button" class="styledesk_action shrink-0" :disabled="! couponCode.trim()"
-                                    @click="applyCoupon">{{ labels.pay?.apply }}</button>
-                        </div>
-
-                        <!-- Why, rather than "invalid": the desk has to tell
-                             the client something they can act on. -->
-                        <p v-if="couponError" class="mt-1.5 text-[12px] text-danger">{{ couponError }}</p>
-                    </div>
-
-                    <!-- The tip. Percentages come from App settings → Tips,
-                         so a business that offers 15/18/20/25 gets those. -->
-                    <div v-if="chosen.length && quote?.tips_enabled" class="mt-4 pt-3.5 border-t border-line">
-                        <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.pay?.add_tip }}</p>
-
-                        <div class="flex flex-wrap gap-1.5">
-                            <button v-if="quote.allow_no_tip" type="button" class="styledesk_tipchip"
-                                    :class="{ 'styledesk_tipchip--on': tipPercent === 0 && customTip === '' }"
-                                    @click="chooseTipPercent(0)">
-                                <span class="font-semibold">{{ labels.pay?.no_tip }}</span>
-                            </button>
-
-                            <button v-for="percent in quote.tip_percentages" :key="percent" type="button"
-                                    class="styledesk_tipchip"
-                                    :class="{ 'styledesk_tipchip--on': tipPercent === percent && customTip === '' }"
-                                    @click="chooseTipPercent(percent)">
-                                <span class="font-semibold">{{ percent }}%</span>
-                            </button>
-
-                            <button type="button" class="styledesk_tipchip"
-                                    :class="{ 'styledesk_tipchip--on': customTip !== '' }"
-                                    @click="tipPercent = null">
-                                <span class="font-semibold">{{ labels.pay?.custom_tip }}</span>
-                            </button>
-                        </div>
-
-                        <div v-if="tipPercent === null" class="mt-2 w-[150px]">
-                            <input v-model="customTip" type="text" inputmode="decimal" class="sd-input !h-9"
-                                   :placeholder="money(0)" @input="applyCustomTip">
-                        </div>
-                    </div>
-
-                    <!-- How the total was arrived at.
-
-                         Every line of it, in the order it is worked out:
-                         services, then the discount off them, then the tip on
-                         what is left, then tax. A total nobody can take apart
-                         is a total the desk cannot defend at the counter. -->
-                    <dl v-if="quote && chosen.length" class="mt-4 pt-3.5 border-t border-line space-y-1 text-[12.5px]">
-                        <div v-for="line in quote.lines" :key="line.name" class="flex items-baseline justify-between gap-3">
-                            <dt class="min-w-0 text-sub truncate">{{ line.name }}</dt>
-                            <dd class="font-medium text-head shrink-0">{{ line.price }}</dd>
-                        </div>
-
-                        <div class="flex items-baseline justify-between gap-3 pt-1 border-t border-line">
-                            <dt class="text-sub">{{ labels.summary?.subtotal }}</dt>
-                            <dd class="font-medium text-head">{{ quote.subtotal }}</dd>
-                        </div>
-
-                        <div v-if="quote.discount_minor > 0" class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.pay?.discount }}<template v-if="quote.coupon"> — {{ quote.coupon.code }}</template></dt>
-                            <dd class="font-medium text-head">−{{ quote.discount }}</dd>
-                        </div>
-
-                        <div v-if="quote.tip_minor > 0" class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">
-                                {{ labels.pay?.tip }}<template v-if="quote.tip_percent"> — {{ quote.tip_percent }}%</template>
-                            </dt>
-                            <dd class="font-medium text-head">+{{ quote.tip }}</dd>
-                        </div>
-
-                        <div v-if="quote.tax_minor > 0" class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.summary?.tax }}</dt>
-                            <dd class="font-medium text-head">+{{ quote.tax }}</dd>
-                        </div>
-
-                        <div class="flex items-baseline justify-between gap-3 pt-1.5 border-t border-line">
-                            <dt class="font-semibold text-head">{{ labels.pay?.total_due }}</dt>
-                            <dd class="text-[15px] font-bold text-head">{{ quote.total }}</dd>
-                        </div>
-                    </dl>
 
                     <!-- Full payment needs no amount typed: it is the bill,
                          and a receptionist should never be made to work out a
@@ -3295,55 +3259,77 @@ const summaryOf = (section) => {
                     <div v-if="payType === 'full'"
                          class="mt-3 rounded-lg border border-brand/30 bg-brand/5 px-4 py-3 text-center">
                         <p class="text-[12px] font-semibold text-sub">{{ labels.payment?.collecting }}</p>
-                        <p class="text-[20px] font-bold text-head leading-tight mt-0.5">{{ money(estimate.total) }}</p>
+                        <p class="text-[20px] font-bold text-head leading-tight mt-0.5">{{ money(payableMinor) }}</p>
                         <p class="text-[12px] text-sub mt-0.5">{{ labels.payment?.balance }} {{ money(0) }}</p>
                     </div>
 
                     <!-- What is actually being charged now, stated before the
                          booking exists. The total is the booking's worth and
                          never changes; this is the number the till sees. -->
-                    <dl v-if="payType === 'deposit' && depositMinor > 0 && !depositTooMuch"
-                        class="mt-3 pt-3 border-t border-line space-y-1 text-[12.5px]">
-                        <div class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.pay?.booking_total }}</dt>
-                            <dd class="font-medium text-head">{{ money(estimate.total) }}</dd>
-                        </div>
-                        <div class="flex items-baseline justify-between gap-3">
-                            <dt class="font-semibold text-head">{{ labels.pay?.collect_now }}</dt>
-                            <dd class="font-bold text-head">{{ money(depositMinor) }}</dd>
-                        </div>
-                        <div class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.pay?.remaining }}</dt>
-                            <dd class="font-medium text-head">{{ money(Math.max(0, estimate.total - depositMinor)) }}</dd>
-                        </div>
-                    </dl>
+                    <!-- The deposit's own summary lives with the deposit
+                         controls below. There used to be a second one here,
+                         worked out from the bare service total — so a booking
+                         with a tip on it showed two different balances, and
+                         only one of them was right. -->
 
-                    <div v-if="payType === 'deposit'" class="mt-4 sm:max-w-[280px]">
-                        <div>
-                            <label for="bDeposit" class="block text-[13px] font-medium text-ink mb-1.5">{{ labels.payment?.amount }}</label>
-                            <input id="bDeposit" v-model="deposit" type="number" min="0" step="0.01" class="sd-input">
+                    <div v-if="payType === 'deposit'" class="mt-4">
+                        <!-- A deposit policy is written as a percentage, so
+                             that is what is kept. The figure follows the
+                             bill: fifteen per cent of a booking that then
+                             grows a tip is fifteen per cent of the new
+                             total, and storing the amount instead would
+                             freeze it at whatever the bill was when the
+                             button was pressed. -->
+                        <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.payment?.deposit_percent }}</p>
 
-                            <!-- A deposit policy is written as a percentage
-                                 and typed as a number. The presets do that
-                                 arithmetic so nobody does it on a calculator
-                                 with a client waiting. -->
-                            <div class="mt-2 flex flex-wrap gap-1.5">
-                                <button v-for="percent in [25, 50, 100]" :key="percent" type="button"
-                                        class="h-7 px-2.5 rounded-full border text-[12px] font-semibold transition-colors"
-                                        :class="depositIsPercent(percent)
-                                            ? 'border-brand bg-brand text-white'
-                                            : 'border-line bg-white text-sub hover:text-ink hover:bg-hover'"
-                                        :disabled="!estimate.total"
-                                        @click="setDepositPercent(percent)">
-                                    {{ (labels.payment?.preset ?? ':percent%').replace(':percent', percent) }}
-                                </button>
+                        <div class="flex flex-wrap gap-1.5">
+                            <button v-for="percent in [10, 15, 20, 25, 50]" :key="percent" type="button"
+                                    class="h-7 px-2.5 rounded-full border text-[12px] font-semibold transition-colors"
+                                    :class="depositIsPercent(percent)
+                                        ? 'border-brand bg-brand text-white'
+                                        : 'border-line bg-white text-sub hover:text-ink hover:bg-hover'"
+                                    @click="setDepositPercent(percent)">
+                                {{ (labels.payment?.preset ?? ':percent%').replace(':percent', percent) }}
+                            </button>
+                        </div>
+
+                        <div class="mt-3 sm:max-w-[280px]">
+                            <label for="bDeposit" class="block text-[12px] text-sub mb-1">{{ labels.payment?.amount }}</label>
+                            <!-- Typing an amount is choosing an amount, so
+                                 the percentage stops applying — the same
+                                 rule the tip follows. -->
+                            <input id="bDeposit" v-model="deposit" type="number" min="0" step="0.01" class="sd-input"
+                                   :placeholder="depositPercent === null ? '' : money(depositMinor)"
+                                   @input="typeDepositAmount">
+                        </div>
+
+                        <p v-if="depositTooMuch" class="mt-1.5 text-[12px] text-danger">
+                            {{ labels.payment?.too_much }}
+                        </p>
+
+                        <!-- What is being taken now and what stays owing.
+                             A deposit stated without the balance beside it
+                             is a number nobody checks. -->
+                        <dl v-if="payableMinor > 0" class="mt-3 rounded-lg border border-brand/30 bg-brand/5 px-4 py-3 space-y-1 text-[12.5px]">
+                            <div class="flex items-baseline justify-between gap-3">
+                                <dt class="text-sub">{{ labels.pay?.total_due }}</dt>
+                                <dd class="font-medium text-head">{{ money(payableMinor) }}</dd>
                             </div>
 
-                            <p v-if="depositTooMuch" class="mt-1.5 text-[12px] text-danger">
-                                {{ labels.payment?.too_much }}
-                            </p>
+                            <div class="flex items-baseline justify-between gap-3">
+                                <dt class="font-semibold text-head">
+                                    {{ depositPercent === null
+                                        ? labels.payment?.deposit_now
+                                        : (labels.payment?.deposit_now_percent ?? ':percent% deposit due now').replace(':percent', depositPercent) }}
+                                </dt>
+                                <dd class="text-[15px] font-bold text-head">{{ money(depositMinor) }}</dd>
+                            </div>
 
-                        </div>
+                            <div class="flex items-baseline justify-between gap-3">
+                                <dt class="text-sub">{{ labels.payment?.remaining }}</dt>
+                                <dd class="font-medium text-head">{{ money(remainingMinor) }}</dd>
+                            </div>
+                        </dl>
                     </div>
 
                     <!-- Payment collection method.
@@ -3569,7 +3555,7 @@ const summaryOf = (section) => {
                     <span class="min-w-0 flex-1 text-left text-[13px] font-semibold text-brand">
                         {{ labels.sections?.summary }}
                     </span>
-                    <span v-if="chosen.length" class="text-[12px] text-brand/75 shrink-0">{{ money(estimate.total) }}</span>
+                    <span v-if="chosen.length" class="text-[12px] text-brand/75 shrink-0">{{ money(payableMinor) }}</span>
                 </button>
 
                 <div v-show="stage === 'summary'">
@@ -3623,24 +3609,117 @@ const summaryOf = (section) => {
                             <dt class="text-sub">{{ labels.summary?.ends }}</dt>
                             <dd class="text-head">{{ endsAt }}</dd>
                         </div>
-                        <div class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.summary?.subtotal }}</dt>
-                            <dd class="text-head">{{ money(estimate.subtotal) }}</dd>
-                        </div>
-                        <div v-if="estimate.tax" class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ taxLabel }}</dt>
-                            <dd class="text-head">{{ money(estimate.tax) }}</dd>
-                        </div>
-                        <div class="flex items-baseline justify-between gap-3">
-                            <dt class="font-semibold text-head">{{ labels.summary?.total }}</dt>
-                            <dd class="font-semibold text-head">{{ money(estimate.total) }}</dd>
-                        </div>
-                        <div v-if="payType === 'deposit' && deposit" class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub">{{ labels.summary?.deposit }}</dt>
-                            <dd class="text-head">{{ money(Number(deposit) * 100) }}</dd>
-                        </div>
                     </div>
                 </dl>
+
+                <!-- What it comes to, and the two things that move it.
+
+                     The coupon and the tip belong beside the total they
+                     change, not a card away from it: this is the panel the
+                     desk reads the number off, and a discount applied
+                     somewhere the reader cannot see it is a discount they
+                     have to take on trust. Both are still settled on the
+                     server; the card only asks. -->
+                <div v-if="chosen.length" class="px-4 pb-1 space-y-0">
+                <!-- The coupon.
+
+                     Validated on the server, because the rules are the
+                     business's own and the browser cannot be handed the
+                     promotions table to check them against. -->
+                <div v-if="chosen.length" class="mt-4 pt-3.5 border-t border-line">
+                    <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.pay?.coupon }}</p>
+
+                    <div v-if="quote?.coupon" class="flex items-center gap-2 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2">
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-[12.5px] font-semibold text-head font-mono">{{ quote.coupon.code }}</span>
+                            <span class="block text-[11.5px] text-sub">{{ quote.coupon.name }} · {{ quote.coupon.label }}</span>
+                        </span>
+                        <span class="text-[13px] font-semibold text-head shrink-0">−{{ quote.discount }}</span>
+                        <button type="button" class="text-[12px] font-semibold text-link hover:underline shrink-0"
+                                @click="removeCoupon">{{ labels.pay?.remove_coupon }}</button>
+                    </div>
+
+                    <div v-else class="flex gap-2">
+                        <input v-model="couponCode" type="text" class="sd-input font-mono uppercase"
+                               :placeholder="labels.pay?.coupon_placeholder"
+                               @keydown.enter.prevent="applyCoupon">
+                        <button type="button" class="styledesk_action shrink-0" :disabled="! couponCode.trim()"
+                                @click="applyCoupon">{{ labels.pay?.apply }}</button>
+                    </div>
+
+                    <!-- Why, rather than "invalid": the desk has to tell
+                         the client something they can act on. -->
+                    <p v-if="couponError" class="mt-1.5 text-[12px] text-danger">{{ couponError }}</p>
+                </div>
+
+                <!-- The tip. Percentages come from App settings → Tips,
+                     so a business that offers 15/18/20/25 gets those. -->
+                <div v-if="chosen.length && quote?.tips_enabled" class="mt-4 pt-3.5 border-t border-line">
+                    <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.pay?.add_tip }}</p>
+
+                    <div class="flex flex-wrap gap-1.5">
+                        <button v-if="quote.allow_no_tip" type="button" class="styledesk_tipchip"
+                                :class="{ 'styledesk_tipchip--on': tipPercent === 0 && customTip === '' }"
+                                @click="chooseTipPercent(0)">
+                            <span class="font-semibold">{{ labels.pay?.no_tip }}</span>
+                        </button>
+
+                        <button v-for="percent in quote.tip_percentages" :key="percent" type="button"
+                                class="styledesk_tipchip"
+                                :class="{ 'styledesk_tipchip--on': tipPercent === percent && customTip === '' }"
+                                @click="chooseTipPercent(percent)">
+                            <span class="font-semibold">{{ percent }}%</span>
+                        </button>
+
+                        <button type="button" class="styledesk_tipchip"
+                                :class="{ 'styledesk_tipchip--on': customTip !== '' }"
+                                @click="tipPercent = null">
+                            <span class="font-semibold">{{ labels.pay?.custom_tip }}</span>
+                        </button>
+                    </div>
+
+                    <div v-if="tipPercent === null" class="mt-2 w-[150px]">
+                        <input v-model="customTip" type="text" inputmode="decimal" class="sd-input !h-9"
+                               :placeholder="money(0)" @input="applyCustomTip">
+                    </div>
+                </div>
+
+                    <dl class="mt-4 pt-3.5 border-t border-line space-y-1.5 text-[13px]">
+                        <div class="flex items-baseline justify-between gap-3">
+                            <dt class="text-sub">{{ labels.summary?.subtotal }}</dt>
+                            <dd class="text-head">{{ quote?.subtotal ?? money(estimate.subtotal) }}</dd>
+                        </div>
+
+                        <div v-if="quote?.discount_minor > 0" class="flex items-baseline justify-between gap-3">
+                            <dt class="min-w-0 text-sub truncate">
+                                {{ labels.pay?.discount }}<template v-if="quote.coupon"> — {{ quote.coupon.code }}</template>
+                            </dt>
+                            <dd class="text-head shrink-0">−{{ quote.discount }}</dd>
+                        </div>
+
+                        <div v-if="quote?.tip_minor > 0" class="flex items-baseline justify-between gap-3">
+                            <dt class="text-sub">
+                                {{ labels.pay?.tip }}<template v-if="quote.tip_percent"> — {{ quote.tip_percent }}%</template>
+                            </dt>
+                            <dd class="text-head">+{{ quote.tip }}</dd>
+                        </div>
+
+                        <div v-if="quote ? quote.tax_minor > 0 : estimate.tax" class="flex items-baseline justify-between gap-3">
+                            <dt class="text-sub">{{ taxLabel }}</dt>
+                            <dd class="text-head">{{ quote?.tax ?? money(estimate.tax) }}</dd>
+                        </div>
+
+                        <div class="flex items-baseline justify-between gap-3 pt-1.5 border-t border-line">
+                            <dt class="font-semibold text-head">{{ labels.summary?.total }}</dt>
+                            <dd class="font-semibold text-head">{{ money(payableMinor) }}</dd>
+                        </div>
+
+                        <div v-if="payType === 'deposit' && depositMinor > 0" class="flex items-baseline justify-between gap-3">
+                            <dt class="text-sub">{{ labels.summary?.deposit }}</dt>
+                            <dd class="text-head">{{ money(depositMinor) }}</dd>
+                        </div>
+                    </dl>
+                </div>
 
                 <div class="px-4 py-3.5 border-t border-line">
                     <p v-if="failure" class="sd-alert sd-alert--danger mb-2.5 text-[12.5px]" role="alert">{{ failure }}</p>
@@ -3723,6 +3802,7 @@ const summaryOf = (section) => {
                      this is the money path, and two of it would be two
                      places to fix the day a method is added. -->
                 <PaymentPanel :booking="booking" :methods="methods" :csrf="csrf"
+                              :priced-for="paymentMethod"
                               :labels="{ ...labels, currency_symbol: currencySymbol }"
                               @paid="onPaid" />
 

@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\Client;
 use App\Models\ClientActivity;
+use App\Models\ClientEmailMessage;
 use App\Models\ClientNote;
 
 /**
@@ -264,6 +265,37 @@ class ClientActivityLog
             'user_id' => $booking->created_by,
             'description' => $totals->money($booking->dueMinor()),
             'meta' => ['reference' => $booking->reference],
+        ]);
+    }
+
+    /* ------------------------------------------------------------ email -- */
+
+    /**
+     * An email went to this client.
+     *
+     * Written whatever the send did — a failure is history too, and a desk
+     * that sees nothing on the timeline concludes nobody tried. The status is
+     * on the row rather than in the type, so one entry can be re-read as
+     * `sent` once a provider confirms it without a second line appearing.
+     *
+     * The body is deliberately not copied here: the message row holds it, this
+     * is the timeline, and a paragraph of prose in a list of one-liners makes
+     * the list unreadable. The subject is what a reader scans for.
+     */
+    public static function emailSent(ClientEmailMessage $email): void
+    {
+        self::write($email->client_id, 'email.sent', 'email', [
+            'subject_type' => ClientEmailMessage::class,
+            'subject_id' => $email->id,
+            'user_id' => $email->sent_by,
+            'description' => $email->subject,
+            'meta' => array_filter([
+                'recipient' => $email->recipient_email,
+                'provider' => $email->provider,
+                'status' => $email->status,
+                'booking_id' => $email->booking_id,
+                'template' => $email->template_key,
+            ]),
         ]);
     }
 

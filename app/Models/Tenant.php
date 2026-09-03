@@ -34,8 +34,19 @@ class Tenant extends BaseTenant
      * @var array<string, string>
      */
     protected $attributes = [
-        'status' => 'active',
+        'status' => self::STATUS_ACTIVE,
     ];
+
+    public const STATUS_ACTIVE = 'active';
+
+    /**
+     * Switched off by the platform.
+     *
+     * Nobody belonging to this business can sign in and no existing session
+     * survives the next request. The rows stay exactly where they are — this
+     * is a door being locked, not data being deleted.
+     */
+    public const STATUS_DISABLED = 'disabled';
 
     /**
      * Neither the base model nor HasDataColumn declares casts, so this does
@@ -48,7 +59,11 @@ class Tenant extends BaseTenant
         return [
             'trial_started_at' => 'datetime',
             'trial_ends_at' => 'datetime',
+            'disabled_at' => 'datetime',
+            'enabled_at' => 'datetime',
             'shift_rules_enabled' => 'boolean',
+            'client_email_enabled' => 'boolean',
+            'payments_enabled' => 'boolean',
         ];
     }
 
@@ -78,6 +93,25 @@ class Tenant extends BaseTenant
             'trial_ends_at',
             'subscription_status',
             'plan_id',
+            'disabled_at',
+            'disabled_by',
+            'disabled_reason',
+            'disabled_note',
+            'previous_status',
+            'enabled_at',
+            'enabled_by',
+            'enable_note',
+
+            // App Settings → Email.
+            'client_email_enabled',
+            'email_provider',
+            'email_sender_name',
+            'email_reply_to',
+
+            // App Settings → Payments.
+            'payment_gateway',
+            'payment_account_id',
+            'payments_enabled',
 
             // Business settings screen. Every one of these needs to be here:
             // a column missing from this list is silently written into the
@@ -302,6 +336,114 @@ class Tenant extends BaseTenant
         }
 
         return max(0, (int) now()->startOfDay()->diffInDays($this->trial_ends_at->startOfDay(), false));
+    }
+
+    /**
+     * Whether anybody belonging to this business may sign in.
+     *
+     * Asked on every authenticated request and again at the login form, so it
+     * reads the column and nothing else — no relation, no query.
+     */
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE;
+    }
+
+    public function isDisabled(): bool
+    {
+        return ! $this->isActive();
+    }
+
+    /**
+     * Lock the door.
+     *
+     * Who, why and when are recorded on the row as well as in the audit log:
+     * the first question after "we cannot sign in" is "who turned us off",
+     * and it should be answerable from the screen that turned them off.
+     *
+     * Nothing is deleted. Staff, customers, bookings, payments, files and
+     * configuration are untouched — this sets a column, and the account is
+     * restorable by clearing it.
+     *
+     * @param  string  $reason  A key from config('backoffice.disable_reasons')
+     */
+    public function disable(BackofficeAdmin $by, string $reason, ?string $note = null): void
+    {
+        $this->forceFill([
+            /* Kept so enabling restores what was there rather than assuming
+               'active'. Guarded on DISABLED specifically, not on "not active":
+               a second press must not record "disabled" as the state to return
+               to, but any other status is a real one worth keeping. */
+            'previous_status' => $this->status === self::STATUS_DISABLED
+                ? $this->previous_status
+                : $this->status,
+            'status' => self::STATUS_DISABLED,
+            'disabled_at' => now(),
+            'disabled_by' => $by->getKey(),
+            'disabled_reason' => $reason,
+            'disabled_note' => $note,
+        ])->save();
+    }
+
+    /**
+     * Open it again.
+     *
+     * The disable columns are cleared rather than left standing, or a business
+     * disabled once would read as disabled forever to anything that checks
+     * `disabled_at` instead of `status`. The enable columns replace them, so
+     * the row still says who was last responsible for it being reachable.
+     */
+    public function enable(BackofficeAdmin $by, ?string $note = null): void
+    {
+        $this->forceFill([
+            'status' => $this->previous_status ?: self::STATUS_ACTIVE,
+            'disabled_at' => null,
+            'disabled_by' => null,
+            'disabled_reason' => null,
+            'disabled_note' => null,
+            'previous_status' => null,
+            'enabled_at' => now(),
+            'enabled_by' => $by->getKey(),
+            'enable_note' => $note,
+        ])->save();
+    }
+
+    /** The administrator who last switched this business back on, if any. */
+    public function enabledBy(): BelongsTo
+    {
+        return $this->belongsTo(BackofficeAdmin::class, 'enabled_by');
+    }
+
+    /**
+     * The one status a reader is shown, from the two the row keeps.
+     *
+     * `status` is about access — whether anybody may sign in — and
+     * `subscription_status` is about billing. They are deliberately separate:
+     * the business rule is Active → Past Due → Disabled, so a client with an
+     * unpaid invoice can be told apart from one whose access has actually been
+     * suspended. Disabled wins when both have something to say, because it is
+     * the one that stops people working.
+     *
+     * @return string One of: disabled, trial, past_due, cancelled, active
+     */
+    public function displayStatus(): string
+    {
+        if ($this->isDisabled()) {
+            return 'disabled';
+        }
+
+        return match ($this->subscription_status) {
+            'trialing', 'trial' => 'trial',
+            'past_due' => 'past_due',
+            'canceled', 'cancelled' => 'cancelled',
+            default => 'active',
+        };
+    }
+
+    /** The administrator who switched this business off, if one did. */
+    public function disabledBy(): BelongsTo
+    {
+        return $this->belongsTo(BackofficeAdmin::class, 'disabled_by');
     }
 
     public function onboarding(): HasOne

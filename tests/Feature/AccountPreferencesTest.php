@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\AccountPreferences;
 use App\Support\TimeFormat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
@@ -178,5 +179,32 @@ class AccountPreferencesTest extends TestCase
 
         $this->assertSame('24', AccountPreferences::timeFormat($mine->fresh()));
         $this->assertSame('12', AccountPreferences::timeFormat($theirs->fresh()));
+    }
+
+    /**
+     * A timestamp follows the reader's clock, not a hard-coded one.
+     *
+     * Twenty screens each formatting "j M Y · H:i" is how a business that
+     * chose a 12-hour clock still read "last updated 2 Sep 2026 · 14:09".
+     */
+    public function test_a_timestamp_is_twelve_hour_by_default_and_follows_the_setting(): void
+    {
+        $member = $this->member();
+        $moment = Carbon::parse('2026-09-02 14:09');
+
+        $this->actingAs($member);
+
+        $this->assertSame('2 Sep 2026 · 2:09 PM', TimeFormat::dateTime($moment));
+
+        $member->preferences()->updateOrCreate([], ['time_format' => '24']);
+        $member->unsetRelation('preferences');
+
+        $this->assertSame('2 Sep 2026 · 14:09', TimeFormat::dateTime($moment));
+    }
+
+    /** Null in, null out: a moment that never happened is not a formatting error. */
+    public function test_a_missing_timestamp_formats_to_nothing(): void
+    {
+        $this->assertNull(TimeFormat::dateTime(null));
     }
 }

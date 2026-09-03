@@ -522,6 +522,9 @@ return [
             ],
             'bookings' => [
                 'all_dates' => 'Todas las fechas',
+                'when' => 'Qué reservas',
+                'all_bookings' => 'Todas',
+                'completed' => 'Completadas',
                 'with' => 'con :name',
                 'view_upcoming' => 'Ver próximas citas',
                 'all_years' => 'Todos los años',

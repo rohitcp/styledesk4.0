@@ -28,4 +28,18 @@ class BookingService extends Model
     {
         return $this->belongsTo(Service::class);
     }
+
+    /**
+     * The room this line was actually given.
+     *
+     * Per line rather than per booking, because a client having two services
+     * can be in two rooms — and because the alternative, listing every room
+     * the service *could* use, reads as though one client had been given the
+     * whole building. Null on bookings taken before rooms were recorded per
+     * service; those still answer from the booking itself.
+     */
+    public function resource(): BelongsTo
+    {
+        return $this->belongsTo(Resource::class);
+    }
 }

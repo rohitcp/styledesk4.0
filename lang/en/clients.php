@@ -581,6 +581,9 @@ return [
             ],
             'bookings' => [
                 'all_dates' => 'All dates',
+                'when' => 'Which bookings',
+                'all_bookings' => 'All',
+                'completed' => 'Completed',
                 'with' => 'with :name',
                 'view_upcoming' => 'View upcoming appointments',
                 'all_years' => 'All years',

@@ -39,6 +39,24 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+    | Connect Gmail.
+    |
+    | One set of credentials for the whole platform — a StyleDesk Google Cloud
+    | project — not one per salon. A business connects its own mailbox through
+    | them; the tokens that come back are the tenant's and live on
+    | tenant_gmail_connections.
+    |
+    | Absent credentials disable the provider rather than breaking it: the
+    | settings card says "coming soon" instead of offering a Connect button
+    | that lands on a Google error page.
+    */
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

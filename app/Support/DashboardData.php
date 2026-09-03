@@ -135,13 +135,17 @@ class DashboardData
             ->groupBy('status')
             ->pluck('total', 'status');
 
+        /* Each tile carries the listing that holds exactly what it counted.
+           A tile reading 3 that opens a list of 21 is a tile that lied: the
+           status has to travel with the tab wherever the tab alone is a
+           wider question than the number. */
         return [
-            ['key' => 'total', 'count' => (int) $counts->sum(), 'tab' => 'today'],
-            ['key' => 'pending_checkin', 'count' => (int) ($counts['confirmed'] ?? 0), 'tab' => 'check-in'],
-            ['key' => 'checked_in', 'count' => (int) ($counts['arrived'] ?? 0), 'tab' => 'today'],
-            ['key' => 'completed', 'count' => (int) ($counts['completed'] ?? 0), 'tab' => 'completed'],
-            ['key' => 'cancelled', 'count' => (int) ($counts['cancelled'] ?? 0), 'tab' => 'cancelled'],
-            ['key' => 'no_show', 'count' => (int) ($counts['no-show'] ?? 0), 'tab' => 'no-shows'],
+            ['key' => 'total', 'count' => (int) $counts->sum(), 'query' => ['tab' => 'today']],
+            ['key' => 'pending_checkin', 'count' => (int) ($counts['confirmed'] ?? 0), 'query' => ['tab' => 'check-in']],
+            ['key' => 'checked_in', 'count' => (int) ($counts['arrived'] ?? 0), 'query' => ['tab' => 'today', 'status' => 'arrived']],
+            ['key' => 'completed', 'count' => (int) ($counts['completed'] ?? 0), 'query' => ['tab' => 'completed']],
+            ['key' => 'cancelled', 'count' => (int) ($counts['cancelled'] ?? 0), 'query' => ['tab' => 'cancelled']],
+            ['key' => 'no_show', 'count' => (int) ($counts['no-show'] ?? 0), 'query' => ['tab' => 'no-shows']],
         ];
     }
 

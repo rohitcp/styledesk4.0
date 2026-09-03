@@ -31,10 +31,12 @@
                              though one client had been given the whole
                              building. The booking now records the one it was
                              given, so that is what it says. --}}
-                        @if ($booking->resource)
+                        @php $room = $line->resource ?? $booking->resource; @endphp
+
+                        @if ($room)
                             <p class="text-[12px] text-sub mt-1">
                                 {{ __('bookings.summary.resource') }}:
-                                <span class="text-ink">{{ $booking->resource->name }}</span>
+                                <span class="text-ink">{{ $room->name }}</span>
                             </p>
                         @endif
                     </div>

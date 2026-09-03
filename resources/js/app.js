@@ -32,6 +32,7 @@ import { initShiftRuleFeatureToggle, initShiftRuleForm } from './shift-rules';
 import { initBoardFilters, initMonthModal, initScheduleBoard } from './schedule-board';
 import { initClientBookings } from './client-bookings';
 import { initLeadSheet } from './lead-sheet';
+import { initSalesDrawer } from './sales-drawer';
 import { initStaffDetail } from './staff-detail';
 import { initStaffShiftRule } from './staff-shift-rule';
 import { initSubmitOnce } from './submit-once';
@@ -184,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* The labels come from the page, which is where the translations are. */
     initLeadSheet(JSON.parse(document.querySelector('[data-lead-sheet]')?.dataset.labels ?? '{}'));
     initClientBookings();
+    initSalesDrawer();
     initSubmitOnce();
     initVerificationCode();
     initResendCooldown();

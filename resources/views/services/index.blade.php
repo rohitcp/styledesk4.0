@@ -180,6 +180,7 @@
                   ['field' => 'category', 'title' => $gridLabels['columns']['category'], 'grow' => 1.5, 'min' => 130, 'responsive' => 5],
                   ['field' => 'duration', 'title' => $gridLabels['columns']['duration'], 'grow' => 1, 'min' => 100, 'responsive' => 2],
                   ['field' => 'price', 'title' => $gridLabels['columns']['price'], 'grow' => 1, 'min' => 100, 'responsive' => 2],
+                  ['field' => 'cash_price', 'title' => $gridLabels['columns']['cash_price'], 'grow' => 1, 'min' => 100, 'responsive' => 4],
                   ['field' => 'staff', 'title' => $gridLabels['columns']['staff'], 'grow' => 1.5, 'min' => 130, 'responsive' => 4],
                   ['field' => 'resource', 'title' => $gridLabels['columns']['resource'], 'grow' => 1.2, 'min' => 120, 'responsive' => 6],
                   ['field' => 'location', 'title' => $gridLabels['columns']['location'], 'grow' => 1.5, 'min' => 130, 'responsive' => 5],

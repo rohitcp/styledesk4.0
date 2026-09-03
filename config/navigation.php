@@ -129,7 +129,12 @@ return [
                 ['label' => '+ Add Staff Schedule', 'pending' => 'staff-schedule-add.html'],
             ],
         ],
-        ['key' => 'sales', 'label' => 'Sales', 'icon' => 'credit-card'],
+        [
+            'key' => 'sales',
+            'label' => 'Sales',
+            'icon' => 'credit-card',
+            'route' => 'sales.index',
+        ],
         ['key' => 'marketing', 'label' => 'Marketing', 'icon' => 'bullhorn'],
         ['key' => 'reports', 'label' => 'Reports', 'icon' => 'chart-simple'],
     ],

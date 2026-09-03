@@ -13,4 +13,6 @@ return [
     'unverified' => 'Tu correo electrónico no está verificado. Verifícalo para continuar.',
     'password' => 'La contraseña no es correcta.',
     'throttle' => 'Demasiados intentos de acceso. Inténtalo de nuevo en :seconds segundos.',
+
+    'business_disabled' => 'Tu cuenta de StyleDesk está desactivada actualmente. Ponte en contacto con el soporte para obtener ayuda.',
 ];

@@ -22,4 +22,9 @@ return [
     'unverified' => 'Your email address has not been verified. Please verify your email to continue.',
     'password' => 'That password is incorrect.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
+
+    /* Said plainly. Somebody whose business was switched off should learn
+       that from the screen rather than from a password that mysteriously
+       stopped working. */
+    'business_disabled' => 'Your StyleDesk account is currently disabled. Please contact support for assistance.',
 ];

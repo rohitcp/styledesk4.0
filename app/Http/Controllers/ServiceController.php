@@ -98,10 +98,14 @@ class ServiceController extends Controller
                 'primary_badge' => $service->category?->name,
                 'category' => $service->category?->name,
                 'duration' => $service->durationLabel(),
-                /* Both prices stacked in one column rather than two: a
-                   table that grows a column for every way of paying is a
-                   table nobody can read on a laptop. */
-                'price' => $service->pricingLabel($currency),
+                /* A column each, because they are two prices and a reader
+                   comparing services down a column cannot do it when both
+                   sit stacked in one cell. Cash repeats the card price
+                   where a service charges the same either way: an empty
+                   cell reads as "no cash price", which is a different
+                   thing from "the same one". */
+                'price' => $service->priceLabel($currency) ?: null,
+                'cash_price' => $service->cashPriceLabel($currency) ?: null,
                 'staff' => $this->summarise($service->staff->count(), $service->staff->first()?->first_name.' '.$service->staff->first()?->last_name, 'services.staff_count', __('services.anyone')),
                 'resource' => $service->requires_resource ? __('services.resource_required') : __('services.resource_not_required'),
                 'location' => $this->summarise($service->locations->count(), $service->locations->first()?->name, 'services.location_count', __('services.everywhere')),

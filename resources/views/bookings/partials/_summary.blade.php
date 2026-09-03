@@ -20,9 +20,16 @@
                 'ends' => App\Support\TimeFormat::time($booking->endsAt()),
                 'duration' => trans_choice('bookings.summary.minutes', (int) $booking->minutes, ['count' => (int) $booking->minutes]),
                 'location' => $booking->location?->name,
+                /* The rooms this booking was given, not every room its
+                   services could have used — which on a spa with eight of
+                   them read as though one client had been handed the whole
+                   building. Bookings taken before rooms were recorded per
+                   service answer from the booking itself. */
                 'resource' => $booking->services
-                    ->flatMap(fn ($line) => $line->service?->resources->pluck('name') ?? collect())
-                    ->unique()->implode(', '),
+                    ->map(fn ($line) => $line->resource?->name)
+                    ->filter()
+                    ->unique()
+                    ->implode(', ') ?: $booking->resource?->name,
                 'source' => $booking->source ? __('bookings.sources.'.$booking->source) : null,
             ];
         @endphp
@@ -42,10 +49,10 @@
     <p class="mt-3.5 pt-3.5 border-t border-line text-[12px] text-sub">
         {{ __('bookings.detail.taken_by', [
             'name' => $booking->createdBy?->name ?? __('bookings.detail.someone'),
-            'when' => $booking->created_at?->translatedFormat('j M Y · H:i'),
+            'when' => \App\Support\TimeFormat::dateTime($booking->created_at),
         ]) }}
         @if ($booking->updated_at && $booking->updated_at->gt($booking->created_at->addMinute()))
-            · {{ __('bookings.detail.updated', ['when' => $booking->updated_at->translatedFormat('j M Y · H:i')]) }}
+            · {{ __('bookings.detail.updated', ['when' => \App\Support\TimeFormat::dateTime($booking->updated_at)]) }}
         @endif
     </p>
 </section>

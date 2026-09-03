@@ -116,6 +116,23 @@ return [
             ],
         ],
 
+        'email' => [
+            'label' => 'Email',
+            'icon' => 'envelope',
+            'permissions' => [
+                'email.view_history' => ['label' => 'View email history'],
+                'email.send' => ['label' => 'Send client email'],
+                'email.manage_templates' => ['label' => 'Manage email templates'],
+                'email.manage_settings' => ['label' => 'Manage email settings'],
+                /* Connecting and disconnecting are separate from managing the
+                   settings: handing somebody the sender name is not handing
+                   them the keys to the business's mailbox. Listed now,
+                   granted when Gmail lands in 1.1. */
+                'email.connect_gmail' => ['label' => 'Connect Gmail'],
+                'email.disconnect_gmail' => ['label' => 'Disconnect Gmail'],
+            ],
+        ],
+
         'services' => [
             'label' => 'Services',
             'icon' => 'tag',

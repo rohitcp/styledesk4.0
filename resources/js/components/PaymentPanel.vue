@@ -20,17 +20,45 @@ const props = defineProps({
     booking: { type: Object, required: true },
     /** The ways this business can be paid, and whether each is set up. */
     methods: { type: Array, default: () => [] },
+    /*
+     * Which price list this booking was totalled against — 'card' or 'cash'.
+     *
+     * A cash booking is not a preference about the till; it is a different
+     * set of prices, already added up and already quoted to the client. Take
+     * it on a card and the salon collects the cash total for a card sale, and
+     * is short the difference on every service that charges two prices. So a
+     * cash booking is settled in cash, and the panel says so rather than
+     * leaving somebody to notice.
+     */
+    pricedFor: { type: String, default: '' },
     csrf: { type: String, required: true },
     labels: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(['paid']);
+const emit = defineEmits(['paid', 'draft']);
 
 const method = ref('');
+
+/* Cash only, and only for cash: a card booking may still be settled by
+   PayPal or Venmo, because those are all the card price. */
+const lockedMethod = computed(() => (props.pricedFor === 'cash' ? 'cash' : ''));
+const isLocked = (key) => lockedMethod.value !== '' && key !== lockedMethod.value;
 const busy = ref(false);
 const failure = ref('');
 const payment = ref({ amount: props.booking.collect_amount ?? props.booking.due_amount, received: '', reference: '' });
 const card = ref({ name: '', number: '', expiry: '', cvv: '', zip: '' });
+
+watch(lockedMethod, (locked) => {
+    if (locked) {
+        method.value = locked;
+
+        return;
+    }
+
+    /* Unlocked again — the booking went back to card prices — so the choice
+       returns to the person taking the money rather than staying on cash. */
+    method.value = '';
+}, { immediate: true });
 
 const chosenMethod = computed(() => props.methods.find((row) => row.key === method.value) ?? null);
 
@@ -101,6 +129,20 @@ const collectingMinor = computed(() => {
     return Math.max(0, amount) + tipMinor.value;
 });
 
+
+/*
+ * Report the amount and tip upward as they are typed.
+ *
+ * The breakdown above this panel has to add up to what the button is about to
+ * take, and the only way for it to be certain of that is to be told by the
+ * thing that owns the inputs. Emitting rather than lifting the state keeps
+ * this component usable on the booking screen, where nothing is listening.
+ */
+watch(
+    [() => payment.value.amount, tipMinor],
+    ([amount, tip]) => emit('draft', { amount, tip }),
+    { immediate: true },
+);
 
 /* Where the business insists on an answer, the button waits for one. */
 const tipMissing = computed(() => tips.value.enabled
@@ -221,12 +263,13 @@ defineExpose({ reset: () => { method.value = ''; failure.value = ''; tip.value =
             <p class="text-[12px] font-medium text-ink">{{ labels.pay?.method }}</p>
 
             <button v-for="row in methods" :key="row.key" type="button"
-                    class="styledesk_paymethod" :disabled="!row.ready"
+                    class="styledesk_paymethod" :disabled="!row.ready || isLocked(row.key)"
                     @click="method = row.key">
                 <span class="min-w-0">
                     <span class="block text-[13px] font-semibold text-head">{{ row.name }}</span>
                     <span class="block text-[11.5px] text-sub">
-                        {{ row.ready ? row.hint : labels.pay?.not_ready }}
+                        <template v-if="isLocked(row.key)">{{ labels.pay?.cash_only_row }}</template>
+                        <template v-else>{{ row.ready ? row.hint : labels.pay?.not_ready }}</template>
                     </span>
                 </span>
                 <svg v-if="row.ready" width="14" height="14" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -236,9 +279,13 @@ defineExpose({ reset: () => { method.value = ''; failure.value = ''; tip.value =
         <div v-else class="p-4 space-y-3">
             <div class="flex items-center gap-2">
                 <p class="min-w-0 flex-1 text-[13px] font-semibold text-head">{{ chosenMethod?.name }}</p>
-                <button type="button" class="text-[12px] font-semibold text-link hover:underline"
+                <button v-if="!lockedMethod" type="button" class="text-[12px] font-semibold text-link hover:underline"
                         @click="method = ''">{{ labels.pay?.change_method }}</button>
             </div>
+
+            <p v-if="lockedMethod" class="rounded-lg bg-hover px-3 py-2 text-[11.5px] text-sub">
+                {{ labels.pay?.cash_only }}
+            </p>
 
             <!-- The tip, asked before the amount is committed rather than
                  after. It is offered on the tipped part of the bill, which

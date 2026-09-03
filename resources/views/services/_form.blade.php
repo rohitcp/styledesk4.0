@@ -65,6 +65,16 @@
                    min="1" max="{{ config('service_options.max_duration_minutes') }}"
                    value="{{ old('duration_minutes', $service?->duration_minutes ?? config('service_options.default_duration_minutes')) }}">
 
+            {{-- The same words the listing uses for this service, under the
+                 box that decides them. A number field can only hold minutes,
+                 so without this the listing says "1 hr 10 min" about a
+                 service this screen calls 70 — the same duration twice, in
+                 two languages, and nothing on either screen to connect them. --}}
+            <p id="serviceDurationReads" class="mt-1.5 text-[12px] text-sub">{{
+                ($service ?? new \App\Models\Service(['duration_minutes' => (int) config('service_options.default_duration_minutes')]))
+                    ->durationLabel((int) old('duration_minutes', $service?->duration_minutes ?? config('service_options.default_duration_minutes')))
+            }}</p>
+
             {{-- Under the field it is about. The refusal used to be printed
                  at the foot of the section, which on a row of five numbers
                  says one of them is wrong without saying which. --}}

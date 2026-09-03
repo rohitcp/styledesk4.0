@@ -123,6 +123,23 @@
     transition: outline-color 0.12s ease;
 }
 
+/* ------------------------------------------------------------------
+   A compact combo, for a row of filters rather than a form.
+
+   Two thirds of the height and a step down in type, so three of them
+   beside a segmented control read as one band of controls rather than
+   as a form somebody has to fill in. The field is still a 36px target,
+   which is the same height as the segment beside it.
+
+   Set on the wrapper, not on the trigger: the trigger is drawn inside
+   the MultiSelect island and the caller has no way to reach it.
+   ------------------------------------------------------------------ */
+.sd-compact .styledesk_timepicker__field {
+    height: 2.25rem;
+    font-size: 13px;
+    padding: 0 0.625rem;
+}
+
 .styledesk_timepicker__field:hover { outline-color: #9ca3af; }
 
 .styledesk_timepicker__field:focus-visible,

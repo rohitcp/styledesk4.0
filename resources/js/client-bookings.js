@@ -7,6 +7,8 @@
  * booking all happen on the page the reader is already on, and the tab they
  * were on survives every one of them.
  */
+import { initBookingSheet } from './booking-sheet';
+
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[character]));
@@ -24,10 +26,14 @@ export function initClientBookings() {
        the same answer so the two halves cannot arrive a beat apart. */
     const leadList = document.querySelector('[data-lead-list]');
     const filters = host.querySelector('[data-booking-filters]');
+    const whenControl = host.querySelector('[data-booking-when]');
     const sheet = document.querySelector('[data-booking-sheet]');
 
     /** What the three combos are set to, read from what they post. */
     const chosen = (name) => filters.querySelector(`[name="${name}"]`)?.value ?? '';
+
+    /** Upcoming, completed, or the whole history. */
+    let when = '';
 
     // ---------------------------------------------------------- the cards
 
@@ -64,8 +70,8 @@ export function initClientBookings() {
         </button>`;
 
     const render = (data) => {
-        /* Grouped by the month they happened in, newest first: that is how a
-           history is read, and forty in a flat list is a scroll. */
+        /* Grouped by the month they happened in, forward in time: a history
+           is read from its beginning, and forty in a flat list is a scroll. */
         bookingList.innerHTML = data.groups.length
             ? data.groups.map((group) => `
                 <section class="mb-5">
@@ -87,6 +93,29 @@ export function initClientBookings() {
        early gets the answer before last. */
     filters.addEventListener('sd:combo-change', () => load());
 
+    /* The segment is pressed rather than chosen from a list, so it says which
+       one it is with aria-current — the same thing the styling keys off, and
+       the thing a screen reader announces. */
+    whenControl?.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-when]');
+
+        if (!button) {
+            return;
+        }
+
+        when = button.dataset.when;
+
+        whenControl.querySelectorAll('[data-when]').forEach((item) => {
+            if (item === button) {
+                item.setAttribute('aria-current', 'page');
+            } else {
+                item.removeAttribute('aria-current');
+            }
+        });
+
+        load();
+    });
+
     const load = async () => {
         const url = new URL(host.dataset.url, window.location.origin);
         const year = chosen('booking_year');
@@ -103,6 +132,10 @@ export function initClientBookings() {
 
         if (service) {
             url.searchParams.set('service', service);
+        }
+
+        if (when) {
+            url.searchParams.set('when', when);
         }
 
         try {
@@ -127,93 +160,9 @@ export function initClientBookings() {
     // ---------------------------------------------------------- the sheet
 
     if (sheet) {
-        const body = sheet.querySelector('[data-sheet-body]');
-        const name = sheet.querySelector('[data-sheet-name]');
-        const reference = sheet.querySelector('[data-sheet-reference]');
-        const status = sheet.querySelector('[data-sheet-status]');
-        const step = sheet.querySelector('[data-sheet-step]');
-        const primary = sheet.querySelector('[data-sheet-primary]');
-
-        const facts = (section) => `
-            <section class="styledesk_sheet__section">
-                <p class="styledesk_eyebrow">${escape(section.title)}</p>
-                <dl class="mt-2">${Object.entries(section.rows).map(([label, value]) => `
-                    <div class="styledesk_sheet__row">
-                        <dt>${escape(label)}</dt>
-                        <dd class="${value === labels.not_selected ? 'is-blank' : ''}">${escape(value)}</dd>
-                    </div>`).join('')}</dl>
-            </section>`;
-
-        const close = () => {
-            sheet.classList.remove('is-open');
-            window.setTimeout(() => { sheet.hidden = true; }, 180);
-        };
-
-        sheet.querySelectorAll('[data-sheet-close]').forEach((button) => button.addEventListener('click', close));
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && !sheet.hidden) {
-                close();
-            }
-        });
-
-        const openFrom = async (event) => {
-            const card = event.target.closest('[data-drawer]');
-
-            if (!card) {
-                return;
-            }
-
-            sheet.hidden = false;
-            /* Forced into the layout rather than waited a frame for:
-               requestAnimationFrame is throttled in a tab that is not being
-               painted, and a panel that opens only when the window is in
-               front is a panel that looks broken everywhere else. */
-            void sheet.offsetWidth;
-            sheet.classList.add('is-open');
-
-            const response = await fetch(card.dataset.drawer, { headers: { Accept: 'application/json' } });
-
-            if (!response.ok) {
-                close();
-
-                return;
-            }
-
-            const record = await response.json();
-
-            name.textContent = record.name;
-            reference.textContent = record.reference;
-            status.textContent = record.status;
-            status.className = `styledesk_badge ${record.status_class}`;
-            step.textContent = record.step ?? '';
-
-            /* One renderer, two records. A lead answers in named blocks; a
-               booking answers in the same shape, so neither can quietly grow
-               a panel that looks like something else. */
-            const sections = record.sections ?? [
-                { title: labels.summary, rows: record.summary },
-                { title: labels.client, rows: record.client },
-                { title: labels.booking, rows: record.booking },
-                { title: labels.payment, rows: record.payment },
-            ].filter((section) => section.rows);
-
-            const transactions = (record.transactions ?? []).map((line) => `
-                <div class="styledesk_sheet__note">${escape(line.label)} · ${escape(line.amount)}
-                    <span>${escape(line.at)}${line.by ? ` · ${escape(line.by)}` : ''}</span>
-                </div>`).join('');
-
-            body.innerHTML = sections.map(facts).join('')
-                + (transactions
-                    ? `<section class="styledesk_sheet__section">
-                            <p class="styledesk_eyebrow">${escape(labels.transactions)}</p>
-                            <div class="mt-2 space-y-2">${transactions}</div>
-                        </section>`
-                    : '');
-
-            primary.href = record.urls.show ?? record.urls.complete;
-            primary.textContent = record.urls.show ? labels.view_full : labels.complete;
-        };
+        /* The same renderer the Sales table and the leads listing use. One
+           booking, one drawer, wherever it was opened from. */
+        const { openFrom } = initBookingSheet(sheet, labels);
 
         host.addEventListener('click', openFrom);
         leadList?.addEventListener('click', openFrom);

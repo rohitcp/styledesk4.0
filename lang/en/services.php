@@ -40,7 +40,8 @@ return [
         'service' => 'Service',
         'category' => 'Category',
         'duration' => 'Duration',
-        'price' => 'Price',
+        'price' => 'Card price',
+        'cash_price' => 'Cash price',
         'staff' => 'Staff',
         'resource' => 'Resource',
         'location' => 'Location',
@@ -155,8 +156,8 @@ return [
     'total_time' => ':duration in the diary',
 
     'minutes_short' => ':count min',
-    'hours_short' => ':count h',
-    'hours_minutes_short' => ':hours h :minutes min',
+    'hours_short' => ':count hr',
+    'hours_minutes_short' => ':hours hr :minutes min',
 
     'categories_ui' => [
 

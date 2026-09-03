@@ -64,7 +64,7 @@
                         <div class="min-w-0">
                             <p class="text-[13.5px] font-semibold text-head">{{ $payment->methodLabel() }}</p>
                             <p class="text-[12px] text-sub mt-0.5">
-                                {{ $payment->paid_at?->translatedFormat('j M Y · H:i') }}
+                                {{ \App\Support\TimeFormat::dateTime($payment->paid_at) }}
                                 @if ($payment->recordedBy)
                                     · {{ __('bookings.detail.recorded_by', ['name' => $payment->recordedBy->name]) }}
                                 @endif

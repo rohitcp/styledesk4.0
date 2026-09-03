@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BookingLead;
 use App\Support\Money;
+use App\Support\TimeFormat;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -87,7 +88,7 @@ class BookingLeadController extends Controller
                 'location' => $lead->location?->name,
                 'expected' => $lead->expected_date?->translatedFormat('j M Y'),
                 'total' => Money::format($lead->total_minor / 100, $lead->currency_code),
-                'started' => $lead->created_at?->translatedFormat('j M Y · H:i'),
+                'started' => TimeFormat::dateTime($lead->created_at),
                 /* Where the client stopped, beside what happened to the lead.
                    Two columns, because the desk needs both to know what the
                    call is about. */
@@ -139,8 +140,8 @@ class BookingLeadController extends Controller
             'is_open' => $lead->booking === null,
 
             'summary' => [
-                __('leads.drawer.created') => $lead->created_at?->translatedFormat('j M Y · H:i'),
-                __('leads.drawer.last_activity') => ($lead->last_activity_at ?? $lead->created_at)?->translatedFormat('j M Y · H:i'),
+                __('leads.drawer.created') => TimeFormat::dateTime($lead->created_at),
+                __('leads.drawer.last_activity') => TimeFormat::dateTime($lead->last_activity_at ?? $lead->created_at),
                 /* Who was at the desk when the call came in, and who has
                    spoken to them since. Two different people more often than
                    not, and the second is who to ask about it. */
@@ -202,13 +203,13 @@ class BookingLeadController extends Controller
             'notes' => $lead->notes()->map(fn ($note) => [
                 'body' => $note->body,
                 'by' => $note->author?->name,
-                'at' => $note->created_at?->translatedFormat('j M Y · H:i'),
+                'at' => TimeFormat::dateTime($note->created_at),
             ])->values(),
             'can_note' => $lead->client !== null,
 
             'events' => $lead->events->map(fn ($event) => [
                 'label' => $event->label(),
-                'at' => $event->created_at?->translatedFormat('j M Y · H:i'),
+                'at' => TimeFormat::dateTime($event->created_at),
                 'by' => $event->user?->name,
             ])->values(),
 

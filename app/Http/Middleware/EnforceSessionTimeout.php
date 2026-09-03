@@ -33,6 +33,19 @@ class EnforceSessionTimeout
 
     public function handle(Request $request, Closure $next): Response
     {
+        /*
+         * The platform console keeps its own clock.
+         *
+         * Both consoles share one session cookie, so without this an idle
+         * salon session ends the administrator's too — and worse, sends them
+         * to the salon's sign-in screen, which is not the door they came
+         * through. AuthenticateBackoffice enforces the console's own timeout,
+         * which is a shorter one.
+         */
+        if ($request->is('backoffice') || $request->is('backoffice/*')) {
+            return $next($request);
+        }
+
         if (! Auth::check()) {
             return $next($request);
         }

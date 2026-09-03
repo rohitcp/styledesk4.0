@@ -46,20 +46,6 @@
              disabled: a button they can never enable is furniture. An action
              that would make no sense from here — marking a completed
              appointment as a no-show — is absent for the same reason. --}}
-        {{-- Already here, and so not a button any more.
-
-             The line replaces the action rather than sitting beside it: a
-             Check In button on a client who is standing in the salon is an
-             invitation to record them arriving twice. --}}
-        @if ($checkIn)
-          <span class="styledesk_metachip styledesk_badge--info shrink-0">
-            {{ __('bookings.status.check-in.done_at', [
-                'time' => $checkIn->created_at?->isoFormat('h:mm A'),
-                'name' => $checkIn->actor(),
-            ]) }}
-          </span>
-        @endif
-
         @foreach ($actions as $action)
           @php $tone = config('bookings.status_actions.'.$action.'.tone'); @endphp
           <button type="button" data-status-action="{{ $action }}"
@@ -160,10 +146,42 @@
       <div class="order-3 lg:order-none min-w-0 lg:h-full lg:pl-6 xl:pr-6 xl:border-r xl:border-line py-5 border-t border-line lg:border-t-0
                   xl:overflow-y-auto styledesk_scroll">
         <div class="xl:pb-[200px] space-y-6">
+          {{-- Already here, and so not a button any more.
+
+               The line replaces the Check In action rather than sitting beside
+               it: a Check In button on a client who is standing in the salon is
+               an invitation to record them arriving twice.
+
+               A panel across the column rather than a chip in the toolbar. It
+               is the first thing the desk needs to know about the booking on
+               the day — the client is in the building — and a chip among the
+               action buttons reads as one more control rather than as a fact. --}}
+          @if ($checkIn)
+            {{-- Bled to the column's own edges: the negative margins cancel the
+                 column's `py-5` above and its `lg:pl-6` / `xl:pr-6` at the
+                 sides, so the band runs the full width and sits against the
+                 top. Square and unbordered for the same reason — a banner that
+                 touches three edges and still draws its own outline reads as a
+                 card that has been pushed out of place. --}}
+            <div class="-mt-5 lg:-ml-6 xl:-mr-6 bg-sky-50 px-6 py-3" role="status">
+              {{-- The vendored set has no plain tick, and calendar-check is the
+                   truer icon anyway: the appointment has been kept, which is
+                   what checking in records. --}}
+              <p class="flex items-center gap-2 text-[13px] font-semibold text-sky-900">
+                <x-icon name="calendar-check" size="15" class="shrink-0" aria-hidden="true" />
+                <span>
+                  {{ __('bookings.status.check-in.done_at', [
+                      'time' => $checkIn->created_at?->format(\App\Support\TimeFormat::clock()),
+                      'name' => $checkIn->actor(),
+                  ]) }}
+                </span>
+              </p>
+            </div>
+          @endif
+
           @include('bookings.partials._summary')
           @include('bookings.partials._services')
           @include('bookings.partials._notes')
-          @include('bookings.partials._payments')
           @include('bookings.partials._activity')
         </div>
       </div>
@@ -172,6 +190,21 @@
       <aside class="order-7 lg:order-none min-w-0 overflow-x-hidden xl:h-full xl:pl-6 xl:pr-2.5 py-5 border-t border-line xl:border-t-0 lg:col-span-2 xl:col-span-1
                     xl:overflow-y-auto styledesk_scroll">
         <div class="xl:pb-6">
+          {{-- Reach them, then settle up, then everything else.
+               Contact is three buttons deep and belongs at the top where the
+               eye lands; the money is what this column is opened for on the
+               day, so it sits directly under it rather than three sections
+               down the middle column where it used to be. Each block carries
+               its own bottom margin instead of a space-y on the wrapper,
+               because the client-context sections space themselves. --}}
+          <div class="mb-5">
+            @include('bookings.partials._contact-actions')
+          </div>
+
+          <div class="mb-6 space-y-6">
+            @include('bookings.partials._payments')
+          </div>
+
           @include('bookings.partials._client-context')
         </div>
       </aside>
