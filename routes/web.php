@@ -1161,6 +1161,10 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             /* One lead, for the drawer the listing opens over itself. */
             Route::get('{lead}', 'show')->name('.show');
             Route::post('{lead}/cancel', 'cancel')->name('.cancel');
+            /* Thrown away rather than cancelled: the booking screen abandons
+               the journey it is in the middle of, and a call that never was
+               should not land in the reports as one. */
+            Route::delete('{lead}', 'discard')->name('.discard');
             /* A note about the call, kept on the client and tagged with the
                lead it was written about. */
             Route::post('{lead}/notes', 'note')->name('.notes');
@@ -1199,6 +1203,13 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
                access log on the way. Throttled like availability, because it
                is asked on a debounce as somebody types. */
             Route::post('clients/match', 'matchClient')->middleware('throttle:120,1')->name('clients.match');
+            /* Whether this client is already booked for these services that
+               day. Asked as the answers arrive and again as Confirm is
+               pressed, so it is throttled like availability. Posted rather
+               than asked in the query string: it carries a client id and a
+               list of services, which is a booking written into every access
+               log on the way. */
+            Route::post('duplicates', 'duplicates')->middleware('throttle:120,1')->name('duplicates');
             /* A booking somebody started, written the moment the services
                are settled so an abandoned call leaves a trace. */
             Route::post('leads', 'storeLead')->name('leads.store');

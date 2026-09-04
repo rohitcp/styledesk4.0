@@ -117,7 +117,7 @@ return [
                 ],
                 [
                     'key' => 'services',
-                    'name' => 'Services',
+                    'name' => 'Service Categories',
                     'description' => 'The categories your price list is organised into, including which are offered and the order they appear in.',
                     'icon' => 'tag',
                     'route' => 'settings.services.index',
@@ -126,7 +126,7 @@ return [
                 ],
                 [
                     'key' => 'resources',
-                    'name' => 'Resources',
+                    'name' => 'Resource Categories',
                     'description' => 'The categories your bookable assets are grouped into — chairs, rooms, equipment — including which are offered and the order they appear in.',
                     'icon' => 'chair',
                     'route' => 'settings.resources.index',

@@ -82,6 +82,49 @@ class ServicePrice extends Model
             : number_format($this->deposit_value / 100, 2, '.', '');
     }
 
+    /**
+     * The deposit rule this price insists on, or nothing.
+     *
+     * Read through the type, because the column means two things: whole
+     * percent for a percentage, minor units for a flat sum. Shaped for the
+     * booking screen, which has to work the figure out for itself as the
+     * bill moves.
+     *
+     * @return array{type: string, percent: ?int, minor: ?int}|null
+     */
+    public function requiredDeposit(): ?array
+    {
+        if (! $this->deposit_required || $this->deposit_value === null) {
+            return null;
+        }
+
+        return [
+            'type' => (string) $this->deposit_type,
+            'percent' => $this->deposit_type === 'percent' ? (int) $this->deposit_value : null,
+            'minor' => $this->deposit_type === 'percent' ? null : (int) $this->deposit_value,
+        ];
+    }
+
+    /**
+     * What that rule comes to on this price, paid this way.
+     *
+     * A percentage follows the price the booking is actually worked out at,
+     * so a service quoted at its cash price asks for a deposit on the cash
+     * price rather than on the card one.
+     */
+    public function requiredDepositMinor(string $method = 'card'): int
+    {
+        $rule = $this->requiredDeposit();
+
+        if ($rule === null) {
+            return 0;
+        }
+
+        return $rule['type'] === 'percent'
+            ? (int) round($this->minorFor($method) * $rule['percent'] / 100)
+            : (int) $rule['minor'];
+    }
+
     /** What the deposit comes to, in words, for a read-only screen. */
     public function depositLabel(): string
     {

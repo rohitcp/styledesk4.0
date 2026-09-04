@@ -57,6 +57,7 @@ return [
 
     'edit_service' => 'Configuración de propinas',
     'edit_service_for' => 'Propinas — :name',
+    'service_card_hint' => 'Cómo funcionan las propinas en este servicio. Parte de los valores de Ajustes → Propinas y puede cambiarse aquí sin modificarlos.',
     'accepts' => 'Aceptar propinas para este servicio',
     'accepts_hint' => 'Desactívalo para lo que nadie trabaja, como los productos.',
 

@@ -151,6 +151,7 @@ class ServicePricingTest extends TestCase
             ->post(route('services.store'), [
                 'name' => 'Swedish Massage',
                 'duration_minutes' => 60,
+                'locations' => [$this->location->id],
                 'price' => ['USD' => '105.00'],
                 'cash_price' => ['USD' => '100.00'],
             ])
@@ -169,6 +170,7 @@ class ServicePricingTest extends TestCase
             ->post(route('services.store'), [
                 'name' => 'Deep Tissue',
                 'duration_minutes' => 60,
+                'locations' => [$this->location->id],
                 'price' => ['USD' => '65.00'],
                 'cash_price' => ['USD' => ''],
             ])

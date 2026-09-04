@@ -106,9 +106,16 @@ class ServiceController extends Controller
                    thing from "the same one". */
                 'price' => $service->priceLabel($currency) ?: null,
                 'cash_price' => $service->cashPriceLabel($currency) ?: null,
+                /* Read from the price row rather than from the service's own
+                   summary flag: "20% required" and "yes" are not the same
+                   answer, and only one of them is what was configured. */
+                'deposit' => $service->depositLabelIn($currency),
                 'staff' => $this->summarise($service->staff->count(), $service->staff->first()?->first_name.' '.$service->staff->first()?->last_name, 'services.staff_count', __('services.anyone')),
                 'resource' => $service->requires_resource ? __('services.resource_required') : __('services.resource_not_required'),
-                'location' => $this->summarise($service->locations->count(), $service->locations->first()?->name, 'services.location_count', __('services.everywhere')),
+                /* No fallback word: a service now has to name where it is
+                   offered, so an empty cell is a service saved before that
+                   rule rather than a business-wide default. */
+                'location' => $this->summarise($service->locations->count(), $service->locations->first()?->name, 'services.location_count', ''),
 
                 'online' => $service->online_booking_enabled ? __('services.status.online_enabled') : __('services.status.online_disabled'),
                 'online_class' => $service->online_booking_enabled ? 'styledesk_badge--active' : 'styledesk_badge--soon',
@@ -125,8 +132,8 @@ class ServiceController extends Controller
      * One name where there is one, a count where there are several.
      *
      * A row listing four stylists is a row twice the height of every other
-     * one; a row saying "4 staff" is a row. Empty is not nothing — it is
-     * "anyone" and "everywhere", which is what the reader needs told.
+     * one; a row saying "4 staff" is a row. What no one at all reads as is
+     * the caller's to say: "anyone" for staff, nothing for locations.
      */
     private function summarise(int $count, ?string $first, string $key, string $none): string
     {
@@ -443,12 +450,13 @@ class ServiceController extends Controller
     {
         /* deposit_required is a summary of the prices, written by syncPrices
            rather than posted: the form has a toggle per price and none for
-           the service. */
+           the service. It is not in the rules either — a field the save
+           discards is a field the form should not be offering. */
         /* images and default_image_id are not columns either: the gallery is
            rows in stored_files, and which one leads is written by
            ServiceImageSync once the service has an id to attach them to. */
         return collect($data)
-            ->except(['staff', 'locations', 'resources', 'price', 'cash_price', 'deposit', 'deposit_required', 'images', 'default_image_id'])
+            ->except(['staff', 'locations', 'resources', 'price', 'cash_price', 'deposit', 'images', 'default_image_id'])
             ->all();
     }
 
@@ -504,14 +512,13 @@ class ServiceController extends Controller
             'is_active' => ['boolean'],
             'online_booking_enabled' => ['boolean'],
             'requires_resource' => ['boolean'],
-            'deposit_required' => ['boolean'],
 
             /* Tenant-scoped by Rule::exists against the tenant's own rows:
                a hand-made request naming another business's staff id has to
                fail here, not merely be absent from the dropdown. */
             'staff' => ['array'],
             'staff.*' => [Rule::exists('staff', 'id')->where('tenant_id', $request->user()->tenant?->getTenantKey())],
-            'locations' => ['array'],
+            'locations' => ['required', 'array', 'min:1'],
             'locations.*' => [Rule::exists('locations', 'id')->where('tenant_id', $request->user()->tenant?->getTenantKey())],
 
             /**

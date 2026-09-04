@@ -66,12 +66,12 @@ return [
             'description' => 'Intervalos, plazos de aviso, ventanas de reserva y reglas de las citas.',
         ],
         'services' => [
-            'name' => 'Servicios',
-            'description' => 'Valores predeterminados de servicios, categorías y su comportamiento al reservar.',
+            'name' => 'Categorías de servicios',
+            'description' => 'Las categorías en las que se organiza tu lista de precios, cuáles se ofrecen y en qué orden aparecen.',
         ],
         'resources' => [
-            'name' => 'Recursos',
-            'description' => 'Sillones, salas, cabinas de tratamiento y masaje, equipos y otros elementos reservables.',
+            'name' => 'Categorías de recursos',
+            'description' => 'Las categorías en las que se agrupan tus elementos reservables —sillones, salas, equipos—, cuáles se ofrecen y en qué orden aparecen.',
         ],
         'staff' => [
             'name' => 'Miembros del personal',

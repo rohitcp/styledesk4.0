@@ -98,18 +98,13 @@
                         </label>
 
                         <div class="relative w-[160px]">
-                            {{-- The symbol sits in the field; the code sits
-                                 beside it. Both, because the symbol is what
-                                 makes the field read as money and the code is
-                                 what says which money. --}}
-                            <span class="styledesk_input__prefix pointer-events-none text-sub" aria-hidden="true">
-                                {{ App\Support\Money::symbol($code) }}
-                            </span>
-
+                            {{-- No symbol in the field: the label above says
+                                 which money this is, and a second reading of
+                                 it inside the box only crowds the amount. --}}
                             <input id="price_{{ $code }}" type="text" inputmode="decimal"
                                    name="{{ $name }}[{{ $code }}]"
                                    value="{{ $priceValues[$code] }}"
-                                   class="sd-input styledesk_input--prefixed"
+                                   class="sd-input"
                                    aria-label="{{ $label ? $label.' — '.$code : $code }}"
                                    autocomplete="off">
                         </div>
@@ -132,15 +127,10 @@
                             </label>
 
                             <div class="relative w-[160px]">
-                                <span class="styledesk_input__prefix pointer-events-none text-sub" aria-hidden="true">
-                                    {{ App\Support\Money::symbol($code) }}
-                                </span>
-
                                 <input id="cash_price_{{ $code }}" type="text" inputmode="decimal"
                                        name="cash_price[{{ $code }}]"
                                        value="{{ $cashPriceValues[$code] }}"
-                                       placeholder="{{ __('services.cash_price_same') }}"
-                                       class="sd-input styledesk_input--prefixed"
+                                       class="sd-input"
                                        aria-label="{{ __('services.cash_price').' — '.$code }}"
                                        autocomplete="off">
                             </div>

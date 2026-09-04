@@ -121,6 +121,15 @@
             'availabilityUrl' => route('bookings.availability'),
             'resourcesUrl' => route('bookings.resources'),
             'quoteUrl' => route('bookings.quote'),
+            /* Whether this client already has these services booked that day.
+               A warning the screen shows and the server insists on: a booking
+               taken by somebody else mid-call is only caught at the end. */
+            'duplicatesUrl' => route('bookings.duplicates'),
+            /* Where the journey being abandoned is thrown away, and where the
+               reader lands afterwards: the leads list when the booking was
+               opened from one, the bookings list when it started here. */
+            'discardLeadUrlPattern' => route('bookings.leads.discard', ['lead' => ':id']),
+            'leadsUrl' => route('bookings.leads'),
             'today' => now()->toDateString(),
             /* The business's own clock. Times are chosen and posted as 24-hour
                "H:i" whatever this says — it decides only what a person reads,
@@ -137,7 +146,7 @@
             /* Only the copy this screen uses. The whole file would put the
                validation strings and the toasts in the page's HTML. */
             'labels' => \Illuminate\Support\Arr::only(__('bookings'), [
-                'sections', 'client', 'service', 'when', 'details', 'payment',
+                'sections', 'client', 'service', 'when', 'details', 'payment', 'duplicate',
                 'comms', 'summary', 'blockers', 'confirm', 'draft', 'cancel', 'context',
                 'new_client', 'pay', 'methods', 'payment_statuses', 'confirmation', 'steps', 'lead',
                 'any_staff', 'autosave', 'resources',

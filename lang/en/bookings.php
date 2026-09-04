@@ -194,6 +194,26 @@ return [
         'search_sources' => 'Search sources…',
     ],
 
+    'duplicate' => [
+        'title' => 'Possible duplicate booking',
+        'title_exact' => 'This looks like the same booking twice',
+        'message' => ':client already has :service booked on :date.',
+        'message_overlap' => 'This overlaps an existing booking for the same client and the same service.',
+        'message_exact' => 'This appears to be an exact duplicate of an existing booking — same client, same service, same branch, same time.',
+        'existing' => 'Already booked',
+        'view' => 'View existing booking',
+        'ask' => 'A client can genuinely want the same service twice in a day. Carry on if that is what this is.',
+        'continue' => 'Continue anyway',
+        'create_anyway' => 'Create anyway',
+        'cancel' => 'Cancel this booking',
+        'discard_title' => 'Cancel this booking?',
+        'discard_body' => 'This removes the booking being taken now, along with the booking lead it has been saving itself as.',
+        'discard_keeps' => 'The appointment this client already has is not touched.',
+        'keep' => 'Keep booking',
+        'discard_confirm' => 'Cancel & delete',
+        'blocked' => 'This client already has one of these services booked that day. Check the warning on the booking screen before taking it.',
+    ],
+
     'payment' => [
         'deposit_percent' => 'Deposit',
         'deposit_now' => 'Deposit due now',
@@ -212,6 +232,13 @@ return [
         'preset' => ':percent%',
         'preset_custom' => 'Custom',
         'too_much' => 'A deposit cannot be more than the booking total.',
+        /* A deposit the service itself insists on: the desk is not being
+           asked how much, it is being told. */
+        'too_little' => 'These services need a deposit of at least :amount.',
+        'deposit_required' => 'Deposit required',
+        'deposit_required_error' => 'These services need a deposit, so a booking cannot be taken with nothing collected.',
+        'deposit_required_hint' => 'These services require a deposit, so one has to be collected to complete this booking. It can be raised, not removed.',
+        'deposit_required_percent' => ':percent% of the booking total',
         'balance' => 'Balance due',
         'collecting' => 'Collecting now',
         'nothing_collected' => 'No payment will be collected for this booking.',

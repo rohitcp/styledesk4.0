@@ -68,7 +68,7 @@
             <x-settings.field label="{{ __('business.fields.category') }}" :value="$tenant->business_category" />
             <x-settings.field label="{{ __('business.fields.description') }}" :value="$tenant->description" />
 
-            <x-settings.field label="{{ __('business.fields.logo') }}" :manage="route('settings.index')" manage-label="{{ __('business.manage_branding') }}">
+            <x-settings.field label="{{ __('business.fields.logo') }}">
               @if ($tenant->logo_path)
                 <img src="{{ Storage::disk('brand')->url($tenant->logo_path) }}" alt="{{ $tenant->name }} logo"
                      class="h-10 w-10 rounded-lg object-cover border border-line">
@@ -123,8 +123,7 @@
           <x-settings.card title="{{ __('business.cards.regional') }}"
                            description="{{ __('business.cards.regional_hint') }}">
             <x-settings.field label="{{ __('business.fields.primary_language') }}"
-                              :value="$languageNames[$tenant->default_language] ?? $tenant->default_language"
-                              :manage="route('settings.index')" manage-label="{{ __('business.manage') }}" />
+                              :value="$languageNames[$tenant->default_language] ?? $tenant->default_language" />
 
             <x-settings.field label="{{ __('business.fields.secondary_languages') }}">
               @php $secondaryLanguages = array_slice($languages, 1); @endphp
@@ -134,8 +133,7 @@
             </x-settings.field>
 
             <x-settings.field label="{{ __('business.fields.primary_currency') }}"
-                              :value="$tenant->currency_code ? ($currencyNames[$tenant->currency_code]['name'] ?? $tenant->currency_code).' ('.$tenant->currency_code.')' : null"
-                              :manage="route('settings.index')" manage-label="{{ __('business.manage') }}" />
+                              :value="$tenant->currency_code ? ($currencyNames[$tenant->currency_code]['name'] ?? $tenant->currency_code).' ('.$tenant->currency_code.')' : null" />
 
             <x-settings.field label="{{ __('business.fields.secondary_currencies') }}">
               @php $secondaryCurrencies = array_slice($currencies, 1); @endphp
@@ -171,27 +169,25 @@
 
           <x-settings.card title="{{ __('business.cards.defaults') }}"
                            description="{{ __('business.cards.defaults_hint') }}">
-            <x-settings.field label="{{ __('business.fields.default_location') }}" :value="optional($primaryLocation)->name"
-                              :manage="route('settings.index')" manage-label="{{ __('business.manage') }}" />
+            <x-settings.field label="{{ __('business.fields.default_location') }}" :value="optional($primaryLocation)->name" />
             <x-settings.field label="{{ __('business.fields.default_booking_duration') }}"
                               :value="App\Support\BusinessProfile::label('bookingDurations', (string) $tenant->default_booking_duration)" />
             <x-settings.field label="{{ __('business.fields.default_appointment_interval') }}"
                               :value="App\Support\BusinessProfile::label('appointmentIntervals', (string) $tenant->default_appointment_interval)" />
             <x-settings.field label="{{ __('business.fields.default_tax_behavior') }}"
-                              :value="App\Support\BusinessProfile::label('taxBehaviors', (string) $tenant->default_tax_behavior)"
-                              :manage="route('settings.index')" manage-label="{{ __('business.manage') }}" />
+                              :value="App\Support\BusinessProfile::label('taxBehaviors', (string) $tenant->default_tax_behavior)" />
             <x-settings.field label="{{ __('business.fields.default_tax_rate') }}"
                               :value="$tenant->default_tax_rate ? rtrim(rtrim(number_format((float) $tenant->default_tax_rate, 2), '0'), '.').'%' : null" />
             <x-settings.field label="{{ __('business.fields.default_staff_assignment') }}"
                               :value="App\Support\BusinessProfile::label('staffAssignment', (string) $tenant->default_staff_assignment)" />
 
-            <x-settings.field label="{{ __('business.fields.allow_online_booking') }}" :manage="route('settings.index')" manage-label="{{ __('business.manage') }}">
+            <x-settings.field label="{{ __('business.fields.allow_online_booking') }}">
               <span class="styledesk_badge {{ optional($bookingSettings)->is_enabled ? 'styledesk_badge--active' : 'styledesk_badge--soon' }}">
                 {{ optional($bookingSettings)->is_enabled ? __('business.enabled') : __('business.disabled') }}
               </span>
             </x-settings.field>
 
-            <x-settings.field label="{{ __('business.fields.guest_booking') }}" :manage="route('settings.index')" manage-label="{{ __('business.manage') }}">
+            <x-settings.field label="{{ __('business.fields.guest_booking') }}">
               <span class="styledesk_badge {{ optional($bookingSettings)->allow_new_clients ? 'styledesk_badge--active' : 'styledesk_badge--soon' }}">
                 {{ optional($bookingSettings)->allow_new_clients ? __('business.enabled') : __('business.disabled') }}
               </span>

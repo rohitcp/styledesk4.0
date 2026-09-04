@@ -221,13 +221,14 @@ class ServicesTest extends TestCase
     }
 
     /**
-     * A service nobody may perform is offered by anyone, and one with no
-     * locations is offered everywhere.
+     * A service nobody may perform is offered by anyone; one with no
+     * locations says nothing at all.
      *
-     * Empty is not nothing here: a blank cell would read as missing data on
-     * the one setting a single-site business never opens.
+     * The two cells differ because the two settings do: staff is optional and
+     * "anyone" is a real answer, while a location has to be chosen — so an
+     * empty cell there is a service saved before that rule, not a default.
      */
-    public function test_an_unassigned_service_reads_as_anyone_and_everywhere(): void
+    public function test_an_unassigned_service_reads_as_anyone_and_names_no_location(): void
     {
         $this->service();
 
@@ -237,7 +238,7 @@ class ServicesTest extends TestCase
             ->json('data.0');
 
         $this->assertSame(__('services.anyone'), $row['staff']);
-        $this->assertSame(__('services.everywhere'), $row['location']);
+        $this->assertSame('', $row['location']);
     }
 
     public function test_the_rows_can_be_searched(): void
@@ -454,7 +455,9 @@ class ServicesTest extends TestCase
     public function test_saving_returns_to_the_listing(): void
     {
         $this->actingAs($this->owner)
-            ->post(route('services.store'), ['name' => 'Beard trim', 'duration_minutes' => 20])
+            ->post(route('services.store'), [
+                'name' => 'Beard trim', 'duration_minutes' => 20, 'locations' => [$this->location()->id],
+            ])
             ->assertRedirect(route('services.index'));
     }
 
@@ -515,6 +518,52 @@ class ServicesTest extends TestCase
         $this->assertSame([$location->id], $service->locations->pluck('id')->all());
     }
 
+    /** A service has to say where it is offered. */
+    public function test_a_service_without_a_location_is_refused(): void
+    {
+        $this->actingAs($this->owner)
+            ->from(route('services.create'))
+            ->post(route('services.store'), ['name' => 'Nowhere', 'duration_minutes' => 30])
+            ->assertRedirect(route('services.create'))
+            ->assertSessionHasErrors('locations');
+
+        $this->assertDatabaseMissing('services', ['name' => 'Nowhere']);
+    }
+
+    /**
+     * A single-site business is not asked a question it cannot answer twice.
+     *
+     * The field is required, so leaving the only location unselected would be
+     * a click every such business has to make on every service — on the add
+     * screen and again on an edit that never chose one.
+     */
+    public function test_the_only_location_is_already_selected_on_the_add_and_edit_screens(): void
+    {
+        $location = $this->location();
+        $service = $this->service();
+
+        foreach ([route('services.create'), route('services.edit', $service)] as $url) {
+            $this->actingAs($this->owner)
+                ->get($url)
+                ->assertOk()
+                ->assertSee('"modelValue":["'.$location->id.'"],"name":"locations"', false);
+        }
+    }
+
+    /** With more than one location, none is guessed for the reader. */
+    public function test_no_location_is_preselected_when_the_business_has_several(): void
+    {
+        $first = $this->location('Downtown');
+        $second = $this->location('Northside');
+
+        $this->actingAs($this->owner)
+            ->get(route('services.create'))
+            ->assertOk()
+            ->assertSee('"modelValue":[],"name":"locations"', false)
+            ->assertDontSee('"modelValue":["'.$first->id.'"],"name":"locations"', false)
+            ->assertDontSee('"modelValue":["'.$second->id.'"],"name":"locations"', false);
+    }
+
     /**
      * The diary is charged for the whole appointment, not the haircut.
      *
@@ -563,6 +612,7 @@ class ServicesTest extends TestCase
         $this->actingAs($this->owner)
             ->post(route('services.store'), [
                 'name' => 'Neon', 'duration_minutes' => 30, 'color' => '#ff00ff',
+                'locations' => [$this->location()->id],
             ])
             ->assertSessionHasNoErrors();
 
@@ -571,6 +621,7 @@ class ServicesTest extends TestCase
         $this->actingAs($this->owner)
             ->post(route('services.store'), [
                 'name' => 'Broken', 'duration_minutes' => 30, 'color' => 'red; background:url(x)',
+                'locations' => [$this->location()->id],
             ])
             ->assertSessionHasErrors('color');
     }
@@ -687,6 +738,7 @@ class ServicesTest extends TestCase
         $this->actingAs($this->owner)
             ->post(route('services.store'), [
                 'name' => 'Balayage', 'duration_minutes' => 90,
+                'locations' => [$this->location()->id],
                 'price' => [$currency => '120.00'],
                 'deposit' => [$currency => ['required' => 1, 'type' => 'percent', 'value' => '20']],
             ])
@@ -709,6 +761,7 @@ class ServicesTest extends TestCase
         $this->actingAs($this->owner)
             ->post(route('services.store'), [
                 'name' => 'Colour', 'duration_minutes' => 60,
+                'locations' => [$this->location()->id],
                 'price' => [$currency => '120.00'],
                 'deposit' => [$currency => ['required' => 1, 'type' => 'fixed', 'value' => '40.00']],
             ])
@@ -732,6 +785,7 @@ class ServicesTest extends TestCase
         $this->actingAs($this->owner)
             ->post(route('services.store'), [
                 'name' => 'Trim', 'duration_minutes' => 20,
+                'locations' => [$this->location()->id],
                 'price' => [$currency => '20.00'],
                 'deposit' => [$currency => ['required' => 0]],
             ])
@@ -743,12 +797,75 @@ class ServicesTest extends TestCase
         $this->actingAs($this->owner)
             ->patch(route('services.update', $service), [
                 'name' => 'Trim', 'duration_minutes' => 20,
+                'locations' => [$this->location()->id],
                 'price' => [$currency => '20.00'],
                 'deposit' => [$currency => ['required' => 1, 'type' => 'fixed', 'value' => '5.00']],
             ])
             ->assertSessionHasNoErrors();
 
         $this->assertTrue($service->fresh()->deposit_required);
+    }
+
+    /**
+     * A deposit is saved where it is configured, and reopens there.
+     *
+     * One switch, on the price it is a deposit on. There used to be a second
+     * one on the Booking rules card which posted a value the save discarded —
+     * the service column is a summary of its prices — so a reader who turned
+     * it on there found it off again the next time they looked.
+     */
+    public function test_a_deposit_reopens_on_the_form_exactly_as_it_was_saved(): void
+    {
+        $currency = Currencies::primaryFor($this->tenant);
+
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Hair Cut & Style', 'duration_minutes' => 60,
+                'locations' => [$this->location()->id],
+                'price' => [$currency => '100.00'],
+                'deposit' => [$currency => ['required' => 1, 'type' => 'percent', 'value' => '20']],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $service = Service::withoutGlobalScopes()->where('name', 'Hair Cut & Style')->firstOrFail();
+
+        $this->assertTrue($service->deposit_required);
+
+        $page = $this->actingAs($this->owner)->get(route('services.edit', $service))->assertOk();
+
+        $page->assertSeeInOrder(['name="deposit['.$currency.'][required]" value="1"', 'checked'], false)
+            ->assertSee('value="20"', false)
+            ->assertSee('"modelValue":["percent"],"name":"deposit['.$currency.'][type]"', false);
+
+        /* And nowhere else: the switch the save threw away is gone. */
+        $page->assertDontSee('name="deposit_required"', false);
+    }
+
+    /** The listing names the deposit that was configured, not merely that one was. */
+    public function test_the_listing_names_the_configured_deposit(): void
+    {
+        $currency = Currencies::primaryFor($this->tenant);
+
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Hair Cut & Style', 'duration_minutes' => 60,
+                'locations' => [$this->location()->id],
+                'price' => [$currency => '100.00'],
+                'deposit' => [$currency => ['required' => 1, 'type' => 'percent', 'value' => '20']],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->service(['name' => 'Blow dry']);
+
+        $rows = $this->actingAs($this->owner)
+            ->getJson(route('services.data'))
+            ->assertOk()
+            ->json('data');
+
+        $deposits = collect($rows)->pluck('deposit', 'name')->all();
+
+        $this->assertSame(__('services.deposit_of', ['amount' => '20%']), $deposits['Hair Cut & Style']);
+        $this->assertNull($deposits['Blow dry']);
     }
 
     /** A deposit switched on has to say how much it is. */
@@ -788,6 +905,7 @@ class ServicesTest extends TestCase
         $this->actingAs($this->owner)
             ->patch(route('services.update', $service), [
                 'name' => 'New name', 'duration_minutes' => 90,
+                'locations' => [$this->location()->id],
             ])
             ->assertRedirect();
 
@@ -936,6 +1054,7 @@ class ServicesTest extends TestCase
             ->post(route('services.store'), [
                 'name' => 'Swedish Massage',
                 'duration_minutes' => 60,
+                'locations' => [$this->location()->id],
                 'requires_resource' => 1,
                 'resources' => [$first->id, $second->id],
             ])
@@ -971,6 +1090,7 @@ class ServicesTest extends TestCase
             ->post(route('services.store'), [
                 'name' => 'Consultation',
                 'duration_minutes' => 15,
+                'locations' => [$this->location()->id],
                 'requires_resource' => 0,
             ])
             ->assertRedirect()
@@ -1018,6 +1138,7 @@ class ServicesTest extends TestCase
             ->patch(route('services.update', $service), [
                 'name' => $service->name,
                 'duration_minutes' => 60,
+                'locations' => [$this->location()->id],
                 'requires_resource' => 0,
                 'resources' => [$room->id],
             ])

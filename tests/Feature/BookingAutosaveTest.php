@@ -340,6 +340,74 @@ class BookingAutosaveTest extends TestCase
     }
 
     /**
+     * A journey the desk walked away from is thrown away, not left behind.
+     *
+     * The screen has been saving itself as a lead since the services were
+     * settled, so a booking abandoned at the duplicate warning would
+     * otherwise leave a call to return that nobody ever made — and the next
+     * person to open the leads list would ring a client who already has the
+     * appointment.
+     *
+     * Deliberately not cancel(): a cancelled lead is kept, because half of
+     * every answer about how many calls convert is the calls that did not.
+     * This one was never a call.
+     */
+    public function test_abandoning_the_booking_deletes_the_lead_it_was_saving_as(): void
+    {
+        $client = $this->client();
+        $service = $this->service('Cut & Finish', 45, 4500);
+
+        $saved = $this->postJson(route('bookings.draft'), [
+            'client_id' => $client->id,
+            'services' => [$service->id],
+            'date' => '2026-09-10',
+        ])->json('lead');
+
+        $this->deleteJson(route('bookings.leads.discard', ['lead' => $saved['id']]))
+            ->assertOk()
+            ->assertJson(['deleted' => true]);
+
+        $this->assertDatabaseCount('booking_leads', 0);
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    /**
+     * The appointment the warning was about is not this screen's to delete.
+     *
+     * A lead that has already become a booking is an appointment somebody was
+     * promised, and abandoning the journey beside it must never take it.
+     */
+    public function test_a_lead_that_became_a_booking_cannot_be_thrown_away(): void
+    {
+        $client = $this->client();
+        $staff = $this->staff();
+        $service = $this->service('Cut & Finish', 45, 4500);
+
+        $saved = $this->postJson(route('bookings.draft'), [
+            'client_id' => $client->id,
+            'services' => [$service->id],
+            'date' => '2026-09-10',
+        ])->json('lead');
+
+        $this->postJson(route('bookings.store'), [
+            'lead_id' => $saved['id'],
+            'client_id' => $client->id,
+            'staff_id' => $staff->id,
+            'location_id' => $this->location->id,
+            'date' => '2026-09-10',
+            'starts_at' => '10:00',
+            'services' => [$service->id],
+            'confirmation' => 'both',
+        ])->assertCreated();
+
+        $this->deleteJson(route('bookings.leads.discard', ['lead' => $saved['id']]))
+            ->assertStatus(422);
+
+        $this->assertDatabaseCount('booking_leads', 1);
+        $this->assertDatabaseCount('bookings', 1);
+    }
+
+    /**
      * An abandoned draft stays under Bookings → Leads, and never reaches the
      * diary. It is the whole point: a booking nobody finished must not read
      * as an appointment somebody was promised.
@@ -571,6 +639,10 @@ class BookingAutosaveTest extends TestCase
                 'services' => [$service->id],
                 'payment_type' => $type,
                 'deposit' => $deposit,
+                /* Three bookings of one service for one client on one day is
+                   what the duplicate warning is for. It is a warning, and
+                   this is what answering it looks like. */
+                'duplicate_ack' => true,
             ])->assertCreated()->json('booking');
 
             $booking = Booking::withoutGlobalScopes()->findOrFail($panel['id']);

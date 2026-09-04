@@ -24,6 +24,7 @@ use App\Models\TipSettings;
 use App\Payments\PaymentGatewayManager;
 use App\Payments\PaymentRequest;
 use App\Support\BookingAvailability;
+use App\Support\BookingDuplicates;
 use App\Support\BookingTotals;
 use App\Support\ClientActivityLog;
 use App\Support\ClientBookingContext;
@@ -307,6 +308,13 @@ class BookingController extends Controller
                        screen filters on a non-empty list and leaves the rest
                        alone. */
                     'location_ids' => $service->locations->pluck('id')->values(),
+                    /* What this service insists on being paid up front. The
+                       rule rather than the figure: a percentage of a bill
+                       that then grows a tip is a percentage of the new bill,
+                       and the screen has to be able to say so without asking
+                       the server again. Null for the services that ask for
+                       nothing, which is most of them. */
+                    'deposit' => $service->requiredDepositFor($currency),
                 ])->values(),
             /* Only the categories something is actually offered in: a list of
                every category the product ships with is a filter that mostly
@@ -508,6 +516,61 @@ class BookingController extends Controller
      * email address in a URL is personal data written into every access log
      * between here and the server.
      */
+    /**
+     * Whether this client is already booked for these services that day.
+     *
+     * Asked as the screen is filled in — after the client, after the
+     * services, after the time — and once more as Confirm is pressed, because
+     * the booking somebody else took while this one was being typed is
+     * exactly the one worth catching.
+     *
+     * A warning, never a refusal: a client really does come back at three for
+     * the blow-dry they had at ten. What is refused is the room being used
+     * twice, and that is availability's job rather than this one's.
+     */
+    public function duplicates(Request $request): JsonResponse
+    {
+        $this->allow($request, 'appointments.create');
+
+        $data = $request->validate([
+            'client_id' => ['nullable', 'integer', $this->ownRow('clients', $request)],
+            'services' => ['nullable', 'array'],
+            'services.*' => ['integer', $this->ownRow('services', $request)],
+            'date' => ['nullable', 'date_format:Y-m-d'],
+            'starts_at' => ['nullable', 'date_format:H:i'],
+            'minutes' => ['nullable', 'integer', 'min:0'],
+            'location_id' => ['nullable', 'integer', $this->ownRow('locations', $request)],
+            'booking_id' => ['nullable', 'integer'],
+        ]);
+
+        $services = array_values($data['services'] ?? []);
+        $minutes = (int) ($data['minutes'] ?? 0) ?: BookingDuplicates::minutesOf($services);
+
+        $matches = BookingDuplicates::on(
+            $data['client_id'] ?? null,
+            $services,
+            $data['date'] ?? null,
+            $data['starts_at'] ?? null,
+            $minutes,
+            $data['location_id'] ?? null,
+            $data['booking_id'] ?? null,
+        );
+
+        return response()->json([
+            'level' => BookingDuplicates::highest($matches, $services, $data['starts_at'] ?? null, $minutes, $data['location_id'] ?? null),
+            'matches' => $matches
+                ->map(fn (Booking $booking) => BookingDuplicates::describe(
+                    $booking,
+                    $services,
+                    $data['starts_at'] ?? null,
+                    $minutes,
+                    $data['location_id'] ?? null,
+                ))
+                ->values()
+                ->all(),
+        ]);
+    }
+
     public function matchClient(Request $request): JsonResponse
     {
         $this->allow($request, 'appointments.create');
@@ -879,6 +942,9 @@ class BookingController extends Controller
             'date' => ['required', 'date_format:Y-m-d'],
             'starts_at' => ['required', 'date_format:H:i'],
             'services' => ['required', 'array', 'min:1'],
+            /* The duplicate warning was shown and answered. A booking that
+               arrives without it has not been past the check. */
+            'duplicate_ack' => ['nullable', 'boolean'],
             /* Which room each service should go in, where somebody chose
                rather than letting the engine pick. Keyed by service id. */
             'resources' => ['nullable', 'array'],
@@ -939,6 +1005,32 @@ class BookingController extends Controller
         $minutes = (int) $services->sum(fn (Service $service) => (int) $service->duration_minutes);
         $starts = CarbonImmutable::parse($data['date'].' '.$data['starts_at']);
 
+        /* The same client, booked for the same service, twice on one day.
+
+           Asked again here rather than trusted from the screen: a booking
+           taken by somebody else while this one was being filled in is
+           exactly the duplicate the screen could not have seen.
+
+           Still a warning rather than a rule — the reader who answered it
+           sends the acknowledgement with the booking, and one that arrives
+           without an answer has not been past the check. */
+        if (! ($data['duplicate_ack'] ?? false)) {
+            $repeats = BookingDuplicates::on(
+                $data['client_id'] ?? null,
+                $data['services'],
+                $data['date'],
+                $starts->format('H:i'),
+                $minutes,
+                $data['location_id'] ?? null,
+            );
+
+            if ($repeats->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'duplicate' => __('bookings.duplicate.blocked'),
+                ]);
+            }
+        }
+
         /* The bill, worked out once and written down. Every screen that shows
            it afterwards reads what was stored rather than the price list,
            which is what stops a price edited in March rewriting what somebody
@@ -970,6 +1062,39 @@ class BookingController extends Controller
             throw ValidationException::withMessages([
                 'deposit' => __('bookings.payment.too_much'),
             ]);
+        }
+
+        /* A deposit the service itself insists on.
+           Added up across the lines rather than read off one of them: a
+           booking of three services where two take a deposit owes both.
+           Never more than the bill — a flat deposit larger than what is
+           being charged is asking for money back before the appointment.
+
+           Checked here as well as in the browser for the usual reason: the
+           browser is where it is convenient and the server is where it has
+           to be true. Paying the whole bill satisfies it; paying nothing
+           does not. */
+        $requiredDepositMinor = min(
+            (int) $services->sum(fn (Service $service) => $service->requiredDepositMinorFor($currency, $pricedFor)),
+            $totals->totalMinor,
+        );
+
+        if ($requiredDepositMinor > 0) {
+            $payingBy = $data['payment_type'] ?? 'none';
+
+            if ($payingBy === 'none') {
+                throw ValidationException::withMessages([
+                    'payment_type' => __('bookings.payment.deposit_required_error'),
+                ]);
+            }
+
+            if ($payingBy === 'deposit' && $depositMinor < $requiredDepositMinor) {
+                throw ValidationException::withMessages([
+                    'deposit' => __('bookings.payment.too_little', [
+                        'amount' => $totals->money($requiredDepositMinor),
+                    ]),
+                ]);
+            }
         }
 
         /* Nothing to collect means no method to collect it by. Cleared rather

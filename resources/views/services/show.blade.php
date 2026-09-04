@@ -115,8 +115,14 @@
                               :value="$service->priceLabel($code) ?: null" />
           @endforeach
 
-          <x-settings.field label="{{ __('services.deposit_required') }}"
-                            :value="$service->deposit_required ? __('common.yes') : __('common.no')" />
+          {{-- What was actually configured, not a yes: "20% required" and
+               "yes" are different answers, and the page is being asked which
+               deposit rather than whether. Read from the price row, which is
+               where the form wrote it. --}}
+          @foreach ($currencies as $code)
+            <x-settings.field label="{{ __('services.deposit_required') }} — {{ $code }}"
+                              :value="$service->depositLabelIn($code) ?: __('common.no')" />
+          @endforeach
         </x-settings.card>
 
         <x-settings.card title="{{ __('services.section.booking') }}"
@@ -161,9 +167,7 @@
 
         <x-settings.card title="{{ __('services.locations') }}">
           <x-settings.field label="{{ __('services.columns.location') }}">
-            @if ($service->locations->isEmpty())
-              {{ __('services.everywhere') }}
-            @else
+            @if ($service->locations->isNotEmpty())
               <span class="flex flex-wrap gap-1.5">
                 @foreach ($service->locations as $location)
                   <span class="styledesk_metachip">{{ $location->name }}</span>

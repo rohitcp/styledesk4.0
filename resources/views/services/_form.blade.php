@@ -115,17 +115,29 @@
 <section class="bg-white border border-line rounded-card p-5">
     <h2 class="text-[15px] font-semibold text-head">{{ __('services.section.who_where') }}</h2>
 
-    {{-- Empty means "anyone" and "everywhere", which is what a single-site
-         business never has to think about. --}}
+    {{-- No staff named means anyone may perform it. A location, by
+         contrast, has to be named. --}}
     <div class="space-y-4 mt-4">
         <x-combo name="staff" multiple :label="__('services.staff')"
                  :hint="__('services.staff_hint')"
                  :selected="old('staff', $service?->staff->pluck('id')->all() ?? [])"
                  :options="$staff->mapWithKeys(fn ($member) => [$member->id => $member->first_name.' '.$member->last_name])" />
 
-        <x-combo name="locations" multiple :label="__('services.locations')"
+        {{-- A single-site business has nothing to choose, so the one
+             location is already selected on both the add and edit screens.
+             The field is required, and pre-filling it saves every such
+             business a click it could never answer differently. --}}
+        @php
+            $selectedLocations = old('locations', $service?->locations->pluck('id')->all() ?? []);
+
+            if (! $selectedLocations && $locations->count() === 1) {
+                $selectedLocations = [$locations->first()->id];
+            }
+        @endphp
+
+        <x-combo name="locations" multiple required :label="__('services.locations')"
                  :hint="__('services.locations_hint')"
-                 :selected="old('locations', $service?->locations->pluck('id')->all() ?? [])"
+                 :selected="$selectedLocations"
                  :options="$locations->pluck('name', 'id')" />
     </div>
 </section>
@@ -220,9 +232,12 @@
                 </div>
             </div>
 
-            <x-toggle name="deposit_required" :label="__('services.deposit_required')"
-                      :hint="__('services.deposit_required_hint')"
-                      :checked="(bool) old('deposit_required', $service?->deposit_required ?? false)" />
+            {{-- The deposit switch used to sit here as well as on the Price
+                 card. It posted a value the save then threw away — the
+                 service column is a summary of its prices, written by
+                 syncPrices — so a reader who turned it on here found it off
+                 again when they reopened the service. One switch, on the
+                 price it is a deposit on. --}}
         </div>
     </div>
 </section>
@@ -239,55 +254,98 @@
 @if ($tips->is_enabled)
     @php
         $acceptsTips = (bool) old('accepts_tips', $service?->accepts_tips ?? true);
+
+        /* A new service opens on what the business already suggests, so the
+           common case is saved without opening this card at all. A service
+           that exists keeps its own answer — including the blank one, which
+           is a deliberate "follow the business" and must not be overwritten
+           the next time the settings change. */
+        $tipType = old('tip_type', $service ? $service->tip_type : $tips->default_tip_type);
+        $tipValue = old('tip_value', $service ? $service->tip_value : $tips->default_tip_value);
+
+        /* A flat sum is a sum of something: the quick picks wear the money
+           this business prices in. */
+        $tipSymbol = App\Support\Money::symbol(App\Support\Currencies::primaryFor(auth()->user()?->tenant));
+
+        /* Built here rather than in the loop: a directive argument holding a
+           comma inside brackets is not parsed, it is counted. */
+        $tipTypeOptions = ['' => __('tips.follows_default')];
+
+        foreach (App\Models\TipSettings::TYPES as $tipTypeOption) {
+            $tipTypeOptions[$tipTypeOption] = __('tips.types.'.$tipTypeOption);
+        }
     @endphp
 
-    <section class="styledesk_formsection">
-        <div class="styledesk_formsection__head">
-            <h2 class="styledesk_formsection__title">{{ __('tips.title') }}</h2>
-            <p class="styledesk_formsection__hint">{{ __('tips.services_hint') }}</p>
-        </div>
+    <section class="bg-white border border-line rounded-card p-5">
+        <h2 class="text-[15px] font-semibold text-head">{{ __('tips.title') }}</h2>
+        <p class="text-[12px] text-sub mt-1">{{ __('tips.service_card_hint') }}</p>
 
-        <div class="styledesk_formsection__body">
-            <div class="space-y-5">
-                <div data-tip-card>
-                    <x-toggle name="accepts_tips" :label="__('tips.accepts')"
-                              :hint="__('tips.accepts_hint')"
-                              :checked="$acceptsTips" data-tip-toggle />
+        <div class="mt-4" data-tip-card>
+            <x-toggle name="accepts_tips" :label="__('tips.accepts')"
+                      :hint="__('tips.accepts_hint')"
+                      :checked="$acceptsTips" data-tip-toggle />
 
-                    <div class="mt-3 pl-[3.25rem] space-y-4" data-tip-fields @unless ($acceptsTips) hidden @endunless>
-                        <div class="grid sm:grid-cols-2 gap-4">
-                            <div>
-                                <label for="serviceTipType" class="block text-[13px] font-medium text-ink mb-1.5">
-                                    {{ __('tips.tip_type') }}
-                                </label>
-                                <select id="serviceTipType" name="tip_type" class="sd-input">
-                                    <option value="">{{ __('tips.follows_default') }}</option>
-                                    @foreach (\App\Models\TipSettings::TYPES as $type)
-                                        <option value="{{ $type }}" @selected(old('tip_type', $service?->tip_type) === $type)>
-                                            {{ __('tips.types.'.$type) }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
+            {{-- Everything below only means anything while that switch is on.
+                 It keeps posting while hidden, so switching off and back on
+                 does not cost somebody the tip they had set. --}}
+            <div class="mt-4 pl-[3.25rem] space-y-5" data-tip-fields @unless ($acceptsTips) hidden @endunless>
+                {{-- Three answers on one line rather than a dropdown: they
+                     are the whole set, and the middle one changes what the
+                     amounts below mean. --}}
+                <fieldset>
+                    <legend class="block text-[13px] font-medium text-ink mb-1.5">{{ __('tips.tip_type') }}</legend>
 
-                            <div>
-                                <label for="serviceTipValue" class="block text-[13px] font-medium text-ink mb-1.5">
-                                    {{ __('tips.default_tip') }}
-                                </label>
-                                <input id="serviceTipValue" name="tip_value" type="number" min="0" max="100"
-                                       class="sd-input" placeholder="{{ __('tips.follows_default') }}"
-                                       value="{{ old('tip_value', $service?->tip_value) }}">
-                            </div>
+                    <div class="styledesk_seg" data-tip-type>
+                        @foreach ($tipTypeOptions as $type => $typeLabel)
+                            <label class="styledesk_seg__item">
+                                <input type="radio" name="tip_type" value="{{ $type }}" class="sr-only" @checked((string) $tipType === (string) $type)>
+                                <span>{{ $typeLabel }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </fieldset>
+
+                <div>
+                    <label for="serviceTipValue" class="block text-[13px] font-medium text-ink mb-1.5">
+                        {{ __('tips.default_tip') }}
+                    </label>
+
+                    {{-- The quick picks are the business's own suggestions,
+                         so the common answer is one click. They fill the box
+                         beside them rather than replacing it: a service that
+                         wants 18 where the business offers 15, 20 and 25 is
+                         exactly the case this card exists for. --}}
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex flex-wrap gap-2" data-tip-presets>
+                            @foreach ($tips->offeredPercentages() as $percent)
+                                <button type="button" class="styledesk_chipbtn" data-tip-preset="{{ $percent }}"
+                                        data-tip-preset-for="percent">{{ $percent }}%</button>
+                            @endforeach
+
+                            @foreach (\App\Models\TipSettings::QUICK_FIXED_AMOUNTS as $amount)
+                                <button type="button" class="styledesk_chipbtn" data-tip-preset="{{ $amount }}"
+                                        data-tip-preset-for="fixed" hidden>{{ $tipSymbol }}{{ $amount }}</button>
+                            @endforeach
                         </div>
 
-                        <x-toggle name="tip_required" :label="__('tips.require_selection')"
-                                  :hint="__('tips.require_selection_hint')"
-                                  :checked="(bool) old('tip_required', $service?->tip_required ?? $tips->require_selection)" />
-
-                        <x-toggle name="allow_no_tip" :label="__('tips.allow_no_tip')"
-                                  :hint="__('tips.allow_no_tip_hint')"
-                                  :checked="(bool) old('allow_no_tip', $service?->allow_no_tip ?? $tips->allow_no_tip)" />
+                        <div class="w-[110px]">
+                            <input id="serviceTipValue" name="tip_value" type="number" min="0" max="100"
+                                   class="sd-input" placeholder="{{ __('tips.follows_default') }}"
+                                   value="{{ $tipValue }}" data-tip-value>
+                        </div>
                     </div>
+
+                    <p class="text-[12px] text-faint mt-1.5">{{ __('tips.default_tip_hint') }}</p>
+                </div>
+
+                <div class="space-y-4 border-t border-line pt-4">
+                    <x-toggle name="tip_required" :label="__('tips.require_selection')"
+                              :hint="__('tips.require_selection_hint')"
+                              :checked="(bool) old('tip_required', $service?->tip_required ?? $tips->require_selection)" />
+
+                    <x-toggle name="allow_no_tip" :label="__('tips.allow_no_tip')"
+                              :hint="__('tips.allow_no_tip_hint')"
+                              :checked="(bool) old('allow_no_tip', $service?->allow_no_tip ?? $tips->allow_no_tip)" />
                 </div>
             </div>
         </div>

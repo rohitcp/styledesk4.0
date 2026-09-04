@@ -75,12 +75,12 @@ return [
             'description' => 'Intervals, notice periods, booking windows and appointment rules.',
         ],
         'services' => [
-            'name' => 'Services',
-            'description' => 'Service defaults, categories and how services behave when booked.',
+            'name' => 'Service Categories',
+            'description' => 'The categories your price list is organised into, including which are offered and the order they appear in.',
         ],
         'resources' => [
-            'name' => 'Resources',
-            'description' => 'Chairs, rooms, treatment and massage rooms, equipment and other bookables.',
+            'name' => 'Resource Categories',
+            'description' => 'The categories your bookable assets are grouped into — chairs, rooms, equipment — including which are offered and the order they appear in.',
         ],
         'staff' => [
             'name' => 'Staff Members',

@@ -253,6 +253,39 @@ class BookingLeadController extends Controller
     }
 
     /**
+     * Throw this one away, because the booking it was for is not happening.
+     *
+     * The opposite of cancel(), and deliberately: a cancelled lead is kept,
+     * because half of every answer about how many calls convert is the calls
+     * that did not. This is for the other case — a booking being taken right
+     * now that the desk abandons, usually because the screen has just told
+     * them the client already has this appointment. Nobody wants that call
+     * in the reports; it was never a call.
+     *
+     * Only ever the journey being abandoned. A lead that has already become
+     * an appointment is refused here — the appointment is the thing the
+     * warning was about, and it is not this screen's to delete.
+     *
+     * Its events go with it (the foreign key cascades) and any note written
+     * about the client stays on the client, simply no longer tagged with a
+     * lead that no longer exists.
+     */
+    public function discard(Request $request, BookingLead $lead): JsonResponse
+    {
+        /* The permission that wrote it rather than the one that reads the
+           list: this is the booking screen throwing away its own journey,
+           and somebody who may only look at the diary may not delete from
+           it. */
+        abort_unless($request->user()?->hasPermission('appointments.create', 'own'), 403);
+
+        abort_if($lead->booking !== null, 422);
+
+        $lead->delete();
+
+        return response()->json(['deleted' => true]);
+    }
+
+    /**
      * A note written while chasing this lead.
      *
      * Kept on the client, because that is where the next person to look this

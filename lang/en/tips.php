@@ -70,6 +70,7 @@ return [
 
     'edit_service' => 'Tip settings',
     'edit_service_for' => 'Tips — :name',
+    'service_card_hint' => 'How tipping works for this service. It starts on your App settings → Tips defaults and can be changed here without touching them.',
     'accepts' => 'Accept tips for this service',
     'accepts_hint' => 'Off for anything nobody worked on — retail, for instance.',
 

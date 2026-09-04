@@ -38,6 +38,13 @@ const props = defineProps({
     resourcesUrl: { type: String, default: '' },
     /* What the booking comes to, worked out on the server. */
     quoteUrl: { type: String, default: '' },
+    /* Whether this client is already booked for these services that day. */
+    duplicatesUrl: { type: String, default: '' },
+    /* Where the booking-in-progress is thrown away; :id is replaced. */
+    discardLeadUrlPattern: { type: String, default: '' },
+    /* Where an abandoned journey lands: the leads list when it started as a
+       lead, the bookings list when it started here. */
+    leadsUrl: { type: String, default: '' },
     /** The lead this screen was opened from, when it was opened from one. */
     lead: { type: Object, default: null },
     /** The client it is being taken for, where the screen knows already. */
@@ -352,6 +359,13 @@ function stepBlocker(step) {
 
     if (step === 'when') {
         return start.value ? null : props.labels.blockers?.time;
+    }
+
+    /* Payment carries a default that is a real answer — nothing now — except
+       where a service insists otherwise, which is the one thing on this card
+       the reader cannot simply leave. */
+    if (step === 'payment' && depositTooLittle.value) {
+        return depositShortfallMessage.value;
     }
 
     /* The last three carry defaults that are real answers — front desk,
@@ -1307,6 +1321,12 @@ const blocker = computed(() => {
         return props.labels.payment?.too_much;
     }
 
+    /* And one smaller than the services insist on is a booking the business
+       said it would not take. */
+    if (depositTooLittle.value) {
+        return depositShortfallMessage.value;
+    }
+
     if (waiverMissing.value) {
         return props.labels.payment?.waiver_needed;
     }
@@ -1689,6 +1709,103 @@ const remainingMinor = computed(() => Math.max(0, payableMinor.value - depositMi
 const depositTooMuch = computed(() => payType.value === 'deposit'
     && depositMinor.value > payableMinor.value);
 
+/* ------------------------------------------- a deposit that is not asked --
+
+   Some services are not booked without money up front, and that is a decision
+   the service already carries: "Deposit required" on the service form, as a
+   percentage of its price or as a flat sum.
+
+   Added up across the lines rather than read off one of them — a booking of
+   three services where two take a deposit owes both — and worked out from the
+   rule rather than from a figure copied at the moment of choosing, so removing
+   a service or switching to the cash price moves it on its own. */
+const depositRules = computed(() => chosen.value.map((service) => service.deposit).filter(Boolean));
+
+const requiredDepositMinor = computed(() => Math.min(
+    chosen.value.reduce((sum, service) => {
+        const rule = service.deposit;
+
+        if (!rule) {
+            return sum;
+        }
+
+        return sum + (rule.type === 'percent'
+            ? Math.round(serviceMinor(service) * rule.percent / 100)
+            : rule.minor);
+    }, 0),
+    payableMinor.value,
+));
+
+const depositIsRequired = computed(() => requiredDepositMinor.value > 0);
+
+/*
+ * The percentage to say it in, where there is one to say.
+ *
+ * Only when every chosen service asks for the same percentage: 20% of one
+ * service and nothing on the one beside it is not 20% of the booking, and a
+ * screen that said so would be telling the client a number that is wrong.
+ */
+const requiredDepositPercent = computed(() => {
+    const rules = depositRules.value;
+
+    if (!rules.length || rules.length !== chosen.value.length) {
+        return null;
+    }
+
+    return rules.every((rule) => rule.type === 'percent' && rule.percent === rules[0].percent)
+        ? rules[0].percent
+        : null;
+});
+
+/* Raised, never lowered: the desk may ask for more than the service insists
+   on, and may not ask for less. */
+const depositTooLittle = computed(() => depositIsRequired.value
+    && payType.value === 'deposit'
+    && depositMinor.value < requiredDepositMinor.value);
+
+const depositShortfallMessage = computed(() => (props.labels.payment?.too_little ?? '')
+    .replace(':amount', money(requiredDepositMinor.value)));
+
+/*
+ * The required deposit, applied the moment it applies.
+ *
+ * Watched rather than computed into the field: what is in the box is the
+ * reader's answer, and this only steps in where that answer would collect
+ * less than the services insist on — adding a service, removing one, or
+ * switching to the cash price all pass through here.
+ */
+watch([requiredDepositMinor, requiredDepositPercent, payType], () => {
+    if (!depositIsRequired.value || payType.value === 'full') {
+        return;
+    }
+
+    if (payType.value === 'none') {
+        payType.value = 'deposit';
+
+        return;
+    }
+
+    if (depositMinor.value >= requiredDepositMinor.value) {
+        return;
+    }
+
+    /* Kept as the percentage where every service agrees on one, so it follows
+       the bill the way the presets below it do. */
+    depositPercent.value = requiredDepositPercent.value;
+    deposit.value = requiredDepositPercent.value === null
+        ? (requiredDepositMinor.value / 100).toFixed(2)
+        : '';
+}, { immediate: true });
+
+/** Nothing now is not on offer while a service insists on a deposit. */
+function choosePayType(option) {
+    if (option === 'none' && depositIsRequired.value) {
+        return;
+    }
+
+    payType.value = option;
+}
+
 function setDepositPercent(percent) {
     depositPercent.value = percent;
     deposit.value = '';
@@ -1720,6 +1837,168 @@ const waiverMissing = computed(() => payType.value !== 'none'
 
 /* What is handed over minus what is owed. Shown live, because the number a
    receptionist needs is the one they are counting back into somebody's hand. */
+/* ---------------------------------------------- the same booking twice ----
+
+   The same client, booked for the same service, twice on one day.
+
+   A warning and not a rule. A client really does come back at three for the
+   blow-dry they had at ten, so this says how alike the two bookings are and
+   leaves the decision to the person holding the phone. What is actually
+   refused — the chair being used twice — is availability's job, and stays
+   there.
+
+   Asked as the answers arrive and again as Confirm is pressed: the booking
+   somebody else took while this one was being typed is the one worth
+   catching, and it can only be caught at the end. */
+const repeatBookings = ref([]);
+const duplicateLevel = ref(null);
+const duplicateOpen = ref(false);
+
+/*
+ * What was warned about, and what was answered.
+ *
+ * Keyed on the booking itself rather than a bare flag: "continue anyway" is
+ * an answer about this client, these services, this day and this time, and
+ * changing any of them asks the question again.
+ */
+const duplicateKey = computed(() => JSON.stringify([
+    client.value?.id ?? null,
+    chosen.value.map((service) => service.id).sort(),
+    date.value,
+    start.value,
+    locationId.value || null,
+]));
+
+const duplicateAcked = ref(null);
+const duplicateAsked = ref(null);
+
+let duplicateTimer = null;
+
+async function checkDuplicates() {
+    if (!client.value || !chosen.value.length || !date.value) {
+        repeatBookings.value = [];
+        duplicateLevel.value = null;
+
+        return [];
+    }
+
+    const { ok, json } = await send(props.duplicatesUrl, {
+        client_id: client.value.id,
+        services: chosen.value.map((service) => service.id),
+        date: date.value,
+        starts_at: start.value || null,
+        minutes: minutes.value || null,
+        location_id: locationId.value || null,
+        booking_id: booking.value?.id ?? null,
+    });
+
+    if (!ok) {
+        /* A check that could not be run is not a duplicate found. The desk is
+           not stopped by this screen failing to ask. */
+        return [];
+    }
+
+    repeatBookings.value = json.matches ?? [];
+    duplicateLevel.value = json.level ?? null;
+
+    return repeatBookings.value;
+}
+
+/* Debounced, because it moves with every answer on the screen — and only
+   shown once per version of the booking, so a reader who said "continue" is
+   not asked again for scrolling past the same card. */
+watch(duplicateKey, () => {
+    clearTimeout(duplicateTimer);
+
+    duplicateTimer = setTimeout(async () => {
+        const found = await checkDuplicates();
+
+        if (found.length && duplicateAcked.value !== duplicateKey.value && duplicateAsked.value !== duplicateKey.value) {
+            duplicateAsked.value = duplicateKey.value;
+            duplicateOpen.value = true;
+        }
+    }, 400);
+}, { immediate: true });
+
+/** Taken anyway: a decision about this booking, and only this one. */
+function acceptDuplicate() {
+    duplicateAcked.value = duplicateKey.value;
+    duplicateOpen.value = false;
+
+    confirmBooking();
+}
+
+function dismissDuplicate() {
+    duplicateOpen.value = false;
+}
+
+/* ------------------------------------------- abandoning the whole journey --
+
+   "Cancel this booking" is not "close this dialog". The screen has been
+   saving itself as a lead since the services were settled, so walking away
+   from a duplicate would otherwise leave a call to return that nobody ever
+   made — and the next person to open the leads list would ring a client who
+   already has the appointment.
+
+   So it throws the journey away: the lead this screen wrote, and the events
+   that belong to it. Never the booking the warning was about, which is
+   somebody's appointment and not this screen's to touch.
+
+   Confirmed first, because it deletes. */
+const discardOpen = ref(false);
+const discarding = ref(false);
+
+/* Where the journey started, read once at mount: a lead reopened from the
+   leads list belongs back there, and a booking started here belongs on the
+   bookings list. */
+const startedFromLead = props.lead !== null;
+
+function askToDiscard() {
+    duplicateOpen.value = false;
+    discardOpen.value = true;
+}
+
+function keepBooking() {
+    discardOpen.value = false;
+}
+
+async function discardBooking() {
+    if (discarding.value) {
+        return;
+    }
+
+    discarding.value = true;
+
+    /* Nothing more is written from here: a save still queued would put back
+       the lead that is being thrown away. */
+    clearTimeout(autosaveTimer);
+    autosaveState.value = '';
+
+    const held = lead.value;
+
+    if (held && props.discardLeadUrlPattern) {
+        await send(props.discardLeadUrlPattern.replace(':id', held.id), {}, 'DELETE');
+    }
+
+    window.location.href = startedFromLead && props.leadsUrl ? props.leadsUrl : props.cancelUrl;
+}
+
+/* One sentence, in the strength the match deserves. */
+const duplicateMessage = computed(() => {
+    const first = repeatBookings.value[0];
+
+    if (!first) {
+        return '';
+    }
+
+    const key = { exact: 'message_exact', overlap: 'message_overlap' }[duplicateLevel.value] ?? 'message';
+
+    return (props.labels.duplicate?.[key] ?? '')
+        .replace(':client', who.value ?? '')
+        .replace(':service', first.services.join(', '))
+        .replace(':date', first.date ?? '');
+});
+
 function bookingBody() {
     return {
         client_id: client.value?.id ?? null,
@@ -1763,6 +2042,10 @@ function bookingBody() {
         /* The booking-in-progress this finishes. Converting it is what keeps
            the reference the receptionist may already have read out. */
         lead_id: lead.value?.id ?? null,
+        /* The warning was shown and answered. Without it the server refuses
+           the booking, which is what makes the last check a check rather
+           than a courtesy. */
+        duplicate_ack: duplicateAcked.value === duplicateKey.value,
     };
 }
 
@@ -1804,6 +2087,21 @@ async function confirmBooking() {
 
     busy.value = true;
     failure.value = '';
+
+    /* Asked once more, because a booking taken by somebody else while this
+       one was being filled in is exactly the duplicate worth catching — and
+       it can only be caught here. */
+    if (duplicateAcked.value !== duplicateKey.value) {
+        const found = await checkDuplicates();
+
+        if (found.length) {
+            busy.value = false;
+            duplicateAsked.value = duplicateKey.value;
+            duplicateOpen.value = true;
+
+            return;
+        }
+    }
 
     const held = booking.value;
     const { ok, json } = held
@@ -3205,6 +3503,22 @@ const summaryOf = (section) => {
                 </button>
 
                 <div v-show="open === 'payment'" class="p-4 pt-0">
+                    <!-- Said before the options rather than after them: the
+                         reader is about to find "No Payment Now" greyed out,
+                         and a control that refuses without saying why is the
+                         one people ring support about. -->
+                    <div v-if="depositIsRequired"
+                         class="mt-[5px] rounded-lg border border-brand/30 bg-brand/5 px-4 py-3">
+                        <p class="text-[13px] font-semibold text-head">
+                            {{ labels.payment?.deposit_required }} —
+                            <template v-if="requiredDepositPercent !== null">
+                                {{ (labels.payment?.preset ?? ':percent%').replace(':percent', requiredDepositPercent) }}
+                            </template>
+                            {{ money(requiredDepositMinor) }}
+                        </p>
+                        <p class="text-[12px] text-sub mt-0.5">{{ labels.payment?.deposit_required_hint }}</p>
+                    </div>
+
                     <fieldset class="mt-[5px]">
                         <legend class="block text-[13px] font-medium text-ink mb-2">{{ labels.payment?.type }}</legend>
                         <!-- Three answers, because they are three different
@@ -3214,7 +3528,8 @@ const summaryOf = (section) => {
                             <button v-for="option in ['none', 'deposit', 'full']" :key="option"
                                     type="button" class="styledesk_optioncard" :class="{ 'is-on': payType === option }"
                                     :aria-pressed="payType === option"
-                                    @click="payType = option">
+                                    :disabled="option === 'none' && depositIsRequired"
+                                    @click="choosePayType(option)">
                                 <span class="block text-[13px] font-semibold text-head">{{ labels.payment?.[option] }}</span>
                                 <span class="block text-[12px] text-sub">{{ labels.payment?.[`${option}_hint`] }}</span>
                             </button>
@@ -3298,13 +3613,18 @@ const summaryOf = (section) => {
                             <!-- Typing an amount is choosing an amount, so
                                  the percentage stops applying — the same
                                  rule the tip follows. -->
-                            <input id="bDeposit" v-model="deposit" type="number" min="0" step="0.01" class="sd-input"
+                            <input id="bDeposit" v-model="deposit" type="number" :min="requiredDepositMinor / 100"
+                                   step="0.01" class="sd-input"
                                    :placeholder="depositPercent === null ? '' : money(depositMinor)"
                                    @input="typeDepositAmount">
                         </div>
 
                         <p v-if="depositTooMuch" class="mt-1.5 text-[12px] text-danger">
                             {{ labels.payment?.too_much }}
+                        </p>
+
+                        <p v-else-if="depositTooLittle" class="mt-1.5 text-[12px] text-danger">
+                            {{ depositShortfallMessage }}
                         </p>
 
                         <!-- What is being taken now and what stays owing.
@@ -3532,6 +3852,132 @@ const summaryOf = (section) => {
                     <a :href="newClientUrl" class="styledesk_modalfoot__note font-semibold text-link">
                         {{ labels.new_client?.full_form }}
                     </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- The same client, booked for the same service, twice on one day.
+
+             Three strengths of the same warning, because they are three
+             different mistakes: another appointment the same day is usually
+             meant, one that overlaps usually is not, and one at the same
+             time in the same branch almost never is. Only the last makes
+             abandoning the new booking the obvious button. -->
+        <div v-if="duplicateOpen" class="styledesk_modal" role="dialog" aria-modal="true"
+             aria-labelledby="duplicateTitle">
+            <div class="styledesk_modal__scrim" @click="dismissDuplicate"></div>
+
+            <div class="styledesk_modal__panel">
+                <div class="styledesk_modal__head">
+                    <h2 id="duplicateTitle" class="text-[15px] font-semibold text-head">
+                        {{ duplicateLevel === 'exact' ? labels.duplicate?.title_exact : labels.duplicate?.title }}
+                    </h2>
+
+                    <button type="button" class="styledesk_modal__close" :aria-label="labels.cancel"
+                            @click="dismissDuplicate">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="styledesk_modal__body">
+                    <p class="text-[13px] text-ink leading-relaxed"
+                       :class="duplicateLevel === 'same_day' ? '' : 'font-semibold'">
+                        {{ duplicateMessage }}
+                    </p>
+
+                    <p class="text-[12px] font-semibold text-sub mt-4 mb-1.5">{{ labels.duplicate?.existing }}</p>
+
+                    <ul class="space-y-2">
+                        <li v-for="match in repeatBookings" :key="match.id"
+                            class="rounded-lg border border-line px-3 py-2.5">
+                            <p class="text-[13px] font-semibold text-head">{{ match.date }}</p>
+                            <p class="text-[13px] text-ink">{{ match.time }}</p>
+                            <p class="text-[12px] text-sub mt-0.5">{{ match.services.join(', ') }}</p>
+                            <p class="text-[12px] text-sub">
+                                <span v-if="match.staff">{{ match.staff }}</span>
+                                <span v-if="match.staff && match.location"> · </span>
+                                <span v-if="match.location">{{ match.location }}</span>
+                            </p>
+
+                            <a :href="match.url" target="_blank" rel="noopener"
+                               class="inline-block mt-1.5 text-[12px] font-semibold text-link">
+                                {{ labels.duplicate?.view }}
+                            </a>
+                        </li>
+                    </ul>
+
+                    <p class="text-[12.5px] text-sub mt-4">{{ labels.duplicate?.ask }}</p>
+                </div>
+
+                <!-- On an exact duplicate the safe answer leads: the reader is
+                     one click from writing the same appointment down twice. -->
+                <div class="styledesk_modalfoot">
+                    <button v-if="duplicateLevel === 'exact'" type="button"
+                            class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors"
+                            @click="askToDiscard">
+                        {{ labels.duplicate?.cancel }}
+                    </button>
+
+                    <button v-else type="button"
+                            class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors"
+                            @click="acceptDuplicate">
+                        {{ labels.duplicate?.continue }}
+                    </button>
+
+                    <button v-if="duplicateLevel === 'exact'" type="button" class="styledesk_action"
+                            @click="acceptDuplicate">
+                        {{ labels.duplicate?.create_anyway }}
+                    </button>
+
+                    <button v-else type="button" class="styledesk_action" @click="askToDiscard">
+                        {{ labels.duplicate?.cancel }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Abandoning the journey deletes it, so it is confirmed first.
+             The scrim keeps the booking rather than deleting it: a stray
+             click outside a dialog must never be the thing that throws work
+             away. -->
+        <div v-if="discardOpen" class="styledesk_modal" role="dialog" aria-modal="true"
+             aria-labelledby="discardTitle">
+            <div class="styledesk_modal__scrim" @click="keepBooking"></div>
+
+            <div class="styledesk_modal__panel">
+                <div class="styledesk_modal__head">
+                    <h2 id="discardTitle" class="text-[15px] font-semibold text-head">
+                        {{ labels.duplicate?.discard_title }}
+                    </h2>
+
+                    <button type="button" class="styledesk_modal__close" :aria-label="labels.duplicate?.keep"
+                            @click="keepBooking">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="styledesk_modal__body">
+                    <p class="text-[13px] text-ink leading-relaxed">{{ labels.duplicate?.discard_body }}</p>
+                    <p class="text-[12.5px] text-sub mt-2">{{ labels.duplicate?.discard_keeps }}</p>
+                </div>
+
+                <!-- Keeping the booking leads: the destructive answer is the
+                     one being confirmed, not the one being offered. -->
+                <div class="styledesk_modalfoot">
+                    <button type="button"
+                            class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors"
+                            @click="keepBooking">
+                        {{ labels.duplicate?.keep }}
+                    </button>
+
+                    <button type="button" class="styledesk_action styledesk_action--danger"
+                            :disabled="discarding" @click="discardBooking">
+                        {{ labels.duplicate?.discard_confirm }}
+                    </button>
                 </div>
             </div>
         </div>

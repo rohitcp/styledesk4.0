@@ -467,6 +467,116 @@ class TipsTest extends TestCase
     }
 
     /**
+     * A new service opens on the business's own suggestion.
+     *
+     * Copied onto the form rather than left blank: a salon that suggests 20%
+     * suggests it on the service it adds today too, and a card showing
+     * "follows the default" made every one of them a decision to look up.
+     */
+    public function test_the_add_service_form_opens_on_the_business_tip_settings(): void
+    {
+        $this->settings(['default_tip_type' => 'percent', 'default_tip_value' => 18]);
+
+        $this->actingAs($this->owner)
+            ->get(route('services.create'))
+            ->assertOk()
+            ->assertSee('value="18"', false)
+            ->assertSee('name="tip_type" value="percent" class="sr-only" checked>', false);
+    }
+
+    /**
+     * The quick picks are the business's own suggestions.
+     *
+     * A shortcut into the box rather than the answer itself: the percentages
+     * come from what the till offers, and a flat sum — which has no
+     * business-wide list — gets three round numbers to save the typing.
+     */
+    public function test_the_tip_card_offers_the_business_percentages_as_quick_picks(): void
+    {
+        $this->settings(['percentages' => [15, 20, 25]]);
+
+        $page = $this->actingAs($this->owner)->get(route('services.create'))->assertOk();
+
+        foreach ([15, 20, 25] as $percent) {
+            $page->assertSee('data-tip-preset="'.$percent.'"', false)->assertSee($percent.'%');
+        }
+
+        foreach (TipSettings::QUICK_FIXED_AMOUNTS as $amount) {
+            $page->assertSee('data-tip-preset="'.$amount.'"', false);
+        }
+    }
+
+    /**
+     * What the reader typed is what is saved, and it is saved on that service
+     * alone: the business settings are not touched by a service form.
+     */
+    public function test_a_tip_changed_while_adding_a_service_is_saved_on_that_service_only(): void
+    {
+        $settings = $this->settings(['default_tip_type' => 'percent', 'default_tip_value' => 20]);
+
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Balayage', 'duration_minutes' => 90,
+                'locations' => [$this->location->id],
+                'accepts_tips' => '1', 'tip_type' => 'percent', 'tip_value' => '18',
+            ])
+            ->assertRedirect();
+
+        $service = Service::withoutGlobalScopes()->where('name', 'Balayage')->firstOrFail();
+
+        $this->assertSame(18, (int) $service->tip_value);
+        $this->assertSame(20, (int) $settings->fresh()->default_tip_value);
+    }
+
+    /**
+     * The copy happens once, when the service is added.
+     *
+     * A service that named its own tip keeps it when the business changes its
+     * mind, and one that never disagreed still shows the blank that means
+     * "follow the business" rather than being filled in behind the reader.
+     */
+    public function test_the_business_settings_do_not_reopen_a_saved_service(): void
+    {
+        $this->settings(['default_tip_value' => 20]);
+
+        $customised = $this->service('Balayage', 12000, ['tip_type' => 'percent', 'tip_value' => 18]);
+        $follows = $this->service('Blow dry', 4000);
+
+        $this->settings(['default_tip_value' => 25]);
+
+        $this->actingAs($this->owner)
+            ->get(route('services.edit', $customised))
+            ->assertOk()
+            ->assertSee('value="18"', false)
+            ->assertDontSee('value="25"', false);
+
+        $this->actingAs($this->owner)
+            ->get(route('services.edit', $follows))
+            ->assertOk()
+            ->assertSee('id="serviceTipValue" name="tip_value" type="number" min="0" max="100"', false)
+            ->assertDontSee('value="25"', false);
+    }
+
+    /** Tipping switched off business-wide is not switched on by adding a service. */
+    public function test_the_add_service_form_asks_nothing_about_tips_while_tipping_is_off(): void
+    {
+        $this->actingAs($this->owner)
+            ->get(route('services.create'))
+            ->assertOk()
+            ->assertDontSee(__('tips.accepts'));
+
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Blow dry', 'duration_minutes' => 30, 'locations' => [$this->location->id],
+            ])
+            ->assertRedirect();
+
+        $this->assertNull(
+            Service::withoutGlobalScopes()->where('name', 'Blow dry')->firstOrFail()->accepts_tips,
+        );
+    }
+
+    /**
      * A card asking how much to suggest, in a salon that has never tipped
      * anybody, is a question with no answer.
      */

@@ -85,6 +85,42 @@ class Service extends Model
         return (int) ($this->prices->firstWhere('currency_code', $currency)?->minorFor($method) ?? 0);
     }
 
+    /**
+     * The deposit rule in words: "20% required", "$30.00 required", nothing.
+     *
+     * Read from the price row, which is where it is stored — the listing, the
+     * detail page and the booking screen all ask this rather than each
+     * working out their own answer from their own column.
+     */
+    public function depositLabelIn(string $currency): ?string
+    {
+        $price = $this->prices->firstWhere('currency_code', $currency);
+        $label = $price?->depositLabel();
+
+        return $label ? __('services.deposit_of', ['amount' => $label]) : null;
+    }
+
+    /**
+     * The deposit this service insists on, paid this way, in minor units.
+     *
+     * Zero where none is required — which is most services — so a booking can
+     * simply add these up across its lines.
+     */
+    public function requiredDepositMinorFor(string $currency, string $method = 'card'): int
+    {
+        return (int) ($this->prices->firstWhere('currency_code', $currency)?->requiredDepositMinor($method) ?? 0);
+    }
+
+    /**
+     * The rule itself, for a screen that has to recalculate as the bill moves.
+     *
+     * @return array{type: string, percent: ?int, minor: ?int}|null
+     */
+    public function requiredDepositFor(string $currency): ?array
+    {
+        return $this->prices->firstWhere('currency_code', $currency)?->requiredDeposit();
+    }
+
     /** The cash price as a form field holds it. */
     public function cashPriceIn(string $currency): string
     {

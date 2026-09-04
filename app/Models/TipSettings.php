@@ -35,6 +35,15 @@ class TipSettings extends Model
      */
     public const DEFAULT_PERCENTAGES = [15, 18, 20, 25];
 
+    /**
+     * Quick picks for a flat sum, on the service form.
+     *
+     * Shortcuts into the box beside them rather than a setting: a flat tip
+     * has no business-wide list to read, and three round numbers save the
+     * typing without claiming to be what the business offers.
+     */
+    public const QUICK_FIXED_AMOUNTS = [5, 10, 15];
+
     protected function casts(): array
     {
         return [

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Location;
 use App\Models\Service;
 use App\Models\StoredFile;
 use App\Models\Tenant;
@@ -27,6 +28,8 @@ class ServiceImagesTest extends TestCase
     private Tenant $tenant;
 
     private User $owner;
+
+    private ?Location $location = null;
 
     protected function setUp(): void
     {
@@ -75,6 +78,16 @@ class ServiceImagesTest extends TestCase
             ->update(['current_step' => 'services', 'completed_at' => null]);
 
         $this->tenant->syncCurrencies(['USD']);
+    }
+
+    /** The one location every saved service has to name. */
+    private function location(): Location
+    {
+        return $this->location ??= Location::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Main Location', 'address_line1' => '1 Main St', 'city' => 'Leeds',
+            'postal_code' => 'LS1 1AA', 'country' => 'GB', 'timezone' => 'Europe/London',
+        ]);
     }
 
     private function service(array $attributes = []): Service
@@ -161,6 +174,7 @@ class ServiceImagesTest extends TestCase
             ->post('http://styledesk.test/services', [
                 'name' => 'Balayage',
                 'duration_minutes' => 90,
+                'locations' => [$this->location()->id],
                 'images' => [$first, $second],
                 'default_image_id' => $second,
             ])
@@ -182,6 +196,7 @@ class ServiceImagesTest extends TestCase
 
         $this->actingAs($this->owner)->post('http://styledesk.test/services', [
             'name' => 'Balayage', 'duration_minutes' => 90,
+            'locations' => [$this->location()->id],
             'images' => [$first, $second], 'default_image_id' => $second,
         ]);
 
@@ -197,6 +212,7 @@ class ServiceImagesTest extends TestCase
 
         $this->actingAs($this->owner)->post('http://styledesk.test/services', [
             'name' => 'Balayage', 'duration_minutes' => 90,
+            'locations' => [$this->location()->id],
             'images' => [$first, $second], 'default_image_id' => $first,
         ]);
 
@@ -204,6 +220,7 @@ class ServiceImagesTest extends TestCase
 
         $this->actingAs($this->owner)->patch('http://styledesk.test/services/'.$service->id, [
             'name' => 'Balayage', 'duration_minutes' => 90,
+            'locations' => [$this->location()->id],
             'images' => [$second], 'default_image_id' => $second,
         ]);
 
@@ -218,6 +235,7 @@ class ServiceImagesTest extends TestCase
 
         $this->actingAs($this->owner)->post('http://styledesk.test/services', [
             'name' => 'Balayage', 'duration_minutes' => 90,
+            'locations' => [$this->location()->id],
             'images' => [$first], 'default_image_id' => 999999,
         ]);
 
@@ -230,6 +248,7 @@ class ServiceImagesTest extends TestCase
     {
         $this->actingAs($this->owner)->post('http://styledesk.test/services', [
             'name' => 'Blow dry', 'duration_minutes' => 30,
+            'locations' => [$this->location()->id],
         ])->assertRedirect(route('services.index'));
 
         $service = Service::withoutGlobalScopes()->where('name', 'Blow dry')->firstOrFail();
@@ -244,6 +263,7 @@ class ServiceImagesTest extends TestCase
 
         $this->actingAs($this->owner)->post('http://styledesk.test/services', [
             'name' => 'Balayage', 'duration_minutes' => 90,
+            'locations' => [$this->location()->id],
             'images' => [$id], 'default_image_id' => $id,
         ]);
 
@@ -378,6 +398,7 @@ class ServiceImagesTest extends TestCase
 
         $this->actingAs($this->owner)->post('http://styledesk.test/services', [
             'name' => 'Balayage', 'duration_minutes' => 90,
+            'locations' => [$this->location()->id],
             'images' => [$theirFile->id], 'default_image_id' => $theirFile->id,
         ]);
 
@@ -404,6 +425,7 @@ class ServiceImagesTest extends TestCase
 
         $this->actingAs($this->owner)->post('http://styledesk.test/services', [
             'name' => 'Balayage', 'duration_minutes' => 90,
+            'locations' => [$this->location()->id],
             'images' => [$document->id], 'default_image_id' => $document->id,
         ]);
 

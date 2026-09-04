@@ -81,6 +81,20 @@ class BookingTest extends TestCase
         return $service;
     }
 
+    /** A service that will not be booked without money up front. */
+    private function serviceWithDeposit(string $name, int $minor, string $type, int $value): Service
+    {
+        $service = $this->service($name, 60, $minor);
+
+        $service->prices()->first()->update([
+            'deposit_required' => true, 'deposit_type' => $type, 'deposit_value' => $value,
+        ]);
+
+        $service->forceFill(['deposit_required' => true])->save();
+
+        return $service->fresh()->load('prices');
+    }
+
     private function client(): Client
     {
         return Client::withoutGlobalScopes()->create([
@@ -800,6 +814,10 @@ class BookingTest extends TestCase
                 'date' => now()->modify($when)->format('Y-m-d'),
                 'starts_at' => $at,
                 'services' => [$service->id],
+                /* Two of these are the same service for the same client on
+                   one day, which is what the duplicate warning is for. It is
+                   a warning: answered, the booking is taken. */
+                'duplicate_ack' => true,
             ])->assertCreated();
         }
 
@@ -1445,5 +1463,293 @@ class BookingTest extends TestCase
         /* The service's own branch travels with it, so a service offered at
            one location only disappears from the list at the others. */
         $this->assertStringContainsString((string) $this->location->id, $html);
+    }
+
+    // ------------------------------------------------- a required deposit
+
+    /**
+     * The deposit a service insists on travels with the service.
+     *
+     * The rule rather than the figure: a percentage of a bill that then grows
+     * a tip is a percentage of the new bill, and the screen works it out
+     * itself as services come and go.
+     */
+    public function test_the_screen_is_told_what_deposit_each_service_insists_on(): void
+    {
+        $owner = $this->owner();
+        $this->serviceWithDeposit('Swedish Massage', 12000, 'percent', 20);
+        $this->service('Blow dry', 30, 4000);
+
+        $html = $this->actingAs($owner)->get(route('bookings.create'))->assertOk()->getContent();
+
+        /* Raw, not escaped: the props sit inside a single-quoted attribute,
+           so the JSON's own double quotes are left as they are. */
+        $this->assertStringContainsString('"deposit":{"type":"percent","percent":20,"minor":null}', $html);
+        $this->assertStringContainsString('"deposit":null', $html);
+    }
+
+    /** Nothing collected is not on offer where a service insists on a deposit. */
+    public function test_a_booking_of_a_deposit_service_cannot_be_taken_with_nothing_collected(): void
+    {
+        $owner = $this->owner();
+        $service = $this->serviceWithDeposit('Swedish Massage', 12000, 'percent', 20);
+
+        $this->actingAs($owner)
+            ->post(route('bookings.store'), $this->payload($owner, [$service->id]))
+            ->assertSessionHasErrors('payment_type');
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    /** A percentage deposit is worked out from what the booking comes to. */
+    public function test_a_percentage_deposit_is_taken_from_the_booking_total(): void
+    {
+        $owner = $this->owner();
+        $service = $this->serviceWithDeposit('Swedish Massage', 12000, 'percent', 20);
+
+        $this->actingAs($owner)
+            ->post(route('bookings.store'), $this->payload($owner, [$service->id], [
+                'payment_type' => 'deposit', 'deposit' => '23.99',
+            ]))
+            ->assertSessionHasErrors('deposit');
+
+        $this->actingAs($owner)
+            ->post(route('bookings.store'), $this->payload($owner, [$service->id], [
+                'payment_type' => 'deposit', 'deposit' => '24.00',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(2400, (int) Booking::withoutGlobalScopes()->firstOrFail()->deposit_minor);
+    }
+
+    /**
+     * Several services, several deposits — and the booking owes all of them.
+     *
+     * 20% of $100 and a flat $30 is $50, with the untipped service in the
+     * middle adding nothing: a booking that read one line and stopped would
+     * collect the wrong number without anything looking wrong.
+     */
+    public function test_the_deposits_of_several_services_are_added_up(): void
+    {
+        $owner = $this->owner();
+
+        $first = $this->serviceWithDeposit('Colour', 10000, 'percent', 20);
+        $second = $this->service('Blow dry', 30, 8000);
+        $third = $this->serviceWithDeposit('Massage', 15000, 'fixed', 3000);
+
+        $services = [$first->id, $second->id, $third->id];
+
+        $this->actingAs($owner)
+            ->post(route('bookings.store'), $this->payload($owner, $services, [
+                'payment_type' => 'deposit', 'deposit' => '49.00',
+            ]))
+            ->assertSessionHasErrors('deposit');
+
+        $this->actingAs($owner)
+            ->post(route('bookings.store'), $this->payload($owner, $services, [
+                'payment_type' => 'deposit', 'deposit' => '50.00',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(5000, (int) Booking::withoutGlobalScopes()->firstOrFail()->deposit_minor);
+    }
+
+    /** Paying the whole bill is more than the deposit asked for, not less. */
+    public function test_paying_in_full_satisfies_a_required_deposit(): void
+    {
+        $owner = $this->owner();
+        $service = $this->serviceWithDeposit('Swedish Massage', 12000, 'percent', 20);
+
+        $this->actingAs($owner)
+            ->post(route('bookings.store'), $this->payload($owner, [$service->id], [
+                'payment_type' => 'full',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('bookings', 1);
+    }
+
+    /** A service that asks for nothing leaves the booking as it was. */
+    public function test_a_booking_without_a_deposit_service_still_collects_nothing(): void
+    {
+        $owner = $this->owner();
+        $service = $this->service('Blow dry', 30, 4000);
+
+        $this->actingAs($owner)
+            ->post(route('bookings.store'), $this->payload($owner, [$service->id]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(0, (int) Booking::withoutGlobalScopes()->firstOrFail()->deposit_minor);
+    }
+
+    // ------------------------------------------------ the same booking twice
+
+    /**
+     * Same client, same service, same day, different times.
+     *
+     * A warning and nothing more: a client really does come back at three for
+     * the blow-dry they had at ten, and a screen that refused it would be
+     * booked around rather than obeyed.
+     */
+    public function test_a_second_booking_of_the_same_service_that_day_is_a_warning(): void
+    {
+        $owner = $this->owner();
+        $client = $this->client();
+        $service = $this->service('Hair Cut & Style', 60, 6000);
+
+        $this->actingAs($owner)->post(route('bookings.store'), $this->payload($owner, [$service->id], [
+            'client_id' => $client->id, 'starts_at' => '10:10',
+        ]))->assertSessionHasNoErrors();
+
+        $answer = $this->actingAs($owner)->postJson(route('bookings.duplicates'), [
+            'client_id' => $client->id,
+            'services' => [$service->id],
+            'date' => '2026-09-10',
+            'starts_at' => '15:00',
+            'minutes' => 60,
+        ])->assertOk();
+
+        $answer->assertJsonPath('level', 'same_day');
+        $this->assertSame('10:10 AM – 11:10 AM', $answer->json('matches.0.time'));
+        $this->assertSame(['Hair Cut & Style'], $answer->json('matches.0.services'));
+    }
+
+    /** Running over an existing one is the stronger warning. */
+    public function test_an_overlapping_booking_of_the_same_service_is_flagged_harder(): void
+    {
+        $owner = $this->owner();
+        $client = $this->client();
+        $service = $this->service('Hair Cut & Style', 60, 6000);
+
+        $this->actingAs($owner)->post(route('bookings.store'), $this->payload($owner, [$service->id], [
+            'client_id' => $client->id, 'starts_at' => '10:10',
+        ]))->assertSessionHasNoErrors();
+
+        $this->actingAs($owner)->postJson(route('bookings.duplicates'), [
+            'client_id' => $client->id,
+            'services' => [$service->id],
+            'date' => '2026-09-10',
+            'starts_at' => '10:30',
+            'minutes' => 60,
+        ])->assertOk()->assertJsonPath('level', 'overlap');
+    }
+
+    /** Same branch, same start, same end: two rows saying one thing. */
+    public function test_the_same_booking_written_twice_is_an_exact_duplicate(): void
+    {
+        $owner = $this->owner();
+        $client = $this->client();
+        $service = $this->service('Hair Cut & Style', 60, 6000);
+
+        $this->actingAs($owner)->post(route('bookings.store'), $this->payload($owner, [$service->id], [
+            'client_id' => $client->id, 'starts_at' => '10:10',
+        ]))->assertSessionHasNoErrors();
+
+        $this->actingAs($owner)->postJson(route('bookings.duplicates'), [
+            'client_id' => $client->id,
+            'services' => [$service->id],
+            'date' => '2026-09-10',
+            'starts_at' => '10:10',
+            'minutes' => 60,
+            'location_id' => $this->location->id,
+        ])->assertOk()->assertJsonPath('level', 'exact');
+    }
+
+    /** A different service, or a different client, is a different booking. */
+    public function test_another_service_on_the_same_day_is_not_a_duplicate(): void
+    {
+        $owner = $this->owner();
+        $client = $this->client();
+        $cut = $this->service('Hair Cut & Style', 60, 6000);
+        $colour = $this->service('Colour', 90, 12000);
+
+        $this->actingAs($owner)->post(route('bookings.store'), $this->payload($owner, [$cut->id], [
+            'client_id' => $client->id, 'starts_at' => '10:10',
+        ]))->assertSessionHasNoErrors();
+
+        $this->actingAs($owner)->postJson(route('bookings.duplicates'), [
+            'client_id' => $client->id,
+            'services' => [$colour->id],
+            'date' => '2026-09-10',
+            'starts_at' => '10:10',
+            'minutes' => 90,
+        ])->assertOk()->assertJsonPath('level', null)->assertJsonCount(0, 'matches');
+    }
+
+    /** A booking called off is not one the client is about to have twice. */
+    public function test_a_cancelled_booking_is_not_a_duplicate(): void
+    {
+        $owner = $this->owner();
+        $client = $this->client();
+        $service = $this->service('Hair Cut & Style', 60, 6000);
+
+        $this->actingAs($owner)->post(route('bookings.store'), $this->payload($owner, [$service->id], [
+            'client_id' => $client->id, 'starts_at' => '10:10',
+        ]))->assertSessionHasNoErrors();
+
+        Booking::withoutGlobalScopes()->firstOrFail()->forceFill(['status' => 'cancelled'])->save();
+
+        $this->actingAs($owner)->postJson(route('bookings.duplicates'), [
+            'client_id' => $client->id,
+            'services' => [$service->id],
+            'date' => '2026-09-10',
+            'starts_at' => '10:10',
+            'minutes' => 60,
+        ])->assertOk()->assertJsonCount(0, 'matches');
+    }
+
+    /**
+     * The check runs again on the way in.
+     *
+     * The booking somebody else took while this one was being filled in is
+     * the duplicate the screen could not have seen, so the server asks once
+     * more — and takes the booking as soon as the warning has been answered.
+     */
+    public function test_the_duplicate_is_refused_until_the_warning_is_answered(): void
+    {
+        $owner = $this->owner();
+        $client = $this->client();
+        $service = $this->service('Hair Cut & Style', 60, 6000);
+
+        $first = $this->payload($owner, [$service->id], ['client_id' => $client->id, 'starts_at' => '10:10']);
+
+        $this->actingAs($owner)->post(route('bookings.store'), $first)->assertSessionHasNoErrors();
+
+        $this->actingAs($owner)
+            ->post(route('bookings.store'), $this->payload($owner, [$service->id], [
+                'client_id' => $client->id, 'starts_at' => '15:00',
+            ]))
+            ->assertSessionHasErrors('duplicate');
+
+        $this->assertDatabaseCount('bookings', 1);
+
+        $this->actingAs($owner)
+            ->post(route('bookings.store'), $this->payload($owner, [$service->id], [
+                'client_id' => $client->id, 'starts_at' => '15:00', 'duplicate_ack' => true,
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('bookings', 2);
+    }
+
+    /**
+     * Everything a booking needs, and nothing about how it is paid for.
+     *
+     * @param  array<int, int>  $services
+     * @param  array<string, mixed>  $payment
+     * @return array<string, mixed>
+     */
+    private function payload(User $owner, array $services, array $payment = []): array
+    {
+        return $payment + [
+            'client_id' => $this->client()->id,
+            'staff_id' => $this->staff()->id,
+            'location_id' => $this->location->id,
+            'date' => '2026-09-10',
+            'starts_at' => '10:00',
+            'services' => $services,
+            'source' => 'phone',
+            'confirmation' => 'both',
+        ];
     }
 }

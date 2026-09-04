@@ -1456,6 +1456,80 @@ textarea.sd-input {
 }
 
 /* ------------------------------------------------------------------
+   Segmented radios, and the quick picks beside a number field
+
+   A short, closed set of answers, all of them visible: three tip types read
+   at a glance where a dropdown made the reader open it to find out there were
+   only three. Radios underneath, so the answer posts with the form and the
+   selected state comes from :checked rather than from a class somebody has to
+   remember to move.
+   ------------------------------------------------------------------ */
+
+.styledesk_seg {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.1875rem;
+    border: 1px solid var(--color-stroke);
+    border-radius: 0.625rem;
+    background: var(--color-hover);
+}
+
+.styledesk_seg__item {
+    display: inline-flex;
+    align-items: center;
+    height: 1.875rem;
+    padding: 0 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 13px;
+    color: var(--color-sub);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.styledesk_seg__item:hover { color: var(--color-ink); }
+
+.styledesk_seg__item:has(:checked) {
+    background: #fff;
+    color: var(--sd-brand);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgb(16 24 40 / 8%);
+}
+
+.styledesk_seg__item:has(:focus-visible) {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+/* A shortcut into the field beside it, not an answer of its own — which is
+   why it is a button and wears no selected state. */
+.styledesk_chipbtn {
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--color-stroke);
+    border-radius: 0.5rem;
+    background: #fff;
+    font-size: 13px;
+    color: var(--color-ink);
+    cursor: pointer;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.styledesk_chipbtn:hover { background: var(--color-hover); }
+
+.styledesk_chipbtn.is-active {
+    border-color: var(--sd-brand);
+    background: var(--color-sel);
+    color: var(--sd-brand);
+    font-weight: 600;
+}
+
+.styledesk_chipbtn:focus-visible {
+    outline: 2px solid var(--sd-brand);
+    outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------
    Workspace tabs (client profile)
    ------------------------------------------------------------------ */
 
@@ -2167,6 +2241,16 @@ textarea.sd-input {
     border-color: var(--sd-brand);
     background: color-mix(in srgb, var(--sd-brand) 6%, #fff);
 }
+
+/* An option the booking cannot take — "nothing now" against a service that
+   insists on a deposit. Greyed rather than removed: the reader has to see
+   that the answer exists and is not available here. */
+.styledesk_optioncard:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.styledesk_optioncard:disabled:hover { background: #fff; }
 
 /* "OR", with a rule either side: two ways of answering the same question,
    neither of them the fallback. */
