@@ -282,4 +282,113 @@ return [
         'none' => 'Todavía no hay notas.',
         'someone' => 'Alguien',
     ],
+
+    /*
+    | Utilización del personal.
+    */
+    'utilization' => [
+        'title' => 'Utilización del personal',
+        'subtitle' => 'Cuánto del tiempo reservable de su equipo está reservado',
+        'intro' => 'La utilización se mide sobre las horas que cada persona está realmente programada para atender clientes: tiempo programado, menos descansos y tiempo no reservable.',
+
+        'period' => 'Periodo',
+        'loading' => 'Actualizando…',
+        'apply' => 'Aplicar',
+        'cancel' => 'Cancelar',
+        'clear' => 'Limpiar',
+        'search' => 'Buscar personal…',
+        'all_locations' => 'Todas las sedes',
+        'all_roles' => 'Todos los roles',
+        'all_statuses' => 'Todos los estados',
+        'filters_active' => 'Filtros',
+
+        'average' => 'Utilización media',
+        'average_for' => 'Media del equipo',
+        'target' => 'Objetivo: :target%',
+        'target_met' => 'Objetivo alcanzado',
+        'above_target' => ':count% por encima del objetivo',
+        'below_target' => ':count% por debajo del objetivo',
+        'on_target' => 'En objetivo',
+
+        'booked_line' => ':hours h reservadas',
+        'available_line' => 'de :hours h reservables',
+        'unused_line' => ':hours h sin usar',
+        'scheduled_count' => '{1} 1 persona programada|[2,*] :count personas programadas',
+        'bookings_count' => '{0} Sin reservas|{1} 1 reserva|[2,*] :count reservas',
+        'used_of_short' => ':used de :available h reservadas',
+
+        'summary' => [
+            'scheduled' => 'Personal programado',
+            'bookable' => 'Horas reservables',
+            'booked' => 'Horas reservadas',
+            'unused' => 'Horas sin usar',
+            'on_target' => 'En objetivo o por encima',
+            'under' => 'Infrautilizados',
+        ],
+
+        'statuses' => [
+            'high' => 'Utilización alta',
+            'on_target' => 'Objetivo alcanzado',
+            'near_target' => 'Cerca del objetivo',
+            'low' => 'Utilización baja',
+            'very_low' => 'Muy baja',
+            'unscheduled' => 'Sin programar',
+        ],
+
+        'timeline' => [
+            'title' => 'El día del equipo',
+            'legend' => [
+                'booked' => 'Reservado',
+                'available' => 'Disponible',
+                'break' => 'Descanso',
+                'blocked' => 'No reservable',
+                'off' => 'Fuera del horario',
+            ],
+        ],
+
+        'detail' => [
+            'utilization' => 'Utilización',
+            'target' => 'Objetivo',
+            'bookable' => 'Reservable',
+            'booked' => 'Reservado',
+            'unused' => 'Sin usar',
+            'bookings' => 'Reservas',
+            'revenue' => 'Ingresos',
+            'average_value' => 'Reserva media',
+            'vs_team' => 'frente a la media del equipo',
+            'vs_target' => 'frente al objetivo',
+            'day' => 'El día',
+            'daily' => 'Día a día',
+            'services' => 'Qué hicieron',
+            'gaps' => 'Capacidad disponible',
+            'gaps_hint' => 'Huecos lo bastante largos para vender, y qué cabe en ellos.',
+            'gaps_none' => 'No hay huecos vendibles en este día.',
+            'no_bookings' => 'Sin reservas en este periodo.',
+            'minutes' => ':count min',
+            'close' => 'Cerrar',
+            'open_staff' => 'Abrir ficha del personal',
+        ],
+
+        'comparison' => 'Comparativa del equipo',
+
+        'table' => [
+            'staff' => 'Miembro del equipo',
+            'location' => 'Sede',
+            'scheduled' => 'Programado',
+            'bookable' => 'Reservable',
+            'booked' => 'Reservado',
+            'idle' => 'Sin usar',
+            'bookings' => 'Reservas',
+            'utilization' => 'Utilización',
+            'target' => 'Objetivo',
+            'variance' => 'Variación',
+            'revenue' => 'Ingresos',
+            'status' => 'Estado',
+        ],
+
+        'empty' => 'No hay horario del personal',
+        'empty_hint' => 'La utilización del personal necesita horarios de trabajo publicados antes de poder calcularse.',
+        'empty_cta' => 'Ver horario del personal',
+        'no_matches' => 'Nadie coincide con estos filtros.',
+    ],
 ];

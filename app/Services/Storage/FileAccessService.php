@@ -38,6 +38,15 @@ class FileAccessService
             return false;
         }
 
+        /* A client's documents and treatment photographs are governed by the
+           Files permissions rather than by "may you see clients": a business
+           can hand somebody the client list without handing them a consent
+           form or a photograph of somebody's scalp. An image dropped into a
+           note is still note data and stays on clients.view. */
+        if ($this->isClientFile($file)) {
+            return $user->hasPermission('clients.view_files', 'own');
+        }
+
         return match ($file->entity_type) {
             'client' => $user->hasPermission('clients.view', 'own'),
             'staff' => $user->hasPermission('staff.view', 'own'),
@@ -58,10 +67,21 @@ class FileAccessService
             return false;
         }
 
+        if ($this->isClientFile($file)) {
+            return $user->hasPermission('clients.manage_files', 'own');
+        }
+
         return match ($file->entity_type) {
             'client' => $user->hasPermission('clients.edit', 'own'),
             'staff' => $user->hasPermission('staff.edit', 'own'),
             default => $user->canManageSettings(),
         };
+    }
+
+    /** A document or photograph filed on a client's record. */
+    private function isClientFile(StoredFile $file): bool
+    {
+        return $file->entity_type === 'client'
+            && in_array($file->category, ['client-file', 'client-photo'], true);
     }
 }

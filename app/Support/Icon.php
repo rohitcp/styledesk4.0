@@ -76,6 +76,29 @@ class Icon
         return new HtmlString(preg_replace('/^<svg /', $open, $svg, 1));
     }
 
+    /**
+     * The same icon as a `<symbol>`, for a sprite.
+     *
+     * What this is for: a component that draws one of two dozen icons chosen
+     * at runtime — the activity panel picks by activity type — cannot call
+     * the Blade component, because the choice is made in the browser. Sending
+     * two dozen inline SVGs as props would put the markup in a JSON attribute
+     * and pay for every icon on every row. A sprite is emitted once and each
+     * row references it by id.
+     */
+    public static function symbol(string $name, string $id): HtmlString
+    {
+        $svg = self::source($name);
+
+        preg_match('/viewBox="([^"]+)"/', $svg, $box);
+
+        $inner = preg_replace(['/^<svg[^>]*>/', '/<\/svg>\s*$/'], '', $svg);
+
+        return new HtmlString(
+            '<symbol id="'.e($id).'" viewBox="'.e($box[1] ?? '0 0 512 512').'">'.$inner.'</symbol>'
+        );
+    }
+
     private static function viewBoxWidth(string $svg): int
     {
         // "0 0 640 512" -> 640. Falls back to square if a file ever arrives

@@ -219,9 +219,14 @@ function placePanel() {
         left: `${Math.min(Math.max(8, rect.left), window.innerWidth - width - 8)}px`,
         top: above ? 'auto' : `${rect.bottom + gap}px`,
         bottom: above ? `${window.innerHeight - rect.top + gap}px` : 'auto',
-        /* Above the app bar, which is z-30, and above the panels of the page
-           it is floating over. */
-        zIndex: 60,
+        /* Deliberately no zIndex here. The stacking belongs to the stylesheet
+           (.styledesk_timepicker__panel), which puts the panel above every
+           layer it can open inside — the app bar, a modal, the composer, a
+           sheet, a picker. An inline value beats the stylesheet, so a number
+           set here is one that has to be remembered every time a new layer is
+           added: 60 was written when the tallest thing on the page was the
+           app bar, and it put every dropdown inside a dialog behind the
+           dialog that opened it. */
     };
 }
 

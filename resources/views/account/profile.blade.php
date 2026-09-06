@@ -178,40 +178,39 @@
       </div>
     </form>
 
-    {{-- Its own form, and deliberately not part of Save Changes: changing
-         where sign-in mail goes is not the same kind of act as correcting a
-         job title, and it asks for the password to prove it. --}}
+    {{-- Its own card, and deliberately not part of Save Changes: the address
+         somebody signs in with is a different kind of fact from their job
+         title, and this screen no longer changes it. --}}
     <section class="bg-white border border-line rounded-card p-5 sm:p-6">
       <h3 class="text-[15px] font-semibold text-head">{{ __('account.profile.email_card') }}</h3>
-      <p class="text-[13px] text-sub mt-1 max-w-[620px]">{{ __('account.profile.email_hint') }}</p>
+      <p class="text-[13px] text-sub mt-1 max-w-[620px]">{{ __('account.profile.email_locked_hint') }}</p>
 
-      <form method="POST" action="{{ route('account.email.request') }}" class="mt-5 grid sm:grid-cols-2 gap-x-5 gap-y-5">
-        @csrf
+      {{-- Shown, not edited. Changing where sign-in mail goes is not
+           something this screen does any more: the address is here so
+           somebody can check which account they are in, and nothing else.
 
-        <div>
-          <label for="email" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('account.profile.email') }}</label>
-          <input id="email" name="email" type="email" @class(['sd-input', 'is-error' => $errors->has('email')])
-                 autocomplete="email" value="{{ old('email', $user->pending_email ?? $user->email) }}">
-          <p data-error-for="email" role="alert" class="mt-1.5 text-[12px] text-danger"
-             @unless ($errors->has('email')) hidden @endunless>{{ $errors->first('email') }}</p>
+           The verification flow behind it is left intact and unreachable —
+           `account.email.*` still works, so an address change is an act for
+           somebody who administers the business rather than a self-service
+           one, and a change already in flight can still be confirmed from the
+           link that was emailed. --}}
+      <div class="mt-5 sm:max-w-[420px]">
+        <label for="email_current" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('account.profile.email') }}</label>
+
+        <div class="relative">
+          <input id="email_current" type="email" readonly tabindex="-1"
+                 class="sd-input has-suffix bg-hover text-sub cursor-default"
+                 value="{{ $user->email }}">
+
+          <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <rect x="4.5" y="10.5" width="15" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M8 10.5V7.8a4 4 0 1 1 8 0v2.7" stroke="currentColor" stroke-width="1.8"/>
+            </svg>
+          </span>
         </div>
+      </div>
 
-        <div>
-          <label for="current_password" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('account.profile.email_current_password') }}</label>
-          <div class="relative">
-            <input id="current_password" name="current_password" type="password"
-                   @class(['sd-input', 'has-suffix', 'is-error' => $errors->has('current_password')])
-                   autocomplete="current-password">
-            <x-password-toggle for="current_password" class="absolute right-2.5 top-1/2 -translate-y-1/2 h-7 w-7 grid place-items-center rounded text-faint hover:text-sub hover:bg-hover transition-colors" />
-          </div>
-          <p data-error-for="current_password" role="alert" class="mt-1.5 text-[12px] text-danger"
-             @unless ($errors->has('current_password')) hidden @endunless>{{ $errors->first('current_password') }}</p>
-        </div>
-
-        <div class="sm:col-span-2">
-          <button type="submit" data-submit-once class="styledesk_action">{{ __('account.profile.email_change') }}</button>
-        </div>
-      </form>
     </section>
 
     {{-- Read-only, and said to be: these are the business's answers about a
@@ -279,5 +278,6 @@
             note.hidden = false;
         });
     });
+
 </script>
 @endpush

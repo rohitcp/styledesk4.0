@@ -10,7 +10,10 @@ return [
     'period' => 'Date range',
     'periods' => [
         'today' => 'Today',
+        'tomorrow' => 'Tomorrow',
         'yesterday' => 'Yesterday',
+        'last_3' => 'Last 3 days',
+        'last_7' => 'Last 7 days',
         'week' => 'This week',
         'month' => 'This month',
         'custom' => 'Custom range',

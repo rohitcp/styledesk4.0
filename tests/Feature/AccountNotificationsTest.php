@@ -31,12 +31,41 @@ class AccountNotificationsTest extends TestCase
         return $user->fresh();
     }
 
-    public function test_the_screen_opens(): void
+    /**
+     * The names on the screen are names, not keys.
+     *
+     * The label is looked up by indexing the whole `types` array, never as
+     * `__('...types.booking.assigned')` — the translator splits on dots, and a
+     * catalogue key that CONTAINS one ("booking.assigned" is one key, not two)
+     * comes back as the key itself. This test used to assert exactly that
+     * string, so it passed while the page printed
+     * "account.notifications.types.booking.assigned" down the whole first
+     * column.
+     */
+    public function test_the_screen_opens_with_readable_names_and_an_explanation_each(): void
     {
+        $labels = (array) __('account.notifications.types');
+        $hints = (array) __('account.notifications.types_hint');
+
         $this->actingAs($this->member())
             ->get(route('account.notifications'))
             ->assertOk()
-            ->assertSee(__('account.notifications.types.booking.assigned'));
+            ->assertSee($labels['booking.assigned'])
+            ->assertSee($hints['booking.assigned'], false)
+            ->assertDontSee('account.notifications.types');
+    }
+
+    /** Every switch on the screen says what sets it off. */
+    public function test_every_notification_type_has_an_explanation(): void
+    {
+        $hints = (array) __('account.notifications.types_hint');
+
+        $missing = NotificationCatalog::types()->keys()
+            ->reject(fn (string $key) => filled($hints[$key] ?? null))
+            ->values()
+            ->all();
+
+        $this->assertSame([], $missing, 'Every notification type needs a types_hint entry.');
     }
 
     public function test_someone_who_has_never_saved_gets_the_catalogue_defaults(): void

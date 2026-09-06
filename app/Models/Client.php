@@ -196,6 +196,24 @@ class Client extends Model
     }
 
     /**
+     * Documents and photographs on this client's record, newest first.
+     *
+     * Every file, including the halves of a treatment record: the Files tab
+     * reads them all and separates them by `record_id`, so nothing has to ask
+     * two questions to answer "what is on this client".
+     */
+    public function files(): HasMany
+    {
+        return $this->hasMany(ClientFile::class)->latest();
+    }
+
+    /** Treatments photographed before and after, most recent first. */
+    public function fileRecords(): HasMany
+    {
+        return $this->hasMany(ClientFileRecord::class)->orderByDesc('treatment_date')->orderByDesc('id');
+    }
+
+    /**
      * Every email this business has sent them.
      *
      * Not `emails` — that is the addresses on the record, and one word apart

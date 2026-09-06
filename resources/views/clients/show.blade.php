@@ -304,6 +304,17 @@
         });
       });
 
+      /* A page can be arrived at with a tab already named — the upload
+         workflow returns to #files when it saves, and a link can send
+         somebody straight to a tab. Only a hash that names a real tab is
+         honoured; anything else is left alone, so an ordinary in-page anchor
+         still behaves like one. */
+      var named = window.location.hash.replace('#', '');
+
+      if (named && tabs.some(function (tab) { return tab.getAttribute('data-tab') === named; })) {
+        show(named);
+      }
+
       /* A control elsewhere on the page can ask for a tab — "Add note" in the
          actions menu opens the one the note is written in. */
       document.querySelectorAll('[data-open-tab]').forEach(function (opener) {

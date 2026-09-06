@@ -171,9 +171,28 @@
         <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" data-tip-placement="right" aria-label="Mentions">
           <x-icon name="at" size="18" />
         </button>
-        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Activity" data-tip-placement="right" aria-label="Activity">
-          <x-icon name="wifi" size="18" />
-        </button>
+        {{-- Business activity, in a tab of its own.
+
+             A link rather than a panel: the activity log is something
+             somebody sits and reads — scrolled, filtered, followed into a
+             record and come back from — and a drawer that shuts when you
+             click past it fights all four. Opening it in a new tab leaves
+             whatever they were working on exactly where it was.
+
+             The count is rendered here rather than fetched, so the badge is
+             right the moment the page paints. --}}
+        @php $activityUnread = \App\Support\ActivityStream::unread(auth()->user()); @endphp
+
+        <a href="{{ route('activity.index') }}" target="_blank" rel="noopener"
+           class="sd-navicon sd-tip relative hidden lg:grid"
+           data-tip="{{ __('activity.open') }}" data-tip-placement="right"
+           aria-label="{{ __('activity.open') }}">
+          <x-icon name="bell" size="18" />
+
+          @if ($activityUnread > 0)
+            <span class="styledesk_activity__badge">{{ $activityUnread > 99 ? '99+' : $activityUnread }}</span>
+          @endif
+        </a>
         <span class="sd-navicon sd-navicon--soon sd-tip hidden sm:grid" data-pending-route="designsystem.html"
               data-tip="Design system · {{ __('navigation.coming_soon') }}" data-tip-placement="right"
               role="img" aria-label="Design system" aria-disabled="true">
@@ -199,6 +218,8 @@
   </header>
 
 @include('layouts.partials.nav-drawer', ['navCounts' => \App\Support\Nav::counts()])
+
+
 
 @include('partials.session-timeout')
 @include('partials.confirm-dialog')

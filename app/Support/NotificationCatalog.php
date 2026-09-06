@@ -89,17 +89,34 @@ class NotificationCatalog
         $saved = self::savedFor($user);
         $channels = array_keys(config('notifications.channels'));
 
+        /* Read as whole arrays and indexed by the literal key, never through
+           `__('...types.booking.created')`.
+
+           The catalogue's keys carry a dot — "booking.created" is one key,
+           not two — and the translator splits on dots, so asking for it that
+           way looks for a `created` under a `booking` that does not exist and
+           hands back the key itself. That is exactly what this screen was
+           printing: a column of `account.notifications.types.booking.created`
+           where the labels should have been. */
+        $labels = (array) __('account.notifications.types');
+        $hints = (array) __('account.notifications.types_hint');
+
         return collect(config('notifications.groups'))
             ->map(fn (array $types, string $group) => [
                 'key' => $group,
                 'label' => __('account.notifications.groups.'.$group.'.label'),
                 'description' => __('account.notifications.groups.'.$group.'.description'),
-                'types' => collect($types)->map(function (array $type, string $key) use ($saved, $channels) {
+                'types' => collect($types)->map(function (array $type, string $key) use ($saved, $channels, $labels, $hints) {
                     $critical = $type['critical'] ?? false;
 
                     return [
                         'key' => $key,
-                        'label' => __('account.notifications.types.'.$key),
+                        'label' => $labels[$key] ?? $key,
+                        /* One line saying what actually triggers it. The name
+                           says what the message is about; a reader deciding
+                           whether to be interrupted needs to know when it
+                           arrives. */
+                        'description' => $hints[$key] ?? null,
                         'critical' => $critical,
                         'channels' => collect($channels)->mapWithKeys(fn (string $channel) => [
                             $channel => [

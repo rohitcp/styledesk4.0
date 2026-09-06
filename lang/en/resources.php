@@ -236,4 +236,217 @@ return [
         'blocked' => 'Unavailable',
         'inactive' => 'Retired',
     ],
+
+    /*
+     * Resource utilization.
+     *
+     * Written the way an owner would say it, not the way an analyst would.
+     * "Space used" rather than "utilization rate"; "Empty" rather than
+     * "idle capacity". The question behind every one of these is which
+     * rooms are earning their keep and which are standing empty.
+     */
+    /*
+    | Resource Availability — one day, every room, drawn along a clock.
+    |
+    | The operational screen: what is free now, when an occupied room comes
+    | back, and where the next booking should go. The wording is a
+    | receptionist's rather than a report's — "Available until 3:30 PM", not
+    | "utilization 72%".
+    */
+    'board' => [
+        'title' => 'Resource availability',
+        'subtitle' => 'What every room and chair is doing today',
+        'intro' => 'See what is free right now, when an occupied resource comes back, and where the next booking should go.',
+
+        'resource' => 'Resource',
+
+        'previous_day' => 'Previous day',
+        'next_day' => 'Next day',
+        'today' => 'Today',
+        'period' => 'Day',
+        'loading' => 'Updating…',
+        'now' => 'Now',
+        'apply' => 'Apply',
+        'cancel' => 'Cancel',
+
+        'search' => 'Search resources…',
+        'all_categories' => 'All categories',
+        'all_locations' => 'All locations',
+        'filters_active' => 'Filters',
+        'clear' => 'Clear',
+
+        'states' => [
+            'all' => 'All',
+            'available' => 'Available',
+            'in-use' => 'In use',
+            'blocked' => 'Blocked',
+            'closed' => 'Closed',
+        ],
+
+        'summary' => [
+            'available' => 'Available now',
+            'in_use' => 'In use',
+            'blocked' => 'Blocked',
+            'day_utilization' => 'Utilization',
+            'total' => 'Resources',
+            'bookings' => 'Bookings',
+            'blocked_rows' => 'With blocked time',
+            'utilization' => "Today's utilization",
+            'of_total' => ':count of :total resources',
+            'resources' => ':count resources',
+        ],
+
+        'legend' => [
+            'title' => 'Key',
+            'available' => 'Available',
+            'booked' => 'Booked',
+            'prep' => 'Preparation',
+            'cleanup' => 'Cleanup',
+            'blocked' => 'Blocked',
+            'closed' => 'Closed',
+        ],
+
+        'row' => [
+            'holds' => 'Holds :count',
+            'closed_today' => 'Closed today',
+            'open_between' => ':from – :until',
+        ],
+
+        'detail' => [
+            'category' => 'Category',
+            'location' => 'Location',
+            'capacity' => 'Capacity',
+            'current_status' => 'Current status',
+            'current_booking' => 'Current booking',
+            'next_booking' => 'Next booking',
+            'available_until' => 'Available until',
+            'utilization' => "Today's utilization",
+            'bookings' => 'Bookings',
+            'first_booking' => 'First booking',
+            'none' => 'Nothing booked',
+            'rest_of_day' => 'Rest of the day',
+            'view_resource' => 'Open resource',
+        ],
+
+        'booking' => [
+            'title' => 'Booking',
+            'client' => 'Client',
+            'reference' => 'Booking ID',
+            'service' => 'Service',
+            'staff' => 'Staff member',
+            'time' => 'Time',
+            'resource' => 'Resource',
+            'location' => 'Location',
+            'status' => 'Status',
+            'notes' => 'Notes',
+            'view' => 'Open booking',
+            'close' => 'Close',
+            'loading' => 'Loading…',
+            'failed' => 'That booking could not be loaded.',
+        ],
+
+        'empty' => 'No resource matches these filters.',
+        'empty_hint' => 'Try another category, or clear the filters.',
+        'closed_all_day' => 'Nothing is open on this day.',
+    ],
+
+    'utilization' => [
+        'title' => 'Resource utilization',
+        'subtitle' => 'How your space is being used',
+        'intro' => 'See how your rooms, chairs, beds and equipment are being used during available business hours.',
+        'average' => ':percent% average space used',
+        'target_met' => ':target% target met',
+        'average_for' => [
+            'all' => 'Average utilization',
+            'rooms' => 'Average room utilization',
+            'stations' => 'Average chair & station utilization',
+            'beds' => 'Average bed & table utilization',
+            'wellness' => 'Average wellness utilization',
+            'equipment' => 'Average equipment utilization',
+            'other' => 'Average utilization',
+        ],
+        'used_line' => ':used hrs used',
+        'available_line' => 'of :available hrs available',
+        'bookings_count' => '{0} No bookings|{1} 1 booking|[2,*] :count bookings',
+        'insight_quiet' => 'Your busiest is :busy at :busy_percent%. :quiet has the most room left.',
+        'insight_none' => 'Nothing was booked into a room or chair in this period.',
+
+        'groups' => [
+            'all' => 'All resources',
+            'rooms' => 'Rooms',
+            'stations' => 'Chairs & stations',
+            'beds' => 'Beds & tables',
+            'wellness' => 'Wellness',
+            'equipment' => 'Equipment',
+            'other' => 'Other',
+        ],
+
+        'all_locations' => 'All locations',
+        'period' => 'Date range',
+        'from' => 'From',
+        'until' => 'Until',
+        'apply' => 'Apply',
+        'cancel' => 'Cancel',
+
+        /* The four figures, in the words the owner uses for them. */
+        'open_for' => 'Open for',
+        'used_for' => 'Used for appointments',
+        'empty' => 'Empty',
+        'space_used' => 'Space used',
+        'blocked' => 'Closed off',
+        'hours' => ':count hrs',
+        'used_of' => ':used hrs used of :available hrs available',
+        'used_of_short' => ':used of :available hrs used',
+
+        'statuses' => [
+            'busy' => 'Nearly full',
+            'steady' => 'Steady',
+            'quiet' => 'Often empty',
+            'closed' => 'Not open',
+        ],
+
+        'empty_state' => 'No resources to measure yet.',
+        'empty_hint' => 'Add a room, chair or piece of equipment and its usage will appear here.',
+        'no_match' => 'No resources in this category.',
+        'nothing_open' => 'Nothing was open in this period.',
+
+        'search' => 'Search resources',
+        'all_statuses' => 'All statuses',
+        'filters_active' => 'Filters',
+        'clear_all' => 'Clear all',
+        'clear' => 'Clear',
+        'none_match' => 'No resources match these filters.',
+        'loading' => 'Working it out…',
+
+        'table' => [
+            'resource' => 'Resource',
+            'category' => 'Category',
+            'available' => 'Available hrs',
+            'used' => 'Used hrs',
+            'idle' => 'Idle hrs',
+            'utilization' => 'Space used',
+            'bookings' => 'Bookings',
+            'revenue' => 'Revenue',
+            'per_hour' => 'Revenue / hr',
+            'status' => 'Status',
+        ],
+
+        'detail' => [
+            'title' => 'Resource detail',
+            'close' => 'Close',
+            'capacity' => 'Holds at once',
+            'bookings' => 'Bookings',
+            'revenue' => 'Revenue',
+            'services' => 'Services performed',
+            'daily' => 'Day by day',
+            'by_hour' => 'Time of day',
+            'timeline' => 'The day in detail',
+            'timeline_hint' => 'Hover a block to see the service, the time and what it was worth.',
+            'no_bookings' => 'Nothing was booked in here.',
+            'no_services' => 'No services yet.',
+            'available_block' => 'Empty',
+            'blocked_block' => 'Closed off',
+            'minutes' => ':count min',
+        ],
+    ],
 ];

@@ -42,6 +42,15 @@ return [
         'description' => 'Full operational and administrative access, except protected Owner-only actions.',
         'display_order' => 1,
         'permissions' => [
+            /* Marketing. Writing to the whole client list is an
+               administrator's job, sending included. */
+            'marketing.view' => 'all',
+            'marketing.create' => 'all',
+            'marketing.edit' => 'all',
+            'marketing.send' => 'all',
+            'marketing.schedule' => 'all',
+            'marketing.delete' => 'all',
+            'marketing.view_reports' => 'all',
             /* Email. Admin matches Owner: full access, Gmail included. */
             'email.view_history' => 'all',
             'email.send' => 'all',
@@ -83,6 +92,9 @@ return [
             'clients.add_notes' => 'all',
             'clients.view_preferences' => 'all',
             'clients.edit_preferences' => 'all',
+            'clients.view_files' => 'all',
+            'clients.upload_files' => 'all',
+            'clients.manage_files' => 'all',
             'clients.merge' => 'all',
             'clients.archive' => 'all',
             'clients.delete' => 'all',
@@ -210,6 +222,15 @@ return [
         'description' => 'Day-to-day operations, staff, services, clients and reporting for their locations.',
         'display_order' => 2,
         'permissions' => [
+            /* Marketing. A manager writes and schedules campaigns for
+               their branches and reads how they did. Sending to the whole
+               list is left to an owner or an administrator: it is the one act
+               here that cannot be taken back. */
+            'marketing.view' => 'location',
+            'marketing.create' => 'all',
+            'marketing.edit' => 'all',
+            'marketing.schedule' => 'all',
+            'marketing.view_reports' => 'all',
             /* Email. A manager runs the floor and the messages that go with
                it, and owns the templates the desk sends from — but not who the
                business sends as, which is an owner's decision. */
@@ -245,6 +266,9 @@ return [
             'clients.add_notes' => 'all',
             'clients.view_preferences' => 'all',
             'clients.edit_preferences' => 'all',
+            'clients.view_files' => 'location',
+            'clients.upload_files' => 'all',
+            'clients.manage_files' => 'all',
             'clients.archive' => 'all',
             'services.view' => 'all',
             'services.create' => 'all',
@@ -324,6 +348,10 @@ return [
         'description' => 'Appointments, clients, bookings, check-in and check-out, and front-desk activities.',
         'display_order' => 3,
         'permissions' => [
+            /* Marketing. The desk can see what went out — a client ringing
+               up about an offer is a call the desk takes — and writes none of
+               it. */
+            'marketing.view' => 'location',
             /* Email. The desk sends and reads; it does not decide what the
                templates say. */
             'email.view_history' => 'all',
@@ -353,6 +381,11 @@ return [
             'clients.view_notes' => 'all',
             'clients.add_notes' => 'all',
             'clients.view_preferences' => 'all',
+            /* Upload and read, never delete. The desk scans the consent form
+               the client just signed; removing one from the record is a
+               decision for whoever answers for the record. */
+            'clients.view_files' => 'location',
+            'clients.upload_files' => 'all',
             'services.view' => 'all',
             'staff.view' => 'location',
             'staff.view_profile' => 'location',
@@ -404,6 +437,12 @@ return [
             'clients.view_notes' => 'all',
             'clients.add_notes' => 'all',
             'clients.view_preferences' => 'all',
+            /* Their own clients' files, and the treatment photographs they
+               take themselves. Scoped to assigned like everything else they
+               hold on a client: a stylist reads the records of the people
+               they actually work on. */
+            'clients.view_files' => 'assigned',
+            'clients.upload_files' => 'all',
             'services.view' => 'assigned',
             'staff.view' => 'own',
             'staff.view_profile' => 'own',

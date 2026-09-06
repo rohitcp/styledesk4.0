@@ -47,7 +47,27 @@
             @foreach ($group['types'] as $type)
               <tr>
                 <td>
-                  {{ $type['label'] }}
+                  <span class="inline-flex items-center gap-1.5">
+                    {{ $type['label'] }}
+
+                    {{-- What actually sets it off. A button rather than a
+                         bare icon so the keyboard reaches it — the tooltip
+                         script answers focus as well as hover — and the same
+                         sentence is in the DOM for a screen reader, which
+                         cannot hover anything. --}}
+                    @if ($type['description'])
+                      <button type="button" class="sd-matrix__why" data-tip="{{ $type['description'] }}"
+                              aria-label="{{ $type['label'] }}">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+                          <path d="M12 11v5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+                          <circle cx="12" cy="7.75" r="1.1" fill="currentColor"/>
+                        </svg>
+                        <span class="sr-only">{{ $type['description'] }}</span>
+                      </button>
+                    @endif
+                  </span>
+
                   @if ($type['critical'])
                     <span class="block sd-matrix__later">{{ __('account.notifications.always_on') }}</span>
                   @endif

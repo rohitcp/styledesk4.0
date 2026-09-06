@@ -20,7 +20,30 @@ use Illuminate\Support\Carbon;
  */
 class SalesPeriod
 {
-    public const PRESETS = ['today', 'yesterday', 'week', 'month', 'custom'];
+    /**
+     * Every range this class knows how to work out.
+     *
+     * A vocabulary, not a menu: which of these a screen offers is the
+     * screen's own business, and they do not all want the same list. Sales is
+     * read a month at a time; resource utilization is read a few days at a
+     * time, because "is that room busy" is a question about this week.
+     */
+    public const PRESETS = ['today', 'tomorrow', 'yesterday', 'last_3', 'last_7', 'week', 'month', 'custom'];
+
+    /** What the Sales page offers, in the order it offers them. */
+    public const SALES = ['today', 'yesterday', 'week', 'month', 'custom'];
+
+    /** What resource utilization offers. */
+    public const UTILIZATION = ['today', 'yesterday', 'last_3', 'last_7', 'custom'];
+
+    /*
+    | What staff utilization offers.
+    |
+    | Forwards as well as back, which is what tells it from the resource list:
+    | "is tomorrow covered" is the question a manager opens the rota with, and
+    | it is one only this screen can answer.
+    */
+    public const STAFF = ['today', 'tomorrow', 'week', 'month', 'custom'];
 
     public function __construct(
         public readonly string $preset,
@@ -36,16 +59,16 @@ class SalesPeriod
      * an empty table because somebody typed a date badly looks like a page
      * with no sales.
      */
-    public static function fromRequest(?string $preset, ?string $from, ?string $to): self
+    public static function fromRequest(?string $preset, ?string $from, ?string $to, string $fallback = 'month'): self
     {
-        $preset = in_array($preset, self::PRESETS, true) ? $preset : 'month';
+        $preset = in_array($preset, self::PRESETS, true) ? $preset : $fallback;
 
         if ($preset === 'custom') {
             $start = self::parse($from);
             $end = self::parse($to);
 
             if ($start === null || $end === null || $start->gt($end)) {
-                return self::preset('month');
+                return self::preset($fallback);
             }
 
             return new self('custom', $start->startOfDay(), $end->endOfDay());
@@ -59,6 +82,13 @@ class SalesPeriod
         [$from, $to] = match ($preset) {
             'today' => [now()->startOfDay(), now()->endOfDay()],
             'yesterday' => [now()->subDay()->startOfDay(), now()->subDay()->endOfDay()],
+            /* Forwards: a rota is read ahead as often as behind. */
+            'tomorrow' => [now()->addDay()->startOfDay(), now()->addDay()->endOfDay()],
+            /* Today and the days before it, today included: somebody asking
+               for the last three days at four in the afternoon means today's
+               takings as well. */
+            'last_3' => [now()->subDays(2)->startOfDay(), now()->endOfDay()],
+            'last_7' => [now()->subDays(6)->startOfDay(), now()->endOfDay()],
             'week' => [now()->startOfWeek(), now()->endOfWeek()],
             default => [now()->startOfMonth(), now()->endOfMonth()],
         };

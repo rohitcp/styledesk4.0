@@ -77,13 +77,28 @@
           </h1>
         </div>
 
-        <div class="shrink-0 flex flex-wrap items-center justify-end gap-2">
+        {{-- Deliberately NOT shrink-0.
+
+             It was, and that is what stopped these wrapping: a flex item
+             that may not shrink is sized to its own content, so the six
+             buttons stayed on one 705px line and simply ran off the right of
+             a narrow page. The `flex-wrap` inside never had a reason to
+             engage, because the box was never made narrow enough to need it.
+
+             Full width below `sm`, where they are a row of their own under
+             the greeting and ranged left like everything else on a phone;
+             beside the greeting and ranged right from `sm` up, where there
+             is room. --}}
+        <div class="w-full sm:w-auto flex flex-wrap items-center justify-start sm:justify-end gap-2">
           {{-- Only where there is a choice to make. One branch is not a
                filter, it is the business, and a dropdown with a single
                entry is furniture. --}}
           @if ($locations->isNotEmpty())
-            <form method="GET" action="{{ route('dashboard') }}">
-              <select name="location" class="sd-input w-[200px]" onchange="this.form.submit()"
+            {{-- The branch picker takes the whole row on a phone: 200px of
+                 select beside two buttons is three controls that each get a
+                 third of the screen. --}}
+            <form method="GET" action="{{ route('dashboard') }}" class="w-full sm:w-auto">
+              <select name="location" class="sd-input w-full sm:w-[200px]" onchange="this.form.submit()"
                       aria-label="{{ __('dashboard.location') }}">
                 <option value="">{{ __('dashboard.all_locations') }}</option>
                 @foreach ($locations as $location)

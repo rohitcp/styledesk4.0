@@ -94,8 +94,8 @@ return [
                 // The resources list adds through a dialog rather than a page
                 // of its own, so this opens the list with it already up.
                 ['label' => 'Add Resource', 'route' => 'resources.index', 'params' => ['add' => 1]],
-                ['label' => 'Resource Availability', 'pending' => 'resource-availability.html'],
-                ['label' => 'Resource Utilization', 'pending' => 'resource-utilization.html'],
+                ['label' => 'Resource Availability', 'route' => 'resources.availability'],
+                ['label' => 'Resource Utilization', 'route' => 'resources.utilization'],
             ],
         ],
 
@@ -123,10 +123,10 @@ return [
                 ['label' => 'All Staff', 'route' => 'staff.index'],
                 ['label' => 'Staff Schedule', 'route' => 'staff.schedules'],
                 ['label' => 'Shifts', 'route' => 'shifts.index'],
+                ['label' => 'Staff Utilization', 'route' => 'staff.utilization'],
 
                 ['section' => 'Quick Actions'],
                 ['label' => '+ Add Staff', 'route' => 'staff.create'],
-                ['label' => '+ Add Staff Schedule', 'pending' => 'staff-schedule-add.html'],
             ],
         ],
         [
@@ -135,7 +135,27 @@ return [
             'icon' => 'credit-card',
             'route' => 'sales.index',
         ],
-        ['key' => 'marketing', 'label' => 'Marketing', 'icon' => 'bullhorn'],
+        /*
+        | Marketing — four channels, one built.
+        |
+        | The three that are not carry `pending` rather than being left out:
+        | a menu that grows an entry the week it is built tells nobody what is
+        | coming, and an owner who cannot find SMS assumes it does not exist
+        | rather than that it is not ready.
+        */
+        [
+            'key' => 'marketing',
+            'label' => 'Marketing',
+            'icon' => 'bullhorn',
+            'route' => 'marketing.email.index',
+            'children' => [
+                ['section' => 'Channels'],
+                ['label' => 'Email Marketing', 'route' => 'marketing.email.index'],
+                ['label' => 'SMS Marketing', 'pending' => 'sms-marketing.html'],
+                ['label' => 'Social Media Marketing', 'pending' => 'social-marketing.html'],
+                ['label' => 'Google Review Marketing', 'pending' => 'review-marketing.html'],
+            ],
+        ],
         ['key' => 'reports', 'label' => 'Reports', 'icon' => 'chart-simple'],
     ],
 

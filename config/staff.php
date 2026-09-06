@@ -129,4 +129,27 @@ return [
         'location' => 'Location',
         'status' => 'Status',
     ],
+
+    /*
+    | The share of a bookable day a business is aiming to have booked.
+    |
+    | A celebration threshold and a bar on the utilization board, never a rule:
+    | nothing is refused for missing it and nobody is flagged for it. It exists
+    | so an owner who has got their team working sees that they have, rather
+    | than comparing two figures themselves.
+    |
+    | 75% because a day booked much past that has no slack left for a client
+    | running late or a treatment overrunning, and a stylist at 100% is one
+    | who has not stopped since nine.
+    */
+    'utilization_target' => 75,
+
+    /*
+    | The shortest hole in a day worth calling an opening.
+    |
+    | Below this it is arithmetic rather than an opportunity — a nine-minute
+    | gap between two appointments cannot be sold, and listing it teaches
+    | whoever reads the list to stop reading it.
+    */
+    'utilization_gap_minutes' => 30,
 ];

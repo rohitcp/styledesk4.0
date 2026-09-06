@@ -301,4 +301,117 @@ return [
         'none' => 'No notes yet.',
         'someone' => 'Someone',
     ],
+
+    /*
+    | Staff utilization — how much of each person's bookable day is booked.
+    |
+    | The wording is a manager's, not a report's: "3% below target" rather than
+    | "variance -3", and "not scheduled" rather than "0%". Somebody who was not
+    | rostered had no day to fill.
+    */
+    'utilization' => [
+        'title' => 'Staff utilization',
+        'subtitle' => 'How much of your team’s bookable time is booked',
+        'intro' => 'Utilization is measured against the hours each person is actually rostered to take clients — scheduled time, less breaks and time that cannot be booked.',
+
+        'period' => 'Period',
+        'loading' => 'Updating…',
+        'apply' => 'Apply',
+        'cancel' => 'Cancel',
+        'clear' => 'Clear',
+        'search' => 'Search staff…',
+        'all_locations' => 'All locations',
+        'all_roles' => 'All roles',
+        'all_statuses' => 'All statuses',
+        'filters_active' => 'Filters',
+
+        'average' => 'Average utilization',
+        'average_for' => 'Team average',
+        'target' => 'Target: :target%',
+        'target_met' => 'Target achieved',
+        'above_target' => ':count% above target',
+        'below_target' => ':count% below target',
+        'on_target' => 'On target',
+
+        'booked_line' => ':hours hrs booked',
+        'available_line' => 'of :hours hrs bookable',
+        'unused_line' => ':hours hrs unused',
+        'scheduled_count' => '{1} 1 person scheduled|[2,*] :count people scheduled',
+        'bookings_count' => '{0} No bookings|{1} 1 booking|[2,*] :count bookings',
+        'used_of_short' => ':used of :available hrs booked',
+
+        'summary' => [
+            'scheduled' => 'Staff scheduled',
+            'bookable' => 'Bookable hours',
+            'booked' => 'Booked hours',
+            'unused' => 'Unused hours',
+            'on_target' => 'At or above target',
+            'under' => 'Underutilized',
+        ],
+
+        'statuses' => [
+            'high' => 'High utilization',
+            'on_target' => 'Target achieved',
+            'near_target' => 'Near target',
+            'low' => 'Low utilization',
+            'very_low' => 'Very low',
+            'unscheduled' => 'Not scheduled',
+        ],
+
+        'timeline' => [
+            'title' => 'The team’s day',
+            'legend' => [
+                'booked' => 'Booked',
+                'available' => 'Available',
+                'break' => 'Break',
+                'blocked' => 'Not bookable',
+                'off' => 'Outside working hours',
+            ],
+        ],
+
+        'detail' => [
+            'utilization' => 'Utilization',
+            'target' => 'Target',
+            'bookable' => 'Bookable',
+            'booked' => 'Booked',
+            'unused' => 'Unused',
+            'bookings' => 'Bookings',
+            'revenue' => 'Revenue',
+            'average_value' => 'Average booking',
+            'vs_team' => 'vs team average',
+            'vs_target' => 'vs target',
+            'day' => 'The day',
+            'daily' => 'Day by day',
+            'services' => 'What they did',
+            'gaps' => 'Available capacity',
+            'gaps_hint' => 'Openings long enough to sell, and what fits in them.',
+            'gaps_none' => 'No sellable gaps in this day.',
+            'no_bookings' => 'No bookings in this period.',
+            'minutes' => ':count min',
+            'close' => 'Close',
+            'open_staff' => 'Open staff record',
+        ],
+
+        'comparison' => 'Team comparison',
+
+        'table' => [
+            'staff' => 'Staff member',
+            'location' => 'Location',
+            'scheduled' => 'Scheduled',
+            'bookable' => 'Bookable',
+            'booked' => 'Booked',
+            'idle' => 'Unused',
+            'bookings' => 'Bookings',
+            'utilization' => 'Utilization',
+            'target' => 'Target',
+            'variance' => 'Variance',
+            'revenue' => 'Revenue',
+            'status' => 'Status',
+        ],
+
+        'empty' => 'No staff schedule available',
+        'empty_hint' => 'Staff utilization needs published working hours before it can be calculated.',
+        'empty_cta' => 'View staff schedule',
+        'no_matches' => 'No one matches these filters.',
+    ],
 ];

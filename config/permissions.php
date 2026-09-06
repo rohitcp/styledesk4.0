@@ -107,6 +107,16 @@ return [
                 'clients.add_notes' => ['label' => 'Add client notes'],
                 'clients.view_preferences' => ['label' => 'View client preferences'],
                 'clients.edit_preferences' => ['label' => 'Edit client preferences'],
+                /* Files are their own three permissions for the same reason
+                   notes are: a client's consent form and treatment
+                   photographs are more sensitive than their phone number,
+                   and a business must be able to let the desk file a
+                   document without letting them remove one. Reading is
+                   scoped, so a stylist can be given the clients they work on
+                   and no others. */
+                'clients.view_files' => ['label' => 'View client files', 'scopes' => $readScopes],
+                'clients.upload_files' => ['label' => 'Upload client files'],
+                'clients.manage_files' => ['label' => 'Edit and delete client files'],
                 'clients.merge' => ['label' => 'Merge clients'],
                 'clients.archive' => ['label' => 'Archive client'],
                 'clients.delete' => ['label' => 'Delete client'],
@@ -257,6 +267,33 @@ return [
                 'sales.view_taxes' => ['label' => 'View taxes'],
                 'sales.view_discounts' => ['label' => 'View discounts'],
                 'sales.view_refunds' => ['label' => 'View refunds'],
+            ],
+        ],
+
+        /*
+        | Marketing — writing to every client the business has.
+        |
+        | Split from `email`, which is a conversation with one client: sending
+        | one person a receipt and sending twelve hundred people a promotion
+        | are different acts with different consequences, and a business can
+        | perfectly well want its receptionist to do the first and not the
+        | second.
+        |
+        | Sending is its own permission and deliberately not implied by
+        | creating: a campaign is drafted, read over, and then sent, and those
+        | are two decisions.
+        */
+        'marketing' => [
+            'label' => 'Marketing',
+            'icon' => 'bullhorn',
+            'permissions' => [
+                'marketing.view' => ['label' => 'View campaigns', 'scopes' => $readScopes],
+                'marketing.create' => ['label' => 'Create campaign'],
+                'marketing.edit' => ['label' => 'Edit campaign'],
+                'marketing.send' => ['label' => 'Send campaign'],
+                'marketing.schedule' => ['label' => 'Schedule campaign'],
+                'marketing.delete' => ['label' => 'Delete campaign'],
+                'marketing.view_reports' => ['label' => 'View campaign reports'],
             ],
         ],
 

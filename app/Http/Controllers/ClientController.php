@@ -18,6 +18,7 @@ use App\Models\Staff;
 use App\Models\Tenant;
 use App\Support\ClientActivityLog;
 use App\Support\ClientBookingContext;
+use App\Support\ClientFilePresenter;
 use App\Support\ClientOptions;
 use App\Support\ClientServiceHistory;
 use App\Support\ClientVisitSummary;
@@ -552,7 +553,7 @@ class ClientController extends Controller
      * profile that shows "24 visits" for a client with no appointments is a
      * page that lies to whoever reads it next.
      */
-    public function show(Request $request, Client $client): View
+    public function show(Request $request, Client $client, ClientFilePresenter $files): View
     {
         $this->authorizeClients($request, 'clients.view');
         $this->assertOwned($client, $request->user()->tenant);
@@ -570,6 +571,7 @@ class ClientController extends Controller
          */
         $canViewNotes = $user->hasPermission('clients.view_notes', 'own');
         $canAddNotes = $user->hasPermission('clients.add_notes', 'own');
+        $canViewFiles = $user->hasPermission('clients.view_files', 'own');
 
         /**
          * Newest first, and never more than this reader may see.
@@ -695,6 +697,16 @@ class ClientController extends Controller
             'canViewNotes' => $canViewNotes,
             'canAddNotes' => $canAddNotes,
             'canViewHistory' => $user->hasPermission('clients.view_history', 'own'),
+
+            /* Files are their own permission for the same reason notes are:
+               a consent form and a treatment photograph are not the client's
+               phone number, and a business must be able to hand somebody the
+               client list without handing them those. */
+            'canViewFiles' => $canViewFiles,
+            /* The tab opens filled rather than fetching on show. The same
+               payload feeds the card on the profile, so the two cannot
+               disagree about what is on the record. */
+            'clientFiles' => $canViewFiles ? $files->tab($client, $user) : ['files' => [], 'records' => [], 'options' => [], 'can' => []],
         ]);
     }
 

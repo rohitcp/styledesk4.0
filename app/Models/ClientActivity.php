@@ -35,7 +35,7 @@ class ClientActivity extends Model
     public const UPDATED_AT = null;
 
     /** The tabs the timeline is filtered by. */
-    public const CATEGORIES = ['bookings', 'notes', 'client', 'tags', 'payments', 'email'];
+    public const CATEGORIES = ['bookings', 'notes', 'client', 'tags', 'payments', 'email', 'files'];
 
     protected function casts(): array
     {

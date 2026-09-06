@@ -55,7 +55,7 @@
         </div>
 
         <div class="flex flex-wrap gap-1.5">
-            @foreach (['all', 'bookings', 'notes', 'client', 'tags', 'payments'] as $filter)
+            @foreach (['all', 'bookings', 'notes', 'client', 'tags', 'payments', 'files'] as $filter)
                 <button type="button" data-activity-filter="{{ $filter }}"
                         aria-pressed="{{ $loop->first ? 'true' : 'false' }}"
                         class="styledesk_action styledesk_action--sm {{ $loop->first ? 'is-active' : '' }}">
@@ -80,6 +80,7 @@
                         'client' => 'user',
                         'tags' => 'tag',
                         'payments' => 'credit-card',
+                        'files' => 'box',
                     ][$event->category] ?? 'user';
 
                     $body = $event->readableDescription($canViewNotes);
@@ -275,43 +276,67 @@
                 ]);
             @endphp
 
-            {{-- Upcoming or completed, as a compact control sized to its
-                 own labels rather than a bar stretched across the panel:
-                 it is a two-way switch beside three dropdowns, and a
-                 full-width one would read as the heading of everything
-                 under it. Neither is pressed to begin with, which is the
-                 whole history — the third answer, and the one somebody
+            {{-- One row: which bookings, then which of them.
+
+                 The switch and the three dropdowns are four answers to the
+                 same question — what should this list show — and stacking
+                 them made the first read as a heading for the rest rather
+                 than as one more filter. Compact throughout so the segment
+                 and the fields are the same height and the row lines up on
+                 both edges.
+
+                 It wraps rather than scrolls: below `sm` each control takes
+                 the full width, which is the only arrangement that keeps a
+                 service name readable on a phone.
+
+                 The switch keeps its own wrapper because the script binds to
+                 it, and neither of its answers is pressed to begin with —
+                 the whole history is the third answer, and the one somebody
                  wants when they are looking for a cancellation. --}}
-            <div class="sd-subnav mt-3" role="group" data-booking-when
-                 aria-label="{{ $bookingLabels['when'] }}">
-                @foreach (['' => 'all_bookings', 'upcoming' => 'upcoming', 'completed' => 'completed'] as $value => $key)
-                    <button type="button" class="sd-subnav__item" data-when="{{ $value }}"
-                            @if ($value === '') aria-current="page" @endif>
-                        {{ $bookingLabels[$key] }}
-                    </button>
-                @endforeach
-            </div>
-
-            {{-- Compact, and narrowed to what each answer actually needs: a
-                 year is four characters and had a field wide enough for a
-                 service name. Three filters beside the segment read as one
-                 band of controls rather than as a form to fill in. --}}
-            <div class="sd-compact flex flex-wrap items-end gap-2 mt-2.5" data-booking-filters>
-                <div class="w-full sm:w-[110px]">
-                    <x-combo name="booking_year" :options="$bookingYears"
-                             :selected="now()->format('Y')"
-                             :placeholder="__('clients.module.workspace.bookings.all_years')" />
+            <div class="sd-compact flex flex-wrap items-center gap-2 mt-3">
+                <div class="sd-subnav sd-subnav--compact" role="group" data-booking-when
+                     aria-label="{{ $bookingLabels['when'] }}">
+                    @foreach (['' => 'all_bookings', 'upcoming' => 'upcoming', 'completed' => 'completed'] as $value => $key)
+                        <button type="button" class="sd-subnav__item" data-when="{{ $value }}"
+                                @if ($value === '') aria-current="page" @endif>
+                            {{ $bookingLabels[$key] }}
+                        </button>
+                    @endforeach
                 </div>
 
-                <div class="w-full sm:w-[140px]">
-                    <x-combo name="booking_month" :options="$months"
-                             :selected="now()->format('m')"
-                             :placeholder="__('clients.module.workspace.bookings.all_months')" />
-                </div>
+                {{-- Pushed to the right, so the row reads as what it is:
+                     which bookings on the left, then a gap, then how to
+                     narrow them. Ranged left together they were four
+                     controls of one kind, and the switch — the only one that
+                     changes what the list is rather than what it shows —
+                     disappeared into them.
 
-                <div class="w-full sm:w-[190px]">
-                    <x-combo name="booking_service" :options="$bookingServices"
-                             :placeholder="$bookingLabels['all_services']" />
+                     `ms-auto` only from `sm`: below it the group takes the
+                     full width and sits under the switch, and a gap pushing
+                     three stacked fields rightwards would be three fields
+                     hanging off the edge of a phone.
+
+                     Narrowed to what each answer actually needs: a year is
+                     four characters and had a field wide enough for a
+                     service name. --}}
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ms-auto"
+                     data-booking-filters>
+                    <div class="w-full sm:w-[100px]">
+                        <x-combo name="booking_year" :options="$bookingYears"
+                                 :selected="now()->format('Y')"
+                                 :placeholder="__('clients.module.workspace.bookings.all_years')" />
+                    </div>
+
+                    <div class="w-full sm:w-[130px]">
+                        <x-combo name="booking_month" :options="$months"
+                                 :selected="now()->format('m')"
+                                 :placeholder="__('clients.module.workspace.bookings.all_months')" />
+                    </div>
+
+                    <div class="w-full sm:w-[180px]">
+                        <x-combo name="booking_service" :options="$bookingServices"
+                                 :placeholder="$bookingLabels['all_services']" />
+                    </div>
                 </div>
             </div>
 
@@ -357,5 +382,42 @@
 
 {{-- -------------------------------------------------------------- files --}}
 <div id="panel-files" role="tabpanel" aria-labelledby="tab-files" data-panel="files" class="pt-4" hidden>
-    <p class="text-[13px] text-sub leading-relaxed">{{ __('clients.module.workspace.files.coming') }}</p>
+    @if ($canViewFiles)
+        {{-- The tab opens filled. Its first payload is rendered with the page
+             rather than fetched on show, so switching to it is a class change
+             and not a spinner — and the same shape comes back from the
+             controller after every write, so one description of a file serves
+             both. The array is built above rather than inline: a directive
+             argument with a comma inside brackets does not parse. --}}
+        @php
+            $fileTabProps = [
+                'urls' => [
+                    'index' => route('clients.files.index', $client),
+                    /* The upload workflow's own page. Adding a file is a
+                       sitting rather than a dialog — see
+                       resources/views/clients/files/create.blade.php. */
+                    'create' => route('clients.files.create', $client),
+                    'store' => route('clients.files.store', $client),
+                    'storeRecord' => route('clients.files.records.store', $client),
+                    'updateRecord' => route('clients.files.records.update', ['client' => $client, 'record' => ':record']),
+                    'addImages' => route('clients.files.records.images', ['client' => $client, 'record' => ':record']),
+                    'destroyRecord' => route('clients.files.records.destroy', ['client' => $client, 'record' => ':record']),
+                    'update' => route('clients.files.update', ['client' => $client, 'file' => ':file']),
+                    'replace' => route('clients.files.replace', ['client' => $client, 'file' => ':file']),
+                    'destroy' => route('clients.files.destroy', ['client' => $client, 'file' => ':file']),
+                ],
+                'initial' => $clientFiles,
+                'csrf' => csrf_token(),
+                'today' => now()->toDateString(),
+                'labels' => __('clients.module.workspace.files'),
+            ];
+        @endphp
+
+        <div data-vue-component="ClientFiles" data-props='@json($fileTabProps)'></div>
+    @else
+        {{-- Told plainly rather than shown an empty tab: a reader who may not
+             see this client's documents should know that is why there is
+             nothing here. --}}
+        <p class="text-[13px] text-sub leading-relaxed">{{ __('clients.module.workspace.files.no_access') }}</p>
+    @endif
 </div>

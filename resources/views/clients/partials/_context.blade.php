@@ -204,6 +204,11 @@
 
 @include('clients.partials._behavioral')
 
+{{-- ----------------------------------------------------- recent files --}}
+@if ($canViewFiles)
+    @include('clients.partials._recent-files')
+@endif
+
 {{-- --------------------------------------------------- client insights --}}
 <section class="styledesk_infocard styledesk_infocard--teal mt-5">
     <h2 class="styledesk_infocard__title">{{ __('clients.module.workspace.insights.title') }}</h2>

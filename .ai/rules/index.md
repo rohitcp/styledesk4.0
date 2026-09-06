@@ -4,10 +4,14 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
+| app/{Support/ActivityStream.php,Http/Controllers/ActivityController.php},resources/js/components/ActivityFeed.vue,resources/views/activity/index.blade.php | .ai/rules/activity.md |
 | app/{Models/BackofficeAdmin.php,Http/Controllers/Backoffice/PasswordResetController.php},config/auth.php | .ai/rules/backoffice.md |
 | resources/js/components/{BookingBuilder.vue,MultiSelect.vue} | .ai/rules/components.md |
+| app/{Support/StaffUtilization.php,Support/ResourceUtilization.php,Http/Controllers/StaffUtilizationController.php},resources/js/{bubble-board.js,components/StaffUtilization.vue,components/ResourceUtilization.vue} | .ai/rules/controllers-js.md |
 | app/{Models/StaffShift.php,Support/SchedulePeriod.php,Http/Controllers/**}, app/{Models/Booking.php,Models/BookingPayment.php,Support/BookingTotals.php,Http/Controllers/BookingController.php}, app/{Models/Booking.php,Models/BookingLead.php,Support/BookingAvailability.php,Http/Controllers/BookingController.php,Http/Controllers/BookingLeadController.php}, app/{Models/BookingPaymentLink.php,Http/Controllers/PaymentLinkController.php,Http/Controllers/BookingController.php}, app/{Models/BookingStatusChange.php,Models/ReasonCode.php,Support/BookingStatusHistory.php,Http/Controllers/BookingStatusController.php} | .ai/rules/controllers.md |
+| resources/js/components/{MultiSelect.vue,SingleSelect.vue},resources/css/styledesk.css | .ai/rules/css.md |
 | ** | .ai/rules/general.md |
+| app/{Support/ResourceAvailability.php,Support/ResourceAllocator.php,Http/Controllers/ResourceAvailabilityController.php},resources/js/components/ResourceAvailability.vue, app/{Support/ActivityStream.php,Http/Controllers/ActivityController.php},resources/js/components/ActivityPanel.vue | .ai/rules/js-components.md |
 | resources/js/{listing-filters.js,data-grid.js} | .ai/rules/js.md |
 | app/{Models/BackofficeAdmin.php,Models/BackofficeAuditLog.php,Models/BackofficeLoginCode.php,Http/Controllers/Backoffice/**,Http/Middleware/AuthenticateBackoffice.php,Support/BackofficeVerification.php},routes/backoffice.php,config/backoffice.php | .ai/rules/middleware.md |
 | app/{Models/ClientActivity.php,Support/ClientActivityLog.php} | .ai/rules/models.md |

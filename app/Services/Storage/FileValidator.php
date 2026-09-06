@@ -29,10 +29,11 @@ class FileValidator
             'max' => 5120,
         ],
         'document' => [
-            'extensions' => ['pdf', 'doc', 'docx', 'txt', 'csv', 'xlsx', 'jpg', 'jpeg', 'png', 'webp'],
+            'extensions' => ['pdf', 'doc', 'docx', 'txt', 'csv', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'webp'],
             'mimes' => [
                 'application/pdf', 'application/msword', 'text/plain', 'text/csv',
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'image/jpeg', 'image/png', 'image/webp',
             ],
@@ -50,6 +51,10 @@ class FileValidator
         'editor-attachment' => 'image',
         'service-image' => 'image',
         'resource-image' => 'image',
+        /* A before-and-after is a photograph or it is nothing: the viewer
+           puts the two sides side by side, and a PDF cannot be compared with
+           one. `client-file` beside it still takes documents. */
+        'client-photo' => 'image',
     ];
 
     /**

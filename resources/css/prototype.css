@@ -1859,6 +1859,24 @@ body.sd-locked { overflow: hidden; }
 }
 .sd-subnav__item[aria-current="page"]:hover { background-color: #fff; }
 
+/* The compact segment.
+
+   Same control, sized to sit in a band of filters rather than to head a
+   page. The default is 2.75rem tall once the track's own padding is counted,
+   which is taller than the 2.25rem `sd-compact` dropdowns it stands beside —
+   and a switch that overhangs the controls next to it reads as the heading
+   of everything under them rather than as one more filter.
+
+   1.75rem of item inside 0.25rem of track comes to exactly 2.25rem, so the
+   row lines up on both edges. */
+.sd-subnav--compact { gap: 0.125rem; }
+
+.sd-subnav--compact .sd-subnav__item {
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  font-size: 12.5px;
+}
+
 /* A divider inside a nav sub-menu. Services and Resources are one
    module but two jobs — what you sell, and what it takes to deliver
    it — and eight undifferentiated links read as a longer list than two

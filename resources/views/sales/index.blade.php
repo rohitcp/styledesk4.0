@@ -22,7 +22,7 @@
         <div>
           <label for="period" class="block text-[12px] font-medium text-ink mb-1.5">{{ __('sales.period') }}</label>
           <select id="period" name="period" class="sd-input" data-period>
-            @foreach (\App\Support\SalesPeriod::PRESETS as $preset)
+            @foreach (\App\Support\SalesPeriod::SALES as $preset)
               <option value="{{ $preset }}" @selected($period->preset === $preset)>
                 {{ __('sales.periods.'.$preset) }}
               </option>

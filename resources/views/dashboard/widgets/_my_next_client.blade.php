@@ -45,7 +45,11 @@
         @endif
       </div>
 
-      <div class="shrink-0 flex flex-wrap gap-2">
+      {{-- Not shrink-0, for the reason set out in dashboard.blade.php: a flex
+           item that may not shrink is sized to its own content, so these two
+           would stay on one line and run off the side of a narrow card rather
+           than wrapping under the client's name. --}}
+      <div class="flex flex-wrap gap-2">
         @if ($next->client)
           <a href="{{ route('clients.show', $next->client) }}" class="styledesk_action">{{ __('dashboard.my_next_client.view_client') }}</a>
         @endif

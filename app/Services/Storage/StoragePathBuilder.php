@@ -35,6 +35,7 @@ class StoragePathBuilder
         'branding' => 'branding',
         'profile-image' => 'profiles',
         'client-file' => 'clients',
+        'client-photo' => 'clients',
         'editor-attachment' => 'clients',
         'service-image' => 'services',
         'resource-image' => 'resources',
@@ -56,7 +57,11 @@ class StoragePathBuilder
 
         return match ($category) {
             'profile-image' => $root.'/profiles/'.$this->segment((string) $entityId),
-            'client-file' => $root.'/clients/'.$this->segment((string) $entityId).'/files',
+            /* Treatment photographs sit with the client's documents rather
+               than in a folder of their own: "everything about this client"
+               is a directory, which is what makes deleting one a directory
+               too. */
+            'client-file', 'client-photo' => $root.'/clients/'.$this->segment((string) $entityId).'/files',
             'editor-attachment' => $root.'/clients/'.$this->segment((string) $entityId).'/editor-attachments',
             default => $entityType && $entityId !== null
                 ? $root.'/'.$folder.'/'.$this->segment((string) $entityId)

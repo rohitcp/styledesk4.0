@@ -47,8 +47,11 @@ return [
 
         'email_card' => 'Correo electrónico',
         'email' => 'Correo electrónico',
+        'email_locked_hint' => 'La dirección con la que inicia sesión. Pida a un administrador que la cambie si es necesario.',
         'email_hint' => 'Con esta dirección inicias sesión. Para cambiarla necesitamos tu contraseña y una confirmación desde la nueva dirección.',
         'email_current_password' => 'Contraseña actual',
+        'email_change_cta' => 'Cambiar',
+        'email_new' => 'Nueva dirección de correo',
         'email_change' => 'Cambiar correo electrónico',
         'email_subject' => 'Confirma tu nuevo correo de StyleDesk',
         'email_pending_title' => 'Confirma tu nuevo correo electrónico',
@@ -207,6 +210,43 @@ return [
             'security.email_changed' => 'Correo electrónico cambiado',
             'security.new_login' => 'Nuevo inicio de sesión detectado',
             'security.account_alert' => 'Avisos de cuenta',
+        ],
+        /*
+        | Una línea por tipo, indicando CUÁNDO llega el mensaje.
+        */
+        'types_hint' => [
+            'booking.created' => 'Alguien reserva una cita: en línea, en recepción o por teléfono.',
+            'booking.assigned' => 'Una cita se pone a su nombre o se le traspasa de un compañero.',
+            'booking.updated' => 'Cambian los servicios, el precio o las notas de una de sus citas.',
+            'booking.rescheduled' => 'Una de sus citas se mueve a otro día u hora.',
+            'booking.cancelled' => 'Un cliente o un compañero cancela una cita suya.',
+            'booking.completed' => 'Una cita suya se cierra y se marca como finalizada.',
+            'booking.no_show' => 'Se registra que un cliente no se ha presentado.',
+            'booking.reminder' => 'Poco antes de que empiece una cita suya.',
+
+            'client.assigned' => 'Un cliente pasa a estar a su cargo.',
+            'client.updated' => 'Alguien edita los datos de un cliente asignado a usted.',
+            'client.note_added' => 'Se añade una nota a uno de sus clientes.',
+            'client.file_uploaded' => 'Se añade una foto o un documento a uno de sus clientes.',
+            'client.mentioned' => 'Un compañero escribe su nombre en una nota de un cliente.',
+
+            'team.invitation' => 'Se invita a alguien al negocio o alguien acepta una invitación.',
+            'team.location_assigned' => 'Le cambian de sede, o cambian a un compañero.',
+            'team.hours_changed' => 'Se editan sus horas de trabajo habituales.',
+            'team.schedule_changed' => 'Se publica o se modifica un horario que incluye sus turnos.',
+            'team.mentioned' => 'Un compañero escribe su nombre en cualquier parte de StyleDesk.',
+            'team.role_changed' => 'Cambia su rol o cambian sus permisos.',
+
+            'resource.assigned' => 'Una sala, silla o equipo se pone a su nombre.',
+            'resource.changed' => 'Un recurso que usa cambia de nombre, de sede o de horario.',
+            'resource.unavailable' => 'Un recurso en el que tiene citas se cierra por mantenimiento o reparación.',
+            'resource.conflict' => 'Dos citas necesitan el mismo recurso a la misma hora.',
+
+            'security.alert' => 'Ocurre algo en su cuenta que creemos que debe saber.',
+            'security.password_changed' => 'Se cambia su contraseña, por usted o por cualquier otra persona.',
+            'security.email_changed' => 'Se cambia la dirección de correo con la que inicia sesión.',
+            'security.new_login' => 'Se inicia sesión en su cuenta desde un dispositivo o lugar desconocido.',
+            'security.account_alert' => 'Su cuenta se bloquea, se suspende o se restringe.',
         ],
     ],
 ];

@@ -51,8 +51,11 @@ return [
 
         'email_card' => 'Email address',
         'email' => 'Email address',
+        'email_locked_hint' => 'The address you sign in with. Ask an administrator if it needs to change.',
         'email_hint' => 'You sign in with this address. Changing it needs your password and a confirmation from the new address.',
         'email_current_password' => 'Current password',
+        'email_change_cta' => 'Change',
+        'email_new' => 'New email address',
         'email_change' => 'Change email address',
         'email_subject' => 'Confirm your new StyleDesk email address',
         'email_pending_title' => 'Confirm your new email address',
@@ -211,6 +214,45 @@ return [
             'security.email_changed' => 'Email address changed',
             'security.new_login' => 'New sign-in detected',
             'security.account_alert' => 'Account alerts',
+        ],
+        /*
+        | One line each, saying WHEN the message arrives rather than repeating
+        | the name. Somebody deciding whether to be interrupted needs the
+        | trigger, not a synonym for the title.
+        */
+        'types_hint' => [
+            'booking.created' => 'Someone books an appointment — online, at the desk, or by phone.',
+            'booking.assigned' => 'An appointment is put in your name, or moved to you from a colleague.',
+            'booking.updated' => 'The services, price or notes on one of your appointments change.',
+            'booking.rescheduled' => 'One of your appointments moves to a different day or time.',
+            'booking.cancelled' => 'A client or a colleague cancels an appointment of yours.',
+            'booking.completed' => 'An appointment of yours is checked out and marked finished.',
+            'booking.no_show' => 'A client is recorded as not having turned up.',
+            'booking.reminder' => 'Shortly before an appointment of yours is due to start.',
+
+            'client.assigned' => 'A client is made yours to look after.',
+            'client.updated' => 'Someone edits the details of a client assigned to you.',
+            'client.note_added' => 'A note is added to one of your clients.',
+            'client.file_uploaded' => 'A photo or document is added to one of your clients.',
+            'client.mentioned' => 'A colleague writes your name in a note on a client.',
+
+            'team.invitation' => 'Someone is invited to join the business, or accepts an invitation.',
+            'team.location_assigned' => 'You are moved to a different branch, or a colleague is.',
+            'team.hours_changed' => 'Your regular working hours are edited.',
+            'team.schedule_changed' => 'A rota covering your shifts is published or changed.',
+            'team.mentioned' => 'A colleague writes your name anywhere in StyleDesk.',
+            'team.role_changed' => 'Your role changes, or what you are allowed to do does.',
+
+            'resource.assigned' => 'A room, chair or piece of equipment is put in your name.',
+            'resource.changed' => 'A resource you use is renamed, moved or has its hours edited.',
+            'resource.unavailable' => 'A resource you are booked into is closed for maintenance or repair.',
+            'resource.conflict' => 'Two appointments end up needing the same resource at the same time.',
+
+            'security.alert' => 'Something happens to your account that we think you should know about.',
+            'security.password_changed' => 'Your password is changed, by you or by anyone else.',
+            'security.email_changed' => 'The email address you sign in with is changed.',
+            'security.new_login' => 'Your account is signed into from a device or place we have not seen before.',
+            'security.account_alert' => 'Your account is locked, suspended or otherwise restricted.',
         ],
     ],
 ];

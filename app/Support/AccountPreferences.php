@@ -21,7 +21,15 @@ use App\Models\User;
  */
 class AccountPreferences
 {
-    public const DEFAULT_DATE_FORMAT = 'm/d/Y';
+    /*
+     * Mon D, YYYY — "Sep 5, 2026".
+     *
+     * A month somebody can read rather than a number they have to decode:
+     * 05/09/2026 is the fifth of September to half the world and the ninth of
+     * May to the other half, and a diary is the last place to be ambiguous
+     * about which. A business that wants the numeric form still says so.
+     */
+    public const DEFAULT_DATE_FORMAT = 'M j, Y';
 
     public const DEFAULT_FIRST_DAY = 0;
 

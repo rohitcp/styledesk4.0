@@ -10,6 +10,12 @@
    appearance. */
 @import 'tabulator-tables/dist/css/tabulator.min.css';
 
+/* The date range picker's own stylesheet, imported here for the same reason
+   as Tabulator's: before ours, so the StyleDesk rules in styledesk.css win.
+   The plugin is used for its behaviour — the preset sidebar, the two-month
+   range selection — and not for the way it looks. */
+@import 'bootstrap-daterangepicker/daterangepicker.css';
+
 @import './prototype.css';
 @import './styledesk.css';
 

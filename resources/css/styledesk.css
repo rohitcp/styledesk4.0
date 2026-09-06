@@ -178,7 +178,13 @@
 
 .styledesk_timepicker__panel {
     position: absolute;
-    z-index: 40;
+    /* Above every layer this can open inside — modal 90, composer and sheet
+       120, picker 140 — and below the tooltip at 200. The panel is portalled
+       to <body>, so it is a sibling of whatever it was opened from rather
+       than a child of it: 40 put every dropdown in a dialog BEHIND the dialog
+       that opened it. Nothing here can be solved by a stacking context on the
+       control, because the control is no longer its parent. */
+    z-index: 160;
     top: calc(100% + 4px);
     left: 0;
     min-width: 100%;
@@ -4788,3 +4794,1050 @@ fieldset:disabled :where(button, input, select, textarea),
 
 .styledesk_nextbooking:hover { opacity: 0.82; }
 .styledesk_nextbooking:focus-visible { outline: 2px solid var(--sd-brand); outline-offset: 2px; }
+
+/* ------------------------------------------------------------------
+   Upload progress
+   ------------------------------------------------------------------
+   The bar an upload fills. Once every byte is up the percentage stops
+   meaning anything — the server is still writing the files — so the fill
+   sweeps instead of sitting at 100%, which is what a hung request looks
+   like.
+   ------------------------------------------------------------------ */
+.styledesk_progress--working {
+    width: 100% !important;
+    animation: styledesk-progress-sweep 1.1s ease-in-out infinite;
+}
+
+@keyframes styledesk-progress-sweep {
+    0%   { opacity: 0.45; }
+    50%  { opacity: 1; }
+    100% { opacity: 0.45; }
+}
+
+/* ------------------------------------------------------------------
+   Resource utilization
+   ------------------------------------------------------------------
+   An infographic rather than a chart. Soft flat colours, oversized
+   percentages, and circles of visibly different sizes — the reading a
+   salon owner should get in two seconds is "that room is busy and that
+   chair is empty", not "here is a scatter plot".
+
+   Colour is DECORATIVE. It separates one bubble from the next and
+   nothing more: the percentage is what says how busy a resource is, and
+   it is printed inside every circle at the largest size the circle can
+   hold. Nothing here is green-good / red-bad, because a reader who
+   cannot separate the hues would lose the whole answer.
+
+   Nine tints, assigned by the resource's own id so a room keeps its
+   colour when the date range changes — a bubble that turns from teal to
+   coral between two clicks reads as a different room.
+
+   Every pair is a pale ground with its own ink, so the text clears
+   WCAG AA at the sizes used inside a bubble.
+   ------------------------------------------------------------------ */
+.styledesk_bubble {
+    cursor: pointer;
+    /* The simulation writes a new transform every tick, so the glide
+       belongs here rather than being animated frame by frame in JS. */
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.35s ease;
+}
+
+.styledesk_bubble__disc {
+    transition: r 0.4s cubic-bezier(0.22, 1, 0.36, 1), filter 0.18s ease;
+}
+
+/* Lifted rather than zoomed: a hand's-breadth of scale and a soft
+   shadow say "this one" without shoving its neighbours about. */
+.styledesk_bubble:hover .styledesk_bubble__lift,
+.styledesk_bubble:focus-visible .styledesk_bubble__lift {
+    transform: scale(1.05);
+}
+
+.styledesk_bubble__lift {
+    transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-origin: center;
+    transform-box: fill-box;
+}
+
+.styledesk_bubble:hover .styledesk_bubble__disc,
+.styledesk_bubble:focus-visible .styledesk_bubble__disc {
+    filter: drop-shadow(0 10px 22px rgb(15 15 16 / 18%));
+}
+
+.styledesk_bubble:focus-visible { outline: none; }
+
+/* The one the reader has opened. Held apart by weight rather than by a
+   different colour: changing the fill would break the promise that a
+   resource keeps its own. */
+.styledesk_bubble--selected .styledesk_bubble__disc {
+    stroke: #0f0f10;
+    stroke-width: 3;
+    filter: drop-shadow(0 12px 26px rgb(15 15 16 / 22%));
+}
+
+/* Everything that is not the one being read, stepped back a little. */
+.styledesk_board--picked .styledesk_bubble:not(.styledesk_bubble--selected) { opacity: 0.45; }
+
+/* Arriving.
+ *
+ * A keyframe animation rather than a transition from `opacity: 0`, and the
+ * difference matters: a transition needs a frame to move off its starting
+ * state, and a background tab does not give one. A page opened in one came
+ * up with every bubble stuck at nought — invisible until the tab was
+ * focused. An animation that does not run leaves the element at its own
+ * style, which is visible, so the worst a throttled tab costs is the
+ * animation itself.
+ *
+ * `scale` as its own property, never `transform: scale()`: the group's
+ * position is a transform ATTRIBUTE written by the simulation, and a CSS
+ * `transform` would replace it — flinging the circle to the corner of the
+ * board instead of growing it where it stands. The individual transform
+ * properties compose with the attribute rather than overwriting it. */
+.styledesk_bubble {
+    animation: styledesk-bubble-in 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Scale only, deliberately. Fading in from nought means a browser that
+   never runs the animation — a background tab — shows nothing at all; a
+   circle held at 0.85 is merely a little small, and still readable. */
+@keyframes styledesk-bubble-in {
+    from { scale: 0.85; }
+    to   { scale: 1; }
+}
+
+/* There is deliberately no leave animation. Vue's transition classes are
+   driven by requestAnimationFrame, which a background tab does not run —
+   a bubble filtered out there kept its leave class and stayed on the board
+   as a ghost. A circle that leaves at once beats one that may never go. */
+
+.styledesk_bubble__value {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    dominant-baseline: middle;
+}
+
+.styledesk_bubble__name  { font-weight: 600; }
+.styledesk_bubble__meta  { font-weight: 500; opacity: 0.72; }
+
+/* The category, as a pill inside the circle. Drawn rather than styled:
+   SVG has no rounded background for text, so the pill is a rect and the
+   label sits on top of it. */
+.styledesk_bubble__pill { opacity: 0.28; }
+.styledesk_bubble__chip { font-weight: 700; letter-spacing: 0.07em; }
+
+/* --- the nine tints, ground and ink ------------------------------- */
+.styledesk_bubble--c0 .styledesk_bubble__disc { fill: #ded7fb; }   /* lavender */
+.styledesk_bubble--c1 .styledesk_bubble__disc { fill: #fbd5e6; }   /* pink */
+.styledesk_bubble--c2 .styledesk_bubble__disc { fill: #fdeab4; }   /* yellow */
+.styledesk_bubble--c3 .styledesk_bubble__disc { fill: #cfe6fb; }   /* light blue */
+.styledesk_bubble--c4 .styledesk_bubble__disc { fill: #c7ece4; }   /* teal */
+.styledesk_bubble--c5 .styledesk_bubble__disc { fill: #e6dcfa; }   /* violet */
+.styledesk_bubble--c6 .styledesk_bubble__disc { fill: #fcd9cd; }   /* coral */
+.styledesk_bubble--c7 .styledesk_bubble__disc { fill: #d3f0d8; }   /* mint */
+.styledesk_bubble--c8 .styledesk_bubble__disc { fill: #fde3cc; }   /* peach */
+
+.styledesk_bubble--c0 text, .styledesk_bubble--c0 .styledesk_bubble__pill { fill: #3f2f8f; }
+.styledesk_bubble--c1 text, .styledesk_bubble--c1 .styledesk_bubble__pill { fill: #9d1f5c; }
+.styledesk_bubble--c2 text, .styledesk_bubble--c2 .styledesk_bubble__pill { fill: #8a5b06; }
+.styledesk_bubble--c3 text, .styledesk_bubble--c3 .styledesk_bubble__pill { fill: #16548c; }
+.styledesk_bubble--c4 text, .styledesk_bubble--c4 .styledesk_bubble__pill { fill: #0f5f56; }
+.styledesk_bubble--c5 text, .styledesk_bubble--c5 .styledesk_bubble__pill { fill: #543095; }
+.styledesk_bubble--c6 text, .styledesk_bubble--c6 .styledesk_bubble__pill { fill: #9b3618; }
+.styledesk_bubble--c7 text, .styledesk_bubble--c7 .styledesk_bubble__pill { fill: #1c6135; }
+.styledesk_bubble--c8 text, .styledesk_bubble--c8 .styledesk_bubble__pill { fill: #96500e; }
+
+/* A resource nothing was open for. Grey, and said in words in the
+   tooltip: it is not a low percentage, it is no percentage at all. */
+.styledesk_bubble--shut .styledesk_bubble__disc { fill: #e9edf2; }
+.styledesk_bubble--shut text, .styledesk_bubble--shut .styledesk_bubble__pill { fill: #64748b; }
+
+/* Follows the pointer, so it is fixed and cannot be clipped by the
+   board's own overflow. */
+.styledesk_bubbletip {
+    position: fixed;
+    z-index: 200;
+    pointer-events: none;
+    min-width: 13.5rem;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 12px 32px rgb(15 15 16 / 16%);
+    font-size: 12px;
+    color: #6b7280;
+}
+
+/* The circular indicator on a phone, where the cluster is replaced by a
+   list. Drawn with a stroked arc rather than a bubble: a row of circles
+   down a narrow screen is a list with decoration, and reads better as
+   one. */
+.styledesk_ring__track { stroke: #eef0f2; }
+.styledesk_ring__fill {
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Closed off for cleaning or maintenance: hatched rather than a fourth
+   colour, because it is a different KIND of thing from a booking and a
+   gap, not a third value on the same scale. */
+.styledesk_timeline__blocked {
+    background-image: repeating-linear-gradient(
+        45deg,
+        #e2e8f0,
+        #e2e8f0 3px,
+        #f8fafc 3px,
+        #f8fafc 6px
+    );
+}
+
+/* ------------------------------------------------------------------
+   Date range picker
+   ------------------------------------------------------------------
+   bootstrap-daterangepicker, restyled to look like the rest of
+   StyleDesk. Its own stylesheet is imported ahead of this one in
+   app.css — the same arrangement as Tabulator — so everything below
+   simply wins on order rather than needing to shout.
+
+   The plugin is here for its behaviour: a sidebar of named ranges, two
+   months side by side, and a range selected by clicking two days. None
+   of its appearance survives.
+   ------------------------------------------------------------------ */
+.daterangepicker {
+    font-family: inherit;
+    margin-top: 0.375rem;
+    padding: 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgb(15 15 16 / 14%);
+    color: #23272f;
+    width: auto;
+}
+
+/* The little arrow pointing at the field. Bootstrap's is two stacked
+   triangles; the app's own popovers do not have one at all. */
+.daterangepicker::before,
+.daterangepicker::after { display: none; }
+
+/* --- the named ranges ---------------------------------------------- */
+.daterangepicker .ranges { margin: 0; padding: 0.375rem; }
+
+.daterangepicker .ranges ul { width: 11.5rem; }
+
+.daterangepicker .ranges li {
+    padding: 0.5rem 0.625rem;
+    margin-bottom: 0.125rem;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: #23272f;
+}
+
+.daterangepicker .ranges li:hover { background-color: #f3f4f6; }
+
+.daterangepicker .ranges li.active {
+    background-color: var(--sd-brand, #3d348b);
+    color: #fff;
+    font-weight: 600;
+}
+
+/* A rule between the ranges and the calendars, only when both show. */
+.daterangepicker.show-calendar .ranges { border-right: 1px solid #eef0f2; }
+
+/* --- the calendars -------------------------------------------------- */
+.daterangepicker .drp-calendar { padding: 0.75rem; max-width: none; }
+
+.daterangepicker .drp-calendar.left { border-left: 0; }
+
+.daterangepicker .calendar-table { border: 0; border-radius: 0; }
+
+.daterangepicker .calendar-table th,
+.daterangepicker .calendar-table td {
+    width: 2.125rem;
+    height: 2.125rem;
+    min-width: 2.125rem;
+    border: 0;
+    border-radius: 6px;
+    font-size: 12.5px;
+    line-height: 2.125rem;
+}
+
+/* The month name, and the arrows either side of it. */
+.daterangepicker .calendar-table th.month {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f0f10;
+    width: auto;
+}
+
+/* Weekday initials, quieter than the numbers under them. */
+.daterangepicker .calendar-table thead tr:last-child th {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.daterangepicker td.available:hover,
+.daterangepicker th.available:hover { background-color: #f3f4f6; }
+
+.daterangepicker td.off,
+.daterangepicker td.off.in-range,
+.daterangepicker td.off.start-date,
+.daterangepicker td.off.end-date {
+    background-color: transparent;
+    color: #d1d5db;
+}
+
+.daterangepicker td.disabled { color: #d1d5db; text-decoration: none; }
+
+/* The chosen span: a soft band, with the two ends solid. Square
+   shoulders in the middle so a run of days reads as one bar rather
+   than as a row of separate pills. */
+.daterangepicker td.in-range {
+    background-color: #eef1f4;
+    border-radius: 0;
+    color: #23272f;
+}
+
+.daterangepicker td.start-date { border-radius: 6px 0 0 6px; }
+.daterangepicker td.end-date { border-radius: 0 6px 6px 0; }
+.daterangepicker td.start-date.end-date { border-radius: 6px; }
+
+.daterangepicker td.active,
+.daterangepicker td.active:hover {
+    background-color: var(--sd-brand, #3d348b);
+    color: #fff;
+    font-weight: 600;
+}
+
+/* The plugin marks "today" from the BROWSER's clock, and every range on
+   this screen is worked out from the server's. Rather than draw a ring
+   that can point at the wrong day, it is left unmarked — the selection
+   is what the reader is looking for, and that is filled. */
+.daterangepicker td.today:not(.active) { font-weight: 500; }
+
+.daterangepicker .prev span,
+.daterangepicker .next span { border-color: #6b7280; border-width: 0 1.5px 1.5px 0; }
+
+.daterangepicker .prev:hover,
+.daterangepicker .next:hover { background-color: #f3f4f6; border-radius: 6px; }
+
+/* --- the footer ----------------------------------------------------- */
+.daterangepicker .drp-buttons {
+    padding: 0.625rem 0.75rem;
+    border-top: 1px solid #eef0f2;
+}
+
+.daterangepicker .drp-selected {
+    font-size: 12.5px;
+    color: #6b7280;
+    padding-right: 0.5rem;
+}
+
+.daterangepicker .drp-buttons .btn {
+    height: 2.125rem;
+    padding: 0 0.875rem;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    color: #23272f;
+    text-transform: none;
+}
+
+.daterangepicker .drp-buttons .btn:hover { background: #f3f4f6; }
+
+.daterangepicker .drp-buttons .btn.btn-primary,
+.daterangepicker .drp-buttons .btn.btn-primary:hover {
+    background: var(--sd-brand, #3d348b);
+    border-color: var(--sd-brand, #3d348b);
+    color: #fff;
+}
+
+/* Below `sm` the two months stack, which is what the plugin does on its
+   own — this only stops the sidebar and the calendars fighting for a
+   phone's width. */
+@media (max-width: 40rem) {
+    .daterangepicker .ranges ul { width: 100%; }
+    .daterangepicker.show-calendar .ranges { border-right: 0; border-bottom: 1px solid #eef0f2; }
+}
+
+/* The field it opens from reads as a field, not as a box somebody might
+   type into: the picker is the only way to change it. */
+.sd-input[readonly] { background-color: #fff; cursor: pointer; }
+
+/* ------------------------------------------------------------------
+   Data table
+   ------------------------------------------------------------------
+   A plain <table> wearing the listing grid's clothes.
+
+   The client, service and resource listings are Tabulator, driven by a
+   URL and a column spec — the right tool when a list is thousands of
+   rows, paged and sorted by the server. The resource utilization list is
+   not that: it is the same few dozen rows already in the browser, and
+   the category chips above it filter them instantly. Fetching them again
+   through a grid would make a chip cost a round trip and would leave two
+   answers to "which resources are showing".
+
+   So it borrows the LOOK rather than the machinery, and the values below
+   are the grid's own: the brand-tinted header, the 0.75rem/1rem cell,
+   the banded rows at 45% of the hover fill, and the hairline between
+   them. If the grid's styling moves, this is the other place to move.
+   ------------------------------------------------------------------ */
+.styledesk_datatable {
+    width: 100%;
+    border-collapse: collapse;
+    border-top: 1px solid var(--color-line);
+    font-size: 13px;
+}
+
+.styledesk_datatable thead th {
+    /* color-mix rather than an opacity utility: the brand is a runtime
+       variable, and `/10` needs channels a var() holding a whole colour
+       cannot give. The flat fallback is what a browser without
+       color-mix draws. */
+    background: var(--color-sel);
+    background: color-mix(in srgb, var(--sd-brand) 10%, transparent);
+    border-bottom: 1px solid var(--color-line);
+    border-bottom-color: color-mix(in srgb, var(--sd-brand) 22%, transparent);
+    padding: 0.75rem 1rem;
+    color: var(--sd-brand);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.styledesk_datatable thead th.is-right { text-align: right; }
+
+.styledesk_datatable tbody tr {
+    background: #fff;
+    border-bottom: 1px solid var(--color-line);
+    cursor: pointer;
+}
+
+/* Banded at a quarter of the hover fill, so a ten-column row can be read
+   across without the banding competing with the row the pointer is on —
+   which is the state that has to win. */
+.styledesk_datatable tbody tr:nth-child(even) {
+    background: color-mix(in srgb, var(--color-hover) 45%, #fff);
+}
+
+.styledesk_datatable tbody tr:hover,
+.styledesk_datatable tbody tr:nth-child(even):hover {
+    background: color-mix(in srgb, var(--color-hover) 100%, #fff);
+}
+
+.styledesk_datatable tbody tr:last-child { border-bottom: 0; }
+
+.styledesk_datatable tbody td {
+    padding: 0.75rem 1rem;
+    color: var(--color-ink);
+    vertical-align: middle;
+}
+
+.styledesk_datatable tbody td.is-muted { color: var(--color-sub); }
+.styledesk_datatable tbody td.is-right { text-align: right; }
+
+/* The name column, which is what a reader scans down. */
+.styledesk_datatable tbody td.is-primary {
+    font-weight: 600;
+    color: var(--color-head);
+}
+
+.styledesk_datatable tbody tr:hover td.is-primary { color: var(--sd-link); }
+
+/* ------------------------------------------------------------------
+   Hitting the utilization target
+   ------------------------------------------------------------------
+   A brief burst of sparks around the figure the moment it reaches the
+   business's target. Deliberately short and small: this is business
+   software, and a celebration that outstays its welcome is an
+   animation somebody asks to have turned off.
+
+   The sparks carry no information — the badge beside them does — so
+   they are hidden from assistive technology and dropped entirely for a
+   reader who has asked for less motion.
+   ------------------------------------------------------------------ */
+.styledesk_sparks {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+}
+
+.styledesk_sparks__one {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-radius: 9999px;
+    background: var(--sd-brand, #3d348b);
+    opacity: 0;
+    /* Each spark is the same animation on a different bearing: the angle
+       is the only thing that differs, so it is a custom property rather
+       than twelve keyframe blocks. */
+    transform: rotate(var(--angle)) translateY(0);
+    animation: styledesk-spark 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* They travel clear of the figure before they are visible — a spark
+   sitting on top of a digit reads as a rendering fault, not a
+   celebration. */
+@keyframes styledesk-spark {
+    0%   { opacity: 0; transform: rotate(var(--angle)) translateY(-34px) scale(0.3); }
+    30%  { opacity: 1; transform: rotate(var(--angle)) translateY(-108px) scale(1); }
+    100% { opacity: 0; transform: rotate(var(--angle)) translateY(-168px) scale(0.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .styledesk_sparks { display: none; }
+}
+
+/* --------------------------------------------------------------------------
+   Resource availability — one day, every room, drawn along a clock
+
+   The frame is HTML and only the bars are SVG, and that is the whole reason
+   the markup looks the way it does: the resource names have to stick to the
+   left edge while the hours scroll under them, and the hour header has to
+   stick to the top while the rows scroll under it. An SVG cannot stick to
+   anything. So the scroller holds rows of [sticky name | wide track], and
+   each track holds one small SVG that draws that row's day.
+   -------------------------------------------------------------------------- */
+.styledesk_rt {
+    overflow: auto;
+    /* Tall enough for a dozen rooms, short enough that the figures above it
+       stay on the screen while somebody reads it. */
+    max-height: min(62vh, 620px);
+    overscroll-behavior: contain;
+}
+
+.styledesk_rt__grid {
+    position: relative;
+    width: calc(var(--name) + var(--chart));
+    min-width: 100%;
+}
+
+.styledesk_rt__head {
+    display: flex;
+    position: sticky;
+    top: 0;
+    /* Above the rows, below the name column's own corner. */
+    z-index: 3;
+    background: #fff;
+    border-bottom: 1px solid var(--color-line);
+}
+
+.styledesk_rt__corner {
+    flex: 0 0 var(--name);
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 0.875rem 0.5rem;
+    background: #fff;
+    border-right: 1px solid var(--color-line);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-sub);
+}
+
+.styledesk_rt__row {
+    display: flex;
+    border-top: 1px solid var(--color-line);
+}
+
+.styledesk_rt__row:first-of-type { border-top: 0; }
+
+/* The whole row lights up, not just the cell under the pointer: scanning
+   across twelve hours of a chart is exactly where an eye loses its line. */
+.styledesk_rt__row:hover .styledesk_rt__name,
+.styledesk_rt__row:hover .styledesk_rt__track { background: var(--color-hover); }
+
+.styledesk_rt__name {
+    flex: 0 0 var(--name);
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.125rem;
+    padding: 0 0.875rem;
+    background: #fff;
+    border-right: 1px solid var(--color-line);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+}
+
+.styledesk_rt__namelabel {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-head);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.styledesk_rt__namemeta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 11.5px;
+    color: var(--color-sub);
+}
+
+.styledesk_rt__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    background: var(--color-faint);
+}
+
+.styledesk_rt__dot--available { background: #16a34a; }
+.styledesk_rt__dot--in-use { background: var(--sd-brand, #3d348b); }
+.styledesk_rt__dot--blocked { background: #d97706; }
+.styledesk_rt__dot--closed { background: #cbd5e1; }
+
+.styledesk_rt__track {
+    flex: 0 0 var(--chart);
+    transition: background-color 0.12s ease;
+}
+
+.styledesk_rt__track svg { display: block; }
+
+/* ------------------------------------------------------------- the bands */
+/* What the row IS, under everything drawn on it. Free time is painted
+   rather than left white on purpose: a gap that reads as "nothing here"
+   and a gap that reads as "you can book this" are the same pixels
+   otherwise, and only one of them is the answer somebody is looking for. */
+.styledesk_rt__band--available { fill: #f0fdf4; }
+.styledesk_rt__band--booked { fill: #f8fafc; }
+.styledesk_rt__band--blocked { fill: #fffbeb; }
+.styledesk_rt__band--closed { fill: #f1f5f9; }
+
+.styledesk_rt__gridline {
+    stroke: var(--color-line);
+    stroke-width: 1;
+}
+
+/* ------------------------------------------------------------ the blocks */
+.styledesk_rt__block { cursor: pointer; }
+.styledesk_rt__block rect { transition: opacity 0.12s ease; }
+.styledesk_rt__block:hover rect { opacity: 0.86; }
+
+.styledesk_rt__block--booked rect { fill: var(--sd-brand, #3d348b); }
+
+/* Turnaround time, which is not an appointment and must not look like one:
+   the room is unavailable, but nobody is in it. */
+.styledesk_rt__block--prep rect,
+.styledesk_rt__block--cleanup rect {
+    fill: color-mix(in srgb, var(--sd-brand, #3d348b) 22%, #fff);
+}
+
+.styledesk_rt__blocklabel {
+    fill: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
+}
+
+/* --------------------------------------------------------------- now */
+.styledesk_rt__now {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dc2626;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.styledesk_rt__nowlabel {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- the key */
+.styledesk_rt__swatch {
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    border: 1px solid var(--color-line);
+}
+
+.styledesk_rt__swatch--available { background: #f0fdf4; border-color: #bbf7d0; }
+.styledesk_rt__swatch--booked { background: var(--sd-brand, #3d348b); border-color: transparent; }
+.styledesk_rt__swatch--prep,
+.styledesk_rt__swatch--cleanup { background: color-mix(in srgb, var(--sd-brand, #3d348b) 22%, #fff); border-color: transparent; }
+.styledesk_rt__swatch--blocked { background: #fffbeb; border-color: #fcd34d; }
+.styledesk_rt__swatch--closed { background: #f1f5f9; border-color: #cbd5e1; }
+
+.styledesk_rt__today--on {
+    border-color: var(--sd-brand, #3d348b);
+    color: var(--sd-brand, #3d348b);
+}
+
+.styledesk_rt__cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    background: var(--sd-brand, #3d348b);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.styledesk_rt__cta:hover { background: var(--sd-brand-dark, var(--sd-brand, #3d348b)); }
+
+.styledesk_rt__badge--available { background: #dcfce7; color: #166534; }
+.styledesk_rt__badge--in-use { background: color-mix(in srgb, var(--sd-brand, #3d348b) 12%, #fff); color: var(--sd-brand, #3d348b); }
+.styledesk_rt__badge--blocked { background: #fef3c7; color: #92400e; }
+.styledesk_rt__badge--closed { background: #f1f5f9; color: #475569; }
+
+/* ----------------------------------------------------------- the panel */
+/* A booking opened from the chart, over the page rather than instead of
+   it: whoever clicked a block is in the middle of reading the day, and
+   navigating away loses the thing they were reading. */
+.styledesk_rtpanel {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    background: rgba(15, 15, 16, 0.32);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.styledesk_rtpanel__card {
+    width: min(420px, 100%);
+    height: 100%;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -18px 0 40px rgba(15, 15, 16, 0.14);
+    animation: styledesk-rtpanel-in 0.18s ease-out;
+}
+
+@keyframes styledesk-rtpanel-in {
+    from { transform: translateX(24px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .styledesk_rtpanel__card { animation: none; }
+}
+
+.styledesk_rtpanel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-line);
+}
+
+.styledesk_rtpanel__body {
+    padding: 1.25rem;
+    overflow-y: auto;
+}
+
+.styledesk_rtfacts > div {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-line);
+}
+
+.styledesk_rtfacts > div:last-child { border-bottom: 0; }
+.styledesk_rtfacts dt { font-size: 12.5px; color: var(--color-sub); flex: 0 0 42%; }
+.styledesk_rtfacts dd { font-size: 13px; font-weight: 600; color: var(--color-head); margin-inline-start: auto; text-align: right; }
+
+/* --------------------------------------------------------- the tooltip */
+.styledesk_rttip {
+    position: fixed;
+    z-index: 200;
+    width: 252px;
+    padding: 0.625rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--color-line);
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(15, 15, 16, 0.16);
+    pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Staff utilization — a person's day, and the team's
+
+   The frame is the resource timeline's (.styledesk_rt*, above): sticky names,
+   sticky hours, one SVG per row. What differs is what the bands MEAN, so only
+   the fills are redefined here. A person's day is not a room's: "break" and
+   "not bookable" are states a room does not have, and "outside working hours"
+   is the rota's answer rather than the branch's.
+   -------------------------------------------------------------------------- */
+.styledesk_su__band--available { fill: #f0fdf4; }
+.styledesk_su__band--booked { fill: #eef2ff; }
+.styledesk_su__band--break { fill: #fef9c3; }
+.styledesk_su__band--blocked { fill: #fffbeb; }
+.styledesk_su__band--off { fill: #f1f5f9; }
+
+/* The appointments themselves, over the bands. */
+.styledesk_su__booking rect {
+    fill: var(--sd-brand, #3d348b);
+    transition: opacity 0.12s ease;
+}
+
+.styledesk_su__booking:hover rect { opacity: 0.86; }
+
+.styledesk_su__swatch--available { background: #f0fdf4; border-color: #bbf7d0; }
+.styledesk_su__swatch--booked { background: var(--sd-brand, #3d348b); border-color: transparent; }
+.styledesk_su__swatch--break { background: #fef9c3; border-color: #fde047; }
+.styledesk_su__swatch--blocked { background: #fffbeb; border-color: #fcd34d; }
+.styledesk_su__swatch--off { background: #f1f5f9; border-color: #cbd5e1; }
+
+/* The drill-down carries a day, a list of gaps and a service mix, so it is
+   wider than the booking panel it shares a shell with. */
+.styledesk_rtpanel__card--wide { width: min(560px, 100%); }
+
+/* The "why does this arrive?" mark beside a notification's name.
+   Faint until pointed at: it is an answer for whoever wants one, not a
+   decoration on every row of a long list. */
+.sd-matrix__why {
+    display: inline-grid;
+    place-items: center;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    color: var(--color-faint);
+    transition: color 0.12s ease, background-color 0.12s ease;
+}
+
+.sd-matrix__why:hover,
+.sd-matrix__why:focus-visible { color: var(--color-ink); background: var(--color-hover); }
+
+/* --------------------------------------------------------------------------
+   Business activity
+
+   The panel behind the app bar's activity icon. It borrows the resource
+   panel's shell (.styledesk_rtpanel) — same scrim, same slide, same close —
+   because a second right-hand panel that behaved differently would be a
+   second thing to learn for no reason.
+   -------------------------------------------------------------------------- */
+/* The list itself, on the activity page.
+
+   It began as a right-hand drawer and is now a page of its own: a log
+   somebody sits and reads — scrolled, filtered, followed into a record and
+   come back from — fights a panel that shuts when you click past it. */
+.styledesk_activity__list {
+    border: 1px solid var(--color-line);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: #fff;
+    padding: 0.25rem 1.25rem 1.25rem;
+}
+
+/* The count on the icon. Small and high-contrast: it is a nudge, and a badge
+   that competes with the icon it sits on is a badge nobody reads past. */
+.styledesk_activity__badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 9999px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+}
+
+/* Wrapped, never scrolled.
+   
+   These used to scroll sideways, on the reasoning that eight chips in a
+   440px panel would otherwise take three lines. What that actually did was
+   hide the last three filters off the right edge with nothing to say they
+   were there — a control cut in half reads as a rendering fault, and a
+   filter nobody can see is a filter nobody uses. The panel is wide now, so
+   they fit; and where they do not, they wrap. */
+.styledesk_activity__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    padding: 0.75rem 1.25rem;
+    border: 1px solid var(--color-line);
+    border-radius: 10px 10px 0 0;
+    background: #fff;
+}
+
+.styledesk_activity__chip {
+    flex: 0 0 auto;
+    height: 1.75rem;
+    padding: 0 0.625rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-line);
+    background: #fff;
+    color: var(--color-sub);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.styledesk_activity__chip:hover { background: var(--color-hover); color: var(--color-ink); }
+
+.styledesk_activity__chip.is-on {
+    background: var(--sd-brand, #3d348b);
+    border-color: var(--sd-brand, #3d348b);
+    color: #fff;
+}
+
+.styledesk_activity__day {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.25rem 0 0.5rem;
+    background: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+}
+
+.styledesk_activity__row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--color-line);
+}
+
+/* Narrow: the icon holds the first column and everything else stacks in the
+   second, so the aside falls under the sentence rather than beside it. */
+.styledesk_activity__icon { grid-row: span 2; }
+.styledesk_activity__aside { display: flex; flex-direction: column; }
+
+/* Given the room, the sentence and the facts about it sit side by side
+   rather than stacked — a description stretched across a thousand pixels is
+   a line the eye loses its place in, and the time and the link are what a
+   reader scans down the right-hand edge for. */
+@media (min-width: 900px) {
+    .styledesk_activity__row {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .styledesk_activity__icon { grid-row: auto; }
+
+    .styledesk_activity__body {
+        flex: 1 1 auto;
+        /* A readable measure. The panel is wide; the sentence should not be. */
+        max-width: 68ch;
+    }
+
+    .styledesk_activity__aside {
+        flex: 0 0 auto;
+        display: flex;
+        /* Reset from the stacked narrow layout above — without this the time
+           sits over the link and every row is two lines taller than it needs
+           to be. */
+        flex-direction: row;
+        align-items: center;
+        gap: 1.25rem;
+        margin-inline-start: auto;
+        padding-top: 0.125rem;
+        white-space: nowrap;
+    }
+
+    .styledesk_activity__aside .styledesk_activity__meta,
+    .styledesk_activity__aside .styledesk_activity__link { margin-top: 0; }
+}
+
+.styledesk_activity__row:last-child { border-bottom: 0; }
+
+/* New since this reader last looked. A rule down the left rather than a
+   coloured background: forty tinted rows is a wall, and the point is to show
+   where the new ones stop. */
+.styledesk_activity__row.is-new {
+    margin-inline: -1.25rem;
+    padding-inline: 1.23rem;
+    border-left: 2px solid var(--sd-brand, #3d348b);
+    background: color-mix(in srgb, var(--sd-brand, #3d348b) 3%, #fff);
+}
+
+.styledesk_activity__icon {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-top: 0.125rem;
+    border-radius: 8px;
+    background: var(--color-hover);
+    color: var(--color-sub);
+}
+
+/* Coloured by what the activity is ABOUT, so a column of them can be scanned
+   for a kind of thing without reading a word. */
+.styledesk_activity__icon.is-bookings { background: #eef2ff; color: #4338ca; }
+.styledesk_activity__icon.is-clients { background: #ecfdf5; color: #047857; }
+.styledesk_activity__icon.is-payments { background: #fffbeb; color: #b45309; }
+.styledesk_activity__icon.is-staff { background: #fdf2f8; color: #be185d; }
+.styledesk_activity__icon.is-scheduling { background: #f0f9ff; color: #0369a1; }
+.styledesk_activity__icon.is-communication { background: #f5f3ff; color: #6d28d9; }
+.styledesk_activity__icon.is-system { background: #f1f5f9; color: #475569; }
+
+.styledesk_activity__kind {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+}
+
+.styledesk_activity__text {
+    margin-top: 0.125rem;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--color-ink);
+}
+
+.styledesk_activity__meta {
+    margin-top: 0.25rem;
+    font-size: 11.5px;
+    color: var(--color-sub);
+}
+
+.styledesk_activity__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.375rem;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-link);
+}
+
+.styledesk_activity__link:hover { text-decoration: underline; }

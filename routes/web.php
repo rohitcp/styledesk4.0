@@ -6,6 +6,7 @@ use App\Http\Controllers\Account\NotificationController as AccountNotificationCo
 use App\Http\Controllers\Account\PasswordController as AccountPasswordController;
 use App\Http\Controllers\Account\PreferencesController as AccountPreferencesController;
 use App\Http\Controllers\Account\ProfileController as AccountProfileController;
+use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\AppSettingsController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingLeadController;
@@ -14,13 +15,17 @@ use App\Http\Controllers\BookingStatusController;
 use App\Http\Controllers\ClientBookingPreferenceController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientEmailController;
+use App\Http\Controllers\ClientFileController;
 use App\Http\Controllers\ClientNoteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
+use App\Http\Controllers\Marketing\EmailCampaignController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\PromotionController;
+use App\Http\Controllers\ResourceAvailabilityController;
 use App\Http\Controllers\ResourceController;
+use App\Http\Controllers\ResourceUtilizationController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\ServiceController;
@@ -46,6 +51,7 @@ use App\Http\Controllers\Settings\StripeConnectController;
 use App\Http\Controllers\Settings\TipController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\StaffScheduleBoardController;
+use App\Http\Controllers\StaffUtilizationController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
@@ -1264,6 +1270,47 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
         });
 
     /*
+    | Marketing — email campaigns to the whole client list.
+    |
+    | Its own permissions rather than the email module's: sending one client a
+    | receipt and sending twelve hundred people a promotion are different acts.
+    */
+    Route::controller(EmailCampaignController::class)
+        ->prefix('marketing/email')
+        ->name('marketing.email.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            /* Before {campaign}: a literal segment declared after a parameter
+               is reached by matching "create" as an id. */
+            Route::get('create', 'create')->name('create');
+            Route::get('data', 'data')->name('data');
+            /* Asked as the audience is built, which is often. */
+            Route::post('estimate', 'estimate')->middleware('throttle:120,1')->name('estimate');
+            Route::post('/', 'store')->name('store');
+            Route::get('{campaign}/edit', 'edit')->name('edit');
+            Route::patch('{campaign}', 'update')->name('update');
+            Route::delete('{campaign}', 'destroy')->name('destroy');
+        });
+
+    /*
+    | What has been happening across the business.
+    |
+    | Asked from the app bar on every screen, so it is throttled generously
+    | rather than tightly: opening the panel and scrolling it is exactly what
+    | it is for.
+    */
+    Route::controller(ActivityController::class)
+        ->prefix('activity')
+        ->name('activity.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            /* Asked again on every filter and every page down, so it is
+               throttled generously rather than tightly. */
+            Route::get('feed', 'feed')->middleware('throttle:180,1')->name('feed');
+            Route::post('read', 'read')->name('read');
+        });
+
+    /*
     | The whole team's rota, a month at a time.
     |
     | Declared before the {staff} routes below, or /staff/schedules would be
@@ -1281,6 +1328,29 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::get('start', 'start')->name('.start');
             /* One person's month, for the board's own modal. */
             Route::get('{staff}/month', 'month')->name('.month');
+        });
+
+    /*
+    | How much of each person's bookable day is actually booked.
+    |
+    | Under staff rather than under reports: it is a reading of the rota,
+    | governed by the same permission and its scope, and a manager looking for
+    | it looks where the team is.
+    |
+    | Declared BEFORE the {staff} routes below, or /staff/utilization would be
+    | read as a member of staff called "utilization".
+    */
+    Route::controller(StaffUtilizationController::class)
+        ->prefix('staff/utilization')
+        ->name('staff.utilization')
+        ->group(function () {
+            Route::get('/', 'index')->name('');
+            /* The same figures again when the range or the branch changes.
+               Throttled generously: it is meant to be asked often. */
+            Route::get('data', 'data')->middleware('throttle:120,1')->name('.data');
+            /* The same figures as rows, for the shared listing grid. */
+            Route::get('rows', 'rows')->middleware('throttle:120,1')->name('.rows');
+            Route::get('{staff}', 'show')->name('.show');
         });
 
     Route::controller(StaffController::class)
@@ -1336,6 +1406,51 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
     | once a year. What belongs in App Settings is the defaults; what lives
     | here is the actual furniture.
     */
+    /*
+    | How the rooms and chairs are actually being used.
+    |
+    | Under resources rather than under reports: it is a reading of the
+    | resource list, governed by the same permission, and an owner looking
+    | for it looks where the rooms are.
+    |
+    | Declared BEFORE the resource routes below. `resources/{resource}` binds
+    | its parameter to a model, so it would match "utilization" first and
+    | 404 on the lookup rather than falling through to this.
+    */
+    /*
+    | What the rooms and chairs are doing today.
+    |
+    | The operational counterpart to utilization: one day drawn along a
+    | clock, for a receptionist with somebody in front of them. Declared
+    | BEFORE the resource routes for the same reason utilization is —
+    | `resources/{resource}` would match "availability" as an id.
+    */
+    Route::controller(ResourceAvailabilityController::class)
+        ->prefix('resources/availability')
+        ->name('resources.availability')
+        ->group(function () {
+            Route::get('/', 'index')->name('');
+            /* Asked on every day step and branch change, so it is throttled
+               generously: stepping through a week is what this is for. */
+            Route::get('data', 'data')->middleware('throttle:120,1')->name('.data');
+            /* One appointment, for the panel that opens over the chart
+               rather than taking the reader off it. */
+            Route::get('bookings/{booking}', 'booking')->name('.booking');
+        });
+
+    Route::controller(ResourceUtilizationController::class)
+        ->prefix('resources/utilization')
+        ->name('resources.utilization')
+        ->group(function () {
+            Route::get('/', 'index')->name('');
+            /* The same figures again when the date range or the branch
+               changes. Throttled generously: it is meant to be asked often. */
+            Route::get('data', 'data')->middleware('throttle:120,1')->name('.data');
+            /* The same figures as rows, for the shared listing grid. */
+            Route::get('rows', 'rows')->middleware('throttle:120,1')->name('.rows');
+            Route::get('{resource}', 'show')->name('.show');
+        });
+
     Route::controller(ResourceController::class)
         ->prefix('resources')
         ->name('resources.')
@@ -1372,6 +1487,52 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
     Route::get('files/{storedFile}/download', function (StoredFile $storedFile, TenantStorageContract $storage) {
         return $storage->download($storedFile);
     })->name('files.download');
+
+    /*
+    | Documents and treatment photographs on a client's record.
+    |
+    | Under the client rather than under /files: these are client data before
+    | they are files, and every route here answers "may this person see this
+    | client's documents" rather than "does this file exist". The generic
+    | /files routes above stay for logos and avatars.
+    |
+    | The file itself is streamed through the controller rather than linked
+    | to on the disk — the permission is checked on every request, and the
+    | read is written into the client's own history.
+    */
+    Route::controller(ClientFileController::class)
+        ->prefix('clients/{client}/files')
+        ->name('clients.files.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->name('store');
+
+            /*
+            | The upload workflow, as a page of its own. Before {file}, or
+            | "create" is read as a file with that id.
+            |
+            | A page rather than a dialog: several files, two sets of
+            | thumbnails and six fields of treatment detail do not fit a
+            | panel, and this is a sitting like assigning a schedule is.
+            */
+            Route::get('create', 'create')->name('create');
+
+            /*
+            | Before {file}, or "records" is read as a file with that id.
+            */
+            Route::post('records', 'storeRecord')->name('records.store');
+            Route::patch('records/{record}', 'updateRecord')->name('records.update');
+            Route::post('records/{record}/images', 'addImages')->name('records.images');
+            Route::delete('records/{record}', 'destroyRecord')->name('records.destroy');
+
+            Route::get('{file}', 'show')->name('show');
+            Route::get('{file}/download', 'download')->name('download');
+            Route::patch('{file}', 'update')->name('update');
+            /* Posted rather than patched: a file arrives as multipart, and
+               PHP does not parse a body on PATCH. */
+            Route::post('{file}/replace', 'replace')->name('replace');
+            Route::delete('{file}', 'destroy')->name('destroy');
+        });
 
     Route::controller(ClientNoteController::class)
         ->prefix('clients/{client}/notes')

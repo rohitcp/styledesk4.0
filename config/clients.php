@@ -51,6 +51,28 @@ return [
     ],
 
     /*
+     * How a document on a client's record is filed.
+     *
+     * A short fixed list rather than free text: a category the reader types
+     * is a category that is spelled four ways by Friday, and the Files tab
+     * filters on it. Optional on every upload — a business that files
+     * nothing still gets a working Files tab, and one that files everything
+     * is not asked to invent the list first.
+     *
+     * The labels are translated in every language file under
+     * `module.workspace.files.categories`; these are only the keys.
+     */
+    'file_categories' => [
+        'consent',
+        'consultation',
+        'medical',
+        'treatment',
+        'receipt',
+        'identification',
+        'other',
+    ],
+
+    /*
      * What kind of number or address a contact is.
      *
      * Deliberately not "primary" and "secondary": which number to ring and

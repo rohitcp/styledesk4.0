@@ -16,6 +16,20 @@ declare(strict_types=1);
 return [
 
     /*
+     * The utilization a business is aiming for, as a percentage.
+     *
+     * Not a rule and not a limit — nothing is refused for missing it. It is
+     * the number the summary panel congratulates, so an owner who has got
+     * their rooms working sees that they have rather than having to compare
+     * two figures themselves.
+     *
+     * 75% because a room booked much beyond that has no slack left for a
+     * client running late or a treatment overrunning, and a salon at 100%
+     * is one turning people away.
+     */
+    'utilization_target' => 75,
+
+    /*
     | How resources are numbered when a business has not said otherwise.
     |
     | The code is generated rather than typed: "RES-001" after "RES-002" is

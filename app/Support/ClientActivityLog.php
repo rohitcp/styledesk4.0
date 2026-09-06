@@ -9,6 +9,8 @@ use App\Models\BookingPayment;
 use App\Models\Client;
 use App\Models\ClientActivity;
 use App\Models\ClientEmailMessage;
+use App\Models\ClientFile;
+use App\Models\ClientFileRecord;
 use App\Models\ClientNote;
 
 /**
@@ -347,6 +349,127 @@ class ClientActivityLog
      *
      * @param  array<string, mixed>  $attributes
      */
+    // ---------------------------------------------------------------- files
+
+    /**
+     * A document or photograph was filed on the record.
+     *
+     * The name rather than the id, because the timeline is read months later
+     * and by then the file may be gone — "Consent form.pdf added" answers the
+     * question a bare id does not.
+     */
+    public static function fileUploaded(ClientFile $file): void
+    {
+        self::file($file->client_id, 'file.uploaded', $file->name, $file->id, $file->uploaded_by, [
+            'kind' => $file->kind(),
+        ]);
+    }
+
+    /** Its name, note or filing changed. The file itself did not. */
+    public static function fileUpdated(ClientFile $file, ?int $userId = null): void
+    {
+        self::file($file->client_id, 'file.updated', $file->name, $file->id, $userId);
+    }
+
+    /** The contents were swapped, keeping the record it hangs off. */
+    public static function fileReplaced(ClientFile $file, ?int $userId = null): void
+    {
+        self::file($file->client_id, 'file.replaced', $file->name, $file->id, $userId);
+    }
+
+    /**
+     * The file is gone; the record of it is not.
+     *
+     * Passed what it was called rather than re-read, because by the time this
+     * entry is useful there is nothing left to read it off.
+     */
+    public static function fileDeleted(int $clientId, string $name, ?int $fileId = null, ?int $userId = null): void
+    {
+        self::file($clientId, 'file.deleted', $name, $fileId, $userId);
+    }
+
+    /**
+     * Somebody opened or downloaded it.
+     *
+     * Recorded because a client's documents are client data: "who has seen
+     * this" is a question a business has to be able to answer, and a file
+     * that was read leaves no other trace that it was.
+     *
+     * Deduped within the hour per person and per file. Without it a gallery
+     * of twelve photographs would write twelve rows every time somebody
+     * scrolled past it, and a timeline nobody can read is a record nobody
+     * checks.
+     */
+    public static function fileAccessed(ClientFile $file, ?int $userId = null, string $how = 'viewed'): void
+    {
+        $userId ??= auth()->id();
+
+        $seen = ClientActivity::query()
+            ->where('client_id', $file->client_id)
+            ->where('type', 'file.'.$how)
+            ->where('user_id', $userId)
+            ->where('subject_id', $file->id)
+            ->where('created_at', '>=', now()->subHour())
+            ->exists();
+
+        if ($seen) {
+            return;
+        }
+
+        self::file($file->client_id, 'file.'.$how, $file->name, $file->id, $userId);
+    }
+
+    /**
+     * A treatment record, which is several files and one event.
+     *
+     * Its own entry rather than one per photograph: what happened is that a
+     * before-and-after was recorded, and six rows saying so is six times the
+     * timeline for one act.
+     *
+     * @param  array<string, mixed>  $meta
+     */
+    public static function fileRecordSaved(ClientFileRecord $record, string $type = 'file_record.created', ?int $userId = null, array $meta = []): void
+    {
+        self::write($record->client_id, $type, 'files', [
+            'subject_type' => ClientFileRecord::class,
+            'subject_id' => $record->id,
+            'user_id' => $userId ?? auth()->id(),
+            'description' => $record->title,
+            'meta' => $meta + array_filter([
+                'when' => $record->treatment_date?->isoFormat('D MMM Y'),
+            ]),
+        ]);
+    }
+
+    /** A treatment record removed, named as it was called. */
+    public static function fileRecordDeleted(int $clientId, string $title, ?int $userId = null): void
+    {
+        self::write($clientId, 'file_record.deleted', 'files', [
+            'user_id' => $userId ?? auth()->id(),
+            'description' => $title,
+        ]);
+    }
+
+    /**
+     * One entry about one file.
+     *
+     * @param  array<string, mixed>  $meta
+     */
+    private static function file(?int $clientId, string $type, string $name, ?int $fileId = null, ?int $userId = null, array $meta = []): void
+    {
+        if ($clientId === null) {
+            return;
+        }
+
+        self::write($clientId, $type, 'files', [
+            'subject_type' => ClientFile::class,
+            'subject_id' => $fileId,
+            'user_id' => $userId ?? auth()->id(),
+            'description' => $name,
+            'meta' => $meta,
+        ]);
+    }
+
     private static function write(int $clientId, string $type, string $category, array $attributes): void
     {
         try {

@@ -26,7 +26,10 @@
        the bottom they sat below everything they came to read. No heading
        either: a row of buttons beside a greeting does not need one. --}}
   @if ($inline)
-    <div class="flex flex-wrap justify-end gap-2">
+    {{-- Ranged left on a phone, right beside the greeting from `sm` up. The
+         row that holds this must be allowed to shrink, or none of this
+         wrapping can happen — see dashboard.blade.php. --}}
+    <div class="flex flex-wrap justify-start sm:justify-end gap-2">
       @foreach ($actions as $action)
         <a href="{{ $action['url'] }}" class="styledesk_action">{{ $action['label'] }}</a>
       @endforeach

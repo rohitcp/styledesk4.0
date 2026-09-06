@@ -27,9 +27,35 @@
           ];
       };
 
-      $languageProps = $combo('locale', $languages, old('locale', $user->locale), __('account.preferences.language_default'));
-      $dateProps = $combo('date_format', $profile::dateFormats(), old('date_format', $prefs?->date_format), $blank);
-      $timeProps = $combo('time_format', $profile::timeFormats(), old('time_format', $prefs?->time_format), $blank);
+      /*
+       * Language, date and time open on what is actually in force rather than
+       * on the blank.
+       *
+       * These three are what somebody comes to this page to CHECK, and a
+       * field reading "Use the business setting" answers a different question
+       * from the one they asked — it says where the answer comes from, not
+       * what it is. The remaining combos keep the blank, because "follow the
+       * business" is a real answer for a timezone in a way it is not for the
+       * language the screen is already in.
+       */
+      $languageProps = $combo(
+          'locale',
+          $languages,
+          old('locale', $user->locale ?? App\Support\Locale::forUser($user)),
+          __('account.preferences.language_default'),
+      );
+      $dateProps = $combo(
+          'date_format',
+          $profile::dateFormats(),
+          old('date_format', $prefs?->date_format ?? App\Support\AccountPreferences::dateFormat($user)),
+          $blank,
+      );
+      $timeProps = $combo(
+          'time_format',
+          $profile::timeFormats(),
+          old('time_format', $prefs?->time_format ?? App\Support\AccountPreferences::timeFormat($user)),
+          $blank,
+      );
       $zoneProps = $combo('timezone', $timezones, old('timezone', $prefs?->timezone), $blank);
       $dayProps = $combo('first_day_of_week', $profile::firstDayOfWeek(), old('first_day_of_week', $prefs?->first_day_of_week), $blank);
       $viewProps = $combo('calendar_view', __('account.preferences.calendar_views'), old('calendar_view', $prefs?->calendar_view), $blank);
@@ -87,11 +113,19 @@
         <div data-vue-component="MultiSelect" data-props='@json($viewProps)'></div>
       </div>
 
-      <div class="mt-5">
-        <x-toggle name="show_weekends" :label="__('account.preferences.show_weekends')" :checked="$toggle('show_weekends')" class="sd-optrow" />
-        <x-toggle name="show_cancelled" :label="__('account.preferences.show_cancelled')" :checked="$toggle('show_cancelled')" class="sd-optrow" />
-        <x-toggle name="show_resource_color" :label="__('account.preferences.show_resource_color')" :checked="$toggle('show_resource_color')" class="sd-optrow" />
-        <x-toggle name="show_staff_color" :label="__('account.preferences.show_staff_color')" :checked="$toggle('show_staff_color')" class="sd-optrow" />
+      {{-- Boxed switches with a gap between them, which is how every other
+           screen in the app stacks them.
+
+           They used to carry `sd-optrow` as well, and the two fought: the
+           switch is already a bordered card with its own padding, and the row
+           class laid a second set of padding and a divider over it — then
+           took the top padding off the first one, so the list read as three
+           even rows under a squashed one. --}}
+      <div class="mt-5 space-y-2.5">
+        <x-toggle name="show_weekends" :label="__('account.preferences.show_weekends')" :checked="$toggle('show_weekends')" />
+        <x-toggle name="show_cancelled" :label="__('account.preferences.show_cancelled')" :checked="$toggle('show_cancelled')" />
+        <x-toggle name="show_resource_color" :label="__('account.preferences.show_resource_color')" :checked="$toggle('show_resource_color')" />
+        <x-toggle name="show_staff_color" :label="__('account.preferences.show_staff_color')" :checked="$toggle('show_staff_color')" />
       </div>
     </section>
 
