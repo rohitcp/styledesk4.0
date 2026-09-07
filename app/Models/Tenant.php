@@ -367,7 +367,7 @@ class Tenant extends BaseTenant
      */
     public function isActive(): bool
     {
-        return $this->status === self::STATUS_ACTIVE;
+        return in_array($this->status, [self::STATUS_ACTIVE, self::STATUS_TRIAL], true);
     }
 
     public function isDisabled(): bool
