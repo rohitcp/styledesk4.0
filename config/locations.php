@@ -31,6 +31,25 @@ return [
     'countries_first' => ['US', 'GB', 'CA', 'AU', 'ES', 'MX'],
 
     /*
+     * The countries a business may operate in — the markets StyleDesk sells
+     * into today.
+     *
+     * Deliberately narrower than 'countries' below, and the two answer
+     * different questions. This one is "where can a business run?", which is
+     * a commercial decision; that one is "what addresses can we record?",
+     * which is a data question, and a salon in Austin may well have a client
+     * who lives in Tokyo. Narrowing both together would make that client
+     * unrecordable to solve a problem nobody has.
+     *
+     * Codes only: the names come from 'countries', so a market cannot be
+     * listed here and spelled differently there. Every code must exist there
+     * too — a market whose name we do not know renders as its own code.
+     *
+     * Use App\Support\LocationOptions::operatingCountries() to render one.
+     */
+    'operating_countries' => ['US', 'CA', 'AU', 'MX', 'CN', 'FR', 'DE', 'IN'],
+
+    /*
      * The countries a business can be based in.
      *
      * Matches the set the phone widget offers, so the two controls cannot
@@ -42,8 +61,9 @@ return [
      */
     'countries' => [
         'AR' => 'Argentina', 'AU' => 'Australia', 'AT' => 'Austria', 'BE' => 'Belgium',
-        'BR' => 'Brazil', 'CA' => 'Canada', 'CZ' => 'Czechia', 'DK' => 'Denmark',
-        'FI' => 'Finland', 'FR' => 'France', 'DE' => 'Germany', 'GR' => 'Greece',
+        'BR' => 'Brazil', 'CA' => 'Canada', 'CN' => 'China', 'CZ' => 'Czechia',
+        'DK' => 'Denmark', 'FI' => 'Finland', 'FR' => 'France', 'DE' => 'Germany',
+        'GR' => 'Greece',
         'HK' => 'Hong Kong', 'IN' => 'India', 'IE' => 'Ireland', 'IT' => 'Italy',
         'JP' => 'Japan', 'MY' => 'Malaysia', 'MX' => 'Mexico', 'NL' => 'Netherlands',
         'NZ' => 'New Zealand', 'NO' => 'Norway', 'PL' => 'Poland', 'PT' => 'Portugal',
@@ -325,6 +345,7 @@ return [
         'Asia/Dubai' => 'Dubai',
         'Asia/Riyadh' => 'Riyadh',
         'Asia/Kolkata' => 'India — Kolkata',
+        'Asia/Shanghai' => 'China — Shanghai',
         'Asia/Singapore' => 'Singapore',
         'Asia/Hong_Kong' => 'Hong Kong',
         'Asia/Kuala_Lumpur' => 'Kuala Lumpur',
@@ -353,7 +374,8 @@ return [
         'NO' => 'Europe/Oslo',        'SE' => 'Europe/Stockholm',  'FI' => 'Europe/Helsinki',
         'PL' => 'Europe/Warsaw',      'CZ' => 'Europe/Prague',     'GR' => 'Europe/Athens',
         'ZA' => 'Africa/Johannesburg', 'AE' => 'Asia/Dubai',        'SA' => 'Asia/Riyadh',
-        'IN' => 'Asia/Kolkata',       'SG' => 'Asia/Singapore',    'HK' => 'Asia/Hong_Kong',
+        'CN' => 'Asia/Shanghai',      'IN' => 'Asia/Kolkata',      'SG' => 'Asia/Singapore',
+        'HK' => 'Asia/Hong_Kong',
         'MY' => 'Asia/Kuala_Lumpur',  'JP' => 'Asia/Tokyo',        'AU' => 'Australia/Sydney',
         'NZ' => 'Pacific/Auckland',
     ],

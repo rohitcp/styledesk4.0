@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import MultiSelect from './MultiSelect.vue';
 
 /**
@@ -19,6 +19,12 @@ const props = defineProps({
     currencies: { type: Object, default: () => ({}) },
     countryCurrencies: { type: Object, default: () => ({}) },
     languages: { type: Object, default: () => ({}) },
+    /**
+     * Country code => the language codes that country is served in. The same
+     * map the validation reads, so the list the reader is shown and the list
+     * the server accepts cannot drift apart.
+     */
+    countryLanguages: { type: Object, default: () => ({}) },
     selectedCountries: { type: Array, default: () => [] },
     selectedCurrencies: { type: Array, default: () => [] },
     selectedLanguages: { type: Array, default: () => [] },
@@ -48,6 +54,32 @@ const secondaryCurrencies = ref(props.selectedCurrencies.slice(1));
 const primaryLanguage = ref([props.selectedLanguages[0] ?? props.selectedLanguage ?? 'en']);
 const secondaryLanguages = ref(props.selectedLanguages.slice(1));
 
+/**
+ * The languages the chosen countries are served in.
+ *
+ * The union rather than the intersection: a business operating in Canada and
+ * Mexico serves clients in English, French and Spanish, and the set those two
+ * countries share is empty. Ordered by the language register, so the list
+ * reads the same way whichever order the countries were ticked in.
+ *
+ * Falls back to every language while no country has been chosen — the field
+ * above is required and is the thing to answer first, and an empty language
+ * dropdown reads as broken rather than as waiting.
+ */
+const availableLanguages = computed(() => {
+    if (!countries.value.length) {
+        return props.languages;
+    }
+
+    const offered = new Set(
+        countries.value.flatMap((code) => props.countryLanguages[code] ?? [])
+    );
+
+    return Object.fromEntries(
+        Object.entries(props.languages).filter(([code]) => offered.has(code))
+    );
+});
+
 // Promoting a value out of the secondaries must not leave it in both lists.
 watch(primaryCurrency, ([code]) => {
     secondaryCurrencies.value = secondaryCurrencies.value.filter((c) => c !== code);
@@ -55,6 +87,53 @@ watch(primaryCurrency, ([code]) => {
 
 watch(primaryLanguage, ([code]) => {
     secondaryLanguages.value = secondaryLanguages.value.filter((c) => c !== code);
+});
+
+/**
+ * Dropping a country drops the languages only it offered.
+ *
+ * Filtering the options alone is not enough: MultiSelect keeps its own copy of
+ * the selection, so a language chosen while France was selected stays selected
+ * and stays posted after France is removed — hidden from the list the reader
+ * can see, and rejected by the validation that reads the same map. Pruning the
+ * models here is what keeps the form unable to post an answer it is no longer
+ * offering.
+ *
+ * The primary falls back to the first language still available rather than to
+ * nothing, because it is required and a silently emptied required field is a
+ * form that will not submit for no visible reason.
+ */
+watch(availableLanguages, (available) => {
+    const offered = Object.keys(available);
+
+    if (!offered.length) {
+        return;
+    }
+
+    if (!offered.includes(primaryLanguage.value[0])) {
+        primaryLanguage.value = [offered[0]];
+    }
+
+    const kept = secondaryLanguages.value.filter((code) => offered.includes(code));
+
+    if (kept.length !== secondaryLanguages.value.length) {
+        secondaryLanguages.value = kept;
+    }
+});
+
+/**
+ * Says why the list is as short as it is.
+ *
+ * Without this the field simply offers one language for a France-only
+ * business, and a dropdown with a single entry reads as a bug rather than as
+ * the answer to a question already asked further up the form.
+ */
+const languageHint = computed(() => {
+    if (!countries.value.length) {
+        return 'Used for the app, booking page, emails and receipts.';
+    }
+
+    return 'Used for the app, booking page, emails and receipts. Offered for the countries you operate in.';
 });
 
 // Whether the user has taken the currency list over. Once they have, the
@@ -152,12 +231,12 @@ function onPrimaryCountry(code) {
                     Primary language <span class="text-danger" aria-hidden="true">*</span>
                 </label>
 
-                <MultiSelect v-model="primaryLanguage" :options="languages" name="default_language" single
+                <MultiSelect v-model="primaryLanguage" :options="availableLanguages" name="default_language" single
                              aria-label="Primary language"
                              placeholder="Select a language"
                              search-placeholder="Search language…" />
 
-                <p class="mt-1.5 text-[12px] text-sub">Used for the app, booking page, emails and receipts.</p>
+                <p class="mt-1.5 text-[12px] text-sub">{{ languageHint }}</p>
             </div>
 
             <div>
@@ -165,7 +244,7 @@ function onPrimaryCountry(code) {
                     Secondary languages <span class="font-normal text-faint ml-1">Optional</span>
                 </label>
 
-                <MultiSelect v-model="secondaryLanguages" :options="languages"
+                <MultiSelect v-model="secondaryLanguages" :options="availableLanguages"
                              name="secondary_language_codes" :exclude="primaryLanguage" :show-primary="false"
                              aria-label="Secondary languages"
                              placeholder="Select languages…"

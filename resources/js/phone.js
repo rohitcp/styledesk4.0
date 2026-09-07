@@ -31,6 +31,7 @@ const EXTRA_COUNTRIES = [
     { iso: 'AE', name: 'United Arab Emirates', dial: '+971', flag: '🇦🇪', mask: '## ### ####' },
     { iso: 'SA', name: 'Saudi Arabia', dial: '+966', flag: '🇸🇦', mask: '## ### ####' },
     { iso: 'IN', name: 'India', dial: '+91', flag: '🇮🇳', mask: '##### #####' },
+    { iso: 'CN', name: 'China', dial: '+86', flag: '🇨🇳', mask: '### #### ####' },
     { iso: 'SG', name: 'Singapore', dial: '+65', flag: '🇸🇬', mask: '#### ####' },
     { iso: 'HK', name: 'Hong Kong', dial: '+852', flag: '🇭🇰', mask: '#### ####' },
     { iso: 'MY', name: 'Malaysia', dial: '+60', flag: '🇲🇾', mask: '##-### ####' },
