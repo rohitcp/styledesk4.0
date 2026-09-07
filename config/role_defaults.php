@@ -80,6 +80,7 @@ return [
             'appointments.no_show' => 'all',
             'appointments.reschedule' => 'all',
             'appointments.check_in' => 'all',
+            'appointments.complete' => 'all',
             'appointments.check_out' => 'all',
             'calendar.block_time' => 'all',
             'appointments.override_rules' => 'all',
@@ -99,6 +100,13 @@ return [
             'clients.archive' => 'all',
             'clients.delete' => 'all',
             'clients.view_sensitive_notes' => 'all',
+            'reviews.view' => 'all',
+            'reviews.send_request' => 'all',
+            'reviews.assign' => 'all',
+            'reviews.add_note' => 'all',
+            'reviews.change_status' => 'all',
+            'reviews.manage_settings' => 'all',
+            'reviews.view_reports' => 'all',
             'services.view' => 'all',
             'services.create' => 'all',
             'services.edit' => 'all',
@@ -214,6 +222,14 @@ return [
             'billing.download_invoices' => 'all',
             'security.view' => 'all',
             'security.view_login_activity' => 'all',
+
+            /* Loyalty. Full access, settings included: how the scheme works
+               is an administrative decision. */
+            'loyalty.view_settings' => 'all',
+            'loyalty.manage_settings' => 'all',
+            'loyalty.view_rewards' => 'all',
+            'loyalty.adjust_points' => 'all',
+            'loyalty.redeem_points' => 'all',
         ],
     ],
 
@@ -250,6 +266,7 @@ return [
             'calendar.view_all_staff' => 'all',
             'appointments.create' => 'all',
             'appointments.check_in' => 'all',
+            'appointments.complete' => 'location',
             'appointments.check_out' => 'all',
             'appointments.edit' => 'location',
             'appointments.cancel' => 'location',
@@ -270,6 +287,12 @@ return [
             'clients.upload_files' => 'all',
             'clients.manage_files' => 'all',
             'clients.archive' => 'all',
+            'reviews.view' => 'location',
+            'reviews.send_request' => 'all',
+            'reviews.assign' => 'all',
+            'reviews.add_note' => 'all',
+            'reviews.change_status' => 'all',
+            'reviews.view_reports' => 'location',
             'services.view' => 'all',
             'services.create' => 'all',
             'services.edit' => 'all',
@@ -330,16 +353,24 @@ return [
             'inventory.create_product' => 'all',
             'notifications.view' => 'all',
             'notifications.manage_own' => 'all',
-        /**
-         * settings.view is deliberately absent.
-         *
-         * This spec's matrix reads "App Settings — Limited" for Manager,
-         * while the earlier App Settings spec said only Owner and Admin
-         * may see the module at all — and that is what is built and
-         * tested. Widening access to a settings area is not something to
-         * do as a side effect of reorganising a catalogue, so the
-         * narrower of the two rules stands until it is asked for.
-         */
+            /**
+             * settings.view is deliberately absent.
+             *
+             * This spec's matrix reads "App Settings — Limited" for Manager,
+             * while the earlier App Settings spec said only Owner and Admin
+             * may see the module at all — and that is what is built and
+             * tested. Widening access to a settings area is not something to
+             * do as a side effect of reorganising a catalogue, so the
+             * narrower of the two rules stands until it is asked for.
+             */
+
+            /* Loyalty. Their clients' balances, and the authority to correct
+               and spend one. Not the rules — what a point is worth is one
+               decision for the whole business, not five. */
+            'loyalty.view_settings' => 'all',
+            'loyalty.view_rewards' => 'location',
+            'loyalty.adjust_points' => 'all',
+            'loyalty.redeem_points' => 'all',
         ],
     ],
 
@@ -367,6 +398,7 @@ return [
             'calendar.view_all_staff' => 'all',
             'appointments.create' => 'all',
             'appointments.check_in' => 'all',
+            'appointments.complete' => 'location',
             'appointments.check_out' => 'all',
             'appointments.edit' => 'location',
             'appointments.cancel' => 'location',
@@ -386,6 +418,8 @@ return [
                decision for whoever answers for the record. */
             'clients.view_files' => 'location',
             'clients.upload_files' => 'all',
+            'reviews.view' => 'location',
+            'reviews.send_request' => 'all',
             'services.view' => 'all',
             'staff.view' => 'location',
             'staff.view_profile' => 'location',
@@ -402,6 +436,11 @@ return [
             'inventory.view_levels' => 'all',
             'notifications.view' => 'all',
             'notifications.manage_own' => 'all',
+
+            /* Loyalty. Reads a balance and spends it at the till. Inventing
+               points is somebody else's decision. */
+            'loyalty.view_rewards' => 'location',
+            'loyalty.redeem_points' => 'all',
         ],
     ],
 
@@ -430,6 +469,9 @@ return [
                a business that wants it can grant it. Checking out is theirs,
                because that is the end of their own appointment. */
             'appointments.check_out' => 'all',
+            /* Their own. Completing an appointment is saying the work they
+               did was delivered, which is theirs to say. */
+            'appointments.complete' => 'own',
             'clients.view' => 'assigned',
             'clients.edit' => 'assigned',
             'clients.view_contact' => 'all',
@@ -443,6 +485,10 @@ return [
                they actually work on. */
             'clients.view_files' => 'assigned',
             'clients.upload_files' => 'all',
+            /* Their own work, and no one else's. A stylist reading the
+               complaint another branch is still working through is not what
+               this screen is for. */
+            'reviews.view' => 'own',
             'services.view' => 'assigned',
             'staff.view' => 'own',
             'staff.view_profile' => 'own',
@@ -464,6 +510,11 @@ return [
             'inventory.view_levels' => 'all',
             'notifications.view' => 'all',
             'notifications.manage_own' => 'all',
+
+            /* Loyalty. The balances of the clients they see, and nothing
+               else — so "you have enough for a reward" can be said in the
+               chair. */
+            'loyalty.view_rewards' => 'own',
         ],
     ],
 ];

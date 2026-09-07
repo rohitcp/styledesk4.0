@@ -10,7 +10,9 @@ use App\Models\ReasonCode;
 use App\Support\BookingAvailability;
 use App\Support\BookingStatusHistory;
 use App\Support\ClientActivityLog;
+use App\Support\LoyaltyPoints;
 use App\Support\ResourceAllocator;
+use App\Support\ReviewRequests;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,11 +25,11 @@ use Illuminate\Validation\ValidationException;
 /**
  * What happens to a booking after it has been taken.
  *
- * Four acts: nobody came, it was called off, it was turned down, it moved.
- * Its own controller rather than four more methods on the booking screen's,
- * because all four are the same shape — a reason, a note, a status, an entry
- * in two histories — and the one thing they must never be is four slightly
- * different implementations of that.
+ * The client arrived; the work was done; nobody came; it was called off; it
+ * was turned down; it moved. Its own controller rather than that many more
+ * methods on the booking screen's, because they are all the same shape — a
+ * reason, a note, a status, an entry in two histories — and the one thing
+ * they must never be is six slightly different implementations of that.
  *
  * Every one of them is refused unless the booking is in a state where the act
  * means something. The status rules live in config/bookings.php beside the
@@ -105,6 +107,65 @@ class BookingStatusController extends Controller
     }
 
     /**
+     * The work is done and the client has gone.
+     *
+     * Only from `arrived`, and written as a condition on the update for the
+     * same reason check-in is: two people pressing Complete a moment apart
+     * both pass a status check, and whoever's update matches the row is the
+     * one that happened. It matters more here than anywhere — this is the
+     * status the revenue reports count, and it is what asks the client for a
+     * review. A double completion would ask them twice.
+     */
+    public function complete(Request $request, Booking $booking): RedirectResponse
+    {
+        $this->permit($request, $booking, 'complete');
+
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
+
+        $claimed = Booking::query()
+            ->whereKey($booking->id)
+            ->where('status', 'arrived')
+            ->update(['status' => 'completed']);
+
+        if ($claimed === 0) {
+            /* Somebody got there first. Not an error worth a red page: the
+               desk wanted this appointment finished, and it is. */
+            return back()->with('toast', [
+                'type' => 'success',
+                'message' => __('bookings.status.done.complete'),
+            ]);
+        }
+
+        $booking->setAttribute('status', 'completed');
+
+        BookingStatusHistory::record(
+            $booking, 'completed', null, $data['note'] ?? null, null,
+            $request->user()->id,
+            ['from_status' => 'arrived'],
+        );
+
+        ClientActivityLog::bookingCompleted($booking, $data['note'] ?? null, $request->user()->id);
+
+        /* Only ever reached by the update that actually claimed the row, so
+           a completed appointment asks its client once. Nothing here can
+           fail the request — see ReviewRequests. */
+        ReviewRequests::scheduleFor($booking, $request->user()->id);
+
+        /* The other half of §6: points land on a completed appointment that
+           has been paid for. Settled here as well as when money moves,
+           because the two can happen in either order — a client who paid a
+           deposit weeks ago earns when the visit is finished, and a client
+           who pays at the desk earns when the payment lands. Whichever comes
+           second writes the points; the first writes nothing. */
+        LoyaltyPoints::settle($booking, $request->user()->id);
+
+        return back()->with('toast', [
+            'type' => 'success',
+            'message' => __('bookings.status.done.complete'),
+        ]);
+    }
+
+    /**
      * The three that end a booking.
      *
      * One method, because they differ only in the word they write and the
@@ -144,6 +205,13 @@ class BookingStatusController extends Controller
             'declined' => ClientActivityLog::bookingDeclined($booking, $label, $data['note'] ?? null, $request->user()->id),
             default => ClientActivityLog::bookingCancelled($booking, $label, $request->user()->id, $data['note'] ?? null),
         };
+
+        /* An appointment that leaves the completed state stops having earned
+           anything, so whatever it awarded comes back off — §12's other
+           half. Nothing happens for the ordinary case of a booking cancelled
+           before it was ever finished: it earned nothing, and the reconciler
+           writes nothing when the two agree. */
+        LoyaltyPoints::settle($booking, $request->user()->id);
 
         return back()->with('toast', [
             'type' => 'success',

@@ -82,6 +82,24 @@ return [
             'permission' => 'appointments.check_in',
             'tone' => 'default',
         ],
+        /* The work is done and the client has gone.
+           |
+           | From `arrived` only. An appointment nobody was checked in for
+           | cannot have been delivered, and letting the desk complete a
+           | confirmed booking straight off would put a visit on the record
+           | for somebody who never walked in — which is the number every
+           | report on this status is counting.
+           |
+           | No reason list, for the same reason check-in has none: finishing
+           | an appointment is the ordinary outcome and does not need
+           | explaining. This is the act the review request hangs off. */
+        'complete' => [
+            'route' => 'bookings.complete',
+            'from' => ['arrived'],
+            'reason' => null,
+            'permission' => 'appointments.complete',
+            'tone' => 'default',
+        ],
         'no-show' => [
             'route' => 'bookings.no-show',
             /* Confirmed only. Somebody who has been checked in is standing in

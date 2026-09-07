@@ -18,7 +18,14 @@
         {{-- Services sits next to bookings because it is the same diary read
              the other way round: bookings answer "when", services answer
              "what, and how often". --}}
-        @foreach (array_filter(['bookings', $hasLeads ? 'leads' : null, 'services', 'notes', 'files', 'activity']) as $tab)
+        {{-- Rewards sits after the record of what happened and before the
+             paperwork: it is read with a client in front of you — "how much
+             have you got, and can you use it today" — rather than while
+             reviewing their history. Only where the reader may see a balance
+             at all, and only where the business runs a scheme: a tab that
+             answers nothing teaches the reader the wrong thing about this
+             client. --}}
+        @foreach (array_filter(['bookings', $hasLeads ? 'leads' : null, 'services', $canViewRewards ? 'rewards' : null, 'notes', 'files', 'activity']) as $tab)
             <button type="button" role="tab" data-tab="{{ $tab }}"
                     id="tab-{{ $tab }}" aria-controls="panel-{{ $tab }}"
                     aria-selected="{{ $loop->first ? 'true' : 'false' }}"
@@ -375,6 +382,11 @@
 
     <div data-vue-component="ClientServices" data-props='@json($serviceTabProps)'></div>
 </div>
+
+{{-- ------------------------------------------------------------ rewards --}}
+@if ($canViewRewards)
+    @include('clients.partials._rewards')
+@endif
 
 <div id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" data-panel="notes" class="pt-4" hidden>
     @include('clients.partials._notes')
