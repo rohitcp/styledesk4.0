@@ -41,6 +41,16 @@ class Tenant extends BaseTenant
     public const STATUS_ACTIVE = 'active';
 
     /**
+     * Signed up, not yet finished setting up.
+     *
+     * Written the moment the Business step brings the workspace into
+     * existence and cleared to STATUS_ACTIVE when the wizard completes. It is
+     * a stage of setup, never a refusal — a trial business may sign in and
+     * work, which is what the rest of onboarding needs.
+     */
+    public const STATUS_TRIAL = 'trial';
+
+    /**
      * Switched off by the platform.
      *
      * Nobody belonging to this business can sign in and no existing session
@@ -348,6 +358,12 @@ class Tenant extends BaseTenant
      *
      * Asked on every authenticated request and again at the login form, so it
      * reads the column and nothing else — no relation, no query.
+     *
+     * Trial counts as active. `status` answers "may they in?" and only
+     * STATUS_DISABLED says no; whether a trial has run out is a billing
+     * question, and billing lives in `subscription_status`. Treating trial as
+     * inactive logged every new owner out on the redirect that followed the
+     * Business step, which is the one screen that creates a trial workspace.
      */
     public function isActive(): bool
     {

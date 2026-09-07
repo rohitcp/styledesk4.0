@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureBusinessIsActive;
 use App\Models\BusinessType;
 use App\Models\Service;
 use App\Models\Staff;
@@ -236,6 +237,46 @@ class OnboardingTest extends TestCase
         $this->assertSame(14, $tenant->trialDaysRemaining());
         $this->assertSame($user->id, $tenant->owner_user_id);
         $this->assertSame(['Hair Salon'], $tenant->businessTypes->pluck('name')->all());
+    }
+
+    /**
+     * The regression whose absence let the trial status ship.
+     *
+     * The Business step is the first moment a tenant exists, so the redirect
+     * it returns is the first request EnsureBusinessIsActive has a tenant to
+     * judge. While trial counted as inactive that request logged the owner
+     * straight back out, and no signup could reach step two.
+     */
+    public function test_the_owner_stays_signed_in_after_the_business_step(): void
+    {
+        $user = $this->user();
+        $type = BusinessType::firstOrCreate(['slug' => 'hair-salon'], ['name' => 'Hair Salon', 'slug' => 'hair-salon']);
+
+        $this->actingAs($user)
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Bella Beauty Studio',
+                'slug' => 'bella',
+                'business_phone' => '555 0100',
+                'country_codes' => ['US'],
+                'currency_code' => 'USD',
+                'default_language' => 'en',
+                'business_email' => 'hello@bella.test',
+                'business_type_ids' => [$type->id],
+            ])
+            ->assertRedirect(route('onboarding.location'));
+
+        /* Re-resolved from the database, or the middleware judges the user
+           this test already holds — whose tenant relation is still the null
+           it was before the controller created one. A real second request
+           loads both afresh. */
+        $owner = $user->fresh();
+
+        $this->actingAs($owner)
+            ->get('http://styledesk.test/onboarding/location')
+            ->assertOk()
+            ->assertSessionMissing(EnsureBusinessIsActive::FLAG);
+
+        $this->assertAuthenticatedAs($owner);
     }
 
     public function test_the_business_name_is_capitalised(): void

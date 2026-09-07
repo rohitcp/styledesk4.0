@@ -179,7 +179,7 @@ class OnboardingController extends Controller
                 // Payment is never required to sign up, so the workspace opens
                 // on a trial and the subscription module converts it later.
                 $tenant = Tenant::create($attributes + [
-                    'status' => 'trial',
+                    'status' => Tenant::STATUS_TRIAL,
                     'owner_user_id' => $user->id,
                     'subscription_status' => 'trialing',
                     'trial_started_at' => now(),
@@ -587,7 +587,7 @@ class OnboardingController extends Controller
 
         if (! $onboarding->isComplete()) {
             $onboarding->update(['completed_at' => now()]);
-            $tenant->update(['status' => 'active']);
+            $tenant->update(['status' => Tenant::STATUS_ACTIVE]);
         }
 
         return view('onboarding.complete', [

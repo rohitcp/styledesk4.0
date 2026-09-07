@@ -367,6 +367,26 @@ class BackofficeDisableClientTest extends TestCase
         $this->assertGuest();
     }
 
+    /**
+     * Trial is a stage of setup, not a refusal.
+     *
+     * `status` says whether anybody may sign in and only STATUS_DISABLED says
+     * no. A workspace still on its trial has never been switched off by
+     * anyone, so the login form must not tell its owner that it was.
+     */
+    public function test_a_trial_business_can_still_sign_in(): void
+    {
+        $tenant = $this->business(['status' => Tenant::STATUS_TRIAL]);
+        $this->staffMember($tenant);
+
+        $this->post(route('login.store'), [
+            'email' => 'stylist@velvet.test',
+            'password' => 'Str0ng!Passw0rd!',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertAuthenticated();
+    }
+
     public function test_the_login_screen_says_why(): void
     {
         $tenant = $this->business();
