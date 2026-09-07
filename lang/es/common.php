@@ -93,4 +93,29 @@ return [
         'taken' => 'Ese valor ya está en uso.',
     ],
     'type_a_time' => 'Escribe una hora, p. ej. 2:30 PM',
+
+    /*
+    | La estructura que dibuja cada plantilla: la barra de avisos sobre la
+    | barra de la aplicación, el pie de página y el aviso que aparece cuando
+    | los recursos de una página se han quedado obsoletos.
+    */
+    'stale_assets' => 'Esta página está desactualizada, así que algunas partes no funcionarán. ',
+    'reload' => 'Recargar',
+    'legal' => 'Legal',
+    'terms' => 'Términos',
+    'privacy' => 'Privacidad',
+    'support' => 'Soporte',
+    'all_rights_reserved' => '© :year StyleDesk. Todos los derechos reservados.',
+
+    'banner' => [
+        'watch_now' => 'Ver ahora: primeros pasos con StyleDesk',
+        'trial_remaining' => '{0} Tu prueba gratuita termina hoy|{1} Queda :count día de prueba gratuita|[2,*] Quedan :count días de prueba gratuita',
+        'trial_ending' => 'Tu prueba termina pronto',
+        'subscribe' => 'Suscríbete ahora',
+    ],
+
+    'session' => [
+        'expiring' => 'Tu sesión está a punto de caducar',
+        'expired' => 'Tu sesión ha caducado',
+    ],
 ];

@@ -104,4 +104,37 @@ return [
         'taken' => 'That value is already in use.',
     ],
     'type_a_time' => 'Type a time, e.g. 2:30 PM',
+
+    /*
+    | The chrome every layout draws: the announcement bar above the app bar,
+    | the footer beneath it, and the banner that appears when a page's assets
+    | have gone stale.
+    |
+    | Here rather than in a layout because four layouts draw the same footer,
+    | and a string typed into each of them is a string that gets translated in
+    | three of them.
+    */
+    'stale_assets' => 'This page is out of date, so parts of it will not work. ',
+    'reload' => 'Reload',
+    'legal' => 'Legal',
+    'terms' => 'Terms',
+    'privacy' => 'Privacy',
+    'support' => 'Support',
+    'all_rights_reserved' => '© :year StyleDesk. All rights reserved.',
+
+    'banner' => [
+        'watch_now' => 'Watch Now: Getting started with StyleDesk',
+        /* trans_choice, not Str::plural(): the helper only knows English, so
+           it would have written "2 day" in every other language. Each language
+           states its own plural here, and the whole sentence is one string so
+           word order can differ too. */
+        'trial_remaining' => '{0} Your free trial ends today|{1} :count day remaining in your free trial|[2,*] :count days remaining in your free trial',
+        'trial_ending' => 'Your trial ends soon',
+        'subscribe' => 'Subscribe now',
+    ],
+
+    'session' => [
+        'expiring' => 'Your session is about to expire',
+        'expired' => 'Your session has expired',
+    ],
 ];

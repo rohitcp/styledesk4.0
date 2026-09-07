@@ -12,8 +12,8 @@
             <section class="bg-white border border-line rounded-card p-5 sm:p-6">
                 <div class="flex flex-wrap items-start gap-4">
                     <div class="min-w-0">
-                        <h2 class="text-[15px] font-semibold text-head">Getting started</h2>
-                        <p class="text-[13px] text-sub mt-1">A few things left to set up. You can come back to these any time.</p>
+                        <h2 class="text-[15px] font-semibold text-head">{{ __('dashboard.getting_started.title') }}</h2>
+                        <p class="text-[13px] text-sub mt-1">{{ __('dashboard.getting_started.intro') }}</p>
                     </div>
 
                     @if ($canDismissChecklist)

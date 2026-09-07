@@ -33,4 +33,14 @@ return [
         'name' => 'Service Provider',
         'description' => 'Their own calendar, appointments, assigned clients and services.',
     ],
+
+    /*
+    | The counts under a role's name.
+    |
+    | Whole phrases pluralised by the language file rather than by
+    | Str::plural(), which only knows English and would have written
+    | "2 miembro del personals".
+    */
+    'permissions_summary' => ':granted of :total permissions',
+    'staff_summary' => '{0} No staff|{1} :count staff member|[2,*] :count staff members',
 ];

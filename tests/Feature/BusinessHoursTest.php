@@ -632,13 +632,31 @@ class BusinessHoursTest extends TestCase
             ->assertSee('use12Hours', false);
     }
 
-    public function test_the_app_settings_card_links_to_the_module(): void
+    /**
+     * The module has no card on the settings directory.
+     *
+     * Business Hours was taken off /settings deliberately. The pages
+     * themselves are untouched and still reachable — by direct address, and
+     * from the Shift Rules screen, which links straight to a location's hours
+     * — so this asserts the tile is gone rather than that the feature is.
+     */
+    public function test_the_settings_directory_does_not_offer_a_card(): void
     {
         $this->location();
 
         $this->actingAs($this->owner())
             ->get(route('settings.index'))
             ->assertOk()
-            ->assertSee(route('settings.hours.index'), false);
+            ->assertDontSee(route('settings.hours.index'), false);
+    }
+
+    /** Taken off the directory, not switched off. */
+    public function test_the_pages_are_still_reachable(): void
+    {
+        $location = $this->location();
+        $owner = $this->owner();
+
+        $this->actingAs($owner)->get(route('settings.hours.index'))->assertOk();
+        $this->actingAs($owner)->get(route('settings.hours.edit', $location))->assertOk();
     }
 }

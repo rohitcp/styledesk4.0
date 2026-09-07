@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 return [
 
+    /* The onboarding header, above the wizard itself. */
+    'chrome' => [
+        'set_up' => 'Configura tu negocio',
+    ],
+
     'business' => [
         'types' => [
             'none' => 'Todavía no hay tipos de negocio configurados. Pide a un administrador que los añada antes de continuar.',

@@ -67,9 +67,12 @@
             bar.style.cssText = 'position:fixed;inset:0 0 auto 0;z-index:9999;display:flex;gap:.75rem;' +
                 'align-items:center;justify-content:center;padding:.75rem 1rem;background:#b91c1c;' +
                 'color:#fff;font:500 13px/1.4 Inter,system-ui,sans-serif';
-            bar.innerHTML = 'This page is out of date, so parts of it will not work. ' +
+            /* Injected rather than written inline: this bar is the one thing
+               that still has to speak the reader's language when the bundle
+               carrying every other translated string has failed to load. */
+            bar.innerHTML = @json(__('common.stale_assets')) +
                 '<button type="button" style="height:28px;padding:0 .75rem;border:0;border-radius:4px;' +
-                'background:#fff;color:#b91c1c;font-weight:600;cursor:pointer">Reload</button>';
+                'background:#fff;color:#b91c1c;font-weight:600;cursor:pointer">' + @json(__('common.reload')) + '</button>';
             bar.querySelector('button').addEventListener('click', function () { location.reload(true); });
 
             document.body.appendChild(bar);

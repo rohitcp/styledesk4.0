@@ -26,18 +26,36 @@ use Illuminate\Support\Str;
 class Locale
 {
     /**
-     * The languages a business may enable.
+     * The languages a business may enable — every one in the register.
      *
-     * Only the ones marked active. A language listed in the register but not
-     * yet translated must not reach a selector: a business switching to French
-     * and finding half its app in English reads that as a fault, not as a work
-     * in progress.
+     * `active` used to gate this list, so a language without a finished
+     * lang/ directory never reached a selector. That protected the reader
+     * from a half-English app and cost them the choice entirely: French was
+     * offered at sign-up, stored, and then silently ignored here, because
+     * supports() reads this list and had no way to say "yes, but partly".
+     *
+     * The flag is now a statement about the translation rather than a lock on
+     * the choice: isComplete() answers it, the selector labels what is
+     * unfinished, and the business decides whether English gaps are
+     * acceptable to them. Anything missing falls back to English key by key,
+     * so the worst case is untranslated, never broken.
      *
      * @return Collection<string, array{name: string, native: string, active: bool}>
      */
     public static function available(): Collection
     {
-        return collect(config('languages.supported'))->filter(fn (array $language) => $language['active']);
+        return collect(config('languages.supported'));
+    }
+
+    /**
+     * Whether a language is fully translated.
+     *
+     * Presentation only — this decides what the selector says beside a
+     * language, never whether it may be chosen.
+     */
+    public static function isComplete(?string $code): bool
+    {
+        return (bool) config('languages.supported.'.$code.'.active', false);
     }
 
     public static function supports(?string $code): bool

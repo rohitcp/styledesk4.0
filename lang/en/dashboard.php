@@ -162,4 +162,10 @@ return [
         'schedule' => 'Manage schedule',
         'calendar' => 'View calendar',
     ],
+
+    /* The setup checklist, shown until the last item is done or dismissed. */
+    'getting_started' => [
+        'title' => 'Getting started',
+        'intro' => 'A few things left to set up. You can come back to these any time.',
+    ],
 ];

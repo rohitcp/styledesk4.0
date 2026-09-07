@@ -148,7 +148,16 @@ class RolePermissionScreenTest extends TestCase
 
         $manager = $this->roleKeyed('manager');
         $this->assertSame(1, $manager->staff()->count());
-        $this->assertStringContainsString('1</span>', $content);
+
+        /* The rendered phrase, not the markup around it. The count used to sit
+           in a <span> of its own and this asserted on that tag; it is now
+           inside one translated sentence, because a number bolted to a
+           separately-translated noun cannot be reordered by a language that
+           needs to. */
+        $this->assertStringContainsString(
+            trans_choice('roles.staff_summary', 1, ['count' => 1]),
+            $content
+        );
     }
 
     // ------------------------------------------------------------ detail

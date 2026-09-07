@@ -54,9 +54,12 @@
             bar.style.cssText = 'position:fixed;inset:0 0 auto 0;z-index:9999;display:flex;gap:.75rem;' +
                 'align-items:center;justify-content:center;padding:.75rem 1rem;background:#b91c1c;' +
                 'color:#fff;font:500 13px/1.4 Inter,system-ui,sans-serif';
-            bar.innerHTML = 'This page is out of date, so parts of it will not work. ' +
+            /* Injected rather than written inline: this bar is the one thing
+               that still has to speak the reader's language when the bundle
+               carrying every other translated string has failed to load. */
+            bar.innerHTML = @json(__('common.stale_assets')) +
                 '<button type="button" style="height:28px;padding:0 .75rem;border:0;border-radius:4px;' +
-                'background:#fff;color:#b91c1c;font-weight:600;cursor:pointer">Reload</button>';
+                'background:#fff;color:#b91c1c;font-weight:600;cursor:pointer">' + @json(__('common.reload')) + '</button>';
             bar.querySelector('button').addEventListener('click', function () { location.reload(true); });
 
             document.body.appendChild(bar);
@@ -90,24 +93,24 @@
 
       <a href="#" class="hidden lg:flex items-center gap-2 shrink-0 hover:text-white/80 transition-colors">
         <x-icon name="circle-play" size="15" />
-        <span class="font-medium">Watch Now: Getting started with StyleDesk</span>
+        <span class="font-medium">{{ __('common.banner.watch_now') }}</span>
       </a>
 
       <div class="flex-1 flex items-center justify-center gap-2.5 min-w-0">
         @php $sdTrialDays = tenancy()->initialized ? tenant()->trialDaysRemaining() : null; @endphp
         <span class="truncate">
             @if ($sdTrialDays !== null)
-                {{ $sdTrialDays }} {{ Str::plural('day', $sdTrialDays) }} remaining in your free trial
+                {{ trans_choice('common.banner.trial_remaining', $sdTrialDays, ['count' => $sdTrialDays]) }}
             @else
-                Your trial ends soon
+                {{ __('common.banner.trial_ending') }}
             @endif
         </span>
-        <a href="#" class="sd-pill-dark">Subscribe now</a>
+        <a href="#" class="sd-pill-dark">{{ __('common.banner.subscribe') }}</a>
       </div>
 
       <a href="#" class="hidden lg:flex items-center gap-1.5 shrink-0 hover:text-white/80 transition-colors">
         <x-icon name="user-plus" size="15" />
-        <span class="font-medium">Invite team members</span>
+        <span class="font-medium">{{ __('navigation.invite_team_members') }}</span>
       </a>
 
     </div>
@@ -147,10 +150,10 @@
         <div class="sd-menu sd-menu--right hidden sm:block" data-menu>
           <button type="button" class="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-white hover:bg-white/90 text-head text-[13px] font-semibold transition-colors"
                   aria-haspopup="true" aria-expanded="false">
-            Add
+            {{ __('navigation.add') }}
             <x-icon name="plus" size="14" />
           </button>
-          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="Add">
+          <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="{{ __('navigation.add') }}">
             <a href="{{ route('clients.create') }}" class="sd-menu__item" role="menuitem">{{ __('bookings.add.client') }}</a>
             <a href="{{ route('bookings.create') }}" class="sd-menu__item" role="menuitem">{{ __('bookings.add.booking') }}</a>
             <a href="{{ route('bookings.create', ['walk-in' => 1]) }}" class="sd-menu__item" role="menuitem">{{ __('bookings.add.walk_in') }}</a>
@@ -168,7 +171,7 @@
           <x-icon name="plus" size="18" />
         </a>
 
-        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="Mentions" data-tip-placement="right" aria-label="Mentions">
+        <button class="sd-navicon sd-tip hidden lg:grid" data-tip="{{ __('navigation.mentions') }}" data-tip-placement="right" aria-label="{{ __('navigation.mentions') }}">
           <x-icon name="at" size="18" />
         </button>
         {{-- Business activity, in a tab of its own.
@@ -194,8 +197,8 @@
           @endif
         </a>
         <span class="sd-navicon sd-navicon--soon sd-tip hidden sm:grid" data-pending-route="designsystem.html"
-              data-tip="Design system · {{ __('navigation.coming_soon') }}" data-tip-placement="right"
-              role="img" aria-label="Design system" aria-disabled="true">
+              data-tip="{{ __('navigation.design-system') }} · {{ __('navigation.coming_soon') }}" data-tip-placement="right"
+              role="img" aria-label="{{ __('navigation.design-system') }}" aria-disabled="true">
           <x-icon name="circle-question" size="18" />
         </span>
 
@@ -230,11 +233,11 @@
 
   <footer class="border-t border-line bg-white">
     <div class="w-full px-4 sm:px-6 lg:px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-2">
-      <p class="text-[12px] text-faint">&copy; 2026 StyleDesk. All rights reserved.</p>
-      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
-        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
-        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
-        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+      <p class="text-[12px] text-faint">{{ __('common.all_rights_reserved', ['year' => now()->year]) }}</p>
+      <nav class="flex items-center gap-5 sm:ml-auto" aria-label="{{ __('common.legal') }}">
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">{{ __('common.terms') }}</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">{{ __('common.privacy') }}</a>
+        <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">{{ __('common.support') }}</a>
       </nav>
     </div>
   </footer>

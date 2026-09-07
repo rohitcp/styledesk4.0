@@ -37,12 +37,12 @@ return [
             'route' => 'bookings.index',
             'children' => [
                 ['section' => 'Management'],
-                ['label' => 'All Bookings', 'route' => 'bookings.index'],
-                ['label' => 'Booking Leads', 'route' => 'bookings.leads'],
+                ['key' => 'all_bookings', 'label' => 'All Bookings', 'route' => 'bookings.index'],
+                ['key' => 'booking_leads', 'label' => 'Booking Leads', 'route' => 'bookings.leads'],
 
                 ['section' => 'Quick Actions'],
-                ['label' => '+ Add Booking', 'route' => 'bookings.create'],
-                ['label' => '+ Add Walk-in', 'route' => 'bookings.create', 'params' => ['walk-in' => 1]],
+                ['key' => 'add_booking', 'label' => '+ Add Booking', 'route' => 'bookings.create'],
+                ['key' => 'add_walkin', 'label' => '+ Add Walk-in', 'route' => 'bookings.create', 'params' => ['walk-in' => 1]],
             ],
         ],
 
@@ -52,12 +52,12 @@ return [
             'icon' => 'user',
             'route' => 'clients.index',
             'children' => [
-                ['label' => 'All Clients', 'route' => 'clients.index'],
+                ['key' => 'all_clients', 'label' => 'All Clients', 'route' => 'clients.index'],
                 // Straight to the form, the same pair Services offers: the
                 // list and the way to add to it are the two things anyone
                 // opens this menu for.
-                ['label' => 'Add Client', 'route' => 'clients.create'],
-                ['label' => 'Coupons & Offers', 'route' => 'promotions.index'],
+                ['key' => 'add_client', 'label' => 'Add Client', 'route' => 'clients.create'],
+                ['key' => 'coupons_offers', 'label' => 'Coupons & Offers', 'route' => 'promotions.index'],
                 ['label' => 'Gift Cards'],
                 ['label' => 'Loyalty'],
                 ['label' => 'Groups'],
@@ -86,16 +86,16 @@ return [
             // the line this module is drawn on.
             'children' => [
                 ['section' => 'Services'],
-                ['label' => 'All Services', 'route' => 'services.index'],
-                ['label' => 'Add Service', 'route' => 'services.create'],
+                ['key' => 'all_services', 'label' => 'All Services', 'route' => 'services.index'],
+                ['key' => 'add_service', 'label' => 'Add Service', 'route' => 'services.create'],
 
                 ['section' => 'Resources'],
-                ['label' => 'All Resources', 'route' => 'resources.index'],
+                ['key' => 'all_resources', 'label' => 'All Resources', 'route' => 'resources.index'],
                 // The resources list adds through a dialog rather than a page
                 // of its own, so this opens the list with it already up.
-                ['label' => 'Add Resource', 'route' => 'resources.index', 'params' => ['add' => 1]],
-                ['label' => 'Resource Availability', 'route' => 'resources.availability'],
-                ['label' => 'Resource Utilization', 'route' => 'resources.utilization'],
+                ['key' => 'add_resource', 'label' => 'Add Resource', 'route' => 'resources.index', 'params' => ['add' => 1]],
+                ['key' => 'resource_availability', 'label' => 'Resource Availability', 'route' => 'resources.availability'],
+                ['key' => 'resource_utilization', 'label' => 'Resource Utilization', 'route' => 'resources.utilization'],
             ],
         ],
 
@@ -120,13 +120,13 @@ return [
             'count' => 'staff',
             'children' => [
                 ['section' => 'Management'],
-                ['label' => 'All Staff', 'route' => 'staff.index'],
-                ['label' => 'Staff Schedule', 'route' => 'staff.schedules'],
-                ['label' => 'Shifts', 'route' => 'shifts.index'],
-                ['label' => 'Staff Utilization', 'route' => 'staff.utilization'],
+                ['key' => 'all_staff', 'label' => 'All Staff', 'route' => 'staff.index'],
+                ['key' => 'staff_schedule', 'label' => 'Staff Schedule', 'route' => 'staff.schedules'],
+                ['key' => 'shifts', 'label' => 'Shifts', 'route' => 'shifts.index'],
+                ['key' => 'staff_utilization', 'label' => 'Staff Utilization', 'route' => 'staff.utilization'],
 
                 ['section' => 'Quick Actions'],
-                ['label' => '+ Add Staff', 'route' => 'staff.create'],
+                ['key' => 'add_staff', 'label' => '+ Add Staff', 'route' => 'staff.create'],
             ],
         ],
         [
@@ -150,7 +150,7 @@ return [
             'route' => 'marketing.email.index',
             'children' => [
                 ['section' => 'Channels'],
-                ['label' => 'Email Marketing', 'route' => 'marketing.email.index'],
+                ['key' => 'email_marketing', 'label' => 'Email Marketing', 'route' => 'marketing.email.index'],
                 ['label' => 'SMS Marketing', 'pending' => 'sms-marketing.html'],
                 ['label' => 'Social Media Marketing', 'pending' => 'social-marketing.html'],
                 ['label' => 'Google Review Marketing', 'pending' => 'review-marketing.html'],

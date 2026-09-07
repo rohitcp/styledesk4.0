@@ -147,4 +147,10 @@ return [
         'schedule' => 'Gestionar cuadrante',
         'calendar' => 'Ver calendario',
     ],
+
+    /* La lista de configuración, visible hasta completarla o descartarla. */
+    'getting_started' => [
+        'title' => 'Primeros pasos',
+        'intro' => 'Quedan algunas cosas por configurar. Puedes volver a ellas cuando quieras.',
+    ],
 ];

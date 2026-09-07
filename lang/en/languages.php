@@ -29,4 +29,6 @@ return [
     'single_language' => 'Your team uses one language. Add another to let people choose their own from the header.',
     'primary_required' => 'Choose a primary language.',
     'unsupported' => 'That language is not available yet.',
+    'partial' => 'partly translated',
+    'partial_hint' => 'Languages marked “partly translated” are not finished. Anything not yet translated is shown in English.',
 ];

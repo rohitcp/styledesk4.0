@@ -144,16 +144,28 @@ class AppSettingsTest extends TestCase
     /**
      * The original spec listed 36. Shift Rules was asked for afterwards,
      * Reasons after that, Email after that, and Reviews & Feedback after that
-     * — which makes 40. The count is updated deliberately rather than
-     * loosened to a minimum, because the point of this test is that the
-     * config and the spec are the same list, and a `>=` would stop noticing a
-     * module added by accident.
+     * — which made 40. Business Hours was then taken off the directory, which
+     * leaves 39: the pages still exist and are still reachable, but the tile
+     * is gone on purpose.
+     *
+     * The count is updated deliberately rather than loosened to a minimum,
+     * because the point of this test is that the config and the spec are the
+     * same list, and a `>=` would stop noticing a module added by accident.
      */
     public function test_every_specified_settings_module_is_configured(): void
     {
         $count = collect(config('app_settings.groups'))->sum(fn ($g) => count($g['modules']));
 
-        $this->assertSame(40, $count, 'The spec lists 36 settings modules, plus Shift Rules, Reasons, Email and Reviews & Feedback.');
+        $this->assertSame(39, $count, 'The spec lists 36 modules, plus Shift Rules, Reasons, Email and Reviews & Feedback, less Business Hours.');
+    }
+
+    /** Business Hours is off the directory, and stays off. */
+    public function test_business_hours_has_no_settings_card(): void
+    {
+        $keys = collect(config('app_settings.groups'))
+            ->flatMap(fn ($g) => collect($g['modules'])->pluck('key'));
+
+        $this->assertNotContains('business-hours', $keys);
     }
 
     public function test_module_keys_are_unique(): void

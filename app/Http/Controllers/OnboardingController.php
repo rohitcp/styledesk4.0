@@ -57,7 +57,9 @@ class OnboardingController extends Controller
      * resolve to something else or would be mistaken for infrastructure.
      */
     /** Trial length in days, per spec section 18. */
-    private const TRIAL_DAYS = 14;
+    /** Public because the onboarding chrome shows this number before a
+        tenant exists to read it from — see layouts/onboarding.blade.php. */
+    public const TRIAL_DAYS = 14;
 
     /** Section 13. Roles are permissions; job title is what clients see. */
     public const ROLES = ['owner', 'administrator', 'manager', 'front-desk', 'service-provider'];

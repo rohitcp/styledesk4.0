@@ -25,4 +25,11 @@ return [
         'name' => 'Prestador de servicios',
         'description' => 'Su propio calendario, sus citas y los clientes y servicios que tenga asignados.',
     ],
+
+    /*
+    | Los recuentos bajo el nombre de un rol. Frases completas, pluralizadas
+    | por el archivo de idioma en lugar de por Str::plural().
+    */
+    'permissions_summary' => ':granted de :total permisos',
+    'staff_summary' => '{0} Sin personal|{1} :count miembro del personal|[2,*] :count miembros del personal',
 ];

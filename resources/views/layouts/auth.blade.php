@@ -61,9 +61,12 @@
             bar.style.cssText = 'position:fixed;inset:0 0 auto 0;z-index:9999;display:flex;gap:.75rem;' +
                 'align-items:center;justify-content:center;padding:.75rem 1rem;background:#b91c1c;' +
                 'color:#fff;font:500 13px/1.4 Inter,system-ui,sans-serif';
-            bar.innerHTML = 'This page is out of date, so parts of it will not work. ' +
+            /* Injected rather than written inline: this bar is the one thing
+               that still has to speak the reader's language when the bundle
+               carrying every other translated string has failed to load. */
+            bar.innerHTML = @json(__('common.stale_assets')) +
                 '<button type="button" style="height:28px;padding:0 .75rem;border:0;border-radius:4px;' +
-                'background:#fff;color:#b91c1c;font-weight:600;cursor:pointer">Reload</button>';
+                'background:#fff;color:#b91c1c;font-weight:600;cursor:pointer">' + @json(__('common.reload')) + '</button>';
             bar.querySelector('button').addEventListener('click', function () { location.reload(true); });
 
             document.body.appendChild(bar);
@@ -142,10 +145,10 @@
 
             <footer class="mt-10 pt-6 border-t border-line flex flex-wrap items-center gap-x-5 gap-y-2">
                 <p class="text-[12px] text-faint">&copy; {{ date('Y') }} StyleDesk</p>
-                <nav class="flex items-center gap-5 sm:ml-auto" aria-label="Legal">
-                    <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Terms</a>
-                    <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Privacy</a>
-                    <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">Support</a>
+                <nav class="flex items-center gap-5 sm:ml-auto" aria-label="{{ __('common.legal') }}">
+                    <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">{{ __('common.terms') }}</a>
+                    <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">{{ __('common.privacy') }}</a>
+                    <a href="#" class="text-[12px] text-sub hover:text-ink transition-colors">{{ __('common.support') }}</a>
                 </nav>
             </footer>
         </div>

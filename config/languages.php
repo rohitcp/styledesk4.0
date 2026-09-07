@@ -37,13 +37,29 @@ return [
         'es' => ['name' => 'Spanish', 'native' => 'Español', 'active' => true],
 
         /*
-         * Planned. Inactive until their lang/ directory is complete: a
-         * language offered in the selector and only half translated is a
-         * business switching to French and finding half its app still in
-         * English, which reads as a fault rather than as a work in progress.
+         * Registered and offerable, but not translated: neither has a lang/
+         * directory at all, so choosing one gives an English app under a
+         * French or German name.
+         *
+         * `active` marks that rather than hiding it. The selector labels an
+         * unfinished language "partly translated" and lets the business
+         * decide — withholding the choice entirely is what made French
+         * selectable at sign-up and then silently ignored everywhere else.
          */
         'fr' => ['name' => 'French', 'native' => 'Français', 'active' => false],
         'de' => ['name' => 'German', 'native' => 'Deutsch', 'active' => false],
+        /*
+         * The shell is translated — navigation, the shared buttons and
+         * validation, the dashboard, the settings directory, the login screen
+         * and the language picker. The deeper modules (clients, bookings,
+         * staff, resources) have no lang/zh file yet and fall back to English
+         * key by key.
+         *
+         * `active` is false because it is false: 343 of 5,151 keys. It no
+         * longer decides whether the language can be chosen — every language
+         * here can be — it decides whether the selector calls this one
+         * finished. Set it true when lang/zh is complete.
+         */
         'zh' => ['name' => 'Chinese', 'native' => '中文', 'active' => false],
     ],
 ];

@@ -29,7 +29,7 @@
       </button>
     </div>
 
-    <nav class="styledesk_drawer__body" aria-label="Main">
+    <nav class="styledesk_drawer__body" aria-label="{{ __('navigation.drawer_main') }}">
       @php $navCounts = $navCounts ?? []; @endphp
 
       @foreach (config('navigation.primary') as $item)
@@ -66,12 +66,12 @@
                 @if (\App\Support\Nav::isPending($child))
                   <span class="styledesk_drawersub styledesk_drawersub--soon" aria-disabled="true"
                         {!! \App\Support\Nav::pending($child) !!}>
-                    {{ $child['label'] }}
+                    {{ \App\Support\Nav::label($child) }}
                     <span class="sd-menu__soon">{{ __('navigation.coming_soon') }}</span>
                   </span>
                 @else
                   <a href="{{ \App\Support\Nav::href($child) }}"
-                     class="styledesk_drawersub @if (\App\Support\Nav::isCurrent($child)) is-active @endif">{{ $child['label'] }}</a>
+                     class="styledesk_drawersub @if (\App\Support\Nav::isCurrent($child)) is-active @endif">{{ \App\Support\Nav::label($child) }}</a>
                 @endif
               @endif
             @endforeach

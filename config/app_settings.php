@@ -63,16 +63,6 @@ return [
                     'keywords' => ['branch', 'address', 'site', 'salon', 'shop', 'manager', 'hours', 'timezone'],
                 ],
                 [
-                    'key' => 'business-hours',
-                    'name' => 'Business Hours',
-                    'description' => 'Opening and closing times, split shifts, holidays and temporary closures.',
-                    'icon' => 'clock',
-                    'route' => 'settings.hours.index',
-                    'status' => 'active',
-                    'counts' => ['upcoming_closures'],
-                    'keywords' => ['opening', 'closing', 'schedule', 'holiday', 'shift', 'closure', 'timetable', 'special hours'],
-                ],
-                [
                     'key' => 'branding',
                     'name' => 'Branding',
                     'description' => 'Logo, favicon and brand colours across the app, emails and receipts.',

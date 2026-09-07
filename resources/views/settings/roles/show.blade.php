@@ -32,10 +32,9 @@
           <p class="text-[14px] text-sub mt-2.5 max-w-[640px] leading-relaxed">{{ $role->describe() }}</p>
 
           <p class="text-[13px] text-sub mt-2">
-            <span class="font-semibold text-ink">{{ $grantedTotal }}</span> of {{ $permissionTotal }} permissions
+            {{ __('roles.permissions_summary', ['granted' => $grantedTotal, 'total' => $permissionTotal]) }}
             &middot;
-            <span class="font-semibold text-ink">{{ $role->staff_count }}</span>
-            {{ Str::plural('staff member', $role->staff_count) }}
+            {{ trans_choice('roles.staff_summary', $role->staff_count, ['count' => $role->staff_count]) }}
           </p>
         </div>
 

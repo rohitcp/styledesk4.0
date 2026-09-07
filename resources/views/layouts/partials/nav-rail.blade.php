@@ -4,7 +4,7 @@
        renders the same config and would otherwise repeat every query. */
     $navCounts = $navCounts ?? [];
 @endphp
-<nav class="hidden lg:flex self-stretch items-center gap-1 shrink-0" aria-label="Primary">
+<nav class="hidden lg:flex self-stretch items-center gap-1 shrink-0" aria-label="{{ __('navigation.rail_primary') }}">
   @foreach (config('navigation.primary') as $item)
     @php $active = \App\Support\Nav::isActive($item); @endphp
 
@@ -29,7 +29,7 @@
             <span class="sd-navicon__count" aria-hidden="true">{{ $count }}</span>
           @endif
         </a>
-        <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="{{ $item['aria'] ?? $item['label'] }} menu">
+        <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="{{ __('navigation.menu_for', ['name' => $item['aria'] ?? App\Support\Nav::label($item)]) }}">
           @foreach ($item['children'] as $child)
             @if (! empty($child['separator']))
               <div class="sd-menu__rule" role="separator"></div>
@@ -49,13 +49,13 @@
                      work still to come. --}}
                 <span class="sd-menu__item sd-menu__item--soon" role="menuitem"
                       aria-disabled="true" {!! \App\Support\Nav::pending($child) !!}>
-                  {{ $child['label'] }}
+                  {{ App\Support\Nav::label($child) }}
                   <span class="sd-menu__soon">{{ __('navigation.coming_soon') }}</span>
                 </span>
               @else
                 <a href="{{ \App\Support\Nav::href($child) }}"
                    class="sd-menu__item @if ($childActive) is-active @endif" role="menuitem"
-                   @if ($childActive) aria-current="page" @endif>{{ $child['label'] }}</a>
+                   @if ($childActive) aria-current="page" @endif>{{ App\Support\Nav::label($child) }}</a>
               @endif
             @endif
           @endforeach

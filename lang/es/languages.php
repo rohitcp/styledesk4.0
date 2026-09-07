@@ -27,4 +27,6 @@ return [
     'single_language' => 'Tu equipo usa un solo idioma. Añade otro para que cada persona pueda elegir el suyo desde la cabecera.',
     'primary_required' => 'Elige un idioma principal.',
     'unsupported' => 'Ese idioma todavía no está disponible.',
+    'partial' => 'traducción parcial',
+    'partial_hint' => 'Los idiomas marcados como “traducción parcial” no están terminados. Lo que aún no está traducido se muestra en inglés.',
 ];

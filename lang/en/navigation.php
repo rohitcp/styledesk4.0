@@ -15,6 +15,8 @@ declare(strict_types=1);
 */
 
 return [
+    'bookings' => 'Booking',
+    'menu_for' => ':name menu',
     'dashboard' => 'Dashboard',
     'calendar' => 'Calendar',
     'clients' => 'Clients',
@@ -37,4 +39,37 @@ return [
 
     'active_staff' => '{0} No active staff|{1} :count active staff member|[2,*] :count active staff members',
     'coming_soon' => 'Soon',
+
+    /*
+    | The dropdown entries under the rail's top-level items.
+    |
+    | These carry a `key` in config/navigation.php so Nav::label() can resolve
+    | them here. The label-only entries beside them — Gift Cards, Loyalty,
+    | Groups — are deliberately left untranslated: they name screens that do
+    | not exist yet, and translating a label for a page nobody can open is
+    | work spent ahead of the work it describes.
+    */
+    'all_bookings' => 'All Bookings',
+    'booking_leads' => 'Booking Leads',
+    'add_booking' => '+ Add Booking',
+    'add_walkin' => '+ Add Walk-in',
+    'all_clients' => 'All Clients',
+    'add_client' => 'Add Client',
+    'coupons_offers' => 'Coupons & Offers',
+    'all_services' => 'All Services',
+    'add_service' => 'Add Service',
+    'all_resources' => 'All Resources',
+    'add_resource' => 'Add Resource',
+    'resource_availability' => 'Resource Availability',
+    'resource_utilization' => 'Resource Utilization',
+    'all_staff' => 'All Staff',
+    'staff_schedule' => 'Staff Schedule',
+    'shifts' => 'Shifts',
+    'staff_utilization' => 'Staff Utilization',
+    'add_staff' => '+ Add Staff',
+    'email_marketing' => 'Email Marketing',
+
+    /* Headings only a screen reader reaches. */
+    'drawer_main' => 'Main',
+    'rail_primary' => 'Primary',
 ];

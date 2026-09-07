@@ -66,12 +66,13 @@
                 <span>
                   {{-- Owner is answered without the table, so its count is
                        the catalogue rather than its rows. --}}
-                  <span class="font-semibold text-ink">{{ $role->key === 'owner' ? $permissionTotal : $role->permissions_count }}</span>
-                  of {{ $permissionTotal }} permissions
+                  {{ __('roles.permissions_summary', [
+                      'granted' => $role->key === 'owner' ? $permissionTotal : $role->permissions_count,
+                      'total' => $permissionTotal,
+                  ]) }}
                 </span>
                 <span>
-                  <span class="font-semibold text-ink">{{ $role->staff_count }}</span>
-                  {{ Str::plural('staff member', $role->staff_count) }}
+                  {{ trans_choice('roles.staff_summary', $role->staff_count, ['count' => $role->staff_count]) }}
                 </span>
               </span>
             </span>

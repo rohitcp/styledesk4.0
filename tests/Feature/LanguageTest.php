@@ -83,20 +83,73 @@ class LanguageTest extends TestCase
     // ------------------------------------------------------------ registry
 
     /**
-     * A language planned but not translated must not reach a selector.
+     * Every registered language can be chosen.
      *
-     * A business switching to French and finding half its app in English
-     * reads that as a fault, not as a work in progress.
+     * `active` used to gate this, so a language without a finished lang/
+     * directory never reached the selector. That protected the reader from a
+     * half-English app and cost the business the choice: French was offered
+     * at sign-up, stored, and then silently ignored, because supports() read
+     * the same gated list and had no way to say "yes, but partly".
      */
-    public function test_only_active_languages_are_offered(): void
+    public function test_every_registered_language_is_offered(): void
     {
         $available = Locale::available();
 
-        $this->assertTrue($available->has('en'));
-        $this->assertTrue($available->has('es'));
-        $this->assertFalse($available->has('fr'));
-        $this->assertFalse($available->has('de'));
-        $this->assertFalse($available->has('zh'));
+        foreach (array_keys(config('languages.supported')) as $code) {
+            $this->assertTrue($available->has($code), "Language [{$code}] is registered but not offered.");
+            $this->assertTrue(Locale::supports($code), "Language [{$code}] is offered but not usable.");
+        }
+    }
+
+    /**
+     * The flag now describes the translation rather than locking the choice.
+     *
+     * A language may be picked whether or not it is finished; what must stay
+     * true is that the selector can tell the reader which is which.
+     */
+    public function test_completeness_is_reported_without_gating_the_choice(): void
+    {
+        // Finished: every key English has.
+        $this->assertTrue(Locale::isComplete('en'));
+        $this->assertTrue(Locale::isComplete('es'));
+
+        /* Translated in part: Chinese has only the shell, French has no
+           lang/ directory at all. */
+        $this->assertFalse(Locale::isComplete('zh'));
+        $this->assertFalse(Locale::isComplete('fr'));
+
+        // Unfinished never means unusable.
+        $this->assertTrue(Locale::supports('fr'));
+    }
+
+    /** An unfinished language is labelled as such where it is chosen. */
+    public function test_the_picker_marks_an_unfinished_language(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/settings/languages/edit')
+            ->assertOk()
+            ->assertSee('Français')
+            ->assertSee(__('languages.partial'))
+            ->assertSee(__('languages.partial_hint'));
+    }
+
+    /** A language that claims to be finished must actually have its files. */
+    public function test_a_language_marked_complete_has_translations(): void
+    {
+        foreach (Locale::available()->keys() as $code) {
+            if (! Locale::isComplete($code)) {
+                continue;
+            }
+
+            $this->assertDirectoryExists(base_path('lang/'.$code));
+
+            $missing = array_diff(
+                array_map(fn ($f) => basename($f), glob(base_path('lang/en/*.php'))),
+                array_map(fn ($f) => basename($f), glob(base_path('lang/'.$code.'/*.php'))),
+            );
+
+            $this->assertSame([], array_values($missing), "Language [{$code}] is marked complete but is missing files.");
+        }
     }
 
     /** A selector offering "Spanish" asks a Spanish speaker to read English. */
@@ -186,10 +239,19 @@ class LanguageTest extends TestCase
         $this->assertSame(['en'], $tenant->languages()->pluck('language_code')->all());
     }
 
+    /**
+     * Unregistered, not merely unfinished.
+     *
+     * This asked for French until French became selectable. The rule being
+     * tested is that a code the register has never heard of is refused — an
+     * unfinished language is a different thing and is accepted on purpose.
+     */
     public function test_an_unsupported_language_is_refused(): void
     {
+        $this->assertArrayNotHasKey('ja', config('languages.supported'));
+
         $this->actingAs($this->owner())
-            ->patch(route('settings.languages.update'), ['primary' => 'fr'])
+            ->patch(route('settings.languages.update'), ['primary' => 'ja'])
             ->assertSessionHasErrors('primary');
 
         $this->assertSame('en', $this->tenant->fresh()->default_language);

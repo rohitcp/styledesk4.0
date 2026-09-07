@@ -41,8 +41,13 @@
           @php
               // Native name first, English name after: someone choosing their
               // own language should recognise it without translating it.
+              /* An unfinished language is labelled rather than withheld. The
+                 business may well accept English gaps to serve a reader in
+                 their own language for the parts that are done; what it must
+                 not do is discover those gaps after switching. */
               $options = $available->mapWithKeys(fn (array $language, string $code) => [
-                  $code => $language['native'].' — '.$language['name'],
+                  $code => $language['native'].' — '.$language['name']
+                      .(\App\Support\Locale::isComplete($code) ? '' : ' ('.__('languages.partial').')'),
               ]);
               $chosenSecondary = array_map('strval', old('secondary', $secondary->all()));
           @endphp
@@ -87,12 +92,19 @@
                     <span data-secondary-note="{{ $code }}" class="text-[12px] text-faint" @unless ($isPrimary) hidden @endunless>
                       ({{ __('languages.is_primary') }})
                     </span>
+                    @unless (\App\Support\Locale::isComplete($code))
+                      <span class="text-[12px] text-accent">({{ __('languages.partial') }})</span>
+                    @endunless
                   </span>
                 </label>
               @endforeach
             </div>
 
             <p class="mt-2 text-[12px] text-sub">{{ __('languages.secondary_hint') }}</p>
+
+            @unless ($available->every(fn ($l, $c) => \App\Support\Locale::isComplete($c)))
+              <p class="mt-1.5 text-[12px] text-sub">{{ __('languages.partial_hint') }}</p>
+            @endunless
           </fieldset>
         </section>
 

@@ -23,7 +23,7 @@
          aria-labelledby="sd-timeout-title" hidden>
         <div class="styledesk_modal__dialog" style="max-width: 420px">
             <div class="styledesk_modal__head">
-                <h2 id="sd-timeout-title" class="styledesk_modal__title">Your session is about to expire</h2>
+                <h2 id="sd-timeout-title" class="styledesk_modal__title">{{ __('common.session.expiring') }}</h2>
             </div>
             <div class="styledesk_modal__body">
                 <p class="text-[13px] text-sub leading-relaxed">
@@ -53,7 +53,7 @@
          aria-labelledby="sd-expired-title" hidden>
         <div class="styledesk_modal__dialog" style="max-width: 420px">
             <div class="styledesk_modal__head">
-                <h2 id="sd-expired-title" class="styledesk_modal__title">Your session has expired</h2>
+                <h2 id="sd-expired-title" class="styledesk_modal__title">{{ __('common.session.expired') }}</h2>
             </div>
             <div class="styledesk_modal__body">
                 <p class="text-[13px] text-sub leading-relaxed">

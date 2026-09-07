@@ -218,4 +218,6 @@ return [
         'active' => 'Reservable',
         'inactive' => 'Retirado',
     ],
+    'deposit_amount' => 'Importe del depósito',
+    'deposit_percent' => '% de depósito',
 ];
