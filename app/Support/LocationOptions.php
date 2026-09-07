@@ -55,6 +55,35 @@ class LocationOptions
     }
 
     /**
+     * The countries a business can operate in, in the order to offer them.
+     *
+     * A subset of countries(), and a different question: this is where a
+     * business may run, not where an address may be. Same promotion applies,
+     * so the likeliest markets stay at the top of the list.
+     *
+     * Names come from the full country list, so a market cannot be listed in
+     * one place and spelled differently in the other.
+     *
+     * @return array<string, string>
+     */
+    public static function operatingCountries(): array
+    {
+        $countries = config('locations.countries');
+
+        $operating = collect(config('locations.operating_countries', []))
+            /* Ignoring any code that is not a known country, so a typo in the
+               market list cannot invent one. */
+            ->filter(fn (string $code) => isset($countries[$code]))
+            ->mapWithKeys(fn (string $code) => [$code => $countries[$code]]);
+
+        $promoted = collect(config('locations.countries_first', []))
+            ->filter(fn (string $code) => $operating->has($code))
+            ->mapWithKeys(fn (string $code) => [$code => $operating[$code]]);
+
+        return $promoted->union($operating->sort())->all();
+    }
+
+    /**
      * Weekday names, keyed by the integer stored in location_hours.
      *
      * @return array<int, string>

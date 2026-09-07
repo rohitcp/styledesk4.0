@@ -146,6 +146,7 @@
                     'currencies' => $currencies,
                     'countryCurrencies' => $countryCurrencies,
                     'languages' => $languages,
+                    'countryLanguages' => $countryLanguages,
                     'selectedCountries' => $selectedCountries,
                     'selectedCurrencies' => $selectedCurrencies,
                     'selectedLanguages' => $selectedLanguages,

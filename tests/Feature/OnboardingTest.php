@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
 use App\Support\LocationOptions;
+use App\Support\MarketLanguages;
 use App\Support\Subdomain;
 use Database\Seeders\BusinessTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -364,7 +365,7 @@ class OnboardingTest extends TestCase
                 'business_type_ids' => [$type->id],
                 'country_codes' => ['IN'],
                 'currency_code' => 'INR',
-                'default_language' => 'ar',
+                'default_language' => 'hi',
             ])
             ->assertRedirect(route('onboarding.location'));
 
@@ -372,7 +373,7 @@ class OnboardingTest extends TestCase
 
         $this->assertSame('IN', $tenant->country_code);
         $this->assertSame('INR', $tenant->currency_code);
-        $this->assertSame('ar', $tenant->default_language);
+        $this->assertSame('hi', $tenant->default_language);
     }
 
     public function test_multiple_countries_and_currencies_are_stored_with_a_primary(): void
@@ -385,17 +386,17 @@ class OnboardingTest extends TestCase
                 'name' => 'Cross Border Salon',
                 'business_phone' => '555 0100',
                 'business_type_ids' => [$type->id],
-                'country_codes' => ['IN', 'AE', 'GB'],
+                'country_codes' => ['IN', 'AU', 'CA'],
                 'currency_code' => 'INR',
-                'secondary_currency_codes' => ['AED'],
-                'default_language' => 'ar',
+                'secondary_currency_codes' => ['AUD'],
+                'default_language' => 'hi',
             ])
             ->assertRedirect(route('onboarding.location'));
 
         $tenant = $user->fresh()->tenant;
 
-        $this->assertSame(['IN', 'AE', 'GB'], $tenant->countries->pluck('country_code')->all());
-        $this->assertSame(['INR', 'AED'], $tenant->currencies->pluck('currency_code')->all());
+        $this->assertSame(['IN', 'AU', 'CA'], $tenant->countries->pluck('country_code')->all());
+        $this->assertSame(['INR', 'AUD'], $tenant->currencies->pluck('currency_code')->all());
 
         // The first of each is mirrored onto the tenant, and that mirror is
         // what every later screen filters and prices on.
@@ -413,7 +414,7 @@ class OnboardingTest extends TestCase
                 'name' => 'Cross Border Salon',
                 'business_phone' => '555 0100',
                 'business_type_ids' => [$type->id],
-                'country_codes' => ['US'],
+                'country_codes' => ['US', 'CA'],
                 'currency_code' => 'USD',
                 'secondary_currency_codes' => ['CAD', 'EUR'],
                 'default_language' => 'en',
@@ -959,6 +960,147 @@ class OnboardingTest extends TestCase
         $this->assertSame('US', $offered[0]);
         $this->assertNotContains('ZZ', $offered);
         $this->assertSame(count(config('locations.countries')), count($offered));
+    }
+
+    /**
+     * Country of operation offers the markets we sell into, not every country.
+     *
+     * A narrower question than "what address can we record", which is what
+     * countries() answers and what the client and location forms ask.
+     */
+    public function test_only_operating_countries_are_offered_as_countries_of_operation(): void
+    {
+        $offered = array_keys(LocationOptions::operatingCountries());
+
+        sort($offered);
+
+        $this->assertSame(['AU', 'CA', 'CN', 'DE', 'FR', 'IN', 'MX', 'US'], $offered);
+
+        /* The full list is untouched: a business in the United States may
+           still have a client who lives in Japan. */
+        $this->assertArrayHasKey('JP', LocationOptions::countries());
+    }
+
+    /** The likeliest markets stay at the top, as on the full list. */
+    public function test_operating_countries_keep_the_promotion_order(): void
+    {
+        $offered = array_keys(LocationOptions::operatingCountries());
+
+        $this->assertSame(['US', 'CA', 'AU', 'MX'], array_slice($offered, 0, 4));
+
+        // The rest alphabetically by name: China, France, Germany, India.
+        $this->assertSame(['CN', 'FR', 'DE', 'IN'], array_slice($offered, 4));
+        $this->assertSame($offered, array_unique($offered));
+    }
+
+    /** Every market has a name, a currency, a timezone and a language. */
+    public function test_every_operating_country_is_completely_described(): void
+    {
+        foreach (config('locations.operating_countries') as $code) {
+            $this->assertArrayHasKey($code, config('locations.countries'), $code.' has no name');
+            $this->assertArrayHasKey($code, config('currencies.country_currencies'), $code.' has no currency');
+            $this->assertArrayHasKey($code, config('locations.country_timezones'), $code.' has no timezone');
+
+            $languages = config('currencies.country_languages.'.$code);
+
+            $this->assertNotEmpty($languages, $code.' has no languages');
+            $this->assertSame([], array_diff($languages, array_keys(config('currencies.languages'))));
+        }
+    }
+
+    /** A country we do not sell into is refused, however it is posted. */
+    public function test_a_country_we_do_not_operate_in_is_refused(): void
+    {
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Acme', 'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+                // Still a real country, and still offered on the client form.
+                'country_codes' => ['US', 'JP'],
+                'currency_code' => 'USD',
+                'default_language' => 'en',
+            ])
+            ->assertSessionHasErrors('country_codes.1');
+    }
+
+    /**
+     * The language list follows the countries, and so does the rule.
+     *
+     * The browser filters the dropdown as countries are ticked. A rule that
+     * did not narrow with it would accept, on a hand-rolled post, exactly the
+     * option the form refused to show.
+     */
+    public function test_a_language_no_chosen_country_offers_is_refused(): void
+    {
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Acme', 'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+                'country_codes' => ['DE'],
+                'currency_code' => 'EUR',
+                // A language StyleDesk has, that Germany is not served in.
+                'default_language' => 'hi',
+            ])
+            ->assertSessionHasErrors('default_language');
+    }
+
+    /** The same narrowing applies to the secondary languages. */
+    public function test_a_secondary_language_no_chosen_country_offers_is_refused(): void
+    {
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Acme', 'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+                'country_codes' => ['MX'],
+                'currency_code' => 'MXN',
+                'default_language' => 'es',
+                'secondary_language_codes' => ['zh'],
+            ])
+            ->assertSessionHasErrors('secondary_language_codes.0');
+    }
+
+    /**
+     * Several countries offer the union of their languages, not the
+     * intersection — which for Canada and Mexico would be empty.
+     */
+    public function test_languages_from_every_chosen_country_are_accepted(): void
+    {
+        $type = BusinessType::firstOrCreate(['slug' => 'spa'], ['name' => 'Spa', 'slug' => 'spa']);
+        $user = $this->user();
+
+        $this->actingAs($user)
+            ->post('http://styledesk.test/onboarding/business', [
+                'name' => 'Frontera', 'business_phone' => '555 0100',
+                'business_type_ids' => [$type->id],
+                'country_codes' => ['CA', 'MX'],
+                'currency_code' => 'CAD',
+                'default_language' => 'fr',
+                'secondary_language_codes' => ['en', 'es'],
+            ])
+            ->assertRedirect(route('onboarding.location'));
+
+        $this->assertSame(
+            ['fr', 'en', 'es'],
+            $user->fresh()->tenant->languages->pluck('language_code')->all()
+        );
+    }
+
+    /** The map the form filters by, and the map the rules read, are one map. */
+    public function test_the_offered_languages_are_the_union_of_the_chosen_countries(): void
+    {
+        $this->assertSame(['en', 'es', 'fr'], array_keys(MarketLanguages::forCountries(['US', 'CA'])));
+        $this->assertSame(['zh'], array_keys(MarketLanguages::forCountries(['CN'])));
+
+        /* Nothing chosen yet: the country field is required and is the error
+           worth showing, so the language rule stays wide rather than adding a
+           second complaint that follows from the first. */
+        $this->assertSame(array_keys(config('currencies.languages')), MarketLanguages::codesFor([]));
     }
 
     /**
