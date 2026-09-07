@@ -88,6 +88,12 @@ return [
                 'appointments.no_show' => ['label' => 'Mark appointment as no show', 'scopes' => $readScopes],
                 'appointments.reschedule' => ['label' => 'Reschedule appointment', 'scopes' => $readScopes],
                 'appointments.check_in' => ['label' => 'Check in client'],
+                /* Saying the appointment was delivered. Its own permission
+                   rather than check-in's: it is the status every revenue and
+                   visit report counts, and it is what asks the client for a
+                   review — a business may well want the desk letting people
+                   in without the desk deciding whose work was finished. */
+                'appointments.complete' => ['label' => 'Complete appointment', 'scopes' => $readScopes],
                 'appointments.check_out' => ['label' => 'Check out client'],
                 'calendar.block_time' => ['label' => 'Block calendar time', 'scopes' => ['own', 'location', 'all']],
                 'appointments.override_rules' => ['label' => 'Override booking restrictions'],
@@ -123,6 +129,59 @@ return [
                 // Medical history, allergies, incident notes. Off for every
                 // role but Owner and Admin.
                 'clients.view_sensitive_notes' => ['label' => 'View sensitive notes'],
+            ],
+        ],
+
+        /*
+        | Reviews & feedback.
+        |
+        | Its own group rather than a row inside Clients, because reading what
+        | clients said and handling the ones who were unhappy are different
+        | jobs held by different people: a stylist should be able to see their
+        | own ratings without being able to see the complaint another branch
+        | is still working through, and the person who assigns and resolves
+        | that complaint is not necessarily the person who configures how the
+        | asking works.
+        */
+        'reviews' => [
+            'label' => 'Reviews & Feedback',
+            'icon' => 'star',
+            'permissions' => [
+                /* Scoped, so a business can hand a stylist their own reviews
+                   and no others. `own` reads as "reviews of my work" — the
+                   review carries its own staff_id for exactly this. */
+                'reviews.view' => ['label' => 'View reviews', 'scopes' => $readScopes],
+                'reviews.send_request' => ['label' => 'Send review request'],
+                'reviews.assign' => ['label' => 'Assign feedback'],
+                'reviews.add_note' => ['label' => 'Add internal note to feedback'],
+                'reviews.change_status' => ['label' => 'Change feedback status'],
+                'reviews.manage_settings' => ['label' => 'Manage review settings'],
+                'reviews.view_reports' => ['label' => 'View review reports', 'scopes' => ['location', 'all']],
+            ],
+        ],
+
+        /*
+        | Loyalty & rewards.
+        |
+        | Its own group rather than rows inside Clients, because configuring
+        | the scheme and touching one client's balance are different jobs held
+        | by different people. Adjusting points by hand is issuing the business
+        | money, which is why it is separate from reading a balance and
+        | separate again from spending one at the till — a receptionist should
+        | be able to redeem what a client has earned without being able to
+        | invent a thousand points on a Tuesday.
+        */
+        'loyalty' => [
+            'label' => 'Loyalty & Rewards',
+            'icon' => 'gift',
+            'permissions' => [
+                'loyalty.view_settings' => ['label' => 'View loyalty settings'],
+                'loyalty.manage_settings' => ['label' => 'Manage loyalty settings'],
+                /* Scoped, so a stylist can be given the balances of the
+                   clients they work on and no others. */
+                'loyalty.view_rewards' => ['label' => 'View client rewards', 'scopes' => $readScopes],
+                'loyalty.adjust_points' => ['label' => 'Adjust client points'],
+                'loyalty.redeem_points' => ['label' => 'Redeem client points'],
             ],
         ],
 

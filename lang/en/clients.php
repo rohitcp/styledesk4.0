@@ -396,6 +396,7 @@ return [
                 'nothing_paid' => 'Nothing paid yet',
             ],
             'tabs' => [
+                'rewards' => 'Rewards',
                 'leads' => 'Leads',
                 'activity' => 'Activity',
                 'bookings' => 'Bookings',
@@ -521,6 +522,7 @@ return [
                     'booking_rescheduled' => 'Booking rescheduled',
                     'booking_cancelled' => 'Booking cancelled',
                     'booking_checked_in' => 'Client checked in',
+                    'booking_completed' => 'Appointment completed',
                     'booking_no_show' => 'Booking marked as no show',
                     'booking_declined' => 'Booking declined',
                     'note_added' => 'Note added',

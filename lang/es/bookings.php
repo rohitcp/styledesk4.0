@@ -464,6 +464,14 @@ return [
             'done_at' => 'Llegada registrada a las :time por :name',
             'already' => 'Registrado',
         ],
+        'complete' => [
+            'action' => 'Completar',
+            'title' => 'Completar la cita',
+            'intro' => 'El trabajo está hecho. La cita queda registrada como realizada y, si las solicitudes de reseña están activas, se pregunta al cliente qué tal fue.',
+            'confirm' => 'Completar cita',
+            'note' => 'Nota de finalización',
+            'note_hint' => 'Opcional. Para el equipo, no para el cliente.',
+        ],
         'no-show' => [
             'action' => 'No asistió',
             'title' => 'Marcar la reserva como no asistió',
@@ -514,6 +522,7 @@ return [
 
         'done' => [
             'check-in' => 'Llegada del cliente registrada.',
+            'complete' => 'Cita completada.',
             'no-show' => 'Marcada como no asistió.',
             'cancelled' => 'Reserva cancelada.',
             'declined' => 'Reserva rechazada.',

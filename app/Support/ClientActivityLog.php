@@ -91,6 +91,12 @@ class ClientActivityLog
         self::statusChanged($booking, 'booking.checked_in', null, $note, $userId);
     }
 
+    /** The work was done and the client has gone. */
+    public static function bookingCompleted(Booking $booking, ?string $note = null, ?int $userId = null): void
+    {
+        self::statusChanged($booking, 'booking.completed', null, $note, $userId);
+    }
+
     /** Nobody came. */
     public static function bookingNoShow(Booking $booking, ?string $reason = null, ?string $note = null, ?int $userId = null): void
     {

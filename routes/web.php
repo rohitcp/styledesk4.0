@@ -16,6 +16,7 @@ use App\Http\Controllers\ClientBookingPreferenceController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientEmailController;
 use App\Http\Controllers\ClientFileController;
+use App\Http\Controllers\ClientLoyaltyController;
 use App\Http\Controllers\ClientNoteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ResourceAvailabilityController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\ResourceUtilizationController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\ServiceCategoryController;
 use App\Http\Controllers\ServiceController;
@@ -40,9 +42,11 @@ use App\Http\Controllers\Settings\EmailTemplateController;
 use App\Http\Controllers\Settings\GmailConnectionController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
+use App\Http\Controllers\Settings\LoyaltySettingsController;
 use App\Http\Controllers\Settings\PaymentSettingsController;
 use App\Http\Controllers\Settings\ReasonCodeController;
 use App\Http\Controllers\Settings\ResourceCategoryController;
+use App\Http\Controllers\Settings\ReviewSettingsController;
 use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\ServiceCategoryController as SettingsServiceCategoryController;
 use App\Http\Controllers\Settings\ShiftRuleController;
@@ -140,6 +144,34 @@ Route::middleware(['tenant.route'])->get('book/{tenant}', function (Tenant $tena
 Route::middleware(['throttle:30,1'])
     ->get('pay/{token}', [PaymentLinkController::class, 'show'])
     ->name('booking.pay-link');
+
+/*
+| Saying how the visit was.
+|
+| Outside auth, like the payment link above and for the same reason: a client
+| rating their haircut is not a StyleDesk user and never will be. The token in
+| the URL is the whole credential — 64 random characters, never derived from
+| the booking or the client, which is what §8 asks for — and the page shows one
+| appointment and the question, nothing else.
+|
+| GET takes an optional `?rating=`, so the stars in the email are five links
+| and the first tap is the answer. POST is what adds the comment to it.
+|
+| Throttled by IP: an unauthenticated route that looks a token up is one
+| somebody will try to guess their way through.
+*/
+Route::middleware(['throttle:30,1'])
+    ->controller(ReviewController::class)
+    ->prefix('review')
+    ->name('reviews.')
+    ->group(function () {
+        Route::get('{token}', 'show')->name('show');
+        Route::post('{token}', 'store')->name('store');
+        /* Where the happy ones are sent. Its own route rather than a bare
+           link, so "did they actually go to Google" is a fact the reports
+           have rather than a guess. */
+        Route::get('{token}/google', 'google')->name('google');
+    });
 
 /*
 | The access-code gate.
@@ -447,6 +479,36 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
             Route::patch('/', 'update')->name('update');
             Route::patch('services/{service}', 'service')->name('service');
         });
+
+        /*
+        | Whether this business asks its clients what they thought, when, and
+        | where the happy ones are sent afterwards. Inside the settings group
+        | like tips, and gated a second time on reviews.manage_settings —
+        | somebody who may configure the salon is not automatically somebody
+        | who decides how it speaks to its clients after a visit.
+        */
+        Route::controller(ReviewSettingsController::class)
+            ->prefix('reviews')
+            ->name('reviews.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::patch('/', 'update')->name('update');
+            });
+
+        /*
+        | What a pound spent is worth in points and what a point is worth
+        | back. Inside the settings group like tips and reviews, and gated a
+        | second time on the loyalty permissions — somebody who may configure
+        | the salon is not automatically somebody who decides what its
+        | clients' balances are worth.
+        */
+        Route::controller(LoyaltySettingsController::class)
+            ->prefix('loyalty')
+            ->name('loyalty.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::patch('/', 'update')->name('update');
+            });
 
         Route::controller(ReasonCodeController::class)
             ->prefix('reasons')
@@ -1259,6 +1321,7 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
         ->name('bookings.')
         ->group(function () {
             Route::post('check-in', 'checkIn')->name('check-in');
+            Route::post('complete', 'complete')->name('complete');
             Route::post('no-show', 'noShow')->name('no-show');
             Route::post('cancel', 'cancel')->name('cancel');
             Route::post('decline', 'decline')->name('decline');
@@ -1533,6 +1596,14 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::post('{file}/replace', 'replace')->name('replace');
             Route::delete('{file}', 'destroy')->name('destroy');
         });
+
+    /*
+    | Moving one client's balance by hand. Its own permission, checked in the
+    | controller: reading a balance at the desk and issuing points are
+    | different jobs, and only one of them is the business giving money away.
+    */
+    Route::post('clients/{client}/rewards/adjust', [ClientLoyaltyController::class, 'adjust'])
+        ->name('clients.rewards.adjust');
 
     Route::controller(ClientNoteController::class)
         ->prefix('clients/{client}/notes')

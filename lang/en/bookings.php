@@ -524,6 +524,17 @@ return [
             'done_at' => 'Checked in at :time by :name',
             'already' => 'Checked in',
         ],
+        /* No reason list and no dialogue to speak of: finishing an
+           appointment is the ordinary outcome, and a required dropdown in
+           front of it would be answered the same way every time. */
+        'complete' => [
+            'action' => 'Complete',
+            'title' => 'Complete appointment',
+            'intro' => 'The work is done. The appointment is recorded as delivered, and the client is asked how it went if review requests are switched on.',
+            'confirm' => 'Complete appointment',
+            'note' => 'Completion note',
+            'note_hint' => 'Optional. For the team, not for the client.',
+        ],
         'no-show' => [
             'action' => 'No show',
             'title' => 'Mark booking as no show',
@@ -577,6 +588,7 @@ return [
 
         'done' => [
             'check-in' => 'Client checked in.',
+            'complete' => 'Appointment completed.',
             'no-show' => 'Marked as no show.',
             'cancelled' => 'Booking cancelled.',
             'declined' => 'Booking declined.',

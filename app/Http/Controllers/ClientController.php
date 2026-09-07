@@ -13,6 +13,7 @@ use App\Models\ClientNote;
 use App\Models\ClientSettings;
 use App\Models\ClientTag;
 use App\Models\Location;
+use App\Models\LoyaltySettings;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
@@ -23,6 +24,7 @@ use App\Support\ClientOptions;
 use App\Support\ClientServiceHistory;
 use App\Support\ClientVisitSummary;
 use App\Support\InputCase;
+use App\Support\LoyaltyPoints;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
@@ -628,8 +630,25 @@ class ClientController extends Controller
             ->orderBy('date')->orderBy('starts_at')
             ->get();
 
+        /* What this client has to spend, and where it came from. Read here
+           rather than in the view so the tab, the tab strip and the
+           permission that decides whether either exists all read one
+           answer. */
+        $loyalty = LoyaltySettings::forTenant($user->tenant);
+        $canViewRewards = $user->hasPermission('loyalty.view_rewards', 'own');
+
         return view('clients.show', [
             'visitSummary' => $visitSummary,
+            'loyalty' => $loyalty,
+            'canViewRewards' => $canViewRewards,
+            'canAdjustPoints' => $user->hasPermission('loyalty.adjust_points', 'own'),
+            /* Only where the tab exists. A profile opened by somebody who
+               may not see balances should not be summing a ledger for a tab
+               that is never rendered. */
+            'loyaltySummary' => $canViewRewards
+                ? LoyaltyPoints::summaryFor($client, $loyalty)
+                : ['available' => 0, 'pending' => 0, 'lifetime_earned' => 0, 'lifetime_redeemed' => 0],
+            'loyaltyHistory' => $canViewRewards ? LoyaltyPoints::historyFor($client) : collect(),
             'clientServices' => $clientServices,
             /* Whether this reader may take an appointment. The Create
                Booking action is live for them and refused for everybody

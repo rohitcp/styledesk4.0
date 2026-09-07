@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\LoyaltyPoints;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -131,6 +132,19 @@ class Booking extends Model
         }
 
         $this->forceFill(['payment_status' => $status, 'paid_minor' => max(0, $paid)])->save();
+
+        /* Money moving is one of the two things that decides a client's
+           points — §6 awards them on a completed appointment that has been
+           paid for, and §12 takes them back when it is refunded. Settled from
+           here because this is the one place every gateway, every webhook and
+           every manual payment already passes through; four call sites would
+           be four chances to forget one.
+
+           A reconciler rather than an accumulator, so calling it on every
+           payment event is harmless: it writes only the difference between
+           what this booking should have earned and what it already has, and
+           writes nothing at all when they agree. It cannot throw. */
+        LoyaltyPoints::settle($this);
 
         return $status;
     }

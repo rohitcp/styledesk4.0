@@ -1,10 +1,11 @@
 {{--
     The dialogues behind the header's actions.
 
-    Three of the four are the same dialogue — a reason, an optional note, and
-    the explanation a reason can ask for — so they are one partial rendered
-    three times rather than three that drift apart. The fourth moves the
-    appointment and needs a day and a time, so it has its own.
+    The three that end a booking badly are the same dialogue — a reason, an
+    optional note, and the explanation a reason can ask for — so they are one
+    partial rendered three times rather than three that drift apart. The other
+    three ask something else: one moves the appointment and needs a day and a
+    time, and two need no reason at all.
 
     Rendered only for the acts on offer: a reader without the permission is
     not sent the form for it, and the header has no button that would open it.
@@ -12,7 +13,7 @@
 
 @foreach ($actions as $action)
     {{-- The two that ask something other than a reason and a note. --}}
-    @continue(in_array($action, ['reschedule', 'check-in'], true))
+    @continue(in_array($action, ['reschedule', 'check-in', 'complete'], true))
 
     @php
         $danger = config('bookings.status_actions.'.$action.'.tone') === 'danger';
@@ -334,6 +335,61 @@
                     <button type="submit"
                             class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
                         {{ __('bookings.status.check-in.confirm') }}
+                    </button>
+
+                    <button type="button" class="styledesk_action" data-status-close>{{ __('bookings.status.dismiss') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endif
+
+@if (in_array('complete', $actions, true))
+    {{--
+        The work is done.
+
+        No reason asked for, like check-in: finishing an appointment is the
+        ordinary outcome, and a required dropdown in front of it would be
+        answered the same way every time.
+
+        It says what completing does, because two things follow from it that
+        are not obvious from the button: the appointment starts counting in
+        every revenue and visit report, and the client is asked how it went.
+    --}}
+    <div id="statusModal-complete" class="styledesk_modal" hidden data-status-modal="complete">
+        <div class="styledesk_modal__scrim" data-status-close></div>
+
+        <div class="styledesk_modal__panel" role="dialog" aria-modal="true" aria-labelledby="statusModalTitle-complete">
+            <div class="styledesk_modal__head">
+                <h2 id="statusModalTitle-complete" class="text-[15px] font-semibold text-head">
+                    {{ __('bookings.status.complete.title') }}
+                </h2>
+
+                <button type="button" class="styledesk_modal__close" data-status-close aria-label="{{ __('common.close') }}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route('bookings.complete', $booking) }}">
+                @csrf
+
+                <div class="styledesk_modal__body space-y-4">
+                    <p class="text-[13px] text-sub leading-relaxed">{{ __('bookings.status.complete.intro') }}</p>
+
+                    <div>
+                        <label for="note-complete" class="block text-[13px] font-medium text-ink mb-1.5">
+                            {{ __('bookings.status.complete.note') }}
+                            <span class="text-faint font-normal">{{ __('common.optional') }}</span>
+                        </label>
+                        <textarea id="note-complete" name="note" rows="3" class="sd-input !h-auto py-2.5" maxlength="2000"></textarea>
+                        <p class="text-[12px] text-faint mt-1.5">{{ __('bookings.status.complete.note_hint') }}</p>
+                    </div>
+                </div>
+
+                <div class="styledesk_modalfoot">
+                    <button type="submit"
+                            class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
+                        {{ __('bookings.status.complete.confirm') }}
                     </button>
 
                     <button type="button" class="styledesk_action" data-status-close>{{ __('bookings.status.dismiss') }}</button>

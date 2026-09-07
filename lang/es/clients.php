@@ -345,6 +345,7 @@ return [
                 'nothing_paid' => 'Aún sin pagos',
             ],
             'tabs' => [
+                'rewards' => 'Recompensas',
                 'leads' => 'Iniciadas',
                 'activity' => 'Actividad',
                 'bookings' => 'Reservas',
@@ -460,6 +461,7 @@ return [
                     'booking_rescheduled' => 'Reserva reprogramada',
                     'booking_cancelled' => 'Reserva cancelada',
                     'booking_checked_in' => 'Cliente registrado',
+                    'booking_completed' => 'Cita completada',
                     'booking_no_show' => 'Reserva marcada como no asistió',
                     'booking_declined' => 'Reserva rechazada',
                     'note_added' => 'Nota añadida',
