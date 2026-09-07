@@ -45,6 +45,5 @@ return [
         'fr' => ['name' => 'French', 'native' => 'Français', 'active' => false],
         'de' => ['name' => 'German', 'native' => 'Deutsch', 'active' => false],
         'zh' => ['name' => 'Chinese', 'native' => '中文', 'active' => false],
-        'hi' => ['name' => 'Hindi', 'native' => 'हिन्दी', 'active' => false],
     ],
 ];

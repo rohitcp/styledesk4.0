@@ -306,37 +306,6 @@ return [
         'fr' => 'French',
         'de' => 'German',
         'zh' => 'Chinese',
-        'hi' => 'Hindi',
-        'ar' => 'Arabic',
-    ],
-
-    /*
-     * Operating country => the languages a business there can be served in.
-     *
-     * The language fields on onboarding step 1 are filtered to the union of
-     * these for the countries chosen, because the full list is a menu of
-     * questions most businesses will never be asked: a salon operating only
-     * in Germany has no use for Hindi, and offering it invites a choice that
-     * is simply wrong.
-     *
-     * English is listed wherever it is genuinely a working language rather
-     * than everywhere as a safety net — a France-only business gets French,
-     * which is the honest answer.
-     *
-     * Keys are operating countries (config/locations.php), values are keys of
-     * the list above. Both are checked by the onboarding tests, so a country
-     * added to one list without the other fails rather than silently offering
-     * an empty language dropdown.
-     */
-    'country_languages' => [
-        'US' => ['en', 'es'],
-        'CA' => ['en', 'fr'],
-        'AU' => ['en'],
-        'MX' => ['es'],
-        'CN' => ['zh'],
-        'FR' => ['fr'],
-        'DE' => ['de'],
-        'IN' => ['en', 'hi'],
     ],
 
     'default_language' => 'en',

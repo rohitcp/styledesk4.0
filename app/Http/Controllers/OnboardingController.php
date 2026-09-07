@@ -15,7 +15,6 @@ use App\Models\TenantOnboarding;
 use App\Services\ServiceImageSync;
 use App\Support\InputCase;
 use App\Support\LocationOptions;
-use App\Support\MarketLanguages;
 use App\Support\Subdomain;
 use App\Support\WebsiteAddress;
 use Illuminate\Http\JsonResponse;
@@ -84,7 +83,6 @@ class OnboardingController extends Controller
             'currencies' => $this->currencyOptions(),
             'countryCurrencies' => config('currencies.country_currencies'),
             'languages' => config('currencies.languages'),
-            'countryLanguages' => config('currencies.country_languages'),
             'selectedCountries' => $request->user()->tenant?->countries->pluck('country_code')->all() ?? [],
             'selectedCurrencies' => $request->user()->tenant?->currencies->pluck('currency_code')->all() ?? [],
             'selectedLanguages' => $request->user()->tenant?->languages->pluck('language_code')->all() ?? [],
@@ -97,20 +95,6 @@ class OnboardingController extends Controller
     {
         $user = $request->user();
         $tenantId = $user->tenant_id;
-
-        /**
-         * The language rules depend on the countries in the same request, so
-         * the chosen ones are read before the rules are built. Anything that
-         * is not an operating country is dropped first: the country rule below
-         * still rejects it, and letting it through here would let a bogus code
-         * widen the language list it is about to be refused for.
-         */
-        $operatingCountries = array_values(array_intersect(
-            (array) $request->input('country_codes', []),
-            config('locations.operating_countries', [])
-        ));
-
-        $offeredLanguages = MarketLanguages::codesFor($operatingCountries);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -142,12 +126,13 @@ class OnboardingController extends Controller
                 Rule::in(array_keys(config('currencies.currencies'))),
                 'different:currency_code',
             ],
-            /* Narrowed to the languages the chosen countries offer, so the
-               rule accepts exactly what the form showed. */
-            'default_language' => ['required', 'string', Rule::in($offeredLanguages)],
+            /* Every language StyleDesk offers, whichever countries were
+               chosen: where a business operates and what it serves clients in
+               are separate questions. */
+            'default_language' => ['required', 'string', Rule::in(array_keys(config('currencies.languages')))],
             'secondary_language_codes' => ['nullable', 'array'],
             'secondary_language_codes.*' => [
-                Rule::in($offeredLanguages),
+                Rule::in(array_keys(config('currencies.languages'))),
                 'different:default_language',
             ],
             'business_phone' => ['required', 'string', 'max:32'],

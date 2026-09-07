@@ -47,7 +47,7 @@ return [
      *
      * Use App\Support\LocationOptions::operatingCountries() to render one.
      */
-    'operating_countries' => ['US', 'CA', 'AU', 'MX', 'CN', 'FR', 'DE', 'IN'],
+    'operating_countries' => ['US', 'MX', 'CA', 'AU', 'GB', 'FR', 'DE'],
 
     /*
      * The countries a business can be based in.
