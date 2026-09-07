@@ -13,6 +13,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | ** | .ai/rules/general.md |
 | app/{Support/ResourceAvailability.php,Support/ResourceAllocator.php,Http/Controllers/ResourceAvailabilityController.php},resources/js/components/ResourceAvailability.vue, app/{Support/ActivityStream.php,Http/Controllers/ActivityController.php},resources/js/components/ActivityPanel.vue | .ai/rules/js-components.md |
 | resources/js/{listing-filters.js,data-grid.js} | .ai/rules/js.md |
+| app/{Models/Tenant.php,Http/Middleware/EnsureBusinessIsActive.php,Providers/FortifyServiceProvider.php,Http/Controllers/OnboardingController.php} | .ai/rules/middleware-controllers.md |
 | app/{Models/BackofficeAdmin.php,Models/BackofficeAuditLog.php,Models/BackofficeLoginCode.php,Http/Controllers/Backoffice/**,Http/Middleware/AuthenticateBackoffice.php,Support/BackofficeVerification.php},routes/backoffice.php,config/backoffice.php | .ai/rules/middleware.md |
 | app/{Models/ClientActivity.php,Support/ClientActivityLog.php} | .ai/rules/models.md |
 | app/{Models/LoyaltySettings.php,Models/ClientLoyaltyPoint.php,Support/LoyaltyPoints.php,Http/Controllers/ClientLoyaltyController.php,Http/Controllers/Settings/LoyaltySettingsController.php},config/loyalty.php,resources/views/settings/loyalty/**,resources/views/clients/partials/_rewards.blade.php | .ai/rules/partials.md |
