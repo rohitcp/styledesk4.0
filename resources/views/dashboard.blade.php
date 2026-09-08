@@ -72,8 +72,14 @@
       <header class="flex flex-wrap items-start gap-4">
         <div class="min-w-0 flex-1">
           <p class="text-[13px] text-sub">{{ now()->translatedFormat('l, j F') }}</p>
-          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight mt-1">
-            {{ $greeting }}, {{ $user->first_name }}
+          <h1 class="text-[24px] sm:text-[28px] font-bold text-head tracking-tight mt-1 flex items-center gap-2">
+            {{-- Decorative, so it stays out of the accessible name: a screen
+                 reader announcing "tick, good evening, Emma" reads a
+                 flourish as if it meant something. --}}
+            <span class="shrink-0 text-brand" aria-hidden="true">
+              <x-icon name="check" size="20" />
+            </span>
+            <span>{{ $greeting }}, {{ $user->first_name }}</span>
           </h1>
         </div>
 
