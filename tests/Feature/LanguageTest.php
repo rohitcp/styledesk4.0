@@ -816,7 +816,9 @@ class LanguageTest extends TestCase
             ->assertSee('Nombre del negocio')
             ->assertSee('Datos de contacto')
             ->assertSee('Ajustes regionales')
-            ->assertSee('Editar negocio')
+            // The per-card Edit, whose accessible name is built from the card
+            // title — so both halves have to be translated for this to match.
+            ->assertSee('Editar Información del negocio')
             ->assertDontSee('Business information')
             ->assertDontSee('Contact information');
     }
