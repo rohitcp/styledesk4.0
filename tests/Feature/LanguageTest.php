@@ -27,15 +27,22 @@ class LanguageTest extends TestCase
      * The lang/ files every offered language is expected to carry.
      *
      * The screens somebody uses on their first day — the Clients, Services,
-     * Staff and Bookings modules, their option lists, and the shared words and
-     * navigation wrapped around them. Add a module here as it is translated,
-     * and the two tests below hold every language to it at once.
+     * Every module a salon can reach. Add one here as it is translated, and
+     * the two tests below hold every language to it at once.
+     *
+     * backoffice is deliberately absent — see
+     * test_the_platform_console_is_english_by_construction for why.
      */
     private const TRANSLATED_MODULES = [
         'clients', 'client_options', 'services', 'staff', 'staff_options',
         'bookings', 'leads', 'payments', 'reasons',
         'resources', 'locations', 'sales',
         'common', 'navigation', 'dashboard', 'settings', 'modules',
+        'account', 'activity', 'auth', 'passwords', 'onboarding', 'storage',
+        'roles', 'currency', 'languages', 'branding', 'hours', 'tips',
+        'reviews', 'staff_schedules', 'shifts', 'marketing', 'client_email',
+        'loyalty', 'business', 'schedule', 'shift_rules', 'promotions',
+        'email_templates',
     ];
 
     private Tenant $tenant;
@@ -553,6 +560,29 @@ class LanguageTest extends TestCase
             ->assertSee('不再显示')
             ->assertDontSee('Add your first service')
             ->assertDontSee('>Dismiss<', false);
+    }
+
+    /**
+     * The platform console is English by construction, not by omission.
+     *
+     * SetApplicationLocale reads the locale from the salon guard, and a
+     * BackofficeAdmin authenticates on its own — so whatever anybody prefers,
+     * the console lands on the fallback. A lang file for it would be strings
+     * that cannot be displayed, which is why one does not exist and why
+     * backoffice is missing from TRANSLATED_MODULES above.
+     */
+    public function test_the_platform_console_is_english_by_construction(): void
+    {
+        /* Nobody on the salon guard means the fallback, which is what a
+           console request resolves to on every page. */
+        $this->assertSame('en', Locale::forUser(null));
+
+        foreach (['zh', 'fr', 'de'] as $locale) {
+            $this->assertFileDoesNotExist(
+                lang_path($locale.'/backoffice.php'),
+                "lang/$locale/backoffice.php exists. Either the console became translatable — in which case add 'backoffice' to TRANSLATED_MODULES — or this file can never be displayed."
+            );
+        }
     }
 
     /** The App Settings directory, in German. */

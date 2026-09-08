@@ -37,37 +37,24 @@ return [
         'es' => ['name' => 'Spanish', 'native' => 'Español', 'active' => true],
 
         /*
-         * Registered, offerable, and translated as far as the screens somebody
-         * uses on their first day: the shared words and validation, the
-         * navigation, and the Clients, Services and Staff modules — the "add"
-         * forms included. Everything else falls back to English key by key.
+         * Complete for everything a salon ever sees: 4,995 of 5,187 keys.
          *
-         * `active` marks that rather than hiding it. The selector labels an
-         * unfinished language "partly translated" and lets the business
-         * decide — withholding the choice entirely is what made French
-         * selectable at sign-up and then silently ignored everywhere else.
+         * The 192 that remain are lang/en/backoffice.php, the platform
+         * console. It cannot render in anything but English by construction —
+         * an administrator authenticates on the `backoffice` guard, and
+         * SetApplicationLocale resolves the locale from `$request->user('web')`,
+         * which is null there. Translating that file would be strings nobody
+         * can display. Fix the guard first if the console is ever to speak
+         * another language.
          *
-         * The Bookings module is translated too — appointments, leads,
-         * payment settings and the reason lists behind them.
-         *
-         * 2,194 of 5,176 keys each. Set active true when lang/fr and lang/de
-         * are complete.
+         * `active` stays false for the same reason it always did: it is the
+         * selector's word for "finished", and this is not finished until the
+         * console is either translated or made translatable.
          */
         'fr' => ['name' => 'French', 'native' => 'Français', 'active' => false],
         'de' => ['name' => 'German', 'native' => 'Deutsch', 'active' => false],
-        /*
-         * The shell is translated — navigation, the shared buttons and
-         * validation, the dashboard, the settings directory, the login screen
-         * and the language picker — and so are the Clients, Services and Staff
-         * modules, and the Bookings module with them. The rest (resources,
-         * email templates, marketing, the back office) has no lang/zh file yet
-         * and falls back to English key by key.
-         *
-         * `active` is false because it is false: 2,417 of 5,176 keys. It does
-         * not decide whether the language can be chosen — every language here
-         * can be — it decides whether the selector calls this one finished.
-         * Set it true when lang/zh is complete.
-         */
+        /* Same as French and German: 4,995 of 5,187 keys, everything but
+           the platform console. See the note above. */
         'zh' => ['name' => 'Chinese', 'native' => '中文', 'active' => false],
     ],
 ];

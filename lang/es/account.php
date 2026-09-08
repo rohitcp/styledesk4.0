@@ -121,6 +121,7 @@ return [
         'title' => 'Cambiar contraseña',
         'intro' => 'Elige una que no uses en ningún otro sitio.',
         'card' => 'Tu contraseña',
+        'hidden' => 'Tu contraseña está oculta',
         'current' => 'Contraseña actual',
         'new' => 'Nueva contraseña',
         'confirm' => 'Confirmar la nueva contraseña',
