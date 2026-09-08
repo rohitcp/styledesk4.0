@@ -19,7 +19,9 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/{Models/ClientActivity.php,Support/ClientActivityLog.php} | .ai/rules/models.md |
 | app/{Models/LoyaltySettings.php,Models/ClientLoyaltyPoint.php,Support/LoyaltyPoints.php,Http/Controllers/ClientLoyaltyController.php,Http/Controllers/Settings/LoyaltySettingsController.php},config/loyalty.php,resources/views/settings/loyalty/**,resources/views/clients/partials/_rewards.blade.php | .ai/rules/partials.md |
 | app/{Models/BookingReview.php,Models/ReviewSettings.php,Support/ReviewRequests.php,Jobs/SendReviewRequest.php,Http/Controllers/ReviewController.php,Http/Controllers/Settings/ReviewSettingsController.php},config/reviews.php,resources/views/reviews/** | .ai/rules/reviews.md |
+| resources/views/settings/**/show.blade.php,resources/views/components/settings/card.blade.php | .ai/rules/settings.md |
 | app/{Support/ClientServiceHistory.php,Models/Client.php,Http/Controllers/ClientController.php} | .ai/rules/support-controllers.md |
 | app/Support/ClientVisitSummary.php | .ai/rules/support.md |
 | tests/** | .ai/rules/tests.md |
+| app/Http/Controllers/Settings/**,resources/views/settings/** | .ai/rules/views-settings.md |
 | resources/views/**/*.blade.php | .ai/rules/views.md |

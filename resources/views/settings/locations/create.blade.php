@@ -40,7 +40,7 @@
           </p>
         </div>
 
-        <a href="{{ route('settings.locations.index') }}"
+        <a href="{{ $returnTo }}"
            class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
@@ -60,6 +60,7 @@
             data-validate-form
             data-validation-messages='@json($validationMessages)' class="mt-6 space-y-5">
         @csrf
+        <x-return-to :path="$returnPath" />
 
         @include('settings.locations._form', ['location' => null])
 
@@ -68,7 +69,7 @@
                   class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
             {{ __('locations.add') }}
           </button>
-          <a href="{{ route('settings.locations.index') }}"
+          <a href="{{ $returnTo }}"
              class="styledesk_action">
             {{ __('common.cancel') }}
           </a>

@@ -25,7 +25,14 @@ return [
         'address' => '商户地址',
         'address_hint' => '你的主要地址。共 :count 家门店。',
         'regional' => '区域设置',
-        'regional_hint' => '在各自的模块中配置；这里显示出来作为参考。',
+        'branding' => '标识与品牌',
+        'branding_hint' => '在「品牌形象」中配置；这里显示出来作为参考。',
+        'languages' => '语言',
+        'languages_hint' => '在「语言」中配置；这里显示出来作为参考。',
+        'currency' => '货币',
+        'currency_hint' => '在「货币」中配置；这里显示出来作为参考。',
+        'online_booking' => '在线预约',
+        'online_booking_hint' => '注册时设定。「在线预约」模块即将推出。',
         'security' => '安全',
         'defaults' => '商户默认值',
         'defaults_hint' => '新预约和新服务的起始设置。',
@@ -94,7 +101,6 @@ return [
 
     'manage' => '管理',
     'manage_branding' => '品牌样式 →',
-    'manage_locations' => '管理门店 →',
     'enabled' => '已启用',
     'disabled' => '已关闭',
 

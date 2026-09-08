@@ -27,7 +27,14 @@ return [
         'address' => 'Anschrift des Betriebs',
         'address_hint' => 'Ihre Hauptanschrift. Insgesamt :count Standorte.',
         'regional' => 'Regionale Einstellungen',
-        'regional_hint' => 'In eigenen Modulen eingerichtet; hier zur Einordnung gezeigt.',
+        'branding' => 'Logo & Markenauftritt',
+        'branding_hint' => 'Wird unter Markenauftritt eingerichtet; hier zur Einordnung gezeigt.',
+        'languages' => 'Sprachen',
+        'languages_hint' => 'Werden unter Sprachen eingerichtet; hier zur Einordnung gezeigt.',
+        'currency' => 'Währung',
+        'currency_hint' => 'Wird unter Währung eingerichtet; hier zur Einordnung gezeigt.',
+        'online_booking' => 'Onlinebuchung',
+        'online_booking_hint' => 'Bei der Anmeldung festgelegt. Das Modul Onlinebuchung kommt bald.',
         'security' => 'Sicherheit',
         'defaults' => 'Voreinstellungen',
         'defaults_hint' => 'Ausgangspunkte für neue Buchungen und Leistungen.',
@@ -96,7 +103,6 @@ return [
 
     'manage' => 'Verwalten',
     'manage_branding' => 'Markenauftritt →',
-    'manage_locations' => 'Standorte verwalten →',
     'enabled' => 'Aktiviert',
     'disabled' => 'Deaktiviert',
 

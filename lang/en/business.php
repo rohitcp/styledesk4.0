@@ -26,7 +26,14 @@ return [
         'address' => 'Business address',
         'address_hint' => 'Your primary address. :count locations in total.',
         'regional' => 'Regional settings',
-        'regional_hint' => 'Configured in their own modules; shown here for context.',
+        'branding' => 'Logo & branding',
+        'branding_hint' => 'Configured in Branding; shown here for context.',
+        'languages' => 'Languages',
+        'languages_hint' => 'Configured in Languages; shown here for context.',
+        'currency' => 'Currency',
+        'currency_hint' => 'Configured in Currency; shown here for context.',
+        'online_booking' => 'Online booking',
+        'online_booking_hint' => 'Set when you signed up. The Online Booking module is on its way.',
         'security' => 'Security',
         'defaults' => 'Business defaults',
         'defaults_hint' => 'Starting points for new bookings and services.',
@@ -95,7 +102,6 @@ return [
 
     'manage' => 'Manage',
     'manage_branding' => 'Branding →',
-    'manage_locations' => 'Manage locations →',
     'enabled' => 'Enabled',
     'disabled' => 'Disabled',
 

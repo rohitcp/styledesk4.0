@@ -15,6 +15,8 @@ return [
     'done' => 'Fertig',
     'cancel' => 'Abbrechen',
     'edit' => 'Bearbeiten',
+    /** The accessible name for a card's Edit control; :section is the card title. */
+    'edit_section' => ':section bearbeiten',
     'delete' => 'Löschen',
     'remove' => 'Entfernen',
     'add' => 'Hinzufügen',

@@ -20,7 +20,14 @@ return [
         'address' => 'Dirección del negocio',
         'address_hint' => 'Tu dirección principal. :count ubicaciones en total.',
         'regional' => 'Ajustes regionales',
-        'regional_hint' => 'Se configuran en sus propios módulos; aquí se muestran como referencia.',
+        'branding' => 'Logotipo y marca',
+        'branding_hint' => 'Se configura en Identidad de marca; aquí se muestra como referencia.',
+        'languages' => 'Idiomas',
+        'languages_hint' => 'Se configuran en Idiomas; aquí se muestran como referencia.',
+        'currency' => 'Moneda',
+        'currency_hint' => 'Se configura en Moneda; aquí se muestra como referencia.',
+        'online_booking' => 'Reserva online',
+        'online_booking_hint' => 'Se definió al crear la cuenta. El módulo de Reserva online está en camino.',
         'security' => 'Seguridad',
         'defaults' => 'Valores predeterminados',
         'defaults_hint' => 'Punto de partida para las nuevas reservas y servicios.',
@@ -89,7 +96,6 @@ return [
 
     'manage' => 'Gestionar',
     'manage_branding' => 'Identidad de marca →',
-    'manage_locations' => 'Gestionar ubicaciones →',
     'enabled' => 'Activado',
     'disabled' => 'Desactivado',
 

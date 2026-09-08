@@ -28,7 +28,14 @@ return [
         'address' => 'Adresse de l’entreprise',
         'address_hint' => 'Votre adresse principale. :count établissements au total.',
         'regional' => 'Réglages régionaux',
-        'regional_hint' => 'Configurés dans leurs propres modules ; affichés ici pour le contexte.',
+        'branding' => 'Logo et identité',
+        'branding_hint' => 'Configuré dans Identité visuelle ; affiché ici pour le contexte.',
+        'languages' => 'Langues',
+        'languages_hint' => 'Configurées dans Langues ; affichées ici pour le contexte.',
+        'currency' => 'Devise',
+        'currency_hint' => 'Configurée dans Devise ; affichée ici pour le contexte.',
+        'online_booking' => 'Réservation en ligne',
+        'online_booking_hint' => 'Définie lors de votre inscription. Le module Réservation en ligne arrive bientôt.',
         'security' => 'Sécurité',
         'defaults' => 'Valeurs par défaut',
         'defaults_hint' => 'Points de départ pour les nouvelles réservations et prestations.',
@@ -97,7 +104,6 @@ return [
 
     'manage' => 'Gérer',
     'manage_branding' => 'Identité visuelle →',
-    'manage_locations' => 'Gérer les établissements →',
     'enabled' => 'Activé',
     'disabled' => 'Désactivé',
 

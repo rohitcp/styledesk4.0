@@ -7,7 +7,11 @@
     <div class="max-w-[1180px]">
 
       @php
-          $formats = config('business_profile');
+          /* Cards that leave for another module carry this page's address, so
+             that module's Back, Cancel and post-save redirect all come back
+             here instead of stranding the reader on its own summary. */
+          $returnHere = \App\Support\ReturnTo::from(request());
+
           $tz = $tenant->timezone ?? optional($primaryLocation)->timezone;
           $currencyNames = config('currencies.currencies');
           $languageNames = config('currencies.languages');
@@ -44,18 +48,26 @@
         </div>
       </div>
 
-      {{-- Two columns on desktop, stacked below. Identity and how to reach the
-           business on the left; the settings that are summarised from other
-           modules on the right. --}}
+      {{-- Two columns on desktop, stacked below. What the business is and how
+           to reach it on the left; how it is configured on the right.
+
+           One card, one owner. Every card here groups exactly the fields that
+           one page can change, so its Edit always lands somewhere those fields
+           actually appear — an Edit that opens a form missing half the rows
+           above it is worse than no Edit at all. That is why the logo sits
+           under Branding rather than under Business information, and why
+           languages, currencies and the timezone are cards of their own
+           instead of one "Regional settings" block spanning four modules. --}}
       <div class="mt-6 grid gap-5 lg:grid-cols-2 items-start">
 
         <div class="space-y-5">
 
-          <x-settings.card title="{{ __('business.cards.information') }}">
-            <x-settings.field label="{{ __('business.fields.name') }}" :value="$tenant->name" />
-            <x-settings.field label="{{ __('business.fields.legal_name') }}" :value="$tenant->legal_name" />
+          <x-settings.card :title="__('business.cards.information')"
+                           :edit="route('settings.business.edit').'#information'">
+            <x-settings.field :label="__('business.fields.name')" :value="$tenant->name" />
+            <x-settings.field :label="__('business.fields.legal_name')" :value="$tenant->legal_name" />
 
-            <x-settings.field label="{{ __('business.fields.business_type') }}">
+            <x-settings.field :label="__('business.fields.business_type')">
               @if ($tenant->businessTypes->isNotEmpty())
                 <span class="flex flex-wrap gap-1.5">
                   @foreach ($tenant->businessTypes as $type)
@@ -65,30 +77,24 @@
               @endif
             </x-settings.field>
 
-            <x-settings.field label="{{ __('business.fields.category') }}" :value="$tenant->business_category" />
-            <x-settings.field label="{{ __('business.fields.description') }}" :value="$tenant->description" />
+            <x-settings.field :label="__('business.fields.category')" :value="$tenant->business_category" />
+            <x-settings.field :label="__('business.fields.description')" :value="$tenant->description" />
 
-            <x-settings.field label="{{ __('business.fields.logo') }}">
-              @if ($tenant->logo_path)
-                <img src="{{ Storage::disk('brand')->url($tenant->logo_path) }}" alt="{{ $tenant->name }} logo"
-                     class="h-10 w-10 rounded-lg object-cover border border-line">
-              @endif
-            </x-settings.field>
-
-            <x-settings.field label="{{ __('business.fields.status') }}">
+            <x-settings.field :label="__('business.fields.status')">
               <span class="styledesk_badge {{ $tenant->status === 'active' ? 'styledesk_badge--active' : 'styledesk_badge--soon' }}">
                 {{ $tenant->status === 'active' ? __('common.active') : __('common.inactive') }}
               </span>
             </x-settings.field>
           </x-settings.card>
 
-          <x-settings.card title="{{ __('business.cards.contact') }}">
-            <x-settings.field label="{{ __('business.fields.business_email') }}" :value="$tenant->business_email" />
-            <x-settings.field label="{{ __('business.fields.business_phone') }}" :value="$tenant->business_phone" />
-            <x-settings.field label="{{ __('business.fields.support_email') }}" :value="$tenant->support_email" />
-            <x-settings.field label="{{ __('business.fields.booking_email') }}" :value="$tenant->booking_email" />
+          <x-settings.card :title="__('business.cards.contact')"
+                           :edit="route('settings.business.edit').'#contact'">
+            <x-settings.field :label="__('business.fields.business_email')" :value="$tenant->business_email" />
+            <x-settings.field :label="__('business.fields.business_phone')" :value="$tenant->business_phone" />
+            <x-settings.field :label="__('business.fields.support_email')" :value="$tenant->support_email" />
+            <x-settings.field :label="__('business.fields.booking_email')" :value="$tenant->booking_email" />
 
-            <x-settings.field label="{{ __('business.fields.website') }}">
+            <x-settings.field :label="__('business.fields.website')">
               @if ($tenant->website)
                 <a href="{{ $tenant->website }}" target="_blank" rel="noopener noreferrer"
                    class="text-link hover:underline break-all">{{ $tenant->website }}</a>
@@ -96,105 +102,127 @@
             </x-settings.field>
           </x-settings.card>
 
-          <x-settings.card title="{{ __('business.cards.address') }}"
-                           description="{{ $locationCount > 1 ? __('business.cards.address_hint', ['count' => $locationCount]) : null }}">
+          {{-- Address, default location and timezone are all one Location row,
+               so they are one card pointing at the form that edits that row —
+               not at the Locations list, which is one more click and one more
+               guess about which of several branches this card was showing. --}}
+          <x-settings.card :title="__('business.cards.address')"
+                           :edit="$primaryLocation
+                               ? route('settings.locations.edit', ['location' => $primaryLocation, ...$returnHere])
+                               : route('settings.locations.create', $returnHere)"
+                           :description="$locationCount > 1 ? __('business.cards.address_hint', ['count' => $locationCount]) : null">
             @if ($primaryLocation)
-              <x-settings.field label="{{ __('business.fields.address_line1') }}" :value="$primaryLocation->address_line1" />
-              <x-settings.field label="{{ __('business.fields.address_line2') }}" :value="$primaryLocation->address_line2" />
-              <x-settings.field label="{{ __('business.fields.city') }}" :value="$primaryLocation->city" />
-              <x-settings.field label="{{ __('business.fields.state') }}" :value="$primaryLocation->state" />
-              <x-settings.field label="{{ __('business.fields.postal_code') }}" :value="$primaryLocation->postal_code" />
-              <x-settings.field label="{{ __('business.fields.country') }}" :value="config('locations.countries.'.$primaryLocation->country, $primaryLocation->country)" />
+              <x-settings.field :label="__('business.fields.address_line1')" :value="$primaryLocation->address_line1" />
+              <x-settings.field :label="__('business.fields.address_line2')" :value="$primaryLocation->address_line2" />
+              <x-settings.field :label="__('business.fields.city')" :value="$primaryLocation->city" />
+              <x-settings.field :label="__('business.fields.state')" :value="$primaryLocation->state" />
+              <x-settings.field :label="__('business.fields.postal_code')" :value="$primaryLocation->postal_code" />
+              <x-settings.field :label="__('business.fields.country')" :value="config('locations.countries.'.$primaryLocation->country, $primaryLocation->country)" />
             @else
-              <x-settings.field label="{{ __('business.fields.address') }}" value="" />
+              <x-settings.field :label="__('business.fields.address')" value="" />
             @endif
 
-            <div class="pt-3">
-              <a href="{{ route('settings.index') }}" class="text-[13px] font-medium text-link hover:underline">
-                {{ __('business.manage_locations') }}
-              </a>
-            </div>
-          </x-settings.card>
+            <x-settings.field :label="__('business.fields.default_location')" :value="optional($primaryLocation)->name" />
 
-        </div>
-
-        <div class="space-y-5">
-
-          <x-settings.card title="{{ __('business.cards.regional') }}"
-                           description="{{ __('business.cards.regional_hint') }}">
-            <x-settings.field label="{{ __('business.fields.primary_language') }}"
-                              :value="$languageNames[$tenant->default_language] ?? $tenant->default_language" />
-
-            <x-settings.field label="{{ __('business.fields.secondary_languages') }}">
-              @php $secondaryLanguages = array_slice($languages, 1); @endphp
-              @if ($secondaryLanguages)
-                {{ collect($secondaryLanguages)->map(fn ($c) => $languageNames[$c] ?? $c)->join(', ') }}
-              @endif
-            </x-settings.field>
-
-            <x-settings.field label="{{ __('business.fields.primary_currency') }}"
-                              :value="$tenant->currency_code ? ($currencyNames[$tenant->currency_code]['name'] ?? $tenant->currency_code).' ('.$tenant->currency_code.')' : null" />
-
-            <x-settings.field label="{{ __('business.fields.secondary_currencies') }}">
-              @php $secondaryCurrencies = array_slice($currencies, 1); @endphp
-              @if ($secondaryCurrencies)
-                {{ implode(', ', $secondaryCurrencies) }}
-              @endif
-            </x-settings.field>
-
-            <x-settings.field label="{{ __('business.fields.timezone') }}">
+            <x-settings.field :label="__('business.fields.timezone')">
               @if ($tz)
                 {{-- Both halves: the offset name is what people recognise, the
                      IANA identifier is what is actually stored. --}}
                 {{ config('locations.timezones.'.$tz, $tz) }} <span class="text-sub">— {{ $tz }}</span>
               @endif
             </x-settings.field>
+          </x-settings.card>
 
-            <x-settings.field label="{{ __('business.fields.date_format') }}"
+          {{-- Branding has no separate /edit address: its show route already
+               renders the form, so this is the edit page. --}}
+          <x-settings.card :title="__('business.cards.branding')"
+                           :description="__('business.cards.branding_hint')"
+                           :edit="route('settings.branding.show', $returnHere)">
+            <x-settings.field :label="__('business.fields.logo')">
+              @if ($tenant->logo_path)
+                <img src="{{ Storage::disk('brand')->url($tenant->logo_path) }}" alt="{{ $tenant->name }} logo"
+                     class="h-10 w-10 rounded-lg object-cover border border-line">
+              @endif
+            </x-settings.field>
+          </x-settings.card>
+
+        </div>
+
+        <div class="space-y-5">
+
+          <x-settings.card :title="__('business.cards.languages')"
+                           :description="__('business.cards.languages_hint')"
+                           :edit="route('settings.languages.edit', $returnHere)">
+            <x-settings.field :label="__('business.fields.primary_language')"
+                              :value="$languageNames[$tenant->default_language] ?? $tenant->default_language" />
+
+            <x-settings.field :label="__('business.fields.secondary_languages')">
+              @php $secondaryLanguages = array_slice($languages, 1); @endphp
+              @if ($secondaryLanguages)
+                {{ collect($secondaryLanguages)->map(fn ($c) => $languageNames[$c] ?? $c)->join(', ') }}
+              @endif
+            </x-settings.field>
+          </x-settings.card>
+
+          <x-settings.card :title="__('business.cards.currency')"
+                           :description="__('business.cards.currency_hint')"
+                           :edit="route('settings.currency.edit', $returnHere)">
+            <x-settings.field :label="__('business.fields.primary_currency')"
+                              :value="$tenant->currency_code ? ($currencyNames[$tenant->currency_code]['name'] ?? $tenant->currency_code).' ('.$tenant->currency_code.')' : null" />
+
+            <x-settings.field :label="__('business.fields.secondary_currencies')">
+              @php $secondaryCurrencies = array_slice($currencies, 1); @endphp
+              @if ($secondaryCurrencies)
+                {{ implode(', ', $secondaryCurrencies) }}
+              @endif
+            </x-settings.field>
+          </x-settings.card>
+
+          {{-- Formats only. The timezone is the location's and sits with the
+               address; language and currency have modules of their own. --}}
+          <x-settings.card :title="__('business.cards.regional')"
+                           :edit="route('settings.business.edit').'#regional'">
+            <x-settings.field :label="__('business.fields.date_format')"
                               :value="$tenant->date_format ? App\Support\BusinessProfile::dateFormats()[$tenant->date_format].' — '.now()->format($tenant->date_format) : null" />
             {{-- Falls back to the default the app is really using, so this
                  reads the same as every clock on every other screen. --}}
-            <x-settings.field label="{{ __('business.fields.time_format') }}"
+            <x-settings.field :label="__('business.fields.time_format')"
                               :value="App\Support\BusinessProfile::label('timeFormats', (string) ($tenant->time_format ?: App\Support\TimeFormat::DEFAULT))" />
-            <x-settings.field label="{{ __('business.fields.first_day_of_week') }}"
+            <x-settings.field :label="__('business.fields.first_day_of_week')"
                               :value="$tenant->first_day_of_week !== null ? App\Support\BusinessProfile::label('firstDayOfWeek', (string) $tenant->first_day_of_week) : null" />
           </x-settings.card>
 
-          <x-settings.card title="{{ __('business.cards.payments') }}"
-                           description="{{ __('business.cards.payments_hint') }}">
+          <x-settings.card :title="__('business.cards.defaults')"
+                           :edit="route('settings.business.edit').'#defaults'"
+                           :description="__('business.cards.defaults_hint')">
+            <x-settings.field :label="__('business.fields.default_booking_duration')"
+                              :value="App\Support\BusinessProfile::label('bookingDurations', (string) $tenant->default_booking_duration)" />
+            <x-settings.field :label="__('business.fields.default_appointment_interval')"
+                              :value="App\Support\BusinessProfile::label('appointmentIntervals', (string) $tenant->default_appointment_interval)" />
+            <x-settings.field :label="__('business.fields.default_tax_behavior')"
+                              :value="App\Support\BusinessProfile::label('taxBehaviors', (string) $tenant->default_tax_behavior)" />
+            <x-settings.field :label="__('business.fields.default_tax_rate')"
+                              :value="$tenant->default_tax_rate ? rtrim(rtrim(number_format((float) $tenant->default_tax_rate, 2), '0'), '.').'%' : null" />
+            <x-settings.field :label="__('business.fields.default_staff_assignment')"
+                              :value="App\Support\BusinessProfile::label('staffAssignment', (string) $tenant->default_staff_assignment)" />
+          </x-settings.card>
+
+          <x-settings.card :title="__('business.cards.payments')"
+                           :edit="route('settings.business.edit').'#payments'"
+                           :description="__('business.cards.payments_hint')">
             @foreach (['paypal_handle', 'zelle_handle', 'cash_app_handle', 'venmo_handle'] as $handle)
-              <x-settings.field label="{{ __('business.fields.'.$handle) }}" :value="$tenant->{$handle}" />
+              <x-settings.field :label="__('business.fields.'.$handle)" :value="$tenant->{$handle}" />
             @endforeach
           </x-settings.card>
 
-          <x-settings.card title="{{ __('business.cards.defaults') }}"
-                           description="{{ __('business.cards.defaults_hint') }}">
-            <x-settings.field label="{{ __('business.fields.default_location') }}" :value="optional($primaryLocation)->name" />
-            <x-settings.field label="{{ __('business.fields.default_booking_duration') }}"
-                              :value="App\Support\BusinessProfile::label('bookingDurations', (string) $tenant->default_booking_duration)" />
-            <x-settings.field label="{{ __('business.fields.default_appointment_interval') }}"
-                              :value="App\Support\BusinessProfile::label('appointmentIntervals', (string) $tenant->default_appointment_interval)" />
-            <x-settings.field label="{{ __('business.fields.default_tax_behavior') }}"
-                              :value="App\Support\BusinessProfile::label('taxBehaviors', (string) $tenant->default_tax_behavior)" />
-            <x-settings.field label="{{ __('business.fields.default_tax_rate') }}"
-                              :value="$tenant->default_tax_rate ? rtrim(rtrim(number_format((float) $tenant->default_tax_rate, 2), '0'), '.').'%' : null" />
-            <x-settings.field label="{{ __('business.fields.default_staff_assignment') }}"
-                              :value="App\Support\BusinessProfile::label('staffAssignment', (string) $tenant->default_staff_assignment)" />
-
-            <x-settings.field label="{{ __('business.fields.allow_online_booking') }}">
-              <span class="styledesk_badge {{ optional($bookingSettings)->is_enabled ? 'styledesk_badge--active' : 'styledesk_badge--soon' }}">
-                {{ optional($bookingSettings)->is_enabled ? __('business.enabled') : __('business.disabled') }}
-              </span>
-            </x-settings.field>
-
-            <x-settings.field label="{{ __('business.fields.guest_booking') }}">
-              <span class="styledesk_badge {{ optional($bookingSettings)->allow_new_clients ? 'styledesk_badge--active' : 'styledesk_badge--soon' }}">
-                {{ optional($bookingSettings)->allow_new_clients ? __('business.enabled') : __('business.disabled') }}
-              </span>
-            </x-settings.field>
+          <x-settings.card :title="__('business.cards.security')"
+                           :edit="route('settings.business.edit').'#security'">
+            <x-settings.field :label="__('business.fields.session_timeout')"
+                              :value="App\Support\BusinessProfile::label('sessionTimeouts', (string) $tenant->session_timeout_minutes)" />
           </x-settings.card>
 
-          <x-settings.card title="{{ __('business.cards.presence') }}" description="{{ __('business.cards.presence_hint') }}">
+          <x-settings.card :title="__('business.cards.presence')" :description="__('business.cards.presence_hint')"
+                           :edit="route('settings.business.edit').'#presence'">
             @foreach ([
                 __('business.fields.instagram') => $tenant->instagram_url,
                 __('business.fields.facebook') => $tenant->facebook_url,
@@ -210,14 +238,32 @@
             @endforeach
           </x-settings.card>
 
-          <x-settings.card title="{{ __('business.cards.advanced') }}">
-            {{-- The tenant id identifies this business in support tickets and
-                 API calls. Read-only everywhere: changing it would orphan
-                 every row that points at it. --}}
-            <x-settings.field label="{{ __('business.fields.business_id') }}">
+          {{-- No Edit: Online Booking is still a coming-soon module in App
+               Settings, so these two are set during onboarding and nowhere
+               else yet. An Edit here would point at a page that does not
+               exist. --}}
+          <x-settings.card :title="__('business.cards.online_booking')"
+                           :description="__('business.cards.online_booking_hint')">
+            <x-settings.field :label="__('business.fields.allow_online_booking')">
+              <span class="styledesk_badge {{ optional($bookingSettings)->is_enabled ? 'styledesk_badge--active' : 'styledesk_badge--soon' }}">
+                {{ optional($bookingSettings)->is_enabled ? __('business.enabled') : __('business.disabled') }}
+              </span>
+            </x-settings.field>
+
+            <x-settings.field :label="__('business.fields.guest_booking')">
+              <span class="styledesk_badge {{ optional($bookingSettings)->allow_new_clients ? 'styledesk_badge--active' : 'styledesk_badge--soon' }}">
+                {{ optional($bookingSettings)->allow_new_clients ? __('business.enabled') : __('business.disabled') }}
+              </span>
+            </x-settings.field>
+          </x-settings.card>
+
+          {{-- No Edit either, and never will be: changing the tenant id would
+               orphan every row that points at it. --}}
+          <x-settings.card :title="__('business.cards.advanced')">
+            <x-settings.field :label="__('business.fields.business_id')">
               <code class="text-[13px] text-sub break-all">{{ $tenant->getTenantKey() }}</code>
             </x-settings.field>
-            <x-settings.field label="{{ __('business.fields.booking_address') }}" :value="$tenant->slug.'.'.config('tenancy.tenant_domain_suffix')" />
+            <x-settings.field :label="__('business.fields.booking_address')" :value="$tenant->slug.'.'.config('tenancy.tenant_domain_suffix')" />
           </x-settings.card>
 
         </div>

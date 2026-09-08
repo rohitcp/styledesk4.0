@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Support\Locale;
+use App\Support\ReturnTo;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,10 @@ class LanguageController extends Controller
 
     public function edit(Request $request): View
     {
-        return view('settings.languages.edit', $this->languageState($request->user()->tenant));
+        return view('settings.languages.edit', [
+            ...$this->languageState($request->user()->tenant),
+            ...$this->returnTo($request, route('settings.languages.show')),
+        ]);
     }
 
     public function update(Request $request): RedirectResponse
@@ -93,7 +97,7 @@ class LanguageController extends Controller
          * what they had chosen.
          */
         return redirect()
-            ->route('settings.languages.show')
+            ->to(ReturnTo::resolve($request, route('settings.languages.show')))
             ->with('toast', ['type' => 'success', 'message' => __('languages.saved')]);
     }
 

@@ -38,9 +38,10 @@
           <p class="text-[14px] text-sub mt-2 leading-relaxed">{{ $location->name }}</p>
         </div>
 
-        {{-- Back goes to the location, not the list: it is the page this one
-             was opened from, and the one that shows what was just saved. --}}
-        <a href="{{ route('settings.locations.show', $location) }}"
+        {{-- Back goes wherever this form was opened from — the branch's own
+             page by default, but the Business summary when it was reached
+             from there. --}}
+        <a href="{{ $returnTo }}"
            class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
@@ -61,6 +62,7 @@
             data-validation-messages='@json($validationMessages)' class="mt-6 space-y-5">
         @csrf
         @method('PATCH')
+        <x-return-to :path="$returnPath" />
 
         @include('settings.locations._form', ['location' => $location])
 
@@ -69,7 +71,7 @@
                   class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none">
             {{ __('common.save_changes') }}
           </button>
-          <a href="{{ route('settings.locations.show', $location) }}"
+          <a href="{{ $returnTo }}"
              class="styledesk_action">
             {{ __('common.cancel') }}
           </a>

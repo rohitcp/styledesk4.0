@@ -14,6 +14,8 @@ return [
     'done' => '完成',
     'cancel' => '取消',
     'edit' => '编辑',
+    /** The accessible name for a card's Edit control; :section is the card title. */
+    'edit_section' => '编辑:section',
     'delete' => '删除',
     'remove' => '移除',
     'add' => '添加',

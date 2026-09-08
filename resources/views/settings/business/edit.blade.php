@@ -112,7 +112,7 @@
              defaults only make sense after the identity above them. --}}
         <div class="space-y-5">
 
-            <section class="bg-white border border-line rounded-card p-5 space-y-4">
+            <section id="information" class="bg-white border border-line rounded-card p-5 space-y-4">
               <h2 class="text-[15px] font-semibold text-head">{{ __('business.cards.information') }}</h2>
 
               <div>
@@ -179,7 +179,7 @@
               </fieldset>
             </section>
 
-            <section class="bg-white border border-line rounded-card p-5 space-y-4">
+            <section id="contact" class="bg-white border border-line rounded-card p-5 space-y-4">
               <h2 class="text-[15px] font-semibold text-head">{{ __('business.cards.contact') }}</h2>
 
               @php
@@ -288,7 +288,7 @@
               </div>
             </section>
 
-            <section class="bg-white border border-line rounded-card p-5 space-y-4">
+            <section id="regional" class="bg-white border border-line rounded-card p-5 space-y-4">
               <h2 class="text-[15px] font-semibold text-head">{{ __('business.cards.regional') }}</h2>
               <p class="text-[13px] text-sub">
                 {{ __('business.hints.regional') }}
@@ -310,7 +310,7 @@
               </div>
             </section>
 
-            <section class="bg-white border border-line rounded-card p-5 space-y-4">
+            <section id="defaults" class="bg-white border border-line rounded-card p-5 space-y-4">
               <h2 class="text-[15px] font-semibold text-head">{{ __('business.cards.defaults') }}</h2>
 
               <div>
@@ -348,7 +348,7 @@
             {{-- Where money is asked for when it is not handed over at the
                  desk. These are read out to a client at the till, so they are
                  kept as the business writes them rather than reformatted. --}}
-            <section class="bg-white border border-line rounded-card p-5 space-y-4">
+            <section id="payments" class="bg-white border border-line rounded-card p-5 space-y-4">
               <h2 class="text-[15px] font-semibold text-head">{{ __('business.cards.payments') }}</h2>
               <p class="text-[13px] text-sub -mt-2">{{ __('business.cards.payments_hint') }}</p>
 
@@ -368,7 +368,7 @@
             {{-- Security. One setting today; it is a card of its own because
                  a session policy is not a booking default and would be looked
                  for under neither. --}}
-            <section class="bg-white border border-line rounded-card p-5 space-y-4">
+            <section id="security" class="bg-white border border-line rounded-card p-5 space-y-4">
               <h2 class="text-[15px] font-semibold text-head">{{ __('business.cards.security') }}</h2>
 
               <div>
@@ -378,7 +378,7 @@
               </div>
             </section>
 
-            <section class="bg-white border border-line rounded-card p-5 space-y-4">
+            <section id="presence" class="bg-white border border-line rounded-card p-5 space-y-4">
               <h2 class="text-[15px] font-semibold text-head">{{ __('business.cards.presence') }}</h2>
 
               @foreach ([

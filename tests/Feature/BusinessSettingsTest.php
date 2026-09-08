@@ -151,15 +151,74 @@ class BusinessSettingsTest extends TestCase
             'timezone' => 'America/Chicago', 'is_primary' => true,
         ]);
 
+        $location = Location::withoutGlobalScopes()
+            ->where('tenant_id', $this->tenant->getTenantKey())
+            ->where('is_primary', true)
+            ->firstOrFail();
+
         $this->actingAs($this->member('owner'))
             ->get('http://styledesk.test/settings/business')
             ->assertOk()
             ->assertSee('1 River Street')
             ->assertSee('Austin')
             ->assertSee('United States')
-            // Addresses belong to Locations, so this page links out rather
-            // than offering a second place to edit them.
-            ->assertSee('Manage locations');
+            // Addresses belong to Locations, so the card's Edit opens that
+            // branch's own form rather than offering a second place to edit it.
+            ->assertSee(route('settings.locations.edit', ['location' => $location, 'return' => 'settings/business']), false);
+    }
+
+    public function test_the_address_card_offers_to_add_a_branch_when_there_is_none(): void
+    {
+        // Nothing to edit, so Edit cannot point at an edit form. It points at
+        // the only thing that would make the card show anything.
+        $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/settings/business')
+            ->assertOk()
+            ->assertSee(route('settings.locations.create', ['return' => 'settings/business']), false);
+    }
+
+    public function test_each_summary_card_carries_an_edit_that_opens_the_page_owning_it(): void
+    {
+        $body = $this->stripLayout(
+            $this->actingAs($this->member('owner'))
+                ->get('http://styledesk.test/settings/business')
+                ->assertOk()
+                ->getContent()
+        );
+
+        // The sections this module's own form owns are reached by anchor, so
+        // the reader lands on the fields the card was summarising.
+        foreach (['information', 'contact', 'regional', 'defaults', 'payments', 'security', 'presence'] as $section) {
+            $this->assertStringContainsString(
+                'href="'.route('settings.business.edit').'#'.$section.'"',
+                $body,
+                "The {$section} card has no Edit pointing at its own section."
+            );
+        }
+
+        // Cards summarising another module leave for that module rather than
+        // offering a second place to edit the same row — and land on its form,
+        // not on another read-only page the reader would have to leave again.
+        // Branding is the exception only because its show route is the form.
+        //
+        // Each carries this page's address, so that module's Back, Cancel and
+        // post-save redirect come back here rather than to its own summary.
+        foreach ([
+            'settings.branding.show',
+            'settings.languages.edit',
+            'settings.currency.edit',
+        ] as $route) {
+            $this->assertStringContainsString(
+                'href="'.route($route, ['return' => 'settings/business']).'"',
+                $body,
+                "No card links to {$route} carrying the page to return to."
+            );
+        }
+
+        // Thirteen cards, eleven editable. Online booking has no module to
+        // send anyone to yet, and the business id can never be changed, so
+        // neither offers an Edit that would lead nowhere.
+        $this->assertSame(11, substr_count($body, 'aria-label="Edit '));
     }
 
     public function test_the_business_id_is_shown_but_never_editable(): void

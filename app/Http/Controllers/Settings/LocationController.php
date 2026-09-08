@@ -11,6 +11,7 @@ use App\Models\Staff;
 use App\Support\EmailAddress;
 use App\Support\InputCase;
 use App\Support\LocationOptions;
+use App\Support\ReturnTo;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -87,6 +88,7 @@ class LocationController extends Controller
         return view('settings.locations.create', [
             'location' => null,
             ...$this->formData($request, null),
+            ...$this->returnTo($request, route('settings.locations.index')),
         ]);
     }
 
@@ -99,6 +101,7 @@ class LocationController extends Controller
         return view('settings.locations.edit', [
             'location' => $location,
             ...$this->formData($request, $location),
+            ...$this->returnTo($request, route('settings.locations.show', $location)),
         ]);
     }
 
@@ -124,7 +127,7 @@ class LocationController extends Controller
         }
 
         return redirect()
-            ->route('settings.locations.show', $location)
+            ->to(ReturnTo::resolve($request, route('settings.locations.show', $location)))
             ->with('toast', ['type' => 'success', 'message' => __('locations.created')]);
     }
 
@@ -154,7 +157,7 @@ class LocationController extends Controller
         }
 
         return redirect()
-            ->route('settings.locations.show', $location)
+            ->to(ReturnTo::resolve($request, route('settings.locations.show', $location)))
             ->with('toast', ['type' => 'success', 'message' => __('locations.saved')]);
     }
 

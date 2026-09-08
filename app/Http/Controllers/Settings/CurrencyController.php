@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Support\Currencies;
+use App\Support\ReturnTo;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,7 +36,10 @@ class CurrencyController extends Controller
 
     public function edit(Request $request): View
     {
-        return view('settings.currency.edit', $this->currencyState($request->user()->tenant));
+        return view('settings.currency.edit', [
+            ...$this->currencyState($request->user()->tenant),
+            ...$this->returnTo($request, route('settings.currency.show')),
+        ]);
     }
 
     public function update(Request $request): RedirectResponse
@@ -83,7 +87,7 @@ class CurrencyController extends Controller
         });
 
         return redirect()
-            ->route('settings.currency.show')
+            ->to(ReturnTo::resolve($request, route('settings.currency.show')))
             ->with('toast', ['type' => 'success', 'message' => __('currency.saved')]);
     }
 

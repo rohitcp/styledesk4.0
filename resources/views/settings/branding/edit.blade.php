@@ -20,7 +20,7 @@
           </p>
         </div>
 
-        <a href="{{ route('settings.index') }}"
+        <a href="{{ $returnTo }}"
            class="styledesk_action shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           {{ __('common.back') }}
@@ -36,6 +36,7 @@
       <form id="brandingForm" method="POST" action="{{ route('settings.branding.update') }}" class="mt-6">
         @csrf
         @method('PATCH')
+        <x-return-to :path="$returnPath" />
 
         {{-- The form on the left, what it produces on the right. The preview
              is the point of this screen, so it stays beside the controls
@@ -224,7 +225,7 @@
                 {{ __('common.save_changes') }}
               </button>
 
-              <a href="{{ route('settings.index') }}"
+              <a href="{{ $returnTo }}"
                  class="styledesk_action">
                 {{ __('common.cancel') }}
               </a>

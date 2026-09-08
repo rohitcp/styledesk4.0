@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Support\Branding;
 use App\Support\BrandPalette;
+use App\Support\ReturnTo;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -35,7 +36,10 @@ class BrandingController extends Controller
     {
         $tenant = $request->user()->tenant;
 
-        return view('settings.branding.edit', $this->branding($tenant));
+        return view('settings.branding.edit', [
+            ...$this->branding($tenant),
+            ...$this->returnTo($request, route('settings.index')),
+        ]);
     }
 
     public function update(Request $request): RedirectResponse
@@ -119,7 +123,7 @@ class BrandingController extends Controller
         }
 
         return redirect()
-            ->route('settings.branding.show')
+            ->to(ReturnTo::resolve($request, route('settings.branding.show')))
             ->with('toast', ['type' => 'success', 'message' => __('branding.saved')]);
     }
 
