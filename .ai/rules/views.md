@@ -24,3 +24,14 @@ Cost an afternoon on resources/views/components/toast.blade.php: a JS comment ex
 Write "encoded rather than interpolated" rather than naming the directive. If a comment must reference one, break the token or drop the `@`.
 
 Pinned by tests/Feature/DashboardRolesTest.php::test_the_owner_dashboard_renders_its_panels, which renders the layout the toast component sits in.
+
+## A new screen is translatable from its first commit
+Never type user-facing English into a view. Every label, placeholder, aria-label, title, data-tip, button, empty state, toast and page title goes through `__()` against a lang file — and that key is added to all five languages in the same change (see the rule on lang/**).
+
+This is not theoretical tidiness. Screens shipped with literals were English for every non-English reader while the frame around them was translated: the dashboard checklist, the Dismiss button, the app-bar language picker (in French and German, the control for changing language was itself in English), and the nav's section headings.
+
+Dropdown *values* count too, not just their labels. A form with translated labels and English options is the same half-translated screen one level in.
+
+Copy assembled in PHP is still copy on a screen. If a controller or support class builds a label — a checklist, a status line, a summary sentence — it must resolve `__()` and the wording must live in a lang file, not as a literal in the array.
+
+Config files are the same: config/navigation.php entries carry a `key` so App\Support\Nav resolves navigation.<key>; an entry without one stays English in every language.
