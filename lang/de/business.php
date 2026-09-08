@@ -14,7 +14,6 @@ declare(strict_types=1);
 return [
     'title' => 'Betrieb',
     'intro' => 'Name, Art, Kontaktdaten und Betriebskonfiguration.',
-    'edit' => 'Betrieb bearbeiten',
     'edit_title' => 'Betrieb bearbeiten',
     'edit_intro' => 'Aktualisieren Sie Ihre Betriebsangaben. Standorte, Öffnungszeiten, Währungen und Buchungsregeln haben eigene Einstellungsseiten.',
     'saved' => 'Betriebseinstellungen aktualisiert.',

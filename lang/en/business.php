@@ -13,7 +13,6 @@ declare(strict_types=1);
 return [
     'title' => 'Business',
     'intro' => 'Business name, type, contact details and operating configuration.',
-    'edit' => 'Edit business',
     'edit_title' => 'Edit business',
     'edit_intro' => 'Update your business information and operating details. Locations, hours, currencies and booking rules have their own settings pages.',
     'saved' => 'Business settings updated successfully.',

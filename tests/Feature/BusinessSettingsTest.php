@@ -135,11 +135,17 @@ class BusinessSettingsTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Nadia Hair Studio Ltd')
-            ->assertSee('help@nadia.test')
-            ->assertSee('Edit business');
+            ->assertSee('help@nadia.test');
+
+        $body = $this->stripLayout($response->getContent());
 
         // Read-only means no inputs at all, not disabled ones.
-        $this->assertStringNotContainsString('<input', $this->stripLayout($response->getContent()));
+        $this->assertStringNotContainsString('<input', $body);
+
+        // Editing is per card. A page-level Edit would open a form holding
+        // the fields of some cards and none of the rest — every link to the
+        // business form here carries the anchor of the card that owns it.
+        $this->assertStringNotContainsString('href="'.route('settings.business.edit').'"', $body);
     }
 
     public function test_the_primary_address_comes_from_the_primary_location(): void

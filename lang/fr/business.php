@@ -15,7 +15,6 @@ declare(strict_types=1);
 return [
     'title' => 'Entreprise',
     'intro' => 'Nom, type, coordonnées et configuration d’exploitation.',
-    'edit' => 'Modifier l’entreprise',
     'edit_title' => 'Modifier l’entreprise',
     'edit_intro' => 'Mettez à jour les informations et les détails d’exploitation. Les établissements, horaires, devises et règles de réservation ont leurs propres pages de réglages.',
     'saved' => 'Réglages de l’entreprise mis à jour.',

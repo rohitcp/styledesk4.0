@@ -7,7 +7,6 @@ declare(strict_types=1);
 return [
     'title' => 'Negocio',
     'intro' => 'Nombre del negocio, tipo, datos de contacto y configuración operativa.',
-    'edit' => 'Editar negocio',
     'edit_title' => 'Editar negocio',
     'edit_intro' => 'Actualiza la información y los datos operativos de tu negocio. Las ubicaciones, los horarios, las monedas y las reglas de reserva tienen sus propias páginas de ajustes.',
     'saved' => 'Configuración del negocio actualizada correctamente.',

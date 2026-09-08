@@ -12,7 +12,6 @@ declare(strict_types=1);
 return [
     'title' => '商户',
     'intro' => '商户名称、类型、联系方式和经营配置。',
-    'edit' => '编辑商户',
     'edit_title' => '编辑商户',
     'edit_intro' => '更新你的商户信息和经营细节。门店、营业时间、货币和预约规则各有自己的设置页面。',
     'saved' => '商户设置已更新。',

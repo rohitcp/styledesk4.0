@@ -31,19 +31,15 @@
           </p>
         </div>
 
-        {{-- Back and Edit sit together as one action group. Secondary first,
-             so the eye lands on the primary action last and closest to the
-             edge it will click. --}}
+        {{-- Back only. Editing is per card: a page-level Edit opens a form
+             holding the fields of seven of the thirteen cards below and none
+             of the other six, which is the mismatch the card Edits exist to
+             remove. --}}
         <div class="shrink-0 flex items-center gap-2">
           <a href="{{ route('settings.index') }}"
              class="styledesk_action">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             {{ __('common.back') }}
-          </a>
-
-          <a href="{{ route('settings.business.edit') }}"
-             class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-            {{ __('business.edit') }}
           </a>
         </div>
       </div>
