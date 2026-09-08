@@ -23,6 +23,21 @@ class LanguageTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * The lang/ files every offered language is expected to carry.
+     *
+     * The screens somebody uses on their first day — the Clients, Services,
+     * Staff and Bookings modules, their option lists, and the shared words and
+     * navigation wrapped around them. Add a module here as it is translated,
+     * and the two tests below hold every language to it at once.
+     */
+    private const TRANSLATED_MODULES = [
+        'clients', 'client_options', 'services', 'staff', 'staff_options',
+        'bookings', 'leads', 'payments', 'reasons',
+        'resources', 'locations', 'sales',
+        'common', 'navigation', 'dashboard', 'settings', 'modules',
+    ];
+
     private Tenant $tenant;
 
     protected function setUp(): void
@@ -363,6 +378,251 @@ class LanguageTest extends TestCase
             ->assertOk()
             ->assertSee('App settings')
             ->assertSee('lang="en"', false);
+    }
+
+    /**
+     * The frame around every screen, not just the screen.
+     *
+     * The Add client form was translated and the app around it was not — the
+     * menu it was reached through still read "Quick Actions" over "Añadir
+     * cliente", and the idle-session dialog was English on every page in the
+     * product. Both were the same fault: copy printed straight from a config
+     * file or typed into a partial, where nothing resolves a translation.
+     */
+    public function test_the_navigation_around_a_form_is_translated(): void
+    {
+        $this->actingAs($this->spanishOwner())
+            ->get(route('clients.create'))
+            ->assertOk()
+            // The headings inside an open menu.
+            ->assertSee('Acciones rápidas')
+            ->assertDontSee('Quick Actions')
+            // Entries whose own screens are not built yet are still read.
+            ->assertSee('Tarjetas regalo')
+            ->assertSee('Marketing por SMS')
+            ->assertDontSee('Gift Cards')
+            ->assertDontSee('SMS Marketing')
+            // An accessible name that differs from the label beside it.
+            ->assertSee('Servicios y recursos')
+            ->assertDontSee('Services and resources');
+    }
+
+    /** The idle-session dialogs sit on every signed-in page. */
+    public function test_the_session_timeout_dialogs_are_translated(): void
+    {
+        $this->actingAs($this->spanishOwner())
+            ->get(route('clients.create'))
+            ->assertOk()
+            ->assertSee('Por tu seguridad, cerraremos tu sesión porque no ha habido actividad.')
+            ->assertSee('Seguir con la sesión abierta')
+            ->assertSee('Tu sesión terminó porque no hubo actividad. Vuelve a iniciar sesión para continuar.')
+            ->assertDontSee('Stay signed in')
+            ->assertDontSee('Session expires in');
+    }
+
+    /**
+     * Every navigation entry a reader can see resolves to a key.
+     *
+     * Cheaper than a test per label and it catches the next one added: an
+     * entry with no key falls back to the English in the config, which is how
+     * six of them came to sit untranslated in a Spanish menu.
+     */
+    public function test_every_visible_navigation_entry_has_a_translation_key(): void
+    {
+        $missing = [];
+
+        $walk = function (array $items) use (&$walk, &$missing): void {
+            foreach ($items as $item) {
+                if (isset($item['section'])) {
+                    if (! isset($item['key']) || ! trans()->has('navigation.sections.'.$item['key'])) {
+                        $missing[] = 'section: '.$item['section'];
+                    }
+
+                    continue;
+                }
+
+                if (! isset($item['key']) || ! trans()->has('navigation.'.$item['key'])) {
+                    $missing[] = 'label: '.($item['label'] ?? '?');
+                }
+
+                if (isset($item['aria']) && ! trans()->has('navigation.aria.'.($item['key'] ?? ''))) {
+                    $missing[] = 'aria: '.$item['aria'];
+                }
+
+                $walk($item['children'] ?? []);
+            }
+        };
+
+        $walk(array_merge(config('navigation.primary'), config('navigation.utility')));
+
+        $this->assertSame([], $missing);
+    }
+
+    /**
+     * The add screens read in the reader's language, in every language that
+     * claims to cover them.
+     *
+     * This is what the bug actually was. The Add client form was fully
+     * translated in Spanish and fully English in Chinese, because lang/zh had
+     * no clients.php at all and every key fell through to the fallback. A
+     * language that is offered in the picker has to carry the modules a
+     * person uses on their first day, or the picker is offering something the
+     * app does not do.
+     */
+    public function test_the_add_screens_carry_a_translation_in_every_offered_language(): void
+    {
+        $needed = self::TRANSLATED_MODULES;
+
+        $missing = [];
+
+        foreach (array_keys((array) config('languages.supported')) as $locale) {
+            foreach ($needed as $file) {
+                if (! file_exists(lang_path($locale.'/'.$file.'.php'))) {
+                    $missing[] = $locale.'/'.$file.'.php';
+                }
+            }
+        }
+
+        $this->assertSame([], $missing, 'Every offered language needs these files.');
+    }
+
+    /**
+     * And every key in them, not just the file.
+     *
+     * A file present but short of keys is the same screen half in English,
+     * one level down — and it is the failure a reader notices rather than the
+     * one a directory listing shows.
+     */
+    public function test_the_add_screen_translations_are_complete(): void
+    {
+        $needed = self::TRANSLATED_MODULES;
+
+        $flatten = function (array $values, string $prefix = '') use (&$flatten): array {
+            $flat = [];
+
+            foreach ($values as $key => $value) {
+                $path = $prefix === '' ? (string) $key : $prefix.'.'.$key;
+                $flat += is_array($value) ? $flatten($value, $path) : [$path => $value];
+            }
+
+            return $flat;
+        };
+
+        $gaps = [];
+
+        foreach ($needed as $file) {
+            $english = $flatten(require lang_path('en/'.$file.'.php'));
+
+            foreach (array_keys((array) config('languages.supported')) as $locale) {
+                if ($locale === 'en' || ! file_exists(lang_path($locale.'/'.$file.'.php'))) {
+                    continue;
+                }
+
+                $translated = $flatten(require lang_path($locale.'/'.$file.'.php'));
+                $absent = array_keys(array_diff_key($english, $translated));
+
+                foreach ($absent as $key) {
+                    $gaps[] = $locale.'/'.$file.'.php: '.$key;
+                }
+            }
+        }
+
+        $this->assertSame([], $gaps);
+    }
+
+    /**
+     * The getting-started checklist, in Chinese.
+     *
+     * Its nine labels were built as English literals in DashboardController,
+     * so the card around them translated and the list inside it did not —
+     * copy assembled in PHP is still copy on a screen.
+     */
+    public function test_the_getting_started_checklist_is_translated_into_chinese(): void
+    {
+        $owner = $this->owner();
+        $owner->tenant->syncLanguages(['en', 'zh']);
+        $owner->forceFill(['locale' => 'zh'])->save();
+
+        $this->actingAs($owner->fresh())
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('添加你的第一项服务')
+            ->assertSee('配置员工排班')
+            ->assertSee('添加你的标志和品牌样式')
+            /* The owner's dismiss button, which was typed into the view. */
+            ->assertSee('不再显示')
+            ->assertDontSee('Add your first service')
+            ->assertDontSee('>Dismiss<', false);
+    }
+
+    /** The App Settings directory, in German. */
+    public function test_the_settings_directory_is_translated_into_german(): void
+    {
+        $owner = $this->owner();
+        $owner->tenant->syncLanguages(['en', 'de']);
+        $owner->forceFill(['locale' => 'de'])->save();
+
+        $this->actingAs($owner->fresh())
+            ->get(route('settings.index'))
+            ->assertOk()
+            ->assertSee('Einstellungen')
+            /* A group heading and a module card, which come from different
+               files — the page needs both to read. */
+            ->assertSee('Betrieb einrichten')
+            ->assertSee('Öffnungszeiten')
+            ->assertDontSee('Business Setup')
+            ->assertDontSee('Business Hours');
+    }
+
+    /** The Chinese resources screen, end to end. */
+    public function test_the_resources_screen_is_translated_into_chinese(): void
+    {
+        $owner = $this->owner();
+        $owner->tenant->syncLanguages(['en', 'zh']);
+        $owner->forceFill(['locale' => 'zh'])->save();
+
+        $this->actingAs($owner->fresh())
+            ->get(route('resources.index'))
+            ->assertOk()
+            ->assertSee('资源')
+            ->assertSee('添加资源')
+            ->assertDontSee('Add resource')
+            ->assertDontSee('All categories');
+    }
+
+    /** The Chinese bookings screen, end to end. */
+    public function test_the_bookings_screen_is_translated_into_chinese(): void
+    {
+        $owner = $this->owner();
+        $owner->tenant->syncLanguages(['en', 'zh']);
+        $owner->forceFill(['locale' => 'zh'])->save();
+
+        $this->actingAs($owner->fresh())
+            ->get(route('bookings.index'))
+            ->assertOk()
+            ->assertSee('预约')
+            ->assertSee('今天')
+            ->assertSee('全部预约')
+            ->assertDontSee('All bookings')
+            ->assertDontSee('Check-in pending');
+    }
+
+    /** The Chinese Add client form, end to end. */
+    public function test_the_add_client_form_is_translated_into_chinese(): void
+    {
+        $owner = $this->owner();
+        $owner->tenant->syncLanguages(['en', 'zh']);
+        $owner->forceFill(['locale' => 'zh'])->save();
+
+        $this->actingAs($owner->fresh())
+            ->get(route('clients.create'))
+            ->assertOk()
+            ->assertSee('添加客户')
+            ->assertSee('名字')
+            ->assertSee('电子邮箱')
+            ->assertSee('快捷操作')
+            ->assertDontSee('First name')
+            ->assertDontSee('Quick Actions');
     }
 
     /**

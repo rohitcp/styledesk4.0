@@ -5,18 +5,39 @@
 @section('content')
 <x-account.shell current="notifications" :title="__('account.notifications.title')" :intro="__('account.notifications.intro')">
 
-  <form method="POST" action="{{ route('account.notifications.update') }}" class="space-y-5 max-w-[900px]" id="notificationsForm">
+  {{-- Read first, edit on request; the partial at the foot of the page does
+       the toggling and explains the contract.
+
+       One Edit for the whole sheet rather than one per group, because the
+       bulk controls reach every box on the page: an "Enable all" that changed
+       four groups while only one of them was open would be doing its work out
+       of sight.
+
+       And this is the one screen whose read view is its own fields. A ticked
+       box already says "this one is on" as plainly as any summary could, so
+       nothing is swapped out — the boxes simply stop answering while the
+       sheet is closed, which is what a disabled checkbox means and how the
+       always-on security rows have always been drawn here. --}}
+  <form method="POST" action="{{ route('account.notifications.update') }}" class="space-y-5 max-w-[900px]" id="notificationsForm"
+        data-editable-card data-editing="{{ $errors->any() ? 'true' : 'false' }}">
     @csrf
     @method('PATCH')
 
-    {{-- The two bulk controls. Buttons rather than links, and they act on the
-         checkboxes in the page rather than posting on their own: the reader
-         still sees what they did and still has to save it, so "Enable all"
-         cannot silently commit a hundred changes. --}}
     <div class="flex flex-wrap items-center gap-2.5">
-      <button type="button" class="styledesk_action" data-notify-all="1">{{ __('account.notifications.enable_all') }}</button>
-      <button type="button" class="styledesk_action" data-notify-all="0">{{ __('account.notifications.disable_all') }}</button>
-      <p class="text-[12px] text-sub">{{ __('account.notifications.bulk_hint') }}</p>
+      <button type="button" class="styledesk_action" data-editable-edit hidden aria-expanded="false">
+        <x-icon name="pen-to-square" size="14" />
+        {{ __('common.edit') }}
+      </button>
+
+      {{-- The two bulk controls. Buttons rather than links, and they act on the
+           checkboxes in the page rather than posting on their own: the reader
+           still sees what they did and still has to save it, so "Enable all"
+           cannot silently commit a hundred changes. --}}
+      <span class="flex flex-wrap items-center gap-2.5" data-editable-fields>
+        <button type="button" class="styledesk_action" data-notify-all="1">{{ __('account.notifications.enable_all') }}</button>
+        <button type="button" class="styledesk_action" data-notify-all="0">{{ __('account.notifications.disable_all') }}</button>
+        <span class="text-[12px] text-sub">{{ __('account.notifications.bulk_hint') }}</span>
+      </span>
     </div>
 
     @foreach ($groups as $group)
@@ -96,7 +117,7 @@
                            posts "off" rather than saying nothing and leaving
                            the server to guess. --}}
                       <input type="hidden" name="notifications[{{ $type['key'] }}][{{ $key }}]" value="0">
-                      <input type="checkbox" class="sd-check" data-notify-box
+                      <input type="checkbox" class="sd-check" data-notify-box data-editable-lock
                              name="notifications[{{ $type['key'] }}][{{ $key }}]" value="1"
                              aria-label="{{ $type['label'].' — '.$channel['label'] }}"
                              @checked($cell['enabled'])>
@@ -110,15 +131,24 @@
       </section>
     @endforeach
 
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3" data-editable-fields>
       <button type="submit" data-submit-once
               class="inline-flex items-center h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
         {{ __('account.notifications.save') }}
       </button>
+
+      {{-- A link, so that with no script it still does the only thing it can
+           do: fetch the page again and discard the boxes that were changed.
+           The script turns it into a close-and-reset that costs no round
+           trip. --}}
+      <a href="{{ route('account.notifications') }}" data-editable-cancel
+         class="h-11 px-4 inline-flex items-center rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+        {{ __('account.cancel') }}
+      </a>
     </div>
   </form>
 
-  <form method="POST" action="{{ route('account.notifications.reset') }}" class="mt-5 max-w-[900px]">
+  <form method="POST" action="{{ route('account.notifications.reset') }}" class="mt-5 max-w-[900px]" data-editable-actions>
     @csrf
     <button type="submit"
             data-confirm="{{ __('account.reset_confirm') }}"
@@ -128,6 +158,8 @@
       {{ __('account.reset') }}
     </button>
   </form>
+
+  @include('account.partials._editable')
 </x-account.shell>
 @endsection
 

@@ -164,5 +164,25 @@ return [
     'getting_started' => [
         'title' => '快速上手',
         'intro' => '还有几项设置没有完成。你随时可以回来继续。',
+        'dismiss' => '不再显示',
+
+        /*
+        | 清单本身。
+        |
+        | 放在这里而不是 DashboardController 里——它们原本是九条写死的英文：
+        | 用 PHP 拼出来的列表同样是屏幕上的文案，结果中文读者看到的是整份英文清单，
+        | 而包着它的卡片却是翻译好的。
+        */
+        'items' => [
+            'service' => '添加你的第一项服务',
+            'team' => '添加团队成员',
+            'schedules' => '配置员工排班',
+            'client' => '添加你的第一位客户',
+            'online_booking' => '设置在线预约',
+            'payments' => '配置收款',
+            'reminders' => '配置预约提醒',
+            'branding' => '添加你的标志和品牌样式',
+            'appointment' => '创建你的第一个预约',
+        ],
     ],
 ];

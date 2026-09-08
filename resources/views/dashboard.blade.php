@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard')
+@section('title', __('dashboard.title'))
 
 @section('content')
 
@@ -21,7 +21,7 @@
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="h-8 px-3 rounded-md text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
-                                Dismiss
+                                {{ __('dashboard.getting_started.dismiss') }}
                             </button>
                         </form>
                     @endif

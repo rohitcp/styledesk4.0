@@ -33,9 +33,10 @@ return [
     /*
     | Las entradas desplegables bajo los elementos principales del menú.
     |
-    | Llevan un `key` en config/navigation.php para que Nav::label() las
-    | resuelva aquí. Las entradas vecinas que solo tienen etiqueta nombran
-    | pantallas que aún no existen y se dejan sin traducir a propósito.
+    | Todas llevan un `key` en config/navigation.php para que Nav::label() las
+    | resuelva aquí, incluidas las que nombran pantallas que aún no existen:
+    | están en el menú y se leen, así que un menú a medio traducir es el mismo
+    | fallo tanto si el enlace lleva a algún sitio como si no.
     */
     'all_bookings' => 'Todas las reservas',
     'booking_leads' => 'Solicitudes de reserva',
@@ -56,6 +57,28 @@ return [
     'staff_utilization' => 'Uso del personal',
     'add_staff' => '+ Añadir personal',
     'email_marketing' => 'Marketing por correo',
+    'sms_marketing' => 'Marketing por SMS',
+    'social_marketing' => 'Marketing en redes sociales',
+    'review_marketing' => 'Marketing de reseñas de Google',
+    'gift_cards' => 'Tarjetas regalo',
+    'loyalty' => 'Fidelización',
+    'groups' => 'Grupos',
+    'forms_waivers' => 'Formularios y consentimientos',
+    'memberships_packages' => 'Membresías y paquetes',
+
+    /* Los encabezados de cada grupo de entradas dentro de un menú abierto. */
+    'sections' => [
+        'management' => 'Gestión',
+        'quick_actions' => 'Acciones rápidas',
+        'services' => 'Servicios',
+        'resources' => 'Recursos',
+        'channels' => 'Canales',
+    ],
+
+    /* Nombres accesibles, cuando difieren de la etiqueta que acompañan. */
+    'aria' => [
+        'services' => 'Servicios y recursos',
+    ],
 
     /* Encabezados que solo alcanza un lector de pantalla. */
     'drawer_main' => 'Principal',

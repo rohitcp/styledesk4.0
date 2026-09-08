@@ -16,6 +16,14 @@ declare(strict_types=1);
 | built: it renders as href="#" carrying data-pending-route, so nothing 404s
 | and the remaining work stays greppable.
 |
+| Every entry carries a `key`, including the section headings and the entries
+| whose screens are not built yet. The key is what App\Support\Nav resolves a
+| translation from — navigation.<key> for a label, navigation.sections.<key>
+| for a heading, navigation.aria.<key> for an accessible name — and an entry
+| without one is an entry that stays English in every language. The English
+| beside it is the fallback for a key that has not been written yet, not the
+| string the menu prints.
+|
 */
 
 return [
@@ -36,11 +44,11 @@ return [
             'icon' => 'calendar-check',
             'route' => 'bookings.index',
             'children' => [
-                ['section' => 'Management'],
+                ['section' => 'Management', 'key' => 'management'],
                 ['key' => 'all_bookings', 'label' => 'All Bookings', 'route' => 'bookings.index'],
                 ['key' => 'booking_leads', 'label' => 'Booking Leads', 'route' => 'bookings.leads'],
 
-                ['section' => 'Quick Actions'],
+                ['section' => 'Quick Actions', 'key' => 'quick_actions'],
                 ['key' => 'add_booking', 'label' => '+ Add Booking', 'route' => 'bookings.create'],
                 ['key' => 'add_walkin', 'label' => '+ Add Walk-in', 'route' => 'bookings.create', 'params' => ['walk-in' => 1]],
             ],
@@ -58,11 +66,11 @@ return [
                 // opens this menu for.
                 ['key' => 'add_client', 'label' => 'Add Client', 'route' => 'clients.create'],
                 ['key' => 'coupons_offers', 'label' => 'Coupons & Offers', 'route' => 'promotions.index'],
-                ['label' => 'Gift Cards'],
-                ['label' => 'Loyalty'],
-                ['label' => 'Groups'],
-                ['label' => 'Forms & Waivers'],
-                ['label' => 'Memberships & Packages'],
+                ['key' => 'gift_cards', 'label' => 'Gift Cards'],
+                ['key' => 'loyalty', 'label' => 'Loyalty'],
+                ['key' => 'groups', 'label' => 'Groups'],
+                ['key' => 'forms_waivers', 'label' => 'Forms & Waivers'],
+                ['key' => 'memberships_packages', 'label' => 'Memberships & Packages'],
             ],
         ],
 
@@ -85,11 +93,11 @@ return [
             // Settings: they are decided once and revisited rarely, which is
             // the line this module is drawn on.
             'children' => [
-                ['section' => 'Services'],
+                ['section' => 'Services', 'key' => 'services'],
                 ['key' => 'all_services', 'label' => 'All Services', 'route' => 'services.index'],
                 ['key' => 'add_service', 'label' => 'Add Service', 'route' => 'services.create'],
 
-                ['section' => 'Resources'],
+                ['section' => 'Resources', 'key' => 'resources'],
                 ['key' => 'all_resources', 'label' => 'All Resources', 'route' => 'resources.index'],
                 // The resources list adds through a dialog rather than a page
                 // of its own, so this opens the list with it already up.
@@ -119,13 +127,13 @@ return [
             'route' => 'staff.index',
             'count' => 'staff',
             'children' => [
-                ['section' => 'Management'],
+                ['section' => 'Management', 'key' => 'management'],
                 ['key' => 'all_staff', 'label' => 'All Staff', 'route' => 'staff.index'],
                 ['key' => 'staff_schedule', 'label' => 'Staff Schedule', 'route' => 'staff.schedules'],
                 ['key' => 'shifts', 'label' => 'Shifts', 'route' => 'shifts.index'],
                 ['key' => 'staff_utilization', 'label' => 'Staff Utilization', 'route' => 'staff.utilization'],
 
-                ['section' => 'Quick Actions'],
+                ['section' => 'Quick Actions', 'key' => 'quick_actions'],
                 ['key' => 'add_staff', 'label' => '+ Add Staff', 'route' => 'staff.create'],
             ],
         ],
@@ -149,11 +157,11 @@ return [
             'icon' => 'bullhorn',
             'route' => 'marketing.email.index',
             'children' => [
-                ['section' => 'Channels'],
+                ['section' => 'Channels', 'key' => 'channels'],
                 ['key' => 'email_marketing', 'label' => 'Email Marketing', 'route' => 'marketing.email.index'],
-                ['label' => 'SMS Marketing', 'pending' => 'sms-marketing.html'],
-                ['label' => 'Social Media Marketing', 'pending' => 'social-marketing.html'],
-                ['label' => 'Google Review Marketing', 'pending' => 'review-marketing.html'],
+                ['key' => 'sms_marketing', 'label' => 'SMS Marketing', 'pending' => 'sms-marketing.html'],
+                ['key' => 'social_marketing', 'label' => 'Social Media Marketing', 'pending' => 'social-marketing.html'],
+                ['key' => 'review_marketing', 'label' => 'Google Review Marketing', 'pending' => 'review-marketing.html'],
             ],
         ],
         ['key' => 'reports', 'label' => 'Reports', 'icon' => 'chart-simple'],

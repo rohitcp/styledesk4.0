@@ -27,20 +27,25 @@
             </div>
             <div class="styledesk_modal__body">
                 <p class="text-[13px] text-sub leading-relaxed">
-                    For your security, you will be signed out because there has been no activity.
+                    {{ __('common.session.expiring_body') }}
                 </p>
+                {{-- The countdown is a placeholder inside the sentence rather
+                     than a label with a number after it: languages put the two
+                     in different orders, and a fixed order reads as broken in
+                     at least one of them. The markup is ours, not a reader's,
+                     so it is printed unescaped. --}}
                 <p class="text-[13px] text-ink mt-3">
-                    Session expires in <strong id="sd-timeout-count" class="tabular-nums">02:00</strong>
+                    {!! __('common.session.countdown', ['time' => '<strong id="sd-timeout-count" class="tabular-nums">02:00</strong>']) !!}
                 </p>
             </div>
             <div class="styledesk_modal__foot">
                 <button type="button" data-timeout-signout
                         class="h-9 px-4 rounded-md text-[13px] font-semibold text-sub hover:bg-hover transition-colors">
-                    Sign out
+                    {{ __('common.session.sign_out') }}
                 </button>
                 <button type="button" data-timeout-stay
                         class="h-9 px-4 rounded-md bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-                    Stay signed in
+                    {{ __('common.session.stay') }}
                 </button>
             </div>
         </div>
@@ -57,13 +62,13 @@
             </div>
             <div class="styledesk_modal__body">
                 <p class="text-[13px] text-sub leading-relaxed">
-                    Your session ended because there was no activity. Sign in again to continue.
+                    {{ __('common.session.expired_body') }}
                 </p>
             </div>
             <div class="styledesk_modal__foot">
                 <button type="button" data-timeout-signin
                         class="h-9 px-4 rounded-md bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-                    Sign in
+                    {{ __('common.session.sign_in') }}
                 </button>
             </div>
         </div>

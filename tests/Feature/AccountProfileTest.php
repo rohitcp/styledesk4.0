@@ -106,6 +106,46 @@ class AccountProfileTest extends TestCase
             ->assertSessionHasErrors(['first_name', 'last_name']);
     }
 
+    /**
+     * The card ships with the fields open and the summary hidden.
+     *
+     * That pairing is what a reader with no JavaScript gets, and it is the
+     * one the script inverts before paint. Asserting it here pins the
+     * fallback: if the markup ever ships closed instead, somebody without
+     * scripts loses the ability to edit their profile at all.
+     */
+    public function test_the_personal_card_carries_both_a_summary_and_the_fields(): void
+    {
+        $response = $this->actingAs($this->member())
+            ->get(route('account.profile'))
+            ->assertOk();
+
+        $response->assertSee('data-editable-view hidden', false);
+        $response->assertSee('data-editable-edit hidden', false);
+        $response->assertSee('id="profileFields"', false);
+        $response->assertSee('data-editing="false"', false);
+
+        /* Without the partial the markup is a form that never closes, which
+           is exactly how this shipped once. */
+        $response->assertSee("querySelectorAll('[data-editable-card]')", false);
+    }
+
+    /** A refusal reopens the fields, because the messages are attached to them. */
+    public function test_refused_fields_leave_the_card_open(): void
+    {
+        $user = $this->member();
+
+        $this->actingAs($user)
+            ->from(route('account.profile'))
+            ->patch(route('account.profile.update'), ['first_name' => '', 'last_name' => ''])
+            ->assertRedirect(route('account.profile'));
+
+        $this->actingAs($user)
+            ->get(route('account.profile'))
+            ->assertOk()
+            ->assertSee('data-editing="true"', false);
+    }
+
     // ------------------------------------------------------------- the photo
 
     public function test_a_photo_is_stored_through_the_storage_component(): void

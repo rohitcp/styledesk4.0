@@ -65,7 +65,7 @@
             <span class="text-[12px] font-medium text-sub shrink-0" data-upload-pct>0%</span>
         </div>
         <div class="sd-progress mt-1.5" role="progressbar" aria-valuemin="0" aria-valuemax="100"
-             aria-valuenow="0" aria-label="Upload progress">
+             aria-valuenow="0" aria-label="{{ __('common.upload.progress') }}">
             <span data-upload-bar style="width:0%"></span>
         </div>
     </div>

@@ -167,5 +167,26 @@ return [
     'getting_started' => [
         'title' => 'Getting started',
         'intro' => 'A few things left to set up. You can come back to these any time.',
+        'dismiss' => 'Dismiss',
+
+        /*
+        | The checklist itself.
+        |
+        | Here rather than in DashboardController, where these were nine
+        | English literals: a list built in PHP is still copy on a screen, and
+        | a reader in Chinese got the whole checklist in English while the card
+        | around it was translated.
+        */
+        'items' => [
+            'service' => 'Add your first service',
+            'team' => 'Add team members',
+            'schedules' => 'Configure staff schedules',
+            'client' => 'Add your first client',
+            'online_booking' => 'Customize online booking',
+            'payments' => 'Configure payments',
+            'reminders' => 'Configure appointment reminders',
+            'branding' => 'Add your logo and branding',
+            'appointment' => 'Create your first appointment',
+        ],
     ],
 ];

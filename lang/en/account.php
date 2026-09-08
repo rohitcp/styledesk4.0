@@ -125,6 +125,7 @@ return [
         'title' => 'Change password',
         'intro' => 'Choose something you do not use anywhere else.',
         'card' => 'Your password',
+        'hidden' => 'Your password is hidden',
         'current' => 'Current password',
         'new' => 'New password',
         'confirm' => 'Confirm new password',

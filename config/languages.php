@@ -37,28 +37,36 @@ return [
         'es' => ['name' => 'Spanish', 'native' => 'Español', 'active' => true],
 
         /*
-         * Registered and offerable, but not translated: neither has a lang/
-         * directory at all, so choosing one gives an English app under a
-         * French or German name.
+         * Registered, offerable, and translated as far as the screens somebody
+         * uses on their first day: the shared words and validation, the
+         * navigation, and the Clients, Services and Staff modules — the "add"
+         * forms included. Everything else falls back to English key by key.
          *
          * `active` marks that rather than hiding it. The selector labels an
          * unfinished language "partly translated" and lets the business
          * decide — withholding the choice entirely is what made French
          * selectable at sign-up and then silently ignored everywhere else.
+         *
+         * The Bookings module is translated too — appointments, leads,
+         * payment settings and the reason lists behind them.
+         *
+         * 2,194 of 5,176 keys each. Set active true when lang/fr and lang/de
+         * are complete.
          */
         'fr' => ['name' => 'French', 'native' => 'Français', 'active' => false],
         'de' => ['name' => 'German', 'native' => 'Deutsch', 'active' => false],
         /*
          * The shell is translated — navigation, the shared buttons and
          * validation, the dashboard, the settings directory, the login screen
-         * and the language picker. The deeper modules (clients, bookings,
-         * staff, resources) have no lang/zh file yet and fall back to English
-         * key by key.
+         * and the language picker — and so are the Clients, Services and Staff
+         * modules, and the Bookings module with them. The rest (resources,
+         * email templates, marketing, the back office) has no lang/zh file yet
+         * and falls back to English key by key.
          *
-         * `active` is false because it is false: 343 of 5,151 keys. It no
-         * longer decides whether the language can be chosen — every language
-         * here can be — it decides whether the selector calls this one
-         * finished. Set it true when lang/zh is complete.
+         * `active` is false because it is false: 2,417 of 5,176 keys. It does
+         * not decide whether the language can be chosen — every language here
+         * can be — it decides whether the selector calls this one finished.
+         * Set it true when lang/zh is complete.
          */
         'zh' => ['name' => 'Chinese', 'native' => '中文', 'active' => false],
     ],

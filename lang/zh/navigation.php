@@ -41,9 +41,9 @@ return [
     /*
     | 导航栏顶级项目下的下拉条目。
     |
-    | 这些条目在 config/navigation.php 中带有 `key`，因此 Nav::label() 能在此
-    | 解析。旁边只有标签的条目——礼品卡、会员积分、分组——刻意不做翻译：
-    | 它们指向尚不存在的页面。
+    | 每个条目在 config/navigation.php 中都带有 `key`，因此 Nav::label() 能在此
+    | 解析——包括那些页面尚未构建的条目。它们就在菜单里、读者看得见，所以菜单
+    | 只翻译一半同样是缺陷，与链接是否有去处无关。
     */
     'all_bookings' => '全部预约',
     'booking_leads' => '预约意向',
@@ -64,6 +64,28 @@ return [
     'staff_utilization' => '员工使用率',
     'add_staff' => '+ 添加员工',
     'email_marketing' => '邮件营销',
+    'sms_marketing' => '短信营销',
+    'social_marketing' => '社交媒体营销',
+    'review_marketing' => '谷歌评价营销',
+    'gift_cards' => '礼品卡',
+    'loyalty' => '会员积分',
+    'groups' => '分组',
+    'forms_waivers' => '表单与同意书',
+    'memberships_packages' => '会员与套餐',
+
+    /* 打开的菜单中，每组条目上方的标题。 */
+    'sections' => [
+        'management' => '管理',
+        'quick_actions' => '快捷操作',
+        'services' => '服务',
+        'resources' => '资源',
+        'channels' => '渠道',
+    ],
+
+    /* 无障碍名称，当它与旁边的标签不同时使用。 */
+    'aria' => [
+        'services' => '服务与资源',
+    ],
 
     /* 仅屏幕阅读器会读到的标题。 */
     'drawer_main' => '主导航',

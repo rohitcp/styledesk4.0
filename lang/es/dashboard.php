@@ -152,5 +152,26 @@ return [
     'getting_started' => [
         'title' => 'Primeros pasos',
         'intro' => 'Quedan algunas cosas por configurar. Puedes volver a ellas cuando quieras.',
+        'dismiss' => 'Descartar',
+
+        /*
+        | La lista en sí.
+        |
+        | Aquí y no en DashboardController, donde eran nueve literales en
+        | inglés: una lista construida en PHP sigue siendo texto en pantalla, y
+        | quien leía en chino recibía toda la lista en inglés mientras la
+        | tarjeta que la rodeaba sí estaba traducida.
+        */
+        'items' => [
+            'service' => 'Añade tu primer servicio',
+            'team' => 'Añade a tu equipo',
+            'schedules' => 'Configura los horarios del personal',
+            'client' => 'Añade tu primer cliente',
+            'online_booking' => 'Personaliza la reserva en línea',
+            'payments' => 'Configura los pagos',
+            'reminders' => 'Configura los recordatorios de citas',
+            'branding' => 'Añade tu logotipo y tu marca',
+            'appointment' => 'Crea tu primera cita',
+        ],
     ],
 ];

@@ -61,7 +61,7 @@
               @if (! empty($child['section']))
                 {{-- The same headings the desktop menu uses: a group of six
                      links reads as a list without them. --}}
-                <span class="styledesk_drawersub__section">{{ $child['section'] }}</span>
+                <span class="styledesk_drawersub__section">{{ App\Support\Nav::section($child) }}</span>
               @else
                 @if (\App\Support\Nav::isPending($child))
                   <span class="styledesk_drawersub styledesk_drawersub--soon" aria-disabled="true"
@@ -94,7 +94,7 @@
         <a href="{{ route('settings.index') }}"
            class="styledesk_drawerlink @if (request()->routeIs('settings.*')) is-active @endif">
           <span class="styledesk_drawerlink__icon"><x-icon name="gear" size="17" /></span>
-          App settings
+          {{ __('navigation.app_settings') }}
         </a>
       @endif
     </nav>

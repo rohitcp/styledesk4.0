@@ -29,21 +29,69 @@ class Nav
      * and a tooltip without three copies to keep in step.
      *
      * Falls back to the literal label in the config when there is no key for
-     * it. That is not a gap to be tidied away: the deeper menu entries name
-     * screens that do not exist yet, and translating a label for a page nobody
-     * can open would be work spent ahead of the work it describes.
+     * it — an entry added to the config before its line in lang/ still reads,
+     * it just reads in English.
      *
      * @param  array<string, mixed>  $item
      */
     public static function label(array $item): string
     {
-        $key = isset($item['key']) ? 'navigation.'.$item['key'] : null;
+        return self::translate($item['key'] ?? null, $item['label'] ?? '');
+    }
 
-        if ($key !== null && trans()->has($key)) {
-            return __($key);
+    /**
+     * The heading above a group of entries inside an open menu.
+     *
+     * Headings used to be printed straight from the config, which is how a
+     * Spanish menu came to read "Quick Actions" over two translated links.
+     * They resolve through navigation.sections.<key> now, on the same terms
+     * as everything else in the menu.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    public static function section(array $item): string
+    {
+        $key = isset($item['key']) ? 'sections.'.$item['key'] : null;
+
+        return self::translate($key, $item['section'] ?? '');
+    }
+
+    /**
+     * The accessible name for a rail item, where it differs from the label.
+     *
+     * Only a few carry one — "Services & resources" spells its ampersand for
+     * a screen reader — and it is a second piece of copy for the same item,
+     * so it needs translating exactly as the first one does.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    public static function aria(array $item): string
+    {
+        if (! isset($item['aria'])) {
+            return self::label($item);
         }
 
-        return $item['label'] ?? '';
+        $key = isset($item['key']) ? 'aria.'.$item['key'] : null;
+
+        return self::translate($key, $item['aria']);
+    }
+
+    /**
+     * A navigation key's translation, or the English in the config.
+     *
+     * The fallback is the config's own literal rather than the humanised key,
+     * so an entry added to config/navigation.php without a matching line in
+     * lang/ still reads as its English label instead of breaking the menu.
+     */
+    private static function translate(?string $key, string $fallback): string
+    {
+        if ($key === null) {
+            return $fallback;
+        }
+
+        $key = 'navigation.'.$key;
+
+        return trans()->has($key) ? __($key) : $fallback;
     }
 
     /**

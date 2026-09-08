@@ -91,14 +91,56 @@
       @endif
     </section>
 
-    <form method="POST" action="{{ route('account.profile.update') }}" class="space-y-5"
-          data-validate-form
-          data-validation-messages='@json(\App\Support\LiveValidation::messages())'>
-      @csrf
-      @method('PATCH')
+    {{-- Read first, edit on request; the partial at the foot of the page
+         does the toggling and explains the contract.
 
-      <section class="bg-white border border-line rounded-card p-5 sm:p-6">
+         A submission that came back refused is left open on the fields, since
+         the person is mid-correction and the messages are attached to them.
+         Only this card's own fields count: a rejected photo is a different
+         card's problem and should not throw this one open. --}}
+    @php
+        $profileRefused = $errors->hasAny(['first_name', 'last_name', 'display_name', 'job_title', 'phone', 'phone_country']);
+    @endphp
+
+    <section class="bg-white border border-line rounded-card p-5 sm:p-6"
+             data-editable-card data-editing="{{ $profileRefused ? 'true' : 'false' }}">
+
+      <div class="flex items-start justify-between gap-4">
         <h3 class="text-[15px] font-semibold text-head">{{ __('account.profile.personal_card') }}</h3>
+
+        {{-- Hidden in the markup and shown by the script: with no script the
+             fields are already open, and an Edit that opens what is open is
+             a button that does nothing. --}}
+        <button type="button" class="styledesk_action shrink-0" data-editable-edit hidden
+                aria-controls="profileFields" aria-expanded="false">
+          <x-icon name="pen-to-square" size="14" />
+          {{ __('common.edit') }}
+        </button>
+      </div>
+
+      <dl class="mt-5 sd-dl" data-editable-view hidden>
+        <dt class="sd-dl__t">{{ __('account.profile.first_name') }}</dt>
+        <dd class="sd-dl__d" @unless ($user->first_name) data-empty @endunless>{{ $user->first_name }}</dd>
+
+        <dt class="sd-dl__t">{{ __('account.profile.last_name') }}</dt>
+        <dd class="sd-dl__d" @unless ($user->last_name) data-empty @endunless>{{ $user->last_name }}</dd>
+
+        <dt class="sd-dl__t">{{ __('account.profile.display_name') }}</dt>
+        <dd class="sd-dl__d" @unless ($user->display_name) data-empty @endunless>{{ $user->display_name }}</dd>
+
+        <dt class="sd-dl__t">{{ __('account.profile.job_title') }}</dt>
+        <dd class="sd-dl__d" @unless ($user->job_title) data-empty @endunless>{{ $user->job_title }}</dd>
+
+        <dt class="sd-dl__t">{{ __('account.profile.phone') }}</dt>
+        <dd class="sd-dl__d" @unless ($user->phone) data-empty @endunless>{{ $user->phone }}</dd>
+      </dl>
+
+      <form id="profileFields" method="POST" action="{{ route('account.profile.update') }}"
+            data-editable-fields
+            data-validate-form
+            data-validation-messages='@json(\App\Support\LiveValidation::messages())'>
+        @csrf
+        @method('PATCH')
 
         <div class="mt-5 grid sm:grid-cols-2 gap-x-5 gap-y-5">
           <div>
@@ -164,19 +206,27 @@
             <p class="mt-1.5 text-[12px] text-sub">{{ __('account.profile.phone_hint') }}</p>
           </div>
         </div>
-      </section>
 
-      <div class="flex flex-wrap items-center gap-3">
-        <button type="submit" data-submit-once
-                class="inline-flex items-center h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
-          {{ __('account.save') }}
-        </button>
-        <a href="{{ route('account.profile') }}"
-           class="h-11 px-4 inline-flex items-center rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
-          {{ __('account.cancel') }}
-        </a>
-      </div>
-    </form>
+        {{-- Inside the card now rather than below it: the buttons belong to
+             the fields they save, and they appear and disappear with them. --}}
+        <div class="flex flex-wrap items-center gap-3 mt-6">
+          <button type="submit" data-submit-once
+                  class="inline-flex items-center h-11 px-6 rounded-lg bg-brand hover:bg-brand-dark text-white text-[14px] font-semibold transition-colors">
+            {{ __('account.save') }}
+          </button>
+          {{-- A link, so that with no script it still does the only thing it
+               can do: fetch the page again and discard what was typed. The
+               script turns it into a close-and-reset that costs no round
+               trip. --}}
+          <a href="{{ route('account.profile') }}" data-editable-cancel
+             class="h-11 px-4 inline-flex items-center rounded-lg text-[13px] font-semibold text-sub hover:text-ink hover:bg-hover transition-colors">
+            {{ __('account.cancel') }}
+          </a>
+        </div>
+      </form>
+    </section>
+
+    @include('account.partials._editable')
 
     {{-- Its own card, and deliberately not part of Save Changes: the address
          somebody signs in with is a different kind of fact from their job

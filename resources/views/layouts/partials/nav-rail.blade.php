@@ -18,7 +18,7 @@
         <a href="{{ \App\Support\Nav::href($item) }}" {!! \App\Support\Nav::pending($item) !!}
            class="sd-navicon grid sd-tip relative @if ($active) is-active @endif"
            data-tip="{{ App\Support\Nav::label($item) }}@if ($count !== null) · {{ $count }}@endif" data-tip-placement="right"
-           aria-label="{{ $item['aria'] ?? App\Support\Nav::label($item) }}@if ($count !== null), {{ trans_choice('navigation.active_staff', $count, ['count' => $count]) }}@endif"
+           aria-label="{{ App\Support\Nav::aria($item) }}@if ($count !== null), {{ trans_choice('navigation.active_staff', $count, ['count' => $count]) }}@endif"
            aria-haspopup="true" aria-expanded="false"
            @if ($active) aria-current="page" @endif>
           <x-icon :name="$item['icon']" size="18" />
@@ -29,7 +29,7 @@
             <span class="sd-navicon__count" aria-hidden="true">{{ $count }}</span>
           @endif
         </a>
-        <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="{{ __('navigation.menu_for', ['name' => $item['aria'] ?? App\Support\Nav::label($item)]) }}">
+        <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="{{ __('navigation.menu_for', ['name' => App\Support\Nav::aria($item)]) }}">
           @foreach ($item['children'] as $child)
             @if (! empty($child['separator']))
               <div class="sd-menu__rule" role="separator"></div>
@@ -38,7 +38,7 @@
                    no page of its own. presentation, so a screen reader reads
                    it as the label it is rather than announcing a menu item
                    that cannot be chosen. --}}
-              <div class="sd-menu__section" role="presentation">{{ $child['section'] }}</div>
+              <div class="sd-menu__section" role="presentation">{{ App\Support\Nav::section($child) }}</div>
             @else
               @php $childActive = \App\Support\Nav::isCurrent($child); @endphp
 
@@ -71,7 +71,7 @@
          @class(['sd-navicon grid sd-tip', 'is-active' => $active, 'sd-navicon--soon' => $itemPending])
          data-tip="{{ App\Support\Nav::label($item) }}@if ($itemPending) · {{ __('navigation.coming_soon') }}@endif"
          data-tip-placement="right"
-         aria-label="{{ $item['aria'] ?? App\Support\Nav::label($item) }}"
+         aria-label="{{ App\Support\Nav::aria($item) }}"
          @if ($itemPending) aria-disabled="true" @endif
          @if ($active) aria-current="page" @endif>
         <x-icon :name="$item['icon']" size="18" />

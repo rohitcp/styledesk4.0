@@ -42,16 +42,27 @@ class DashboardController extends Controller
 
         $data = DashboardData::forUser($user, $scope);
 
+        /**
+         * The getting-started checklist.
+         *
+         * Only the keys and the "is it done" question live here; the wording
+         * is in each language's dashboard file. It used to be nine English
+         * literals in this array, which is how a Chinese dashboard came to
+         * draw a translated card around a checklist that was entirely in
+         * English.
+         *
+         * @var array<int, array{label: string, done: bool}>
+         */
         $checklist = [
-            ['label' => 'Add your first service', 'done' => $tenant->services()->exists()],
-            ['label' => 'Add team members', 'done' => $this->hasTeam($tenant)],
-            ['label' => 'Configure staff schedules', 'done' => false],
-            ['label' => 'Add your first client', 'done' => $tenant->clients()->exists()],
-            ['label' => 'Customize online booking', 'done' => $tenant->bookingSettings()->exists()],
-            ['label' => 'Configure payments', 'done' => false],
-            ['label' => 'Configure appointment reminders', 'done' => false],
-            ['label' => 'Add your logo and branding', 'done' => $tenant->logo_path !== null],
-            ['label' => 'Create your first appointment', 'done' => false],
+            ['label' => __('dashboard.getting_started.items.service'), 'done' => $tenant->services()->exists()],
+            ['label' => __('dashboard.getting_started.items.team'), 'done' => $this->hasTeam($tenant)],
+            ['label' => __('dashboard.getting_started.items.schedules'), 'done' => false],
+            ['label' => __('dashboard.getting_started.items.client'), 'done' => $tenant->clients()->exists()],
+            ['label' => __('dashboard.getting_started.items.online_booking'), 'done' => $tenant->bookingSettings()->exists()],
+            ['label' => __('dashboard.getting_started.items.payments'), 'done' => false],
+            ['label' => __('dashboard.getting_started.items.reminders'), 'done' => false],
+            ['label' => __('dashboard.getting_started.items.branding'), 'done' => $tenant->logo_path !== null],
+            ['label' => __('dashboard.getting_started.items.appointment'), 'done' => false],
         ];
 
         $outstanding = collect($checklist)->reject(fn (array $i) => $i['done'])->isNotEmpty();

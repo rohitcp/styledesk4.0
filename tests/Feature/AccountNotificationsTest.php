@@ -55,6 +55,34 @@ class AccountNotificationsTest extends TestCase
             ->assertDontSee('account.notifications.types');
     }
 
+    /**
+     * The sheet ships open, and the script closes it.
+     *
+     * This screen has no separate summary: the boxes are the read view, and
+     * closing the sheet only stops them answering. So what is pinned here is
+     * that every switchable box is marked for that treatment, and that the
+     * markup still ships editable for a reader with no JavaScript.
+     */
+    public function test_the_sheet_ships_open_with_every_switchable_box_marked(): void
+    {
+        $response = $this->actingAs($this->member())
+            ->get(route('account.notifications'))
+            ->assertOk();
+
+        $body = $response->getContent();
+
+        $this->assertStringContainsString('data-editing="false"', $body);
+        $this->assertStringContainsString('data-editable-edit hidden', $body);
+
+        /* Without the partial the markup is a sheet that never closes, which
+           is exactly how this shipped once. */
+        $this->assertStringContainsString("querySelectorAll('[data-editable-card]')", $body);
+        $this->assertSame(
+            substr_count($body, 'class="sd-check" data-notify-box'),
+            substr_count($body, 'data-notify-box data-editable-lock'),
+        );
+    }
+
     /** Every switch on the screen says what sets it off. */
     public function test_every_notification_type_has_an_explanation(): void
     {

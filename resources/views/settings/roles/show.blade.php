@@ -7,7 +7,7 @@
     <div class="styledesk_form">
 
       <nav class="text-[13px] text-sub" aria-label="Breadcrumb">
-        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">App settings</a>
+        <a href="{{ route('settings.index') }}" class="hover:text-ink transition-colors">{{ __('navigation.app_settings') }}</a>
         <span class="mx-1.5 text-faint">/</span>
         <a href="{{ route('settings.roles.index') }}" class="hover:text-ink transition-colors">Roles &amp; permissions</a>
         <span class="mx-1.5 text-faint">/</span>

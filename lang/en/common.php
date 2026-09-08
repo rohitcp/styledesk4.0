@@ -21,6 +21,7 @@ return [
     'custom_color' => 'Custom colour',
     'back' => 'Back',
     'close' => 'Close',
+    'dismiss' => 'Dismiss',
     'search' => 'Search',
     'filter' => 'Filter',
     'clear' => 'Clear',
@@ -65,6 +66,8 @@ return [
      */
     'upload' => [
         'choose' => 'Choose image',
+        'progress' => 'Upload progress',
+        'cancel' => 'Cancel upload',
         'too_large' => 'That image is larger than 2 MB.',
         'failed' => 'That image could not be uploaded. Please try again.',
     ],
@@ -135,6 +138,13 @@ return [
 
     'session' => [
         'expiring' => 'Your session is about to expire',
+        'expiring_body' => 'For your security, you will be signed out because there has been no activity.',
+        /* :time is the live countdown, wrapped in its own element by the view. */
+        'countdown' => 'Session expires in :time',
+        'sign_out' => 'Sign out',
+        'stay' => 'Stay signed in',
         'expired' => 'Your session has expired',
+        'expired_body' => 'Your session ended because there was no activity. Sign in again to continue.',
+        'sign_in' => 'Sign in',
     ],
 ];

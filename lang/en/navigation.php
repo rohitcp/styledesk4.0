@@ -43,11 +43,10 @@ return [
     /*
     | The dropdown entries under the rail's top-level items.
     |
-    | These carry a `key` in config/navigation.php so Nav::label() can resolve
-    | them here. The label-only entries beside them — Gift Cards, Loyalty,
-    | Groups — are deliberately left untranslated: they name screens that do
-    | not exist yet, and translating a label for a page nobody can open is
-    | work spent ahead of the work it describes.
+    | Every one carries a `key` in config/navigation.php so Nav::label() can
+    | resolve it here — including the entries whose screens are not built yet.
+    | They are in the menu and a reader sees them, so a menu that reads half
+    | in Spanish is the same bug whether or not the link goes anywhere.
     */
     'all_bookings' => 'All Bookings',
     'booking_leads' => 'Booking Leads',
@@ -68,6 +67,28 @@ return [
     'staff_utilization' => 'Staff Utilization',
     'add_staff' => '+ Add Staff',
     'email_marketing' => 'Email Marketing',
+    'sms_marketing' => 'SMS Marketing',
+    'social_marketing' => 'Social Media Marketing',
+    'review_marketing' => 'Google Review Marketing',
+    'gift_cards' => 'Gift Cards',
+    'loyalty' => 'Loyalty',
+    'groups' => 'Groups',
+    'forms_waivers' => 'Forms & Waivers',
+    'memberships_packages' => 'Memberships & Packages',
+
+    /* The headings above a group of entries inside an open menu. */
+    'sections' => [
+        'management' => 'Management',
+        'quick_actions' => 'Quick Actions',
+        'services' => 'Services',
+        'resources' => 'Resources',
+        'channels' => 'Channels',
+    ],
+
+    /* Accessible names, where they differ from the label beside them. */
+    'aria' => [
+        'services' => 'Services and resources',
+    ],
 
     /* Headings only a screen reader reaches. */
     'drawer_main' => 'Main',

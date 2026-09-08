@@ -19,6 +19,7 @@ return [
     'custom_color' => 'Color personalizado',
     'back' => 'Atrás',
     'close' => 'Cerrar',
+    'dismiss' => 'Descartar',
     'search' => 'Buscar',
     'filter' => 'Filtrar',
     'clear' => 'Limpiar',
@@ -55,6 +56,8 @@ return [
 
     'upload' => [
         'choose' => 'Elegir imagen',
+        'progress' => 'Progreso de la subida',
+        'cancel' => 'Cancelar la subida',
         'too_large' => 'Esa imagen supera los 2 MB.',
         'failed' => 'No se ha podido subir esa imagen. Inténtalo de nuevo.',
     ],
@@ -116,6 +119,13 @@ return [
 
     'session' => [
         'expiring' => 'Tu sesión está a punto de caducar',
+        'expiring_body' => 'Por tu seguridad, cerraremos tu sesión porque no ha habido actividad.',
+        /* :time es la cuenta atrás; la vista la envuelve en su propio elemento. */
+        'countdown' => 'La sesión caduca en :time',
+        'sign_out' => 'Cerrar sesión',
+        'stay' => 'Seguir con la sesión abierta',
         'expired' => 'Tu sesión ha caducado',
+        'expired_body' => 'Tu sesión terminó porque no hubo actividad. Vuelve a iniciar sesión para continuar.',
+        'sign_in' => 'Iniciar sesión',
     ],
 ];

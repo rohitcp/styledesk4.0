@@ -20,6 +20,7 @@ return [
     'custom_color' => '自定义颜色',
     'back' => '返回',
     'close' => '关闭',
+    'dismiss' => '关闭',
     'search' => '搜索',
     'filter' => '筛选',
     'clear' => '清除',
@@ -63,6 +64,8 @@ return [
      */
     'upload' => [
         'choose' => '选择图片',
+        'progress' => '上传进度',
+        'cancel' => '取消上传',
         'too_large' => '该图片超过 2 MB。',
         'failed' => '该图片上传失败，请重试。',
     ],
@@ -125,6 +128,13 @@ return [
 
     'session' => [
         'expiring' => '你的会话即将过期',
+        'expiring_body' => '为了你的账户安全，由于长时间没有操作，我们将退出你的登录。',
+        /* :time 是实时倒计时，由视图包裹在它自己的元素里。 */
+        'countdown' => '会话将在 :time 后过期',
+        'sign_out' => '退出登录',
+        'stay' => '保持登录',
         'expired' => '你的会话已过期',
+        'expired_body' => '由于长时间没有操作，你的会话已结束。请重新登录以继续。',
+        'sign_in' => '登录',
     ],
 ];

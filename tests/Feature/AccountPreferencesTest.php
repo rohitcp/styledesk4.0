@@ -44,6 +44,54 @@ class AccountPreferencesTest extends TestCase
             ->assertOk();
     }
 
+    /**
+     * Three cards, each shipping open with a summary to close onto.
+     *
+     * The summaries read the same values the controls are built from, so the
+     * assertion below is on the shipping state rather than on any one label:
+     * what has to hold is that a reader with no JavaScript still gets the
+     * fields, and that the script has both halves to swap between.
+     */
+    public function test_every_card_ships_open_with_a_summary_to_close_onto(): void
+    {
+        $response = $this->actingAs($this->member())
+            ->get(route('account.preferences'))
+            ->assertOk();
+
+        $body = $response->getContent();
+
+        $this->assertSame(3, substr_count($body, 'data-editable-card data-editing='));
+        $this->assertSame(3, substr_count($body, 'data-editable-view hidden'));
+        $this->assertSame(3, substr_count($body, 'data-editable-edit hidden'));
+        $this->assertStringNotContainsString('data-editing="true"', $body);
+
+        /* Without the partial the markup is a form that never closes, which
+           is exactly how this shipped once. */
+        $this->assertStringContainsString("querySelectorAll('[data-editable-card]')", $body);
+    }
+
+    /** The summary says what the control says, blank included. */
+    public function test_the_summary_names_the_value_the_control_holds(): void
+    {
+        $user = $this->member();
+
+        $this->actingAs($user)->patch(route('account.preferences.update'), [
+            'time_format' => '24',
+            'show_weekends' => '1',
+            'show_cancelled' => '0',
+        ]);
+
+        $formats = (array) config('business_profile.time_formats');
+
+        $this->actingAs($user->fresh())
+            ->get(route('account.preferences'))
+            ->assertOk()
+            ->assertSee($formats['24'])
+            ->assertSee(__('account.preferences.use_business'))
+            ->assertSee(__('common.on'))
+            ->assertSee(__('common.off'));
+    }
+
     public function test_preferences_are_saved(): void
     {
         $user = $this->member();

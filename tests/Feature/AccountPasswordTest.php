@@ -38,6 +38,49 @@ class AccountPasswordTest extends TestCase
         $this->actingAs($this->member())->get(route('account.password'))->assertOk();
     }
 
+    /**
+     * The card ships open, and the script closes it.
+     *
+     * That pairing is what a reader with no JavaScript gets, and asserting it
+     * pins the fallback: if the markup ever ships closed instead, somebody
+     * without scripts cannot change their password at all.
+     */
+    public function test_the_card_ships_open_with_a_summary_to_close_onto(): void
+    {
+        $response = $this->actingAs($this->member())
+            ->get(route('account.password'))
+            ->assertOk();
+
+        $response->assertSee('data-editing="false"', false);
+        $response->assertSee('data-editable-view hidden', false);
+        $response->assertSee('data-editable-edit hidden', false);
+        $response->assertSee('id="passwordFields"', false);
+
+        /* Without the partial the markup is a form that never closes, which
+           is exactly how this shipped once. */
+        $response->assertSee("querySelectorAll('[data-editable-card]')", false);
+    }
+
+    /** A refusal reopens the card, because the messages are attached to it. */
+    public function test_a_refused_attempt_leaves_the_card_open(): void
+    {
+        $user = $this->member();
+
+        $this->actingAs($user)
+            ->from(route('account.password'))
+            ->put(route('account.password.update'), [
+                'current_password' => 'not-my-password',
+                'password' => self::NEW_PASSWORD,
+                'password_confirmation' => self::NEW_PASSWORD,
+            ])
+            ->assertRedirect(route('account.password'));
+
+        $this->actingAs($user)
+            ->get(route('account.password'))
+            ->assertOk()
+            ->assertSee('data-editing="true"', false);
+    }
+
     public function test_the_password_is_changed(): void
     {
         $user = $this->member();

@@ -37,7 +37,7 @@
                 @endif
             </span>
             <span class="min-w-0 flex-1">{{ $toast['message'] }}</span>
-            <button type="button" class="styledesk_toast__close" data-toast-close aria-label="Dismiss">
+            <button type="button" class="styledesk_toast__close" data-toast-close aria-label="{{ __('common.dismiss') }}">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
                 </svg>
@@ -77,6 +77,12 @@
                 var ALERT = '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>' +
                             '<path d="M12 7.5v5M12 16v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
 
+                /* Encoded rather than interpolated into the attribute: the
+                   word is a translation, and a language whose word for this
+                   carries an apostrophe would otherwise end the JavaScript
+                   string it sits in. */
+                var DISMISS = @json(__('common.dismiss'));
+
                 function show(message, type) {
                     window.clearTimeout(timer);
                     host.className = 'styledesk_toast styledesk_toast--' + (type || 'success');
@@ -85,7 +91,7 @@
                           '<span class="styledesk_toast__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
                           (type === 'danger' ? ALERT : TICK) + '</svg></span>' +
                           '<span class="min-w-0 flex-1"></span>' +
-                          '<button type="button" class="styledesk_toast__close" data-toast-close aria-label="Dismiss">' +
+                          '<button type="button" class="styledesk_toast__close" data-toast-close aria-label=' + JSON.stringify(DISMISS) + '>' +
                           '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
                           '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>' +
                         '</div>';
