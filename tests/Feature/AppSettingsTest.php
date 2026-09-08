@@ -222,6 +222,35 @@ class AppSettingsTest extends TestCase
         $response->assertOk();
     }
 
+    /**
+     * Every group is a disclosure, and it ships open.
+     *
+     * The collapsing is the script's job on arrival: markup that renders
+     * closed would leave a reader without JavaScript looking at a page of
+     * headings with no way to open one.
+     */
+    public function test_each_group_renders_as_an_expanded_accordion(): void
+    {
+        $response = $this->actingAs($this->member('owner'))->get('http://styledesk.test/settings');
+
+        $response->assertOk();
+
+        $content = $response->getContent();
+        $groups = count(config('app_settings.groups'));
+
+        // The header is counted by the panel it points at: `data-settings-toggle`
+        // alone would also match the script's own selector.
+        $this->assertSame($groups, substr_count($content, 'aria-controls="settings-group-'), 'Every group needs a header that toggles it.');
+        $this->assertSame($groups, substr_count($content, 'styledesk_accordion__panel'), 'Every group needs a panel to collapse.');
+        $this->assertSame($groups, substr_count($content, 'aria-expanded="true"'), 'Every group ships open, so JS-less readers see all of them.');
+
+        // The header controls the panel it sits above, by id.
+        foreach (range(0, $groups - 1) as $index) {
+            $this->assertStringContainsString('aria-controls="settings-group-'.$index.'"', $content);
+            $this->assertStringContainsString('id="settings-group-'.$index.'"', $content);
+        }
+    }
+
     public function test_unbuilt_modules_are_marked_rather_than_linked(): void
     {
         // A card that looks clickable and goes nowhere is worse than one that
