@@ -13,6 +13,7 @@ use App\Models\TenantOnboarding;
 use App\Models\User;
 use App\Support\DashboardData;
 use App\Support\DashboardLayout;
+use App\Support\Icon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -360,6 +361,26 @@ class DashboardRolesTest extends TestCase
             ->assertSee(__('dashboard.performance.title'))
             ->assertSee(__('dashboard.bookings_today.title'))
             ->assertSee(__('dashboard.checkin.title'));
+    }
+
+    /**
+     * The greeting carries a tick, and the tick stays decorative.
+     *
+     * The icon is vendored by hand out of a gitignored bundle, so a missing
+     * file is not a broken image — it is a 500 on the dashboard, the one
+     * page every role lands on.
+     */
+    public function test_the_greeting_carries_a_decorative_tick(): void
+    {
+        $response = $this->actingAs($this->owner())->get(route('dashboard'));
+
+        $response->assertOk();
+
+        $this->assertStringContainsString(
+            Icon::inline('check', 20)->toHtml(),
+            $response->getContent(),
+            'The greeting has lost its tick.'
+        );
     }
 
     public function test_the_front_desk_dashboard_renders_the_queue_and_no_revenue(): void
