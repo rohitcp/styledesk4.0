@@ -83,6 +83,9 @@ return [
     'duplicated' => 'Copié. C’est un brouillon jusqu’à ce que vous le publiiez.',
     'disabled' => 'Abonnement retiré de la vente.',
     'enabled' => 'Abonnement remis en vente.',
+    'on_sale_locked' => 'Retirez cet abonnement de la vente avant de le modifier.',
+    'off_sale_confirm_title' => 'Retirer cet abonnement de la vente ?',
+    'off_sale_confirm' => 'Cela empêche les nouveaux clients de l’acheter. Les abonnements déjà détenus par des clients ne sont pas affectés.',
     'copy_of' => 'Copie de :name',
 
     'tabs' => [

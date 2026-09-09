@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Service;
 use App\Models\TipSettings;
 use App\Support\Currencies;
+use App\Support\Money;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,6 +55,8 @@ class TipController extends Controller
             /* Named rather than read off each service's tenant relation:
                these rows are loaded without it. */
             'currency' => Currencies::resolve(),
+            /* The money a flat tip is in, for the boxes that hold one. */
+            'symbol' => Money::symbol(Currencies::resolve()),
         ]);
     }
 
@@ -65,9 +68,12 @@ class TipController extends Controller
         $data = $request->validate([
             'is_enabled' => ['nullable', 'boolean'],
             'default_tip_type' => ['required', Rule::in(TipSettings::TYPES)],
-            /* A hundred per cent is a tip the size of the bill, which is the
-               most anybody could mean by it. */
-            'default_tip_value' => ['required', 'integer', 'min:0', 'max:100'],
+            /* A hundred per cent is a tip the size of the bill, which is
+               the most anybody could mean by it. A flat sum has no such
+               ceiling to borrow — capping it at a hundred would be capping
+               the money rather than the share. */
+            'default_tip_value' => ['required', 'integer', 'min:0',
+                $request->input('default_tip_type') === 'fixed' ? 'max:100000' : 'max:100'],
             'require_selection' => ['nullable', 'boolean'],
             'allow_no_tip' => ['nullable', 'boolean'],
             'percentages' => ['nullable', 'array', 'max:6'],
@@ -76,6 +82,12 @@ class TipController extends Controller
                save bounced back with an error nobody could see, on a field
                they had deliberately left blank. */
             'percentages.*' => ['nullable', 'integer', 'min:1', 'max:100'],
+
+            /* The same row again, in money. Kept beside the percentages
+               rather than instead of them, so switching type and back does
+               not cost the business the list it spent a minute choosing. */
+            'amounts' => ['nullable', 'array', 'max:6'],
+            'amounts.*' => ['nullable', 'integer', 'min:1', 'max:100000'],
         ]);
 
         $wasEnabled = $settings->is_enabled;
@@ -92,6 +104,10 @@ class TipController extends Controller
             'percentages' => array_values(array_unique(array_map(
                 'intval',
                 array_filter($data['percentages'] ?? [], fn ($value) => $value !== null && $value !== '')
+            ))) ?: null,
+            'amounts' => array_values(array_unique(array_map(
+                'intval',
+                array_filter($data['amounts'] ?? [], fn ($value) => $value !== null && $value !== '')
             ))) ?: null,
         ]);
 

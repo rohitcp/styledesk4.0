@@ -83,6 +83,9 @@ return [
     'duplicated' => 'Kopiert. Bis zur Veröffentlichung ist es ein Entwurf.',
     'disabled' => 'Mitgliedschaft aus dem Verkauf genommen.',
     'enabled' => 'Mitgliedschaft wieder im Verkauf.',
+    'on_sale_locked' => 'Nehmen Sie diese Mitgliedschaft aus dem Verkauf, bevor Sie sie bearbeiten.',
+    'off_sale_confirm_title' => 'Diese Mitgliedschaft aus dem Verkauf nehmen?',
+    'off_sale_confirm' => 'Neue Kundinnen und Kunden können sie dann nicht mehr kaufen. Bereits gekaufte Mitgliedschaften bleiben unberührt.',
     'copy_of' => 'Kopie von :name',
 
     'tabs' => [

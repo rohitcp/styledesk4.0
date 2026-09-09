@@ -45,6 +45,10 @@ return [
 
     'percentages' => 'Offered at the till',
     'percentages_hint' => 'Up to six. The client also gets a box to type their own.',
+    'amounts' => 'Offered at the till',
+    'amounts_hint' => 'Up to six. The client also gets a box to type their own.',
+    'default_tip_percent' => 'Default tip %',
+    'default_tip_amount' => 'Default tip amount',
 
     'require_selection' => 'Ask the client to choose',
     'require_selection_hint' => 'They have to answer before the payment goes through. Answering with “No tip” still counts as answering — it is a prompt, not a charge.',

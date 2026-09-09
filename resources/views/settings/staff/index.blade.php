@@ -182,10 +182,16 @@
             'columns' => [
                 ['field' => 'name', 'title' => __('staff.columns.name'), 'type' => 'primary', 'grow' => 3, 'min' => 200, 'responsive' => 0],
                 ['field' => 'role', 'title' => __('staff.columns.role'), 'grow' => 1.6, 'min' => 140, 'responsive' => 2],
-                ['field' => 'location', 'title' => __('staff.columns.location'), 'grow' => 1.5, 'min' => 140, 'responsive' => 5],
+                /* Beside the role rather than anywhere else: the two are
+                   read together — what somebody may do, and what they are
+                   called — and the pair is what tells two Service Providers
+                   apart. It leaves before the role does, because access is
+                   the one the table narrows down to. */
+                ['field' => 'job_title', 'title' => __('staff.columns.job_title'), 'grow' => 1.6, 'min' => 140, 'responsive' => 4],
+                ['field' => 'location', 'title' => __('staff.columns.location'), 'grow' => 1.5, 'min' => 140, 'responsive' => 6],
                 ['field' => 'phone', 'title' => __('staff.fields.phone'), 'grow' => 1.4, 'min' => 130, 'responsive' => 3],
-                ['field' => 'email', 'title' => __('staff.profile.email'), 'grow' => 2, 'min' => 180, 'responsive' => 4],
-                ['field' => 'services', 'title' => __('staff.columns.services'), 'width' => 90, 'responsive' => 6],
+                ['field' => 'email', 'title' => __('staff.profile.email'), 'grow' => 2, 'min' => 180, 'responsive' => 5],
+                ['field' => 'services', 'title' => __('staff.columns.services'), 'width' => 90, 'responsive' => 7],
                 ['field' => 'status', 'title' => __('staff.columns.status'), 'type' => 'badge', 'width' => 120, 'responsive' => 1],
                 ['field' => 'actions', 'type' => 'actions'],
             ],

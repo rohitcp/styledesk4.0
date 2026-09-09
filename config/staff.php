@@ -126,6 +126,7 @@ return [
         'name' => 'Name',
         'recent' => 'Recently added',
         'role' => 'Role',
+        'job_title' => 'Job title',
         'location' => 'Location',
         'status' => 'Status',
     ],

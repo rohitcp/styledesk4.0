@@ -46,6 +46,10 @@ return [
 
     'percentages' => 'An der Kasse angeboten',
     'percentages_hint' => 'Bis zu sechs. Die Kundschaft bekommt zusätzlich ein Feld für einen eigenen Betrag.',
+    'amounts' => 'An der Kasse angeboten',
+    'amounts_hint' => 'Bis zu sechs. Die Kundschaft hat zusätzlich ein Feld für einen eigenen Betrag.',
+    'default_tip_percent' => 'Standard-Trinkgeld %',
+    'default_tip_amount' => 'Standard-Trinkgeldbetrag',
 
     'require_selection' => 'Kundschaft zur Auswahl auffordern',
     'require_selection_hint' => 'Es muss geantwortet werden, bevor die Zahlung durchgeht. „Kein Trinkgeld“ ist ebenfalls eine Antwort — es ist eine Frage, keine Belastung.',

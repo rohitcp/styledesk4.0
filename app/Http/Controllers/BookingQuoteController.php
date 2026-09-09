@@ -240,6 +240,25 @@ class BookingQuoteController extends Controller
             'tip_percent' => $tipPercent,
             'tips_enabled' => (bool) $tipSettings->is_enabled,
             'tip_percentages' => $tipSettings->offeredPercentages(),
+            /* The till's own row, in whichever units this business tips in.
+               A business set to flat sums offers $5/$10/$15/$20 and no
+               percentage among them — showing a row of percentages there
+               would be offering a choice its settings say it does not
+               make. */
+            'tip_type' => $tipSettings->default_tip_type,
+            'tip_amounts' => $tipSettings->offeredAmounts(),
+            /* Worked out here rather than in the screen: what a flat sum
+               comes to is a sum, and a chip has to show it as money. */
+            'tip_amount_options' => collect($tipSettings->offeredAmounts())
+                ->map(fn (int $amount) => [
+                    'value' => $amount,
+                    /* Never more than the work it is on: a flat tip larger
+                       than the bill is somebody's typo, not a decision. */
+                    'minor' => min($amount * 100, $discounted),
+                    'label' => $totals->money(min($amount * 100, $discounted)),
+                ])
+                ->values()
+                ->all(),
             'allow_no_tip' => (bool) $tipSettings->allow_no_tip,
             'require_selection' => (bool) $tipSettings->require_selection,
             /* What the screen opens on, and what it would go back to. Sent

@@ -475,6 +475,32 @@ function applyCustomTip() {
 }
 
 /**
+ * Whether the amount in the custom box is one of the till's own chips.
+ *
+ * A flat-sum chip and a typed amount reach the server the same way, so
+ * without this the Custom chip would light beside the $10 the reader just
+ * pressed and the row would claim two answers.
+ */
+const onATillAmount = computed(() => customTip.value !== ''
+    && (quote.value?.tip_amount_options ?? []).some((o) => String(o.value) === String(customTip.value)));
+
+/**
+ * A flat sum the business offers at the till.
+ *
+ * The same thing as typing that amount into the custom box — a fixed tip is
+ * an amount, not a share — so it travels as one and the chip lights from the
+ * amount rather than from a percentage it does not have.
+ */
+function chooseTipAmount(amount) {
+    tipChosen.value = true;
+    tipPercent.value = null;
+    customTip.value = String(amount);
+
+    window.clearTimeout(quoteTimer);
+    refreshQuote();
+}
+
+/**
  * Open the custom box.
  *
  * Its own function because pressing Custom is an answer — without it the
@@ -5173,15 +5199,31 @@ const summaryOf = (section) => {
                             <span class="font-semibold">{{ labels.pay?.no_tip }}</span>
                         </button>
 
-                        <button v-for="percent in quote.tip_percentages" :key="percent" type="button"
-                                class="styledesk_tipchip"
-                                :class="{ 'styledesk_tipchip--on': tipPercent === percent && customTip === '' }"
-                                @click="chooseTipPercent(percent)">
-                            <span class="font-semibold">{{ percent }}%</span>
-                        </button>
+                        <!-- Whichever row this business tips in. A salon set
+                             to flat sums offers $5/$10/$15/$20 and no
+                             percentage among them: the settings decide the
+                             units, and a chip in the wrong one is an offer
+                             the totals cannot honour. -->
+                        <template v-if="quote.tip_type === 'fixed'">
+                            <button v-for="option in quote.tip_amount_options" :key="option.value" type="button"
+                                    class="styledesk_tipchip"
+                                    :class="{ 'styledesk_tipchip--on': tipPercent === null && customTip === String(option.value) }"
+                                    @click="chooseTipAmount(option.value)">
+                                <span class="font-semibold">{{ option.label }}</span>
+                            </button>
+                        </template>
+
+                        <template v-else>
+                            <button v-for="percent in quote.tip_percentages" :key="percent" type="button"
+                                    class="styledesk_tipchip"
+                                    :class="{ 'styledesk_tipchip--on': tipPercent === percent && customTip === '' }"
+                                    @click="chooseTipPercent(percent)">
+                                <span class="font-semibold">{{ percent }}%</span>
+                            </button>
+                        </template>
 
                         <button type="button" class="styledesk_tipchip"
-                                :class="{ 'styledesk_tipchip--on': tipChosen && tipPercent === null }"
+                                :class="{ 'styledesk_tipchip--on': tipChosen && tipPercent === null && !onATillAmount }"
                                 @click="chooseCustomTip">
                             <span class="font-semibold">{{ labels.pay?.custom_tip }}</span>
                         </button>

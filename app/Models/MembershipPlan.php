@@ -165,6 +165,34 @@ class MembershipPlan extends Model
         };
     }
 
+    /**
+     * Whether clients can buy this right now.
+     *
+     * The same three answers status() gives, read the other way round: a
+     * draft has never been on sale and a plan taken off sale is not on it,
+     * and neither can be bought.
+     */
+    public function isOnSale(): bool
+    {
+        return $this->status() === 'active';
+    }
+
+    /**
+     * Whether the details may be changed.
+     *
+     * Not while it is on sale. A price or a benefit edited underneath a
+     * membership somebody is halfway through buying is a plan that meant two
+     * things in one afternoon, and there is no answer to "which did I buy?"
+     * that a client would accept. Taking it off sale first stops new
+     * purchases and leaves every existing membership exactly as it was.
+     *
+     * A draft is editable throughout — being unfinished is what a draft is.
+     */
+    public function isEditable(): bool
+    {
+        return ! $this->isOnSale();
+    }
+
     public function isRecurring(): bool
     {
         return $this->type === 'recurring';

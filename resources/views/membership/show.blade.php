@@ -58,16 +58,58 @@
         </div>
 
         <div class="flex flex-wrap gap-2 shrink-0">
+          {{-- Back to the list this membership was opened from — plans or
+               packages, not whichever tab happens to be first. The same
+               button the service and resource pages carry, in the same
+               place. --}}
+          <a href="{{ $plan->isRecurring() ? route('membership.plans') : route('membership.packages') }}"
+             class="styledesk_action">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {{ __('common.back') }}
+          </a>
+
           @if ($canEdit)
-            <a href="{{ route('membership.edit', $plan) }}" class="styledesk_action">
-              <x-icon name="pen-to-square" size="14" />
-              {{ __('membership.actions.edit') }}
-            </a>
+            {{-- Not while it is on sale. A price or a benefit edited
+                 underneath somebody halfway through buying is a plan that
+                 meant two things in one afternoon. Taking it off sale first
+                 is one click and touches nothing already bought.
+
+                 A span rather than a disabled link: a disabled control takes
+                 no pointer events, so the reason has to hang on something
+                 around it — and it is written out below as well, because a
+                 title nobody hovers is a reason nobody reads. --}}
+            @if ($plan->isEditable())
+              <a href="{{ route('membership.edit', $plan) }}" class="styledesk_action">
+                <x-icon name="pen-to-square" size="14" />
+                {{ __('membership.actions.edit') }}
+              </a>
+            @else
+              <span title="{{ __('membership.on_sale_locked') }}">
+                <span class="styledesk_action" aria-disabled="true">
+                  <x-icon name="pen-to-square" size="14" />
+                  {{ __('membership.actions.edit') }}
+                </span>
+              </span>
+            @endif
 
             <form method="POST" action="{{ route('membership.toggle', $plan) }}">
               @csrf
               @method('PATCH')
-              <button type="submit" class="styledesk_action">
+
+              {{-- Asked before, not after: taking it off sale is how a
+                   business stops selling something, and doing it by accident
+                   is a product quietly missing from the booking screen.
+                   Putting it back on needs no such question. --}}
+              <button type="submit" class="styledesk_action"
+                      @unless ($plan->is_disabled)
+                        data-confirm-title="{{ __('membership.off_sale_confirm_title') }}"
+                        data-confirm="{{ __('membership.off_sale_confirm') }}"
+                        data-confirm-label="{{ __('membership.actions.disable') }}"
+                        {{-- Not danger: nothing is deleted and nothing a
+                             client holds changes. It stops new purchases,
+                             and it is undone by the same button. --}}
+                        data-confirm-tone="brand"
+                      @endunless>
                 {{ $plan->is_disabled ? __('membership.actions.enable') : __('membership.actions.disable') }}
               </button>
             </form>
@@ -77,6 +119,10 @@
 
       @if ($plan->is_disabled)
         <p class="mt-4 text-[12.5px] text-sub bg-hover rounded-lg px-3 py-2.5">{{ __('membership.show.disabled_note') }}</p>
+      @elseif ($plan->isOnSale() && $canEdit)
+        {{-- Why Edit is greyed out, in the place somebody looks after
+             pressing it and finding nothing happened. --}}
+        <p class="mt-4 text-[12.5px] text-sub bg-hover rounded-lg px-3 py-2.5">{{ __('membership.on_sale_locked') }}</p>
       @elseif ($plan->is_draft)
         <div class="mt-4 sd-card p-4 flex flex-wrap items-center gap-3">
           <p class="text-[12.5px] text-sub flex-1 min-w-[240px]">{{ __('membership.show.draft_note') }}</p>

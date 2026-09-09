@@ -46,6 +46,10 @@ return [
 
     'percentages' => 'Proposé en caisse',
     'percentages_hint' => 'Jusqu’à six. Le client dispose aussi d’un champ pour saisir le sien.',
+    'amounts' => 'Proposé en caisse',
+    'amounts_hint' => 'Jusqu’à six. Le client dispose aussi d’une case pour saisir le sien.',
+    'default_tip_percent' => 'Pourboire par défaut %',
+    'default_tip_amount' => 'Montant de pourboire par défaut',
 
     'require_selection' => 'Demander au client de choisir',
     'require_selection_hint' => 'Il doit répondre avant que le paiement passe. Répondre « Pas de pourboire » compte comme une réponse — c’est une invite, pas un débit.',

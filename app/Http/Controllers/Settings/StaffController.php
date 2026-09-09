@@ -127,7 +127,15 @@ class StaffController extends Controller
                own: it is what tells two people with the same name apart, and
                it has to survive the table narrowing. */
             'primary_badge' => $member->employee_ref,
-            'role' => $member->job_title ?: $member->roleName(),
+            /* Two different facts, and they were sharing one column: what
+               somebody may do in StyleDesk, and what they are called in the
+               salon. A Senior Stylist and a Massage Therapist can hold the
+               same role, and a Manager who never filled in a job title was
+               showing as "Manager" in a column that meant neither reliably.
+               Changing one has never changed the other; now the listing says
+               so. */
+            'role' => $member->roleName(),
+            'job_title' => $member->job_title ?: null,
             'location' => $member->location?->name ?? __('staff.all_locations'),
             'services' => (string) $member->services_count,
             'phone' => $member->phone,
@@ -2038,6 +2046,14 @@ class StaffController extends Controller
             // id keeps roles of the same kind together, which is what the
             // sort is for.
             'role' => $query->orderBy('role_id')->orderBy('first_name'),
+            /* Alphabetical, with the ones who have no title last rather than
+               leading a list of blanks. A flag rather than a sentinel string:
+               where '~~~' sorts against letters is a question about the
+               collation, and this asks no such question. */
+            'job_title' => $query
+                ->orderByRaw("CASE WHEN job_title IS NULL OR job_title = '' THEN 1 ELSE 0 END")
+                ->orderBy('job_title')
+                ->orderBy('first_name'),
             'location' => $query->orderBy('location_id')->orderBy('first_name'),
             'status' => $query->orderBy('is_active')->orderBy('first_name'),
             default => $query->orderBy('first_name')->orderBy('last_name'),

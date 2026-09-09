@@ -81,6 +81,7 @@ return [
     'columns' => [
         'name' => 'Name',
         'role' => 'Role',
+        'job_title' => 'Job title',
         'location' => 'Location',
         'contact' => 'Contact',
         'services' => 'Services',

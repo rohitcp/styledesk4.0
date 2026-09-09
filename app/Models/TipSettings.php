@@ -49,17 +49,24 @@ class TipSettings extends Model
     /**
      * Quick picks for a flat sum, on the service form.
      *
-     * Shortcuts into the box beside them rather than a setting: a flat tip
-     * has no business-wide list to read, and three round numbers save the
-     * typing without claiming to be what the business offers.
+     * Shortcuts into the box beside them rather than a setting: a service's
+     * own flat tip is one number, and three round ones save the typing.
      */
     public const QUICK_FIXED_AMOUNTS = [5, 10, 15];
+
+    /**
+     * What a client is offered when the business tips in flat sums and has
+     * not said otherwise. The same four the till shows for percentages, in
+     * the shape money comes in.
+     */
+    public const DEFAULT_AMOUNTS = [5, 10, 15, 20];
 
     protected function casts(): array
     {
         return [
             'is_enabled' => 'boolean',
             'percentages' => 'array',
+            'amounts' => 'array',
             'default_tip_value' => 'integer',
             'require_selection' => 'boolean',
             'allow_no_tip' => 'boolean',
@@ -80,6 +87,7 @@ class TipSettings extends Model
             [
                 'is_enabled' => false,
                 'percentages' => self::DEFAULT_PERCENTAGES,
+                'amounts' => self::DEFAULT_AMOUNTS,
                 'default_tip_type' => 'percent',
                 'default_tip_value' => 20,
                 'require_selection' => false,
@@ -99,5 +107,48 @@ class TipSettings extends Model
             ->values();
 
         return $percentages->isEmpty() ? self::DEFAULT_PERCENTAGES : $percentages->all();
+    }
+
+    /**
+     * The flat sums to offer, falling back to ours.
+     *
+     * Whole units of the business's own money — the same units
+     * default_tip_value holds for a flat tip, so nothing has to translate
+     * between the default and the row it sits in.
+     *
+     * @return array<int, int>
+     */
+    public function offeredAmounts(): array
+    {
+        $amounts = collect($this->amounts ?: self::DEFAULT_AMOUNTS)
+            ->map(fn ($value) => (int) $value)
+            ->filter(fn (int $value) => $value > 0)
+            ->unique()
+            ->sort()
+            ->values();
+
+        return $amounts->isEmpty() ? self::DEFAULT_AMOUNTS : $amounts->all();
+    }
+
+    /**
+     * Whichever list the till should actually show.
+     *
+     * The type decides: a business tipping in flat sums has no use for a row
+     * of percentages, and showing one is offering a choice its own settings
+     * say it does not make.
+     *
+     * @return array<int, int>
+     */
+    public function offeredTips(): array
+    {
+        return $this->default_tip_type === 'fixed'
+            ? $this->offeredAmounts()
+            : $this->offeredPercentages();
+    }
+
+    /** Whether the business tips in flat sums rather than percentages. */
+    public function tipsInAmounts(): bool
+    {
+        return $this->default_tip_type === 'fixed';
     }
 }

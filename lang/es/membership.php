@@ -83,6 +83,9 @@ return [
     'duplicated' => 'Copiada. Es un borrador hasta que la publiques.',
     'disabled' => 'Membresía retirada de la venta.',
     'enabled' => 'Membresía de nuevo a la venta.',
+    'on_sale_locked' => 'Retira esta membresía de la venta antes de editarla.',
+    'off_sale_confirm_title' => '¿Retirar esta membresía de la venta?',
+    'off_sale_confirm' => 'Esto impide que nuevos clientes la compren. Las membresías que los clientes ya tienen no se ven afectadas.',
     'copy_of' => 'Copia de :name',
 
     'tabs' => [

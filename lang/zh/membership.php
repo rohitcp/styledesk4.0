@@ -82,6 +82,9 @@ return [
     'duplicated' => '已复制。发布前它是草稿。',
     'disabled' => '会员方案已下架。',
     'enabled' => '会员方案已重新上架。',
+    'on_sale_locked' => '编辑前请先把这个会员下架。',
+    'off_sale_confirm_title' => '要把这个会员下架吗？',
+    'off_sale_confirm' => '下架后新客户将无法购买。客户已经购买的会员不受影响。',
     'copy_of' => ':name 的副本',
 
     'tabs' => [

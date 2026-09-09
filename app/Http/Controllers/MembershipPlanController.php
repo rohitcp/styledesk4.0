@@ -225,6 +225,7 @@ class MembershipPlanController extends Controller
     public function edit(Request $request, MembershipPlan $plan): View
     {
         $this->allow($request, 'clients.edit');
+        $this->guardOnSale($plan);
 
         return view('membership.form', $this->formData($plan, $plan->type));
     }
@@ -232,6 +233,7 @@ class MembershipPlanController extends Controller
     public function update(Request $request, MembershipPlan $plan): RedirectResponse
     {
         $this->allow($request, 'clients.edit');
+        $this->guardOnSale($plan);
 
         $data = $this->validated($request, $plan);
 
@@ -281,6 +283,19 @@ class MembershipPlanController extends Controller
 
         return redirect()->route('membership.edit', $copy)
             ->with('toast', ['type' => 'success', 'message' => __('membership.duplicated')]);
+    }
+
+    /**
+     * A membership on sale is not edited.
+     *
+     * Checked here rather than only in the screen: a disabled button is a
+     * courtesy, and the rule has to hold for anybody who reaches the URL
+     * another way. Taking it off sale first is one click, and it stops new
+     * purchases without touching a single membership already bought.
+     */
+    private function guardOnSale(MembershipPlan $plan): void
+    {
+        abort_if($plan->isOnSale(), 403, __('membership.on_sale_locked'));
     }
 
     /**
@@ -599,7 +614,12 @@ class MembershipPlanController extends Controller
 
         return array_values(array_filter([
             ['label' => __('membership.actions.view'), 'url' => route('membership.show', $plan)],
-            $canEdit ? ['label' => __('membership.actions.edit'), 'url' => route('membership.edit', $plan)] : null,
+            /* Only where it would actually work: a row menu offering Edit
+               on a plan that is on sale is an offer the next screen refuses.
+               Take it off sale from its own page first. */
+            $canEdit && $plan->isEditable()
+                ? ['label' => __('membership.actions.edit'), 'url' => route('membership.edit', $plan)]
+                : null,
             $canEdit ? ['label' => __('membership.actions.duplicate'), 'url' => route('membership.duplicate', $plan)] : null,
         ]));
     }

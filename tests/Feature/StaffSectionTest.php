@@ -402,7 +402,10 @@ class StaffSectionTest extends TestCase
            it is what tells two people of the same name apart, so it has to
            survive the table narrowing. */
         $this->assertSame('EMP-014', $row['primary_badge']);
-        $this->assertSame('Salon Manager', $row['role']);
+        /* Two columns, two facts: the role is access, the job title is what
+           they are called. They shared one column until they were split. */
+        $this->assertSame('Service Provider', $row['role']);
+        $this->assertSame('Salon Manager', $row['job_title']);
         $this->assertSame('+15125550001', $row['phone']);
         $this->assertSame($member->email, $row['email']);
         $this->assertSame('Active', $row['status']);

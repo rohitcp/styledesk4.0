@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Client;
+use App\Models\ClientMembership;
 use App\Models\Location;
 use App\Models\MembershipPlan;
 use App\Models\MembershipSettings;
@@ -110,6 +112,48 @@ class MembershipPlanTest extends TestCase
             'sell_in_store' => 1,
             'is_draft' => 0,
         ];
+    }
+
+    /**
+     * A membership somebody has already bought.
+     *
+     * Built directly rather than through the till: this is only ever used to
+     * prove that taking a plan off sale leaves it alone, and a sale would
+     * bring a payment and a card into a test about neither.
+     */
+    private function soldMembership(MembershipPlan $plan): ClientMembership
+    {
+        $client = Client::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'client_ref' => Client::nextRef($this->tenant->getTenantKey()),
+            'first_name' => 'Ada', 'last_name' => 'Reed', 'email' => 'ada@styledesk.test',
+        ]);
+
+        return ClientMembership::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'client_id' => $client->id,
+            'membership_plan_id' => $plan->id,
+            'status' => 'active',
+            'starts_on' => now()->toDateString(),
+            'type' => $plan->type,
+            'price_minor' => (int) $plan->price_minor,
+            'currency_code' => Currencies::primaryFor($this->tenant),
+            'billing_frequency' => $plan->billing_frequency,
+        ]);
+    }
+
+    /**
+     * A plan that may be edited.
+     *
+     * Editing is refused while a membership is on sale, so every test about
+     * editing takes it off sale first — which is exactly what the screen
+     * asks somebody to do.
+     */
+    private function offSale(MembershipPlan $plan): MembershipPlan
+    {
+        $plan->forceFill(['is_disabled' => true])->save();
+
+        return $plan->fresh();
     }
 
     private function plan(array $overrides = []): MembershipPlan
@@ -252,6 +296,130 @@ class MembershipPlanTest extends TestCase
             ->assertSessionHasErrors('services');
     }
 
+    // --------------------------------------------- editing what is on sale
+
+    /**
+     * A membership on sale is not edited.
+     *
+     * A price or a benefit changed underneath somebody halfway through
+     * buying is a plan that meant two things in one afternoon, and there is
+     * no answer to "which did I buy?" that a client would accept.
+     */
+    public function test_a_membership_on_sale_cannot_be_edited(): void
+    {
+        $this->membershipOn();
+        $plan = $this->plan();
+
+        $this->assertTrue($plan->isOnSale());
+
+        $this->actingAs($this->owner())->get(route('membership.edit', $plan))->assertForbidden();
+
+        $this->actingAs($this->owner())
+            ->patch(route('membership.update', $plan), $this->payload(['name' => 'Renamed']))
+            ->assertForbidden();
+
+        $this->assertSame('Monthly Massage Membership', $plan->fresh()->name);
+    }
+
+    /** The screen says why, and offers the one action that unlocks it. */
+    public function test_the_page_explains_why_edit_is_off_and_offers_the_way_round_it(): void
+    {
+        $this->membershipOn();
+        $plan = $this->plan();
+
+        $page = $this->actingAs($this->owner())->get(route('membership.show', $plan))->assertOk();
+
+        $page->assertSee(__('membership.on_sale_locked'))
+            ->assertSee('aria-disabled="true"', false)
+            ->assertDontSee('href="'.route('membership.edit', $plan).'"', false)
+            ->assertSee(__('membership.actions.disable'));
+
+        /* And taking it off sale is asked about first. */
+        $page->assertSee(__('membership.off_sale_confirm_title'), false)
+            ->assertSee(__('membership.off_sale_confirm'), false);
+    }
+
+    /**
+     * Taken off sale, it opens.
+     *
+     * And nothing already bought is touched by the switch — which is the
+     * whole reason it is safe to ask somebody to use it.
+     */
+    public function test_taking_it_off_sale_unlocks_editing_and_leaves_members_alone(): void
+    {
+        $this->membershipOn();
+        $plan = $this->plan();
+        $membership = $this->soldMembership($plan);
+
+        $this->actingAs($this->owner())
+            ->patch(route('membership.toggle', $plan))
+            ->assertRedirect();
+
+        $plan = $plan->fresh();
+
+        $this->assertTrue($plan->is_disabled);
+        $this->assertFalse($plan->isOnSale());
+        $this->assertTrue($plan->isEditable());
+
+        $this->actingAs($this->owner())->get(route('membership.edit', $plan))->assertOk();
+
+        $this->actingAs($this->owner())
+            ->patch(route('membership.update', $plan), $this->payload(['name' => 'Renamed']))
+            ->assertRedirect();
+
+        $this->assertSame('Renamed', $plan->fresh()->name);
+
+        /* The client keeps exactly what they bought. */
+        $membership = $membership->fresh();
+        $this->assertSame('active', $membership->status);
+        $this->assertSame(7900, (int) $membership->price_minor);
+    }
+
+    /** And it can go back on sale once the changes are made. */
+    public function test_it_can_be_put_back_on_sale(): void
+    {
+        $this->membershipOn();
+        $plan = $this->offSale($this->plan());
+
+        $this->actingAs($this->owner())
+            ->patch(route('membership.toggle', $plan))
+            ->assertRedirect();
+
+        $this->assertTrue($plan->fresh()->isOnSale());
+    }
+
+    /**
+     * A draft is editable throughout.
+     *
+     * Being unfinished is what a draft is, and nobody can have bought one.
+     */
+    public function test_a_draft_is_still_editable(): void
+    {
+        $this->membershipOn();
+        $plan = $this->plan(['is_draft' => true]);
+
+        $this->assertFalse($plan->isOnSale());
+
+        $this->actingAs($this->owner())->get(route('membership.edit', $plan))->assertOk();
+    }
+
+    /** The listing does not offer an Edit the next screen would refuse. */
+    public function test_the_row_menu_hides_edit_while_on_sale(): void
+    {
+        $this->membershipOn();
+        $plan = $this->plan();
+
+        $rows = $this->actingAs($this->owner())
+            ->getJson(route('membership.plans.data'))
+            ->assertOk()
+            ->json('data');
+
+        $labels = collect($rows[0]['menu'] ?? [])->pluck('label')->all();
+
+        $this->assertNotContains(__('membership.actions.edit'), $labels);
+        $this->assertContains(__('membership.actions.view'), $labels);
+    }
+
     // ------------------------------------------------- multi-currency
 
     /**
@@ -352,7 +520,7 @@ class MembershipPlanTest extends TestCase
             ]))
             ->assertRedirect();
 
-        $plan = MembershipPlan::withoutGlobalScopes()->firstOrFail();
+        $plan = $this->offSale(MembershipPlan::withoutGlobalScopes()->firstOrFail());
 
         $this->actingAs($this->owner())
             ->patch(route('membership.update', $plan), $this->payload([
@@ -450,7 +618,7 @@ class MembershipPlanTest extends TestCase
     public function test_a_plan_cannot_change_kind_after_it_exists(): void
     {
         $this->membershipOn();
-        $plan = $this->plan();
+        $plan = $this->offSale($this->plan());
 
         $this->actingAs($this->owner())
             ->patch(route('membership.update', $plan), $this->payload(['type' => 'package']))
@@ -473,7 +641,7 @@ class MembershipPlanTest extends TestCase
     public function test_editing_rewrites_the_service_list_rather_than_adding_to_it(): void
     {
         $this->membershipOn();
-        $plan = $this->plan();
+        $plan = $this->offSale($this->plan());
         $facial = $this->service('Facial');
 
         $this->actingAs($this->owner())
@@ -533,7 +701,7 @@ class MembershipPlanTest extends TestCase
         $this->actingAs($this->owner())
             ->post(route('membership.store'), $this->payload(['image_file_id' => $first]));
 
-        $plan = MembershipPlan::withoutGlobalScopes()->firstOrFail();
+        $plan = $this->offSale(MembershipPlan::withoutGlobalScopes()->firstOrFail());
         $second = $this->uploadImage('second.jpg');
 
         $this->actingAs($this->owner())
@@ -555,7 +723,7 @@ class MembershipPlanTest extends TestCase
         $this->actingAs($this->owner())
             ->post(route('membership.store'), $this->payload(['image_file_id' => $fileId]));
 
-        $plan = MembershipPlan::withoutGlobalScopes()->firstOrFail();
+        $plan = $this->offSale(MembershipPlan::withoutGlobalScopes()->firstOrFail());
 
         $this->actingAs($this->owner())
             ->patch(route('membership.update', $plan), $this->payload(['image_file_id' => null]));

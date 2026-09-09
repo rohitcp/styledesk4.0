@@ -82,6 +82,7 @@ return [
     'columns' => [
         'name' => 'Name',
         'role' => 'Rolle',
+        'job_title' => 'Position',
         'location' => 'Standort',
         'contact' => 'Kontakt',
         'services' => 'Leistungen',

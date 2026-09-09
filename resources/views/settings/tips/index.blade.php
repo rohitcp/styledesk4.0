@@ -42,6 +42,9 @@
         @foreach ($settings->offeredPercentages() as $percent)
           <input type="hidden" name="percentages[]" value="{{ $percent }}">
         @endforeach
+        @foreach ($settings->offeredAmounts() as $amount)
+          <input type="hidden" name="amounts[]" value="{{ $amount }}">
+        @endforeach
 
         <div class="sd-card p-5">
           <x-toggle name="is_enabled" :label="__('tips.enable')" :hint="__('tips.enable_hint')"
@@ -90,7 +93,7 @@
               <div class="grid sm:grid-cols-2 gap-4 mt-4">
                 <div>
                   <label for="tipType" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('tips.tip_type') }}</label>
-                  <select id="tipType" name="default_tip_type" class="sd-input">
+                  <select id="tipType" name="default_tip_type" class="sd-input" data-tip-type-select>
                     @foreach ($types as $type)
                       <option value="{{ $type }}" @selected($settings->default_tip_type === $type)>
                         {{ __('tips.types.'.$type) }}
@@ -99,10 +102,33 @@
                   </select>
                 </div>
 
+                {{-- One box, wearing whichever unit the type calls for. A
+                     percentage and a sum of money read the same as a bare
+                     number, and a business that has just chosen "amount" and
+                     sees a % will type a percentage. --}}
+                @php $tipsInAmounts = old('default_tip_type', $settings->default_tip_type) === 'fixed'; @endphp
+
                 <div>
-                  <label for="tipValue" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('tips.default_tip') }}</label>
-                  <input id="tipValue" name="default_tip_value" type="number" min="0" max="100" class="sd-input"
-                         value="{{ old('default_tip_value', $settings->default_tip_value) }}">
+                  <label for="tipValue" class="block text-[13px] font-medium text-ink mb-1.5">
+                    <span data-tip-default-label>
+                      {{ $tipsInAmounts ? __('tips.default_tip_amount') : __('tips.default_tip_percent') }}
+                    </span>
+                  </label>
+
+                  <div class="relative">
+                    <span class="styledesk_input__prefix pointer-events-none text-sub" aria-hidden="true"
+                          data-tip-default-prefix @unless ($tipsInAmounts) hidden @endunless>{{ $symbol }}</span>
+
+                    <span class="styledesk_input__suffix pointer-events-none text-sub" aria-hidden="true"
+                          data-tip-default-suffix @if ($tipsInAmounts) hidden @endif>%</span>
+
+                    <input id="tipValue" name="default_tip_value" type="number" min="0"
+                           max="{{ $tipsInAmounts ? 100000 : 100 }}"
+                           @class(['sd-input', 'styledesk_input--prefixed' => $tipsInAmounts])
+                           data-tip-default-value
+                           value="{{ old('default_tip_value', $settings->default_tip_value) }}">
+                  </div>
+
                   <p class="text-[12px] text-faint mt-1.5">{{ __('tips.default_tip_hint') }}</p>
                   <p data-error-for="default_tip_value" role="alert" class="mt-1.5 text-[12px] text-danger"
                      @unless ($errors->has('default_tip_value')) hidden @endunless>{{ $errors->first('default_tip_value') }}</p>
@@ -112,8 +138,13 @@
               {{-- What the client is actually offered. Six boxes rather than
                    a comma-separated string: a business typing "15,18,20"
                    into one field is one stray character away from a till
-                   that offers nothing. --}}
-              <div class="mt-4">
+                   that offers nothing.
+
+                   Both rows are always here and both always post. Only the
+                   one the type calls for is shown — the other is the answer
+                   this business gave last time it tipped that way, and
+                   switching back should find it where it was left. --}}
+              <div class="mt-4" data-tip-percent-row @if ($tipsInAmounts) hidden @endif>
                 <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('tips.percentages') }}</span>
                 <div class="flex flex-wrap gap-2">
                   @foreach (array_pad($settings->offeredPercentages(), 6, null) as $index => $percent)
@@ -125,6 +156,21 @@
                   @endforeach
                 </div>
                 <p class="text-[12px] text-faint mt-1.5">{{ __('tips.percentages_hint') }}</p>
+              </div>
+
+              <div class="mt-4" data-tip-amount-row @unless ($tipsInAmounts) hidden @endunless>
+                <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('tips.amounts') }}</span>
+                <div class="flex flex-wrap gap-2">
+                  @foreach (array_pad($settings->offeredAmounts(), 6, null) as $index => $amount)
+                    <div class="relative w-[96px]">
+                      <span class="styledesk_input__prefix pointer-events-none text-sub" aria-hidden="true">{{ $symbol }}</span>
+                      <input name="amounts[]" type="number" min="1" max="100000"
+                             class="sd-input styledesk_input--prefixed"
+                             value="{{ $amount }}" aria-label="{{ __('tips.amounts') }} {{ $index + 1 }}">
+                    </div>
+                  @endforeach
+                </div>
+                <p class="text-[12px] text-faint mt-1.5">{{ __('tips.amounts_hint') }}</p>
               </div>
 
               <div class="mt-5 space-y-4 border-t border-line pt-4">

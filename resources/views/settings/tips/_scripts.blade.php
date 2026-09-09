@@ -68,6 +68,53 @@
 </script>
 
 <script>
+  /* The suggestion card follows the tip type.
+
+     A percentage and a sum of money are two different questions, and the
+     till row for one has no meaning under the other: a business set to flat
+     sums does not offer 15%, and showing the row would be offering a choice
+     its own settings say it does not make.
+
+     Both rows stay in the form and both keep posting, so switching type and
+     back finds the list where it was left. */
+  (function () {
+    var select = document.querySelector('[data-tip-type-select]');
+    if (!select) return;
+
+    var label = document.querySelector('[data-tip-default-label]');
+    var prefix = document.querySelector('[data-tip-default-prefix]');
+    var suffix = document.querySelector('[data-tip-default-suffix]');
+    var value = document.querySelector('[data-tip-default-value]');
+    var percentRow = document.querySelector('[data-tip-percent-row]');
+    var amountRow = document.querySelector('[data-tip-amount-row]');
+    var words = @json([
+        'percent' => __('tips.default_tip_percent'),
+        'fixed' => __('tips.default_tip_amount'),
+    ]);
+
+    function sync() {
+      var money = select.value === 'fixed';
+
+      if (label) label.textContent = words[money ? 'fixed' : 'percent'];
+      if (prefix) prefix.hidden = !money;
+      if (suffix) suffix.hidden = money;
+
+      if (value) {
+        value.classList.toggle('styledesk_input--prefixed', money);
+        /* A share of a bill stops at the whole bill; money does not. */
+        value.max = money ? '100000' : '100';
+      }
+
+      if (percentRow) percentRow.hidden = money;
+      if (amountRow) amountRow.hidden = !money;
+    }
+
+    select.addEventListener('change', sync);
+    sync();
+  }());
+</script>
+
+<script>
   /* The switch saves itself.
      
      It is the only control in its form, and a toggle that needed a Save

@@ -34,6 +34,10 @@ return [
 
     'percentages' => 'Opciones al cobrar',
     'percentages_hint' => 'Hasta seis. El cliente también dispone de una casilla para escribir la suya.',
+    'amounts' => 'Ofrecido en la caja',
+    'amounts_hint' => 'Hasta seis. El cliente también tiene una casilla para escribir la suya.',
+    'default_tip_percent' => 'Propina predeterminada %',
+    'default_tip_amount' => 'Importe de propina predeterminado',
 
     'require_selection' => 'Pedir al cliente que elija',
     'require_selection_hint' => 'Debe responder antes de completar el pago. Responder «Sin propina» también cuenta: es una pregunta, no un cargo.',

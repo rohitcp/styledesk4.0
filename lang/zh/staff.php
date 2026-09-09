@@ -79,6 +79,7 @@ return [
     'columns' => [
         'name' => '姓名',
         'role' => '角色',
+        'job_title' => '职位',
         'location' => '门店',
         'contact' => '联系方式',
         'services' => '服务',

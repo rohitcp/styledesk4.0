@@ -43,6 +43,10 @@ return [
 
     'percentages' => '收银时提供的选项',
     'percentages_hint' => '最多六个。客户还会有一个可以自己填的输入框。',
+    'amounts' => '收银时提供',
+    'amounts_hint' => '最多六个。客户还可以自己填写金额。',
+    'default_tip_percent' => '默认小费百分比',
+    'default_tip_amount' => '默认小费金额',
 
     'require_selection' => '要求客户做出选择',
     'require_selection_hint' => '他们必须先回答，付款才能通过。选"不给小费"同样算作回答——这是一个提示，不是一笔费用。',

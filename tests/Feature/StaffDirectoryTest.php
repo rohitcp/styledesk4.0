@@ -107,9 +107,13 @@ class StaffDirectoryTest extends TestCase
         $rows = collect($this->payload()['data']);
 
         $this->assertSame(['Amara Person', 'Priya Person'], $rows->pluck('name')->all());
-        /* Job title where there is one, and the role where there is not: a
-           dash would read as "this person has no role". */
-        $this->assertSame(['Salon Manager', 'Senior Colourist'], $rows->pluck('role')->all());
+
+        /* Two columns, two facts. Role is what somebody may do in StyleDesk;
+           the job title is what they are called in the salon. They used to
+           share one column, which meant a Senior Colourist's access level
+           was never shown and a Manager with no title looked like a title. */
+        $this->assertSame(['Manager', 'Service Provider'], $rows->pluck('role')->all());
+        $this->assertSame(['Salon Manager', 'Senior Colourist'], $rows->pluck('job_title')->all());
         $this->assertSame(['Riverside', 'Riverside'], $rows->pluck('location')->all());
     }
 
@@ -317,6 +321,59 @@ class StaffDirectoryTest extends TestCase
         $roles = array_column($this->payload()['data'], 'role');
 
         $this->assertContains('Manager', $roles);
+    }
+
+    /**
+     * A staff member with no job title still has a role.
+     *
+     * The two used to share a column, so somebody who never filled a title
+     * in showed their role there instead — which read as a job title and
+     * meant the column could not be trusted for either.
+     */
+    public function test_a_member_with_no_job_title_still_shows_their_role(): void
+    {
+        $this->actingAs($this->owner());
+
+        $this->staff('Amara', 'manager');
+
+        $row = collect($this->payload()['data'])->firstWhere('name', 'Amara Person');
+
+        $this->assertSame('Manager', $row['role']);
+        $this->assertNull($row['job_title']);
+    }
+
+    /** Changing one leaves the other exactly as it was. */
+    public function test_the_role_and_the_job_title_move_independently(): void
+    {
+        $this->actingAs($this->owner());
+
+        $staff = $this->staff('Amara', 'manager', ['job_title' => 'Salon Manager']);
+
+        $staff->forceFill(['job_title' => 'Head of Colour'])->save();
+
+        $row = collect($this->payload()['data'])->firstWhere('name', 'Amara Person');
+
+        $this->assertSame('Manager', $row['role']);
+        $this->assertSame('Head of Colour', $row['job_title']);
+    }
+
+    /** And the listing can be ordered by either. */
+    public function test_the_directory_sorts_by_job_title(): void
+    {
+        $this->actingAs($this->owner());
+
+        $this->staff('Amara', 'manager', ['job_title' => 'Spa Manager']);
+        $this->staff('Priya', 'service-provider', ['job_title' => 'Esthetician']);
+        $this->staff('Nadia', 'service-provider');
+
+        $rows = collect($this->payload('sort=job_title')['data']);
+
+        /* Alphabetical, with the one who has no title last rather than
+           leading a list of blanks. */
+        $this->assertSame(
+            ['Esthetician', 'Spa Manager', null],
+            $rows->pluck('job_title')->all()
+        );
     }
 
     // ------------------------------------------------------ pagination

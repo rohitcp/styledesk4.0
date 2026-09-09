@@ -87,6 +87,9 @@ return [
     'saved' => 'Membership saved.',
     'duplicated' => 'Copied. This is a draft until you publish it.',
     'disabled' => 'Membership taken off sale.',
+    'on_sale_locked' => 'Take this membership off sale before editing.',
+    'off_sale_confirm_title' => 'Take this membership off sale?',
+    'off_sale_confirm' => 'This stops new clients from buying it. Memberships clients already hold are not affected.',
     'enabled' => 'Membership back on sale.',
     'copy_of' => 'Copy of :name',
 
