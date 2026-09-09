@@ -11,6 +11,7 @@ use App\Support\BookingAvailability;
 use App\Support\BookingStatusHistory;
 use App\Support\ClientActivityLog;
 use App\Support\LoyaltyPoints;
+use App\Support\MembershipCredits;
 use App\Support\ResourceAllocator;
 use App\Support\ReviewRequests;
 use Carbon\CarbonImmutable;
@@ -212,6 +213,14 @@ class BookingStatusController extends Controller
            before it was ever finished: it earned nothing, and the reconciler
            writes nothing when the two agree. */
         LoyaltyPoints::settle($booking, $request->user()->id);
+
+        /* And the membership credits it was holding. A client whose visit was
+           called off has not used their massage, and a credit quietly kept is
+           the business taking something it did not deliver.
+
+           Idempotent: only redemptions still held are released, so a status
+           handler that fires twice does not hand the same credit back twice. */
+        MembershipCredits::release($booking);
 
         return back()->with('toast', [
             'type' => 'success',

@@ -89,8 +89,14 @@ Route::middleware('backoffice.auth')->group(function (): void {
         ->middleware('backoffice.can:clients.view')->name('clients.index');
 
     /* Bound on the slug, which is what Tenant::getRouteKeyName says — the id
-       is a UUID and nobody reads one off a screen. */
-    Route::get('clients/{tenant}', [ClientController::class, 'show'])
+       is a UUID and nobody reads one off a screen.
+
+       The tab is a URL segment rather than a query string, and constrained to
+       the six the record has: a bookmarked tab must still be the tab it was,
+       and an unknown one must 404 rather than quietly show the Overview under
+       an address that promised something else. */
+    Route::get('clients/{tenant}/{tab?}', [ClientController::class, 'show'])
+        ->whereIn('tab', ClientController::TABS)
         ->middleware('backoffice.can:clients.view')->name('clients.show');
 
     /* Switching a business off is `clients.manage`, not `clients.view`: the
@@ -101,6 +107,12 @@ Route::middleware('backoffice.auth')->group(function (): void {
 
     Route::post('clients/{tenant}/enable', [ClientController::class, 'enable'])
         ->middleware('backoffice.can:clients.manage')->name('clients.enable');
+
+    /* Sending a customer a password reset is acting on their account on their
+       behalf, so it sits with the other `clients.manage` actions rather than
+       with the ones that only read. */
+    Route::post('clients/{tenant}/password-reset', [ClientController::class, 'sendPasswordReset'])
+        ->middleware('backoffice.can:clients.manage')->name('clients.password-reset');
 
     Route::get('plans', [ModuleController::class, 'plans'])
         ->middleware('backoffice.can:plans.view')->name('plans.index');

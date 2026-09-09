@@ -113,8 +113,8 @@ return [
             'description' => 'Aufnahme-, Einwilligungs- und Beratungsformulare — und wann Kundschaft sie ausfüllen soll.',
         ],
         'memberships' => [
-            'name' => 'Mitgliedschaften',
-            'description' => 'Mitgliedsstufen, wiederkehrende Vorteile und wie Mitgliedschaften angewendet werden.',
+            'name' => 'Mitgliedschaft',
+            'description' => 'Ob das Unternehmen Mitgliedschaften verkauft, wo sie gekauft werden können, was mit ungenutzten Guthaben geschieht und was eine Kündigung bedeutet.',
         ],
         'packages' => [
             'name' => 'Pakete',

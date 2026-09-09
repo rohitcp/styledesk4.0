@@ -515,6 +515,17 @@ class Tenant extends BaseTenant
         return $this->hasMany(Staff::class);
     }
 
+    /**
+     * Every appointment this business has taken.
+     *
+     * Read by the platform console's usage summary, which is the one screen
+     * that asks the question across businesses rather than inside one.
+     */
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
     public function bookingSettings(): HasOne
     {
         return $this->hasOne(BookingSettings::class);

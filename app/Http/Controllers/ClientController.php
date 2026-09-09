@@ -14,12 +14,14 @@ use App\Models\ClientSettings;
 use App\Models\ClientTag;
 use App\Models\Location;
 use App\Models\LoyaltySettings;
+use App\Models\MembershipSettings;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Support\ClientActivityLog;
 use App\Support\ClientBookingContext;
 use App\Support\ClientFilePresenter;
+use App\Support\ClientMemberships;
 use App\Support\ClientOptions;
 use App\Support\ClientServiceHistory;
 use App\Support\ClientVisitSummary;
@@ -637,6 +639,14 @@ class ClientController extends Controller
         $loyalty = LoyaltySettings::forTenant($user->tenant);
         $canViewRewards = $user->hasPermission('loyalty.view_rewards', 'own');
 
+        /* What this client is a member of, on the same terms: read here so
+           the tab, the tab strip and the permission all agree, and only
+           where the business runs memberships at all — a tab that answers
+           nothing teaches the reader the wrong thing about this client. */
+        $membershipSettings = MembershipSettings::forTenant($user->tenant);
+        $canViewMemberships = $membershipSettings->is_enabled
+            && $user->hasPermission('membership.view_members', 'own');
+
         return view('clients.show', [
             'visitSummary' => $visitSummary,
             'loyalty' => $loyalty,
@@ -649,6 +659,18 @@ class ClientController extends Controller
                 ? LoyaltyPoints::summaryFor($client, $loyalty)
                 : ['available' => 0, 'pending' => 0, 'lifetime_earned' => 0, 'lifetime_redeemed' => 0],
             'loyaltyHistory' => $canViewRewards ? LoyaltyPoints::historyFor($client) : collect(),
+
+            'membershipSettings' => $membershipSettings,
+            'canViewMemberships' => $canViewMemberships,
+            /* Ending or holding somebody's subscription is its own authority,
+               separate from reading it. */
+            'canManageMemberships' => $user->hasPermission('membership.manage_members', 'own'),
+            /* Only where the tab exists. A profile opened by somebody who may
+               not see memberships should not be assembling a history for a
+               tab that is never rendered. */
+            'memberships' => $canViewMemberships ? ClientMemberships::held($client) : collect(),
+            'membershipCredits' => $canViewMemberships ? ClientMemberships::creditsFor($client) : collect(),
+            'membershipHistory' => $canViewMemberships ? ClientMemberships::historyFor($client) : collect(),
             'clientServices' => $clientServices,
             /* Whether this reader may take an appointment. The Create
                Booking action is live for them and refused for everybody

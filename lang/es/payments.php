@@ -34,7 +34,47 @@ return [
         ],
     ],
 
+    /* Card brands, as a person writes them rather than as a gateway keys
+       them. Anything not listed falls back to its own key, tidied up — a new
+       brand should read as itself rather than as nothing. */
+    'methods_list' => [
+        'no_vault' => 'No hay ninguna pasarela de pago conectada, así que no se pueden guardar tarjetas.',
+        'default_set' => ':card es ahora el método de pago predeterminado.',
+        'removed' => 'Se ha quitado :card.',
+        'title' => 'Métodos de pago',
+        'none' => 'No hay tarjetas guardadas',
+        'none_hint' => 'Una tarjeta guardada aquí se puede cobrar para renovaciones de membresía sin el cliente presente.',
+        'default' => 'Predeterminada',
+        'make_default' => 'Establecer como predeterminada',
+        'expires' => 'Caduca el :date',
+        'expired' => 'Caducada',
+        'expiring' => 'Caduca este mes',
+        'needs_attention' => 'El método de pago necesita atención',
+        'add' => 'Añadir tarjeta',
+        'remove' => 'Quitar tarjeta',
+        'remove_confirm' => '¿Quitar esta tarjeta? Ya no se podrá cobrar en ella.',
+        'in_use' => 'Esta tarjeta renueva :name. Elige otro método de pago antes de quitarla.',
+        'used_by' => 'Renueva :name',
+        'gateway' => 'Procesado por :name',
+        'statuses' => [
+            'active' => 'Activa',
+            'expired' => 'Caducada',
+            'removed' => 'Quitada',
+        ],
+    ],
+
+    'brands' => [
+        'visa' => 'Visa',
+        'mastercard' => 'Mastercard',
+        'amex' => 'American Express',
+        'discover' => 'Discover',
+        'diners' => 'Diners Club',
+        'jcb' => 'JCB',
+        'unionpay' => 'UnionPay',
+    ],
+
     'stripe' => [
+        'not_settled' => 'No se cobró la tarjeta. El pago no se liquidó.',
         'connect' => 'Conectar Stripe',
         'continue' => 'Continuar configuración',
         'manage' => 'Gestionar cuenta',

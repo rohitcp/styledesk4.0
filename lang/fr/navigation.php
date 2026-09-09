@@ -72,7 +72,7 @@ return [
     'loyalty' => 'Fidélité',
     'groups' => 'Groupes',
     'forms_waivers' => 'Formulaires et décharges',
-    'memberships_packages' => 'Abonnements et forfaits',
+    'membership' => 'Abonnement',
 
     /* Les titres au-dessus d'un groupe d'entrées dans un menu ouvert. */
     'sections' => [

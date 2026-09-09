@@ -6,6 +6,8 @@ namespace App\Payments;
 
 use App\Models\Booking;
 use App\Models\BookingPayment;
+use App\Models\Client;
+use App\Models\ClientPaymentMethod;
 use App\Models\Tenant;
 use App\Models\TenantStripeAccount;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +29,7 @@ use Stripe\StripeClient;
  * stripe. What comes back is an id, and an id cannot move money without the
  * platform secret, which lives in the environment.
  */
-class StripeGateway implements PaymentGateway
+class StripeGateway implements PaymentGateway, VaultsCards
 {
     public function __construct(private readonly StripeClientFactory $clients) {}
 
@@ -261,6 +263,207 @@ class StripeGateway implements PaymentGateway
      *
      * @return array<string, int>
      */
+    /* ------------------------------------------------------- the card vault */
+
+    /**
+     * Start a card being added, and hand back what the browser needs.
+     *
+     * A SetupIntent rather than a charge: the client is authorising future
+     * billing, not paying for anything today. The client secret it returns is
+     * what Stripe's own Payment Element uses to collect the card — the number
+     * goes from the browser to Stripe and never touches this application.
+     *
+     * `off_session` usage is what tells Stripe the card will be charged with
+     * nobody present. Stripe collects the extra authentication now, while the
+     * client is here to give it, rather than failing the first renewal.
+     */
+    public function startCardSetup(Client $client): array
+    {
+        $account = self::accountFor($client->tenant);
+
+        if ($account === null || ! $account->canCharge()) {
+            throw new PaymentFailed(__('payments.stripe.not_ready'));
+        }
+
+        $stripe = $this->client($client->tenant);
+        $options = $this->clients->options($account);
+
+        try {
+            $customerId = $this->customerFor($client, $stripe, $options);
+
+            $intent = $stripe->setupIntents->create([
+                'customer' => $customerId,
+                'usage' => 'off_session',
+                'payment_method_types' => ['card'],
+                'metadata' => [
+                    'client_id' => (string) $client->id,
+                    'tenant_id' => (string) $client->tenant_id,
+                ],
+            ], $options);
+        } catch (ApiErrorException $e) {
+            throw new PaymentFailed($e->getMessage(), $e->getStripeCode());
+        }
+
+        return [
+            'client_secret' => (string) $intent->client_secret,
+            'customer_id' => $customerId,
+            'publishable_key' => $account->publishable_key,
+        ];
+    }
+
+    /**
+     * Record a card Stripe has already stored.
+     *
+     * The brand, the last four and the expiry are read back from Stripe
+     * rather than accepted from the browser. What a page claims a card is and
+     * what Stripe will actually charge have to be the same thing, and only
+     * one of the two is trustworthy.
+     */
+    public function rememberCard(Client $client, string $gatewayPaymentMethodId, string $gatewayCustomerId): ClientPaymentMethod
+    {
+        $account = self::accountFor($client->tenant);
+
+        if ($account === null) {
+            throw new PaymentFailed(__('payments.stripe.not_ready'));
+        }
+
+        try {
+            $method = $this->client($client->tenant)->paymentMethods->retrieve(
+                $gatewayPaymentMethodId, [], $this->clients->options($account),
+            );
+        } catch (ApiErrorException $e) {
+            throw new PaymentFailed($e->getMessage(), $e->getStripeCode());
+        }
+
+        $card = $method->card ?? null;
+
+        return ClientPaymentMethod::updateOrCreate(
+            ['gateway' => $this->key(), 'gateway_payment_method_id' => $gatewayPaymentMethodId],
+            [
+                'tenant_id' => $client->tenant_id,
+                'client_id' => $client->id,
+                'gateway_customer_id' => $gatewayCustomerId,
+                'brand' => $card?->brand,
+                'last4' => $card?->last4,
+                'exp_month' => $card?->exp_month,
+                'exp_year' => $card?->exp_year,
+                'status' => 'active',
+                'removed_at' => null,
+                'added_by' => auth()->id(),
+            ],
+        );
+    }
+
+    /**
+     * Charge a saved card with nobody present.
+     *
+     * `off_session` twice over: once to tell Stripe the client is not here,
+     * and once because a card saved for off-session use is the only kind that
+     * can be charged this way without the bank asking for a code nobody is
+     * standing there to give.
+     *
+     * A refusal is thrown with Stripe's own reason rather than a generic
+     * failure — "insufficient funds" and "card expired" need different things
+     * done about them, and the desk is the one who has to do them.
+     */
+    public function chargeSavedCard(ClientPaymentMethod $method, int $amountMinor, string $currency, string $description): array
+    {
+        $tenant = $method->client?->tenant;
+        $account = self::accountFor($tenant);
+
+        if ($account === null || ! $account->canCharge()) {
+            throw new PaymentFailed(__('payments.stripe.not_ready'));
+        }
+
+        try {
+            $intent = $this->client($tenant)->paymentIntents->create([
+                'amount' => $amountMinor,
+                'currency' => mb_strtolower($currency),
+                'customer' => $method->gateway_customer_id,
+                'payment_method' => $method->gateway_payment_method_id,
+                'confirm' => true,
+                'off_session' => true,
+                'description' => $description,
+                'metadata' => [
+                    'client_id' => (string) $method->client_id,
+                    'tenant_id' => (string) $method->tenant_id,
+                    'payment_method_id' => (string) $method->id,
+                ],
+            ], $this->clients->options($account) + [
+                /* One charge per renewal. A retried request — a dropped
+                   connection, a scheduler that ran twice — must not take the
+                   money twice. */
+                'idempotency_key' => 'cpm_'.$method->id.'_'.$amountMinor.'_'.substr(md5($description), 0, 16),
+            ]);
+        } catch (ApiErrorException $e) {
+            throw new PaymentFailed($e->getMessage(), $e->getStripeCode());
+        }
+
+        /* Anything but a settled charge is a failure here. A payment that is
+           "processing" has not paid for the month, and issuing credits
+           against it would be giving away a massage on a promise. */
+        if ($intent->status !== 'succeeded') {
+            throw new PaymentFailed(__('payments.stripe.not_settled'), (string) $intent->status);
+        }
+
+        return ['reference' => (string) $intent->id, 'status' => 'paid'];
+    }
+
+    /** Tell Stripe to let the card go. */
+    public function forgetCard(ClientPaymentMethod $method): void
+    {
+        $account = self::accountFor($method->client?->tenant);
+
+        if ($account === null) {
+            return;
+        }
+
+        try {
+            $this->client($method->client?->tenant)->paymentMethods->detach(
+                $method->gateway_payment_method_id, [], $this->clients->options($account),
+            );
+        } catch (ApiErrorException) {
+            /* The card is out of use in StyleDesk either way. A gateway that
+               has already forgotten it, or is briefly unreachable, is not a
+               reason to refuse the receptionist. */
+        }
+    }
+
+    /**
+     * Who this client is to Stripe, making them if they are not one yet.
+     *
+     * The id is kept on the client's existing cards rather than in a column
+     * of its own: a client with a saved card already has one, and a client
+     * with none does not need one until the moment they are given a card.
+     */
+    private function customerFor(Client $client, StripeClient $stripe, array $options): string
+    {
+        $existing = ClientPaymentMethod::query()
+            ->forClient($client->id)
+            ->where('gateway', $this->key())
+            ->orderByDesc('id')
+            ->value('gateway_customer_id');
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        try {
+            $customer = $stripe->customers->create([
+                'name' => $client->displayName(),
+                'email' => $client->email,
+                'metadata' => [
+                    'client_id' => (string) $client->id,
+                    'tenant_id' => (string) $client->tenant_id,
+                ],
+            ], $options);
+        } catch (ApiErrorException $e) {
+            throw new PaymentFailed($e->getMessage(), $e->getStripeCode());
+        }
+
+        return (string) $customer->id;
+    }
+
     private function platformFee(PaymentRequest $request, TenantStripeAccount $account): array
     {
         $fee = config('payments.platform_fee');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\MembershipSettings;
 use App\Models\Staff;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
@@ -194,6 +195,63 @@ class Nav
             ->all();
 
         return $routes !== [] && Request::routeIs(...$routes);
+    }
+
+    /**
+     * Whether this entry belongs in the menu at all.
+     *
+     * An entry may name a `feature`, which is a module the business can
+     * switch off in App Settings. A link to a module that is off leads to a
+     * 404 — the controllers refuse it rather than let somebody build a
+     * product that cannot be sold — and a menu that offers one is a menu
+     * that lies.
+     *
+     * Everything without a `feature` is always visible, which is every entry
+     * but the handful that are switchable.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    public static function visible(array $item): bool
+    {
+        $feature = $item['feature'] ?? null;
+
+        if ($feature === null) {
+            return true;
+        }
+
+        return self::features()[$feature] ?? false;
+    }
+
+    /**
+     * Which switchable modules this business has on.
+     *
+     * Resolved once per request: the rail and the drawer are the same config
+     * rendered twice and ask about every entry they render, so a query per
+     * call would be dozens of them on every page.
+     *
+     * Held on the request rather than in a static, because a static outlives
+     * the request — in the test suite and under a persistent worker it would
+     * answer the second page with the first page's business.
+     *
+     * @return array<string, bool>
+     */
+    private static function features(): array
+    {
+        $request = Request::instance();
+
+        if ($request->attributes->has('nav.features')) {
+            return $request->attributes->get('nav.features');
+        }
+
+        $tenant = Auth::user()?->tenant;
+
+        $features = [
+            'membership' => $tenant !== null && MembershipSettings::forTenant($tenant)->is_enabled,
+        ];
+
+        $request->attributes->set('nav.features', $features);
+
+        return $features;
     }
 
     /**

@@ -1,0 +1,456 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+| Mitgliedschaft.
+|
+| Zwei Zielgruppen, getrennt durch ihre Schlüssel auf oberster Ebene:
+| `settings` liest, wer über die Verkaufsbedingungen entscheidet, alles davor
+| liest, wer am Empfang mit einer Kundin vor sich steht.
+*/
+
+return [
+
+    'title' => 'Mitgliedschaft',
+
+    'types' => [
+        'recurring' => 'Laufende Mitgliedschaft',
+        'recurring_hint' => 'Wird automatisch je Zyklus abgebucht. Die Leistungen erneuern sich mit jeder Abbuchung.',
+        'package' => 'Mitgliedschaftspaket',
+        'package_hint' => 'Einmalig gekauft, enthält eine feste Anzahl Leistungen und endet, wenn sie aufgebraucht sind.',
+    ],
+
+    'billing_frequencies' => [
+        'monthly' => 'Monatlich',
+        'quarterly' => 'Vierteljährlich',
+        'yearly' => 'Jährlich',
+    ],
+
+    'activation' => [
+        'immediately' => 'Sofort',
+        'start_date' => 'An einem gewählten Startdatum',
+    ],
+
+    'credit_expiry' => [
+        'cycle' => 'Am Ende jedes Abrechnungszyklus',
+        'never' => 'Nie',
+        '1m' => 'Nach 1 Monat',
+        '3m' => 'Nach 3 Monaten',
+        '6m' => 'Nach 6 Monaten',
+        '12m' => 'Nach 12 Monaten',
+    ],
+
+    'cancellation' => [
+        'end_of_cycle' => 'Zum Ende des Abrechnungszyklus',
+        'immediately' => 'Sofort',
+    ],
+
+    'channels' => [
+        'in_store' => 'Im Salon',
+        'in_store_hint' => 'Wird am Empfang über den Buchungsbildschirm verkauft.',
+        'online' => 'Online',
+        'online_hint' => 'Kundinnen kaufen sie selbst auf Ihrer Buchungsseite.',
+    ],
+
+    /* ------------------------------------------------------- das Modul -- */
+
+    'intro' => 'Die Mitgliedschaften und Pakete, die Sie verkaufen. Kundinnen kaufen sie im Buchungsbildschirm.',
+    'new' => 'Mitgliedschaft anlegen',
+    'none_yet' => 'Noch keine Mitgliedschaften',
+    'none_yet_hint' => 'Legen Sie eine an — sie erscheint im Buchungsbildschirm, sobald Sie sie veröffentlichen.',
+    'all_locations' => 'Alle Standorte',
+
+    'price_per' => ':price / :period',
+    'periods' => [
+        'monthly' => 'Monat',
+        'quarterly' => 'Quartal',
+        'yearly' => 'Jahr',
+    ],
+
+    'discount_off' => ':amount Rabatt auf weitere Leistungen',
+    'saving' => 'Ersparnis',
+    'regular_value' => 'Regulärer Wert',
+
+    'statuses' => [
+        'draft' => 'Entwurf',
+        'active' => 'Aktiv',
+        'disabled' => 'Deaktiviert',
+    ],
+
+    'created' => 'Mitgliedschaft angelegt.',
+    'saved' => 'Mitgliedschaft gespeichert.',
+    'duplicated' => 'Kopiert. Bis zur Veröffentlichung ist es ein Entwurf.',
+    'disabled' => 'Mitgliedschaft aus dem Verkauf genommen.',
+    'enabled' => 'Mitgliedschaft wieder im Verkauf.',
+    'copy_of' => 'Kopie von :name',
+
+    'tabs' => [
+        'overview' => 'Überblick',
+        'plans' => 'Mitgliedschaftstarife',
+        'packages' => 'Mitgliedschaftspakete',
+        'members' => 'Mitglieder',
+    ],
+
+    'summary' => [
+        'plans' => 'Tarife im Verkauf',
+        'packages' => 'Pakete im Verkauf',
+        'drafts' => 'Entwürfe',
+        'members' => 'Mitglieder',
+    ],
+
+    'search' => 'Nach Name, Code oder enthaltener Leistung suchen',
+    'filters' => [
+        'all_statuses' => 'Alle Status',
+        'all_locations' => 'Alle Standorte',
+        'reset' => 'Zurücksetzen',
+    ],
+
+    'columns' => [
+        'name' => 'Name',
+        'code' => 'Code',
+        'price' => 'Preis',
+        'includes' => 'Enthält',
+        'benefit' => 'Mitgliedervorteil',
+        'saving' => 'Ersparnis',
+        'locations' => 'Standorte',
+        'status' => 'Status',
+    ],
+
+    'results' => [
+        'zero' => 'Keine Mitgliedschaft passt',
+        'one' => ':count Mitgliedschaft',
+        'many' => ':count Mitgliedschaften',
+        'clear' => 'Filter entfernen',
+    ],
+    'empty' => 'Zu diesen Filtern passt nichts.',
+    'showing' => 'Zeige :from–:to von :total',
+    'actions_for' => 'Aktionen für :name',
+
+    'actions' => [
+        'view' => 'Ansehen',
+        'edit' => 'Bearbeiten',
+        'duplicate' => 'Duplizieren',
+        'disable' => 'Aus dem Verkauf nehmen',
+        'enable' => 'Wieder verkaufen',
+    ],
+
+    'overview' => [
+        'title' => 'Überblick',
+        'intro' => 'Was Sie verkaufen und wo es verkauft wird.',
+        'recent' => 'Zuletzt geändert',
+        'recent_empty' => 'Noch nichts angelegt.',
+        'terms' => 'Verkaufsbedingungen',
+        'terms_hint' => 'Sie gelten für jede Mitgliedschaft, die Sie verkaufen. Eingestellt werden sie in den App-Einstellungen.',
+        'terms_link' => 'Mitgliedschaftseinstellungen öffnen',
+        'term_channels' => 'Verkauft',
+        'term_activation' => 'Beginnt',
+        'term_credits' => 'Ungenutztes Guthaben',
+        'term_credits_rollover' => 'Wird übertragen',
+        'term_credits_reset' => 'Wird je Zyklus zurückgesetzt',
+        'term_cancellation' => 'Kündigung',
+        'term_cancellation_off' => 'Nicht erlaubt',
+        'nothing_sellable' => 'Nichts ist im Verkauf',
+        'nothing_sellable_hint' => 'Jede angelegte Mitgliedschaft ist ein Entwurf oder aus dem Verkauf genommen, also hat der Buchungsbildschirm nichts anzubieten.',
+    ],
+
+    'members' => [
+        'title' => 'Mitglieder',
+        'intro' => 'Alle mit einer Mitgliedschaft, und was ihnen noch bleibt.',
+        'none' => 'Noch hat niemand eine Mitgliedschaft',
+        'none_hint' => 'Mitgliedschaften werden im Buchungsbildschirm verkauft. Wer eine kauft, erscheint hier.',
+        'columns' => [
+            'client' => 'Kundin',
+            'membership' => 'Mitgliedschaft',
+            'status' => 'Status',
+            'started' => 'Beginn',
+            'next_billing' => 'Nächste Abbuchung',
+            'credits' => 'Restguthaben',
+        ],
+        'no_billing' => '—',
+        'credits_none' => 'Kein Guthaben',
+    ],
+
+    'images' => [
+        'uploading' => 'Wird hochgeladen…',
+        'failed' => 'Dieses Bild konnte nicht hochgeladen werden.',
+        'too_large' => 'Dieses Bild ist zu groß. Das Limit sind 5 MB.',
+        'wrong_type' => 'Verwenden Sie JPG, PNG oder WebP.',
+    ],
+
+    'member_statuses' => [
+        'scheduled' => 'Geplant',
+        'active' => 'Aktiv',
+        'paused' => 'Pausiert',
+        'cancelled' => 'Gekündigt',
+        'ended' => 'Beendet',
+    ],
+
+    'sale' => [
+        'not_on_sale' => 'Diese Mitgliedschaft ist nicht im Verkauf — sie ist ein Entwurf oder wurde herausgenommen.',
+        'channel_closed' => 'Mitgliedschaften können nicht am Empfang verkauft werden. Öffnen Sie den Kanal „Im Salon“ in den App-Einstellungen.',
+        'no_future_start' => 'Dieses Unternehmen erlaubt keine vordatierte Mitgliedschaft.',
+        'method_not_repeatable' => 'Eine laufende Mitgliedschaft braucht eine erneut belastbare Zahlungsmethode. Bar kauft ein Paket; bar verlängert kein Abo.',
+    ],
+
+    'member' => [
+        'title' => 'Mitgliedschaft',
+        'none' => 'Kein Mitglied',
+        'none_hint' => 'Mitgliedschaften werden im Buchungsbildschirm verkauft — wählen Sie unter „Art wählen“ die Mitgliedschaft.',
+        'off' => 'Mitgliedschaft ist ausgeschaltet',
+        'off_hint' => 'Es kann nichts Neues verkauft werden. Was diese Kundin bereits hat, bleibt unverändert.',
+        'active' => 'Aktive Mitgliedschaft',
+        'past' => 'Frühere Mitgliedschaften',
+        'started' => 'Beginn',
+        'ends' => 'Endet',
+        'ended' => 'Beendet',
+        'next_billing' => 'Nächste Abbuchung',
+        'no_billing' => 'Keine weitere Abbuchung',
+        'price' => 'Preis',
+        'sold_at' => 'Verkauft in',
+        'credits' => 'Verfügbare Vorteile',
+        'credits_none' => 'Kein Guthaben verfügbar.',
+        'credit_count' => ':count verfügbar',
+        'credit_expires' => 'Verfällt am :date',
+        'credits_paused' => 'Guthaben kann nicht eingelöst werden, solange die Mitgliedschaft pausiert ist.',
+        'history_title' => 'Verlauf',
+        'history_none' => 'Bisher ist nichts geschehen.',
+
+        'history' => [
+            'started' => 'Mitgliedschaft begonnen',
+            'payment' => 'Zahlung erhalten',
+            'redeemed' => 'Guthaben eingelöst',
+            'released' => 'Guthaben zurückgegeben',
+            'paused' => 'Mitgliedschaft pausiert',
+            'cancelled' => 'Mitgliedschaft gekündigt',
+            'ends_on' => 'Endet am :date',
+        ],
+
+        'cancel' => 'Mitgliedschaft kündigen',
+        'cancel_confirm' => 'Diese Mitgliedschaft kündigen? Bereits Bezahltes wird nicht weggenommen.',
+        'pause' => 'Mitgliedschaft pausieren',
+        'pause_confirm' => 'Diese Mitgliedschaft pausieren? Die Abrechnung ruht und Guthaben kann bis zum Neustart nicht eingelöst werden.',
+        'resume' => 'Mitgliedschaft fortsetzen',
+        'cancelled_now' => 'Mitgliedschaft gekündigt.',
+        'cancelled_on' => 'Die Mitgliedschaft endet am :date und bleibt bis dahin nutzbar.',
+        'paused' => 'Mitgliedschaft pausiert.',
+        'resumed' => 'Mitgliedschaft fortgesetzt.',
+        'already_cancelled' => 'Diese Mitgliedschaft ist bereits gekündigt.',
+        'cannot_pause' => 'Nur eine laufende Mitgliedschaft kann pausiert werden.',
+        'not_paused' => 'Diese Mitgliedschaft ist nicht pausiert.',
+        'in_commitment' => 'Diese Mitgliedschaft kann erst ab dem :date gekündigt werden — die Kundin hat eine Mindestlaufzeit vereinbart.',
+        'cancel_not_allowed' => 'Dieses Unternehmen erlaubt hier keine Kündigung.',
+        'notice_note' => 'Eine Kündigung heute wird am :date wirksam.',
+    ],
+
+    'sold' => [
+        'title' => 'Mitgliedschaft aktiviert',
+        'scheduled_title' => 'Mitgliedschaft geplant',
+        'intro' => ':client hat jetzt diese Mitgliedschaft.',
+        'scheduled_intro' => ':client hat diese Mitgliedschaft ab dem :date. Die Guthaben existieren bis dahin nicht.',
+        'client' => 'Kundin',
+        'membership' => 'Mitgliedschaft',
+        'type' => 'Art',
+        'status' => 'Status',
+        'start' => 'Startdatum',
+        'paid' => 'Gezahlter Betrag',
+        'billing' => 'Abrechnung',
+        'one_off' => 'Einmaliger Kauf',
+        'next_billing' => 'Nächste Abbuchung',
+        'benefits' => 'Enthaltene Vorteile',
+        'credits' => 'Verfügbares Guthaben',
+        'credits_available' => ':count verfügbar',
+        'credits_none' => 'Noch nichts verfügbar.',
+        'view_client' => 'Kundin ansehen',
+        'view_membership' => 'Mitgliedschaft ansehen',
+        'another' => 'Weiteren Kauf anlegen',
+    ],
+
+    'choose' => [
+        'title' => 'Mitgliedschaft anlegen',
+        'question' => 'Welche Art von Mitgliedschaft möchten Sie anlegen?',
+        'intro' => 'Das ist die einzige Antwort, die sich später nicht ändern lässt — es sind zwei verschiedene Produkte, nicht zwei Einstellungen eines Produkts.',
+        'example' => 'Zum Beispiel',
+        'recurring_example' => '79 $ im Monat, mit einer Massage pro Monat.',
+        'package_example' => 'Vier Massagen für 150 $, einmalig gekauft.',
+        'select' => 'Weiter',
+    ],
+
+    'form' => [
+        'create_title' => 'Mitgliedschaft anlegen',
+        'edit_title' => 'Mitgliedschaft bearbeiten',
+
+        'step' => 'Schritt :number',
+
+        'basics' => 'Grunddaten',
+        'basics_hint' => 'Wie sie heißt und wie sie der Kundin beschrieben wird.',
+        'name' => 'Name der Mitgliedschaft',
+        'name_placeholder' => 'Monatliche Massage-Mitgliedschaft',
+        'description' => 'Beschreibung',
+        'description_hint' => 'Ein bis zwei Zeilen. Kundinnen lesen das auf der Karte im Buchungsbildschirm.',
+        'image' => 'Bild der Mitgliedschaft',
+        'image_upload' => 'Bild hochladen',
+        'image_replace' => 'Bild ersetzen',
+        'image_hint' => 'JPG, PNG oder WebP, bis 5 MB. Erscheint auf der Karte im Buchungsbildschirm.',
+        'internal_code' => 'Interner Code',
+        'internal_code_hint' => 'Ihre eigene Referenz. Buchstaben, Ziffern und Bindestriche.',
+
+        'pricing' => 'Preis',
+        'pricing_hint_recurring' => 'Was die Kundin je Zyklus zahlt, und wie oft.',
+        'pricing_hint_package' => 'Was die Kundin einmalig zahlt, und was es einzeln gekostet hätte.',
+        'price' => 'Preis der Mitgliedschaft',
+        'package_price' => 'Paketpreis',
+        'billing_frequency' => 'Abrechnungsintervall',
+        'joining_fee' => 'Aufnahmegebühr',
+        'setup_fee' => 'Einrichtungsgebühr',
+        'trial_days' => 'Testzeitraum',
+        'trial_days_hint' => 'Tage bis zur ersten Abbuchung. Leer lassen für keinen Test.',
+        'extras_hint' => 'Einmalig zu Beginn, zusätzlich zum ersten Zyklus. Leer lassen, wenn es keine gibt.',
+        'regular_value' => 'Regulärer Wert',
+        'regular_value_hint' => 'Was die enthaltenen Leistungen einzeln kosten würden. Leer lassen, um keine Ersparnis auszuloben.',
+        'value_below_price' => 'Der reguläre Wert muss mindestens dem Paketpreis entsprechen, sonst gibt es keine Ersparnis zu zeigen.',
+        'saving_preview' => 'Ersparnis: :amount',
+
+        'services' => 'Vorteile und Leistungen',
+        'services_hint_recurring' => 'Was das Mitglied je Zyklus bekommt. Das Guthaben kommt mit jeder Abbuchung zurück.',
+        'services_hint_package' => 'Was das Paket insgesamt enthält. Sind sie aufgebraucht, ist es beendet.',
+        'add_service' => '+ Leistung hinzufügen',
+        'service' => 'Leistung',
+        'quantity' => 'Anzahl',
+        'remove' => 'Entfernen',
+        'duplicate_service' => 'Jede Leistung darf nur einmal vorkommen. Ändern Sie die Anzahl, statt sie zweimal hinzuzufügen.',
+        'no_services' => 'Fügen Sie mindestens eine Leistung hinzu — eine Mitgliedschaft ohne Inhalt ist ein Abo auf nichts.',
+
+        'benefits' => 'Weitere Mitgliedervorteile',
+        'benefits_hint' => 'Was das Mitglied auf alles andere bekommt, was es kauft. Optional.',
+        'discount_type' => 'Rabatt',
+        'discount_none' => 'Kein Rabatt',
+        'percent' => 'Prozentualer Rabatt',
+        'fixed' => 'Fester Rabattbetrag',
+        'discount_value' => 'Betrag',
+        'priority_booking' => 'Bevorzugte Terminvergabe',
+        'priority_booking_hint' => 'Mitglieder werden am Empfang gekennzeichnet, damit sie zuerst untergebracht werden.',
+
+        'credits' => 'Guthabenregeln',
+        'credits_hint' => 'So lassen, um den Unternehmenseinstellungen zu folgen. Ändern Sie nur, was bei dieser Mitgliedschaft wirklich anders ist.',
+        'follow_business' => 'Unternehmenseinstellung folgen (:value)',
+        'yes' => 'Ja',
+        'no' => 'Nein',
+        'credit_expiry' => 'Verfall des Guthabens',
+        'rollover' => 'Ungenutztes Guthaben wird übertragen',
+        'maximum_rollover' => 'Maximal übertragbares Guthaben',
+        'substitution' => 'Guthaben kann eine andere Leistung bezahlen',
+
+        'availability' => 'Verfügbarkeit',
+        'availability_hint' => 'Wo diese Mitgliedschaft verkauft und genutzt werden kann, und über welche Kanäle.',
+        'locations' => 'Standorte',
+        'all_locations' => 'Alle Standorte',
+        'selected_locations' => 'Ausgewählte Standorte',
+        'channels' => 'Verkaufskanäle',
+        'channels_hint' => 'Die Kanäle des Unternehmens sind die Obergrenze: eine online angebotene Mitgliedschaft in einem Unternehmen, das nicht online verkauft, ist nicht im Verkauf.',
+        'channel_closed' => 'In den App-Einstellungen geschlossen',
+
+        'review' => 'Prüfen und veröffentlichen',
+        'review_hint' => 'Ein Entwurf lässt sich frei bearbeiten und kann nicht verkauft werden. Veröffentlichen stellt ihn in den Buchungsbildschirm.',
+        'summary_includes' => 'Enthält',
+        'summary_benefit' => 'Mitgliedervorteil',
+        'summary_locations' => 'Standorte',
+        'summary_sold' => 'Verkauft',
+        'save_draft' => 'Als Entwurf speichern',
+        'publish' => 'Mitgliedschaft veröffentlichen',
+        'save' => 'Änderungen speichern',
+    ],
+
+    'show' => [
+        'includes' => 'Was enthalten ist',
+        'benefits' => 'Mitgliedervorteile',
+        'no_benefits' => 'Keine weiteren Vorteile.',
+        'credits' => 'Guthabenregeln',
+        'availability' => 'Verfügbarkeit',
+        'sold_in_store' => 'Am Empfang',
+        'sold_online' => 'Online',
+        'sold_nowhere' => 'Nirgends — alle Kanäle sind geschlossen.',
+        'draft_note' => 'Das ist ein Entwurf. Er kann erst nach der Veröffentlichung verkauft werden.',
+        'disabled_note' => 'Diese Mitgliedschaft ist aus dem Verkauf genommen. Niemand Neues kann sie kaufen; wer sie hat, behält sie.',
+        'publish' => 'Veröffentlichen',
+        'from_business' => 'Aus den Unternehmenseinstellungen',
+        'per_cycle' => 'je Zyklus',
+        'in_total' => 'insgesamt',
+        'created_by' => 'Angelegt von',
+        'joining_fee' => 'Aufnahmegebühr',
+        'setup_fee' => 'Einrichtungsgebühr',
+        'trial' => 'Test',
+        'trial_days' => ':days Tage',
+    ],
+
+    /* --------------------------------------------- App-Einstellungen ----- */
+
+    'settings' => [
+        'title' => 'Mitgliedschaft',
+        'intro' => 'Ob Sie Mitgliedschaften verkaufen, wo sie gekauft werden können, was mit ungenutzten Guthaben geschieht und was eine Kündigung bedeutet.',
+
+        'enable' => 'Mitgliedschaft aktivieren',
+        'enable_hint' => 'Fügt Mitgliedschaft unter Kunden hinzu und macht sie zu einer Kaufart im Buchungsbildschirm.',
+        'disabled_note' => 'Mitgliedschaft ist aus. Es kann nichts Neues verkauft werden — alle bestehenden Mitglieder behalten ihren Tarif, ihre Guthaben und ihre Historie unverändert.',
+
+        'saved' => 'Mitgliedschaftseinstellungen gespeichert.',
+
+        'selling' => 'Verkauf',
+        'selling_hint' => 'Wo eine Mitgliedschaft gekauft werden kann und wer den Verkauf abschließen darf.',
+        'channels' => 'Verkaufskanäle',
+        'channels_hint' => 'Sind alle Kanäle aus, kann nichts verkauft werden — ob Mitgliedschaft aktiviert ist oder nicht.',
+        'coming_soon' => 'Demnächst',
+        'allow_staff_to_sell' => 'Team darf Mitgliedschaften verkaufen',
+        'allow_staff_to_sell_hint' => 'Wer die Berechtigung hat, schließt den Verkauf am Empfang ab. Aus, und nur eine Leitung darf es.',
+
+        'starting' => 'Startdatum',
+        'starting_hint' => 'Wann eine heute gekaufte Mitgliedschaft beginnt.',
+        'allow_start_date_selection' => 'Auswahl des Startdatums erlauben',
+        'allow_start_date_selection_hint' => 'Das Team kann eine Mitgliedschaft vordatieren. Aus, und jede beginnt am Verkaufstag.',
+        'default_activation' => 'Standardaktivierung',
+        'default_activation_hint' => 'Was der Kaufbildschirm vorschlägt, bevor jemand wählt.',
+
+        'credits' => 'Guthaben',
+        'credits_hint' => 'Was mit einer enthaltenen Leistung geschieht, die nicht genutzt wurde.',
+        'allow_rollover' => 'Ungenutztes Guthaben übertragen',
+        'allow_rollover_hint' => 'Ungenutzte Guthaben gehen in den nächsten Zyklus über. Aus, und jeder Zyklus beginnt neu.',
+        'maximum_rollover' => 'Maximal übertragbares Guthaben',
+        'maximum_rollover_hint' => 'Das Meiste, was jemand ansammeln kann. Leer lassen für kein Limit.',
+        'credit_expiry' => 'Verfall des Guthabens',
+        'credit_expiry_hint' => 'Wie lange ein Guthaben nach der Gutschrift gilt.',
+        'allow_credits_across_locations' => 'Guthaben standortübergreifend einlösen',
+        'allow_credits_across_locations_hint' => 'Ein an einem Standort erworbenes Guthaben gilt auch an einem anderen.',
+        'allow_service_substitution' => 'Leistungstausch beim Einlösen erlauben',
+        'allow_service_substitution_hint' => 'Ein Guthaben für eine Leistung kann eine andere gleichen Werts bezahlen.',
+
+        'cancellation' => 'Kündigung',
+        'cancellation_hint' => 'Was ein Mitglied tun kann, wenn es aufhören will, und was dann geschieht.',
+        'allow_cancellation' => 'Kündigung der Mitgliedschaft erlauben',
+        'allow_cancellation_hint' => 'Aus, und nur wer die Berechtigung hat, kann sie beenden.',
+        'allow_pause' => 'Pausieren der Mitgliedschaft erlauben',
+        'allow_pause_hint' => 'Ein Mitglied kann pausieren, ohne die Mitgliedschaft zu verlieren. Die Abrechnung ruht solange.',
+        'minimum_commitment_months' => 'Mindestlaufzeit',
+        'minimum_commitment_months_hint' => 'Monate, in denen nicht gekündigt werden kann. Null für keine.',
+        'cancellation_notice_days' => 'Kündigungsfrist',
+        'cancellation_notice_days_hint' => 'Tage Vorlauf, die ein Mitglied einhalten muss. Null für keine.',
+        'cancellation_effective' => 'Kündigen',
+        'cancellation_effective_hint' => 'Wann eine Kündigung wirksam wird.',
+        'months' => 'Monate',
+        'days' => 'Tage',
+
+        'payments' => 'Zahlungen',
+        'payments_hint' => 'Mitgliedschaften werden mit den Methoden bezahlt, die Sie ohnehin akzeptieren. Hier gibt es nichts Zusätzliches einzustellen.',
+        'payments_link' => 'Zahlungseinstellungen öffnen',
+
+        'rules' => 'Wie StyleDesk Mitgliedschaften behandelt',
+        'rules_hint' => 'Was die App entscheidet, nicht was Sie entscheiden.',
+        'rule_recurring' => 'Eine laufende Mitgliedschaft braucht eine erneut belastbare Zahlungsmethode',
+        'rule_recurring_body' => 'Eine hinterlegte Karte oder eine andere Methode, die ohne anwesende Kundin belastet werden kann. Bar kauft ein Paket; bar verlängert kein Abo.',
+        'rule_package' => 'Ein Paket endet, wenn seine Leistungen aufgebraucht sind',
+        'rule_package_body' => 'Keine Verlängerung, kein nächstes Abrechnungsdatum. Gekauft wurde die Liste der Leistungen, und sie ist fertig, wenn die Liste leer ist.',
+        'rule_scheduled' => 'Eine vordatierte Mitgliedschaft ist Geplant, nicht Aktiv',
+        'rule_scheduled_body' => 'Ihre Guthaben existieren nicht und ihre Vorteile gelten nicht, bevor das Startdatum erreicht ist.',
+        'rule_off' => 'Mitgliedschaft auszuschalten stoppt den Verkauf und sonst nichts',
+        'rule_off_body' => 'Bestehende Mitglieder behalten Tarif, Guthaben und Historie. Bereits vereinbarte Verlängerungen werden eingehalten.',
+    ],
+];

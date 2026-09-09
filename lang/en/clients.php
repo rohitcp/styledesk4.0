@@ -397,6 +397,7 @@ return [
             ],
             'tabs' => [
                 'rewards' => 'Rewards',
+                'membership' => 'Membership',
                 'leads' => 'Leads',
                 'activity' => 'Activity',
                 'bookings' => 'Bookings',

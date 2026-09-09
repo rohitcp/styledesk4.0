@@ -1,29 +1,28 @@
 {{--
     One business, in full.
 
-    Read-only. Suspending, editing and impersonating are `clients.manage` and
-    arrive with that phase — so there is nothing on this page that can change
-    a customer's account by being clicked.
+    Six tabs over one record. The header, the status banner, the quick-action
+    control and both confirmations are on every tab — an administrator who
+    decides to disable a client while reading its email log should not have to
+    find their way back to a different page to do it.
+
+    The tabs are links, so each is a URL that can be bookmarked and reloaded
+    with the reader's search and page intact. Only the open tab's rows are
+    read; the tab partial is the only part of this file that changes.
 --}}
 @extends('layouts.backoffice')
 
 @section('title', $client->name)
+
+{{-- Three of the tabs are wide tables. A reading width would put half of
+     each under a horizontal scrollbar on a desk monitor. --}}
+@section('container', 'max-w-none')
 
 @section('content')
 
 @php
     $admin = auth('backoffice')->user();
     $canManage = (bool) $admin?->can('clients.manage');
-
-    /* Locations carry their own status vocabulary, which has no enum behind it
-       either. A readable word beats a printed lang key. */
-    $label = fn (?string $value): string => ($value === null || $value === '')
-        ? __('backoffice.clients.none')
-        : \Illuminate\Support\Str::headline($value);
-
-    /* A dash rather than an empty cell: blank reads as "the page failed to
-       load this", a dash reads as "there is nothing here". */
-    $or = fn (?string $value) => ($value === null || $value === '') ? __('backoffice.clients.none') : $value;
 @endphp
 
     <nav class="text-[12.5px] text-sub" aria-label="{{ __('backoffice.clients.breadcrumb') }}">
@@ -34,8 +33,9 @@
         <span>{{ $client->name }}</span>
     </nav>
 
-    <header class="mt-3 flex flex-wrap items-start gap-4">
-        <div class="min-w-0 flex-1">
+    {{-- ------------------------------------------------------------- header --}}
+    <header class="mt-3 flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0 flex-1 basis-80">
             <div class="flex flex-wrap items-center gap-2.5">
                 <h1 class="text-[22px] font-bold text-head tracking-tight">{{ $client->name }}</h1>
 
@@ -47,17 +47,23 @@
                 @if ($client->legal_name) · {{ $client->legal_name }} @endif
                 · {{ __('backoffice.clients.joined_on', ['date' => $client->created_at?->translatedFormat('j M Y')]) }}
             </p>
+
+            {{-- Who to ring. Named in the header rather than only in the
+                 Overview's table, because it is the first thing wanted on a
+                 support call and the reader may be on any tab. --}}
+            @if ($client->owner)
+                <p class="text-[12.5px] text-sub mt-1">
+                    {{ __('backoffice.clients.primary_contact') }}:
+                    <span class="text-head font-medium">{{ $client->owner->name }}</span>
+                    <span class="text-faint">·</span>
+                    <a href="mailto:{{ $client->owner->email }}" class="text-link hover:underline break-all">
+                        {{ $client->owner->email }}
+                    </a>
+                </p>
+            @endif
         </div>
 
-        {{-- Re-enabling is one press: it opens a door rather than closing one,
-             so it needs no reason and no confirmation. Disabling is the panel
-             below, which does. --}}
-        @if ($canManage && $client->isDisabled())
-            <button type="button" data-modal-open="enable-client"
-                    class="shrink-0 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
-                {{ __('backoffice.clients.enable_action') }}
-            </button>
-        @endif
+        <x-backoffice.quick-actions :actions="$quickActions" class="shrink-0" />
     </header>
 
     {{-- Why the business is off, above everything else on the page: it is the
@@ -88,265 +94,18 @@
         </div>
     @endif
 
-    {{-- The five figures this console is asked for first. --}}
-    @php
-        $counts = [
-            ['label' => __('backoffice.clients.col.locations'), 'value' => $client->locations_count],
-            ['label' => __('backoffice.clients.col.staff'), 'value' => $client->staff_count],
-            ['label' => __('backoffice.clients.stats.services'), 'value' => $client->services_count],
-            ['label' => __('backoffice.clients.col.clients'), 'value' => $client->clients_count],
-            ['label' => __('backoffice.clients.stats.users'), 'value' => $client->users_count],
-        ];
-    @endphp
+    <x-backoffice.tabs :tabs="$tabs" :current="$tab" />
 
-    <div class="mt-5 grid grid-cols-2 lg:grid-cols-5 gap-3">
-        @foreach ($counts as $count)
-            <div class="sd-card px-4 py-3.5">
-                <p class="text-[12px] text-sub">{{ $count['label'] }}</p>
-                <p class="text-[22px] font-bold text-head mt-1 tabular-nums">{{ number_format($count['value']) }}</p>
-            </div>
-        @endforeach
+    <div class="mt-5">
+        @include('backoffice.clients.tabs.'.$tab)
     </div>
-
-    <div class="mt-4 grid lg:grid-cols-2 gap-4">
-
-        {{-- ------------------------------------------------------- the plan --}}
-        <section class="sd-card p-5">
-            <h2 class="text-[15px] font-semibold text-head">{{ __('backoffice.clients.subscription') }}</h2>
-
-            @php
-                $plan = [
-                    __('backoffice.clients.col.plan') => $client->plan_id ?? __('backoffice.clients.no_plan'),
-                    __('backoffice.clients.subscription') => __('backoffice.clients.statuses.'.$client->displayStatus()),
-                    __('backoffice.clients.trial_started') => $client->trial_started_at?->translatedFormat('j M Y') ?? __('backoffice.clients.none'),
-                    __('backoffice.clients.trial_ends') => $client->trial_ends_at
-                        ? $client->trial_ends_at->translatedFormat('j M Y')
-                            .($client->trialDaysRemaining() > 0
-                                ? ' · '.__('backoffice.clients.trial_days', ['days' => $client->trialDaysRemaining()])
-                                : '')
-                        : __('backoffice.clients.none'),
-                ];
-            @endphp
-
-            <dl class="mt-3 divide-y divide-line text-[13px]">
-                @foreach ($plan as $term => $value)
-                    <div class="py-2.5 flex items-baseline justify-between gap-4">
-                        <dt class="text-sub shrink-0">{{ $term }}</dt>
-                        <dd class="text-head font-medium text-right">{{ $value }}</dd>
-                    </div>
-                @endforeach
-            </dl>
-        </section>
-
-        {{-- ------------------------------------------------------ the owner --}}
-        <section class="sd-card p-5">
-            <h2 class="text-[15px] font-semibold text-head">{{ __('backoffice.clients.col.owner') }}</h2>
-
-            @if ($client->owner)
-                <dl class="mt-3 divide-y divide-line text-[13px]">
-                    @php
-                        $owner = [
-                            __('backoffice.clients.owner_name') => $client->owner->name,
-                            __('backoffice.clients.owner_email') => $client->owner->email,
-                            __('backoffice.clients.owner_phone') => $or($client->owner->phone),
-                        ];
-                    @endphp
-
-                    @foreach ($owner as $term => $value)
-                        <div class="py-2.5 flex items-baseline justify-between gap-4">
-                            <dt class="text-sub shrink-0">{{ $term }}</dt>
-                            <dd class="text-head font-medium text-right break-all">{{ $value }}</dd>
-                        </div>
-                    @endforeach
-                </dl>
-            @else
-                <p class="text-[13px] text-sub mt-3">{{ __('backoffice.clients.no_owner') }}</p>
-            @endif
-        </section>
-
-        {{-- ---------------------------------------------------- the contact --}}
-        <section class="sd-card p-5">
-            <h2 class="text-[15px] font-semibold text-head">{{ __('backoffice.clients.contact') }}</h2>
-
-            @php
-                $contact = [
-                    __('backoffice.clients.business_email') => $or($client->business_email),
-                    __('backoffice.clients.business_phone') => $or($client->business_phone),
-                    __('backoffice.clients.website') => $or($client->website),
-                    __('backoffice.clients.country') => $or($client->country_code),
-                ];
-            @endphp
-
-            <dl class="mt-3 divide-y divide-line text-[13px]">
-                @foreach ($contact as $term => $value)
-                    <div class="py-2.5 flex items-baseline justify-between gap-4">
-                        <dt class="text-sub shrink-0">{{ $term }}</dt>
-                        <dd class="text-head font-medium text-right break-all">{{ $value }}</dd>
-                    </div>
-                @endforeach
-            </dl>
-        </section>
-
-        {{-- ---------------------------------------------------- the regional --}}
-        <section class="sd-card p-5">
-            <h2 class="text-[15px] font-semibold text-head">{{ __('backoffice.clients.regional') }}</h2>
-
-            @php
-                $regional = [
-                    __('backoffice.clients.currency') => $client->currency_code,
-                    __('backoffice.clients.timezone') => $client->timezone,
-                    __('backoffice.clients.language') => $client->default_language,
-                    __('backoffice.clients.identifier') => $client->getTenantKey(),
-                ];
-            @endphp
-
-            <dl class="mt-3 divide-y divide-line text-[13px]">
-                @foreach ($regional as $term => $value)
-                    <div class="py-2.5 flex items-baseline justify-between gap-4">
-                        <dt class="text-sub shrink-0">{{ $term }}</dt>
-                        <dd class="text-head font-medium text-right break-all">{{ $value }}</dd>
-                    </div>
-                @endforeach
-            </dl>
-        </section>
-    </div>
-
-    {{-- --------------------------------------------------------- locations --}}
-    <section class="sd-card mt-4 overflow-hidden">
-        <h2 class="text-[15px] font-semibold text-head px-5 pt-5 pb-3">
-            {{ __('backoffice.clients.col.locations') }}
-        </h2>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-[13px]">
-                <thead class="bg-[#fbfbfc]">
-                    <tr class="border-y border-line text-left text-[11.5px] uppercase tracking-wide text-sub">
-                        <th scope="col" class="px-5 py-2.5 font-semibold">{{ __('backoffice.clients.location_name') }}</th>
-                        <th scope="col" class="px-5 py-2.5 font-semibold">{{ __('backoffice.clients.location_where') }}</th>
-                        <th scope="col" class="px-5 py-2.5 font-semibold">{{ __('backoffice.clients.status') }}</th>
-                    </tr>
-                </thead>
-
-                <tbody class="divide-y divide-line">
-                    @forelse ($client->locations as $location)
-                        <tr class="odd:bg-white even:bg-[#fcfcfd]">
-                            <td class="px-5 py-2.5">
-                                <span class="font-medium text-head">{{ $location->name }}</span>
-                                @if ($location->is_primary)
-                                    <span class="ml-1.5 text-[11px] font-semibold text-brand">
-                                        {{ __('backoffice.clients.primary') }}
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="px-5 py-2.5 text-sub">
-                                {{ collect([$location->city, $location->country])->filter()->implode(', ') ?: __('backoffice.clients.none') }}
-                            </td>
-                            <td class="px-5 py-2.5 text-sub">{{ $label($location->status) }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="3" class="px-5 py-8 text-center text-[13px] text-sub">
-                                {{ __('backoffice.clients.no_locations') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    {{-- ------------------------------------------------------------- users --}}
-    <section class="sd-card mt-4 overflow-hidden">
-        <h2 class="text-[15px] font-semibold text-head px-5 pt-5 pb-3">
-            {{ __('backoffice.clients.stats.users') }}
-        </h2>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-[13px]">
-                <thead class="bg-[#fbfbfc]">
-                    <tr class="border-y border-line text-left text-[11.5px] uppercase tracking-wide text-sub">
-                        <th scope="col" class="px-5 py-2.5 font-semibold">{{ __('backoffice.clients.owner_name') }}</th>
-                        <th scope="col" class="px-5 py-2.5 font-semibold">{{ __('backoffice.clients.owner_email') }}</th>
-                        <th scope="col" class="px-5 py-2.5 font-semibold text-right">{{ __('backoffice.clients.last_seen') }}</th>
-                    </tr>
-                </thead>
-
-                <tbody class="divide-y divide-line">
-                    @forelse ($client->users as $user)
-                        <tr class="odd:bg-white even:bg-[#fcfcfd]">
-                            <td class="px-5 py-2.5 font-medium text-head">{{ $user->name }}</td>
-                            <td class="px-5 py-2.5 text-sub break-all">{{ $user->email }}</td>
-                            <td class="px-5 py-2.5 text-right text-sub whitespace-nowrap">
-                                {{ \App\Support\TimeFormat::dateTime($user->last_login_at) ?? __('backoffice.clients.never') }}
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="3" class="px-5 py-8 text-center text-[13px] text-sub">
-                                {{ __('backoffice.clients.no_users') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    {{-- ----------------------------------------------------- the history --}}
-    <section class="sd-card mt-4 p-5">
-        <h2 class="text-[15px] font-semibold text-head">{{ __('backoffice.clients.activity') }}</h2>
-
-        @if ($activity->isEmpty())
-            <p class="text-[13px] text-sub mt-3">{{ __('backoffice.clients.no_activity') }}</p>
-        @else
-            <ul class="mt-3 divide-y divide-line">
-                @foreach ($activity as $entry)
-                    <li class="py-3">
-                        <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                            <span class="text-[13px] font-semibold text-head">{{ $entry->label() }}</span>
-                            <span class="text-[12px] text-faint shrink-0">
-                                {{ \App\Support\TimeFormat::dateTime($entry->created_at) }}
-                            </span>
-                        </div>
-
-                        {{-- The reason as its label, not its key: the log is
-                             read by people, and 'non_payment' is not a word. --}}
-                        @if (data_get($entry->after, 'reason'))
-                            <p class="text-[12.5px] text-sub mt-1">
-                                {{ __('backoffice.clients.disable_reason') }}:
-                                {{ __('backoffice.clients.reasons.'.data_get($entry->after, 'reason')) }}
-                            </p>
-                        @endif
-
-                        @if (data_get($entry->after, 'note'))
-                            <p class="text-[12.5px] text-sub mt-0.5">
-                                {{ __('backoffice.clients.note') }}: {{ data_get($entry->after, 'note') }}
-                            </p>
-                        @endif
-
-                        <p class="text-[12.5px] text-sub mt-0.5">
-                            {{ __('backoffice.clients.by') }}:
-                            {{ $entry->admin_name ?? $entry->admin_email ?? __('backoffice.audit.unknown_actor') }}
-                        </p>
-                    </li>
-                @endforeach
-            </ul>
-        @endif
-    </section>
 
     {{-- ------------------------------------------------------ switching off --}}
+    {{-- A real dialog element: it traps focus, closes on Escape and is inert
+         to the page behind it without any of that being written here. Never
+         confirm() — a box the browser can suppress is not a safeguard, and the
+         rules it enforces are on the server anyway. --}}
     @if ($canManage && $client->isActive())
-        <div class="mt-4 flex justify-end">
-            <button type="button" data-modal-open="disable-client"
-                    class="h-10 px-4 rounded-lg bg-danger hover:opacity-90 text-white text-[13px] font-semibold transition-opacity">
-                {{ __('backoffice.clients.disable_action') }}
-            </button>
-        </div>
-
-        {{-- A real <dialog>: it traps focus, closes on Escape and is inert to
-             the page behind it without any of that being written here. Never
-             confirm() — a dialog the browser can suppress is not a safeguard,
-             and the rules it enforces are on the server anyway. --}}
         <dialog id="disable-client"
                 class="w-[min(92vw,32rem)] rounded-xl border border-line bg-white p-0 backdrop:bg-black/40">
             <form method="POST" action="{{ route('backoffice.clients.disable', $client) }}">
@@ -447,37 +206,164 @@
         </dialog>
     @endif
 
-    @if ($canManage)
-        <script>
-            /* Small enough to live beside the markup it drives, and it drives
-               nothing the server does not check again. */
-            document.querySelectorAll('[data-modal-open]').forEach((button) => {
-                button.addEventListener('click', () => {
-                    document.getElementById(button.dataset.modalOpen)?.showModal();
+    {{-- Where a client-side action reports itself. Anything that reaches the
+         server says so through the console's own status banner instead; only
+         copying to the clipboard has nothing to redirect to. --}}
+    <div id="qa-toast" role="status" aria-live="polite"
+         class="fixed bottom-5 right-5 z-50 rounded-lg bg-[#15161c] px-4 py-2.5 text-[13px] font-semibold text-white shadow-lg transition-opacity duration-200 opacity-0 pointer-events-none"
+         hidden></div>
+
+    <script>
+        /* Small enough to live beside the markup it drives, and it drives
+           nothing the server does not check again. */
+        document.addEventListener('click', (event) => {
+            const opener = event.target.closest('[data-modal-open]');
+
+            if (opener) {
+                document.getElementById(opener.dataset.modalOpen)?.showModal();
+                opener.closest('[data-qa-root]')?.removeAttribute('open');
+                return;
+            }
+
+            const closer = event.target.closest('[data-modal-close]');
+
+            if (closer) {
+                closer.closest('dialog')?.close();
+            }
+        });
+
+        /* "Other" explains nothing by itself, so the note becomes required the
+           moment it is chosen. The server enforces the same rule. */
+        const reason = document.getElementById('reason');
+        const note = document.getElementById('note');
+
+        reason?.addEventListener('change', () => {
+            const required = reason.value === reason.dataset.requiresNote;
+
+            note.required = required;
+            note.closest('div').querySelector('[data-note-optional]')?.toggleAttribute('hidden', required);
+        });
+
+        /* Re-opened with errors on it: show the reader what failed rather than
+           a closed dialog and a page that looks unchanged. */
+        @if ($errors->any())
+            document.getElementById('disable-client')?.showModal();
+        @endif
+
+        /* ------------------------------------------------- quick actions --*/
+        (() => {
+            const root = document.querySelector('[data-quick-actions] [data-qa-root]');
+
+            if (!root) {
+                return;
+            }
+
+            const search = root.querySelector('[data-qa-search]');
+            const none = root.querySelector('[data-qa-none]');
+            const toast = document.getElementById('qa-toast');
+
+            /* Every row, paired with the heading above it, so filtering can
+               hide a heading whose whole group has gone. */
+            const rows = [];
+            let heading = null;
+
+            root.querySelectorAll('[data-qa-group], [data-qa-item]').forEach((element) => {
+                if (element.hasAttribute('data-qa-group')) {
+                    heading = element;
+                    return;
+                }
+
+                /* A posting action is wrapped in its own form, which is the
+                    element that has to be hidden rather than the button. */
+                rows.push({ heading, node: element.closest('form') ?? element, text: element.textContent.toLowerCase() });
+            });
+
+            function filter() {
+                const term = search.value.trim().toLowerCase();
+                const shown = new Set();
+                let matches = 0;
+
+                rows.forEach((row) => {
+                    const hit = term === '' || row.text.includes(term);
+
+                    row.node.hidden = !hit;
+
+                    if (hit) {
+                        matches += 1;
+                        shown.add(row.heading);
+                    }
+                });
+
+                root.querySelectorAll('[data-qa-group]').forEach((group) => {
+                    group.hidden = !shown.has(group);
+                });
+
+                none.hidden = matches > 0;
+            }
+
+            search?.addEventListener('input', filter);
+
+            /* Opened fresh every time. The control's own label never changes
+               from "Select Quick Action", so closing it is the whole of
+               resetting it — but a stale search term would hide most of the
+               list from whoever opens it next. */
+            root.addEventListener('toggle', () => {
+                if (root.open) {
+                    search.value = '';
+                    filter();
+                    search.focus();
+                }
+            });
+
+            /* A disclosure stays open when the page behind it is clicked, so
+               this is the part the element does not do for us. */
+            document.addEventListener('click', (event) => {
+                if (root.open && !root.contains(event.target)) {
+                    root.removeAttribute('open');
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    root.removeAttribute('open');
+                }
+            });
+
+            function say(message) {
+                toast.textContent = message;
+                toast.hidden = false;
+                requestAnimationFrame(() => toast.classList.replace('opacity-0', 'opacity-100'));
+
+                clearTimeout(toast.dataset.timer);
+                toast.dataset.timer = setTimeout(() => {
+                    toast.classList.replace('opacity-100', 'opacity-0');
+                    setTimeout(() => { toast.hidden = true; }, 200);
+                }, 2600);
+            }
+
+            root.querySelectorAll('[data-qa-copy]').forEach((button) => {
+                button.addEventListener('click', async () => {
+                    root.removeAttribute('open');
+
+                    try {
+                        await navigator.clipboard.writeText(button.dataset.qaCopy);
+                        say(button.dataset.qaCopied);
+                    } catch (error) {
+                        /* Denied permission, or an insecure origin. Said
+                           plainly rather than silently doing nothing, or the
+                           reader pastes whatever was on the clipboard before. */
+                        say(@json(__('backoffice.clients.copy_failed')));
+                    }
                 });
             });
 
-            document.querySelectorAll('[data-modal-close]').forEach((button) => {
-                button.addEventListener('click', () => button.closest('dialog')?.close());
+            root.querySelectorAll('form[data-qa-confirm]').forEach((form) => {
+                form.addEventListener('submit', (event) => {
+                    if (!window.confirm(form.dataset.qaConfirm)) {
+                        event.preventDefault();
+                    }
+                });
             });
-
-            /* "Other" explains nothing by itself, so the note becomes required
-               the moment it is chosen. The server enforces the same rule. */
-            const reason = document.getElementById('reason');
-            const note = document.getElementById('note');
-
-            reason?.addEventListener('change', () => {
-                const required = reason.value === reason.dataset.requiresNote;
-
-                note.required = required;
-                note.closest('div').querySelector('[data-note-optional]')?.toggleAttribute('hidden', required);
-            });
-
-            /* Re-opened with errors on it: show the reader what failed rather
-               than a closed dialog and a page that looks unchanged. */
-            @if ($errors->any())
-                document.getElementById('disable-client')?.showModal();
-            @endif
-        </script>
-    @endif
+        })();
+    </script>
 @endsection

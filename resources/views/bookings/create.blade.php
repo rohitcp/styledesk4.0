@@ -104,6 +104,21 @@
                opened from their profile. */
             'client' => $client,
             'walkIn' => $walkIn,
+            /* What this screen may be used to sell, and whether each type
+               can actually be chosen yet. Worked out on the server because
+               it depends on the Membership module being on and having
+               something published. */
+            'purchaseTypes' => $purchaseTypes,
+            /* The memberships the desk may sell, where the sale posts, and
+               the two terms the purchase screen has to obey. Empty when the
+               module is off, which is what closes the type. */
+            'membershipPlans' => $membershipPlans,
+            'membershipAction' => $membershipAction,
+            'membershipSettings' => $membershipSettings,
+            /* Whether this business can keep a card at all, and where the
+               browser sends the token it is handed. Everything Card on File
+               offers depends on the first. */
+            'cardVault' => $cardVault,
             /* Whether this reader may let a booking off its payment. Taking
                an appointment and waiving what it costs are not the same
                authority, so they are not the same permission. */
@@ -146,7 +161,7 @@
             /* Only the copy this screen uses. The whole file would put the
                validation strings and the toasts in the page's HTML. */
             'labels' => \Illuminate\Support\Arr::only(__('bookings'), [
-                'sections', 'client', 'service', 'when', 'details', 'payment', 'duplicate',
+                'sections', 'purchase', 'membership', 'credits', 'cards', 'client', 'service', 'when', 'details', 'payment', 'duplicate',
                 'comms', 'summary', 'blockers', 'confirm', 'draft', 'cancel', 'context',
                 'new_client', 'pay', 'methods', 'payment_statuses', 'confirmation', 'steps', 'lead',
                 'any_staff', 'autosave', 'resources',

@@ -34,7 +34,49 @@ return [
         ],
     ],
 
+    /* Card brands, as a person writes them rather than as a gateway keys
+       them. Anything not listed falls back to its own key, tidied up — a new
+       brand should read as itself rather than as nothing. */
+    /* A client's saved cards. StyleDesk holds the gateway's reference and
+       the four digits a receptionist says out loud — never a card number. */
+    'methods_list' => [
+        'no_vault' => 'No payment processor is connected, so cards cannot be saved.',
+        'default_set' => ':card is now the default payment method.',
+        'removed' => ':card has been removed.',
+        'title' => 'Payment methods',
+        'none' => 'No cards saved',
+        'none_hint' => 'A card saved here can be charged for membership renewals without the client present.',
+        'default' => 'Default',
+        'make_default' => 'Set as default',
+        'expires' => 'Expires :date',
+        'expired' => 'Expired',
+        'expiring' => 'Expires this month',
+        'needs_attention' => 'Payment method needs attention',
+        'add' => 'Add new card',
+        'remove' => 'Remove card',
+        'remove_confirm' => 'Remove this card? It can no longer be charged.',
+        'in_use' => 'This card renews :name. Choose another payment method before removing it.',
+        'used_by' => 'Renews :name',
+        'gateway' => 'Processed by :name',
+        'statuses' => [
+            'active' => 'Active',
+            'expired' => 'Expired',
+            'removed' => 'Removed',
+        ],
+    ],
+
+    'brands' => [
+        'visa' => 'Visa',
+        'mastercard' => 'Mastercard',
+        'amex' => 'American Express',
+        'discover' => 'Discover',
+        'diners' => 'Diners Club',
+        'jcb' => 'JCB',
+        'unionpay' => 'UnionPay',
+    ],
+
     'stripe' => [
+        'not_settled' => 'The card was not charged. The payment did not settle.',
         'connect' => 'Connect Stripe',
         'continue' => 'Continue setup',
         'manage' => 'Manage account',

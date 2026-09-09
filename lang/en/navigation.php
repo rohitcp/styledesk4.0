@@ -74,7 +74,7 @@ return [
     'loyalty' => 'Loyalty',
     'groups' => 'Groups',
     'forms_waivers' => 'Forms & Waivers',
-    'memberships_packages' => 'Memberships & Packages',
+    'membership' => 'Membership',
 
     /* The headings above a group of entries inside an open menu. */
     'sections' => [

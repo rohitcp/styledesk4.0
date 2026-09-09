@@ -1,6 +1,7 @@
 ---
 paths:
   - 'app/{Models/ClientActivity.php,Support/ClientActivityLog.php}'
+  - 'app/{Models/ClientPaymentMethod.php,Payments/VaultsCards.php,Payments/StripeGateway.php,Payments/PaymentGatewayManager.php}'
 ---
 
 # Models
@@ -17,3 +18,14 @@ paths:
 - **Client edits are one entry per save**, with a `changes` array of `{field, from, to}`. Ids are resolved to names — "3 → 7" tells a reader nothing about which branch. Contact details reach the diff via the denormalised `clients.mobile`/`email` columns that `syncPhones`/`syncEmails` maintain.
 
 `user_id` null means StyleDesk itself, and the timeline says "StyleDesk System" rather than leaving a blank that reads as missing data. `bookingCancelled()` exists but has no call site yet — the cancel flow is not built.
+
+## StyleDesk stores payment references, never cards — the vault contract
+`client_payment_methods` holds a gateway token plus display-safe metadata (brand, last4, exp month/year) and NOTHING else. Never add a column for a card number, CVV/CVC, PIN or track data — one such migration moves the business inside PCI scope. `ClientPaymentMethodTest::test_the_table_cannot_hold_a_card` names the forbidden columns so that becomes a failing build.
+
+Card capture goes browser → gateway's own secure component (Stripe Payment Element) → token → StyleDesk. No method on `VaultsCards` ever takes a card number, expiry or CVC as an argument; if one needs to, the design is wrong. `rememberCard()` re-reads brand/last4/expiry FROM the gateway rather than trusting what the browser posted — what a page claims a card is and what the gateway will charge must be the same thing.
+
+`VaultsCards` is a SEPARATE contract from `PaymentGateway` because most gateways are not vaults: cash and terminal-card are recorders and cannot be charged again next month. Resolve with `PaymentGatewayManager::vault($tenant)`, which returns null when the business has no processor connected — every Card on File screen must handle null rather than failing at the last step.
+
+Renewals use `chargeSavedCard()` with `off_session`, and the SetupIntent is created with `usage: off_session` so Stripe collects the extra authentication while the client is present rather than failing the first renewal. Anything but `succeeded` throws — a "processing" intent has not paid for the month, and issuing credits against it gives away a massage on a promise. Idempotency keys are mandatory on both charge paths.
+
+A card expires at the END of its month (`expiresAfter()` = end of exp_month). Using the 1st would refuse a valid card for thirty days. `markRemoved()` never deletes: a membership renewed on that card still points at it. `client_memberships.payment_method_id` is nullOnDelete so losing a card makes the next renewal ask for a new one instead of taking the membership down.

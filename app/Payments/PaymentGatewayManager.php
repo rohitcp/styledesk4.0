@@ -38,6 +38,24 @@ class PaymentGatewayManager
     }
 
     /**
+     * The vault this business can save cards in, or null where it has none.
+     *
+     * Null is the honest answer for a salon taking cash and card at the
+     * terminal: there is nowhere to keep a card that could be charged again
+     * next month, and every screen that offers Card on File has to be able to
+     * find that out rather than failing at the last step.
+     *
+     * A gateway that is chosen but not finished connecting is not a vault
+     * either — `for()` has already fallen back to recording by then.
+     */
+    public function vault(?Tenant $tenant): ?VaultsCards
+    {
+        $gateway = $this->for($tenant);
+
+        return $gateway instanceof VaultsCards && $gateway->isReady() ? $gateway : null;
+    }
+
+    /**
      * Every gateway a business could use, whether or not it is connected.
      *
      * The settings screen lists them all: one that cannot be used yet says so,

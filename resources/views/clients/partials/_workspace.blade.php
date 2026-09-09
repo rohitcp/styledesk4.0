@@ -25,7 +25,11 @@
              at all, and only where the business runs a scheme: a tab that
              answers nothing teaches the reader the wrong thing about this
              client. --}}
-        @foreach (array_filter(['bookings', $hasLeads ? 'leads' : null, 'services', $canViewRewards ? 'rewards' : null, 'notes', 'files', 'activity']) as $tab)
+        {{-- Membership sits beside Rewards for the same reason and on the
+             same terms: both are read with a client in front of you — "what
+             have you got, and can you use it today" — and both are only there
+             where the business runs the scheme and the reader may see it. --}}
+        @foreach (array_filter(['bookings', $hasLeads ? 'leads' : null, 'services', $canViewRewards ? 'rewards' : null, $canViewMemberships ? 'membership' : null, 'notes', 'files', 'activity']) as $tab)
             <button type="button" role="tab" data-tab="{{ $tab }}"
                     id="tab-{{ $tab }}" aria-controls="panel-{{ $tab }}"
                     aria-selected="{{ $loop->first ? 'true' : 'false' }}"
@@ -386,6 +390,11 @@
 {{-- ------------------------------------------------------------ rewards --}}
 @if ($canViewRewards)
     @include('clients.partials._rewards')
+@endif
+
+{{-- --------------------------------------------------------- membership --}}
+@if ($canViewMemberships)
+    @include('clients.partials._membership')
 @endif
 
 <div id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" data-panel="notes" class="pt-4" hidden>

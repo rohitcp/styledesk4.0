@@ -103,6 +103,21 @@ function adoptChosenTip() {
 
     if (chosen.chosen_minor) {
         customTip.value = (chosen.chosen_minor / 100).toFixed(2);
+
+        return;
+    }
+
+    /* Nothing was agreed — an older booking, or one taken before the screen
+       applied the business's default. The default applies here for the same
+       reason it applies there: a till that opens on No Tip has answered the
+       question on the client's behalf. Matched to a suggestion where one
+       fits, so the chip lights rather than the amount landing in the custom
+       box. */
+    if (chosen.default_minor > 0) {
+        const match = (chosen.suggested ?? []).find((option) => option.minor === chosen.default_minor);
+
+        tip.value = match ? match.minor : null;
+        customTip.value = match ? '' : (chosen.default_minor / 100).toFixed(2);
     }
 }
 

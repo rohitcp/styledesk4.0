@@ -224,10 +224,12 @@ return [
                 ],
                 [
                     'key' => 'memberships',
-                    'name' => 'Memberships',
-                    'description' => 'Membership tiers, recurring benefits and how memberships are applied.',
+                    'name' => 'Membership',
+                    'description' => 'Whether the business sells memberships, where they can be bought, what happens to unused credits and what cancelling one means.',
                     'icon' => 'id-card',
-                    'keywords' => ['subscription', 'recurring', 'tier', 'plan'],
+                    'route' => 'settings.membership.index',
+                    'status' => 'active',
+                    'keywords' => ['subscription', 'recurring', 'tier', 'plan', 'membership', 'package', 'credit', 'billing', 'renewal'],
                 ],
                 [
                     'key' => 'packages',

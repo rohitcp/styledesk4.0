@@ -102,8 +102,8 @@ return [
             'description' => 'Formularios de admisión, consentimiento y consulta, y cuándo se piden.',
         ],
         'memberships' => [
-            'name' => 'Membresías',
-            'description' => 'Niveles de membresía, ventajas recurrentes y cómo se aplican.',
+            'name' => 'Membresía',
+            'description' => 'Si el negocio vende membresías, dónde se pueden comprar, qué pasa con los créditos no usados y qué significa cancelar una.',
         ],
         'packages' => [
             'name' => 'Paquetes',

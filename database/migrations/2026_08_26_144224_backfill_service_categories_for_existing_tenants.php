@@ -6,7 +6,6 @@ use App\Models\ServiceCategory;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Give the default categories to tenants that predate the seeding.

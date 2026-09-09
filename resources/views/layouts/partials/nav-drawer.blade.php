@@ -57,6 +57,7 @@
           <div class="styledesk_drawer__sub">
             @foreach ($item['children'] as $child)
               @continue (! empty($child['separator']))
+              @continue (! App\Support\Nav::visible($child))
 
               @if (! empty($child['section']))
                 {{-- The same headings the desktop menu uses: a group of six

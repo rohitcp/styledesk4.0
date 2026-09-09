@@ -185,6 +185,28 @@ return [
             ],
         ],
 
+        /*
+        | Membership.
+        |
+        | Its own group rather than rows inside Clients, for the same reason
+        | Loyalty is: deciding the terms the business sells memberships on and
+        | selling one to the person at the desk are different jobs held by
+        | different people.
+        */
+        'membership' => [
+            'label' => 'Membership',
+            'icon' => 'id-card',
+            'permissions' => [
+                'membership.view_settings' => ['label' => 'View membership settings'],
+                'membership.manage_settings' => ['label' => 'Manage membership settings'],
+                'membership.view_members' => ['label' => 'View client memberships'],
+                /* Separate from editing a client: correcting a phone number
+                   and stopping a subscription somebody is paying for are not
+                   the same authority. */
+                'membership.manage_members' => ['label' => 'Cancel and pause memberships'],
+            ],
+        ],
+
         'email' => [
             'label' => 'Email',
             'icon' => 'envelope',

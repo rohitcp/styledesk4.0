@@ -86,6 +86,7 @@ return [
     | usually said out loud rather than the order a database would want them.
     */
     'sections' => [
+        'purchase' => 'Select type',
         'client' => 'Client',
         'service' => 'Service',
         'when' => 'Staff & time',
@@ -93,6 +94,108 @@ return [
         'payment' => 'Deposit / payment',
         'comms' => 'Communication',
         'summary' => 'Booking summary',
+    ],
+
+    /* The Select Type accordion above the services.
+     *
+     * A type that cannot be sold is shown and disabled with the reason
+     * beside it: a missing option reads as a product StyleDesk does not
+     * have, and a disabled one names the switch somebody can go and turn on.
+     */
+    'purchase' => [
+        'title' => 'Select type',
+        'question' => 'What would you like to sell?',
+        'services' => 'Services',
+        'services_hint' => 'An appointment: services, staff, a time and a bill.',
+        'membership' => 'Membership',
+        'membership_hint' => 'A recurring membership or a package of services.',
+        'gift_card' => 'Gift card',
+        'gift_card_hint' => 'A stored value the client can spend later.',
+        'coming_soon' => 'Coming soon',
+        'membership_off' => 'Switch Membership on in App Settings first.',
+        'membership_empty' => 'Publish a membership under Clients → Membership first.',
+    ],
+
+    /* The membership branch of the booking screen: choosing one, when it
+     * starts, and what the till is about to ask for.
+     */
+    'membership' => [
+        'select' => 'Select membership',
+        'plans' => 'Membership plans',
+        'packages' => 'Membership packages',
+        'none' => 'Nothing published to sell yet.',
+        'none_hint' => 'Publish a membership under Clients → Membership and it appears here.',
+        'includes' => 'Includes',
+        'select_this' => 'Select membership',
+        'selected' => 'Selected',
+        'change' => 'Change',
+        'saving' => 'Client saves :amount',
+        'trial' => ':days-day trial',
+        'joining_fee' => 'Joining fee :amount',
+        'setup_fee' => 'Setup fee :amount',
+        'start' => 'Start date',
+        'start_today' => 'Start today',
+        'start_later' => 'Choose a start date',
+        'start_locked' => 'Memberships start the day they are sold.',
+        'scheduled_note' => 'This membership will be Scheduled until :date.',
+        'purchase_summary' => 'Purchase summary',
+        'billing' => 'Billing',
+        'next_billing' => 'Next billing',
+        'one_off' => 'One-off purchase',
+        'due_today' => 'Amount due today',
+        'client_required' => 'Choose a client first — a membership is always attached to one.',
+        'plan_required' => 'Choose a membership.',
+        'method_note' => 'A recurring membership needs a payment method that can be charged again.',
+        'complete' => 'Complete purchase',
+    ],
+
+    /* Spending what the client already bought.
+     *
+     * Offered beside the line it would pay for, never applied on its own:
+     * whether to spend a credit today is the client's decision, and the desk
+     * asks it out loud.
+     */
+    'credits' => [
+        'available' => 'Membership benefit available',
+        'from' => 'From :name',
+        'remaining' => ':count available',
+        'apply' => 'Apply membership credit',
+        'applied' => 'Membership credit applied',
+        'remove' => 'Remove',
+        'line' => 'Membership credit',
+    ],
+
+    /* Recurring membership billing and the card it runs on. StyleDesk holds
+       the gateway's reference, never the card. */
+    'cards' => [
+        'recurring' => 'Recurring payment',
+        'recurring_hint' => 'Renews automatically until it is cancelled.',
+        'recurring_locked' => 'This membership is sold as a subscription and always renews.',
+        'renews' => 'Renews :price',
+        'one_off' => 'Charge once, do not renew',
+        'title' => 'Card on file',
+        'why' => 'Required for automatic membership renewal.',
+        'existing' => 'Use an existing card',
+        'add' => '+ Add new card',
+        'default' => 'Default',
+        'expires' => 'Expires :date',
+        'expired' => 'Expired',
+        'expiring' => 'Expires this month',
+        'save' => 'Save this card on file',
+        'save_required' => 'Required for automatic membership renewal.',
+        'none' => 'No card on file for this client.',
+        'unavailable' => 'Card on file is unavailable',
+        'unavailable_hint' => 'Connect a payment processor in App Settings → Payments to save cards for automatic renewal.',
+        'client_first' => 'Choose a client before adding a card.',
+        'required' => 'Choose a card for the renewal, or turn recurring payment off.',
+        'adding' => 'Adding card…',
+        'failed' => 'That card could not be saved.',
+        'cancel' => 'Cancel',
+        'summary_recurring' => 'Recurring',
+        'summary_payment_method' => 'Payment method',
+        'summary_next_billing' => 'Next billing',
+        'yes' => 'Yes',
+        'no' => 'No',
     ],
 
     'client' => [

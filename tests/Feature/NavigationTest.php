@@ -89,6 +89,14 @@ class NavigationTest extends TestCase
                     continue;
                 }
 
+                /* An entry gated on a module the business has switched off
+                   is deliberately absent: the screen behind it answers 404,
+                   and a drawer that offers it is a drawer that lies. This
+                   business has none of them on. */
+                if (! empty($child['feature'])) {
+                    continue;
+                }
+
                 /* A section heading names the group below it and has no page
                    of its own — the drawer still has to show it, or six links
                    arrive as one undifferentiated list. */

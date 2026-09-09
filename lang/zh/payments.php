@@ -34,7 +34,47 @@ return [
         ],
     ],
 
+    /* Card brands, as a person writes them rather than as a gateway keys
+       them. Anything not listed falls back to its own key, tidied up — a new
+       brand should read as itself rather than as nothing. */
+    'methods_list' => [
+        'no_vault' => '尚未连接支付服务商，无法保存银行卡。',
+        'default_set' => '已将 :card 设为默认付款方式。',
+        'removed' => '已移除 :card。',
+        'title' => '付款方式',
+        'none' => '尚未保存银行卡',
+        'none_hint' => '在此保存的银行卡可在客户不在场时用于会员续费扣款。',
+        'default' => '默认',
+        'make_default' => '设为默认',
+        'expires' => ':date 到期',
+        'expired' => '已过期',
+        'expiring' => '本月到期',
+        'needs_attention' => '付款方式需要处理',
+        'add' => '添加银行卡',
+        'remove' => '移除银行卡',
+        'remove_confirm' => '确定移除该银行卡吗？之后将无法扣款。',
+        'in_use' => '该卡正用于续费 :name。请先选择其他付款方式再移除。',
+        'used_by' => '用于续费 :name',
+        'gateway' => '由 :name 处理',
+        'statuses' => [
+            'active' => '有效',
+            'expired' => '已过期',
+            'removed' => '已移除',
+        ],
+    ],
+
+    'brands' => [
+        'visa' => 'Visa',
+        'mastercard' => '万事达',
+        'amex' => '美国运通',
+        'discover' => 'Discover',
+        'diners' => '大来卡',
+        'jcb' => 'JCB',
+        'unionpay' => '银联',
+    ],
+
     'stripe' => [
+        'not_settled' => '未扣款，该笔支付未完成结算。',
         'connect' => '连接 Stripe',
         'continue' => '继续设置',
         'manage' => '管理账号',

@@ -100,6 +100,7 @@ return [
             'new_this_month' => 'Nuevos este mes',
             'services' => 'Servicios',
             'users' => 'Usuarios',
+            'bookings' => 'Reservas',
         ],
 
         'search_label' => 'Buscar',
@@ -137,6 +138,7 @@ return [
         'owner_name' => 'Nombre',
         'owner_email' => 'Correo',
         'owner_phone' => 'Teléfono',
+        'subscription' => 'Suscripción',
         'trial_started' => 'Prueba iniciada',
         'trial_ends' => 'Fin de la prueba',
         'location_name' => 'Ubicación',
@@ -194,6 +196,46 @@ return [
         'disabled_detail' => 'Desactivado por :who el :when.',
         'no_users' => 'Todavía no hay usuarios.',
 
+        'usage' => 'Uso',
+        'account' => 'Cuenta',
+        'business_name' => 'Nombre del negocio',
+        'primary_contact' => 'Contacto principal',
+        'last_activity' => 'Última actividad',
+
+        'quick_action' => 'Acción rápida',
+        'quick_action_placeholder' => 'Seleccionar acción rápida',
+        'quick_action_search' => 'Buscar acciones',
+        'quick_action_none' => 'Ninguna acción coincide.',
+        'copied_url' => 'URL del cliente copiada.',
+        'copied_id' => 'ID del cliente copiado.',
+        'copy_failed' => 'No se copió nada: el navegador denegó el acceso al portapapeles.',
+
+        'action_groups' => [
+            'go' => 'Ir a',
+            'copy' => 'Copiar',
+            'tell' => 'Enviar',
+            'account' => 'Cuenta',
+        ],
+
+        'actions' => [
+            'open_app' => 'Abrir la aplicación del cliente',
+            'view_profile' => 'Ver el perfil del cliente',
+            'view_services' => 'Ver servicios',
+            'view_team' => 'Ver miembros del equipo',
+            'view_email_logs' => 'Ver registros de correo',
+            'copy_url' => 'Copiar la URL del cliente',
+            'copy_id' => 'Copiar el ID del cliente',
+            'send_email' => 'Enviar correo',
+            'resend_welcome' => 'Reenviar el correo de bienvenida',
+            'send_password_reset' => 'Enviar restablecimiento de contraseña',
+            'activate' => 'Activar cliente',
+            'deactivate' => 'Desactivar cliente',
+        ],
+
+        'reset_sent' => 'Se ha enviado un enlace de restablecimiento a :email.',
+        'reset_failed' => 'No se envió ningún enlace. Puede que se haya enviado uno hace muy poco: espera unos minutos e inténtalo de nuevo.',
+        'reset_no_owner' => 'Este negocio no tiene propietario, así que no hay a quién enviarle el enlace.',
+
         'none' => '—',
         'no_owner' => 'Sin propietario',
         'no_plan' => 'Sin plan',
@@ -201,6 +243,123 @@ return [
 
         'empty' => 'Todavía no se ha dado de alta ningún negocio.',
         'no_matches' => 'Ningún negocio coincide con esos filtros.',
+    ],
+
+    'tabs' => [
+        'label' => 'Secciones del cliente',
+        'overview' => 'Resumen',
+        'services' => 'Servicios',
+        'email_log' => 'Registro de correo',
+        'sms_log' => 'Registro de SMS',
+        'team' => 'Miembros del equipo',
+        'subscription' => 'Suscripción',
+        'coming_soon' => 'Próximamente',
+    ],
+
+    'table' => [
+        'search' => 'Buscar',
+        'per_page' => 'Filas',
+        'no_matches' => 'Nada coincide con esos filtros.',
+    ],
+
+    'services' => [
+        'search_placeholder' => 'Servicio, descripción o categoría',
+        'empty' => 'Este negocio aún no ha añadido servicios.',
+        'no_price' => 'Sin precio',
+        'all_locations' => 'Todas las ubicaciones',
+
+        'col' => [
+            'name' => 'Servicio',
+            'category' => 'Categoría',
+            'duration' => 'Duración',
+            'price' => 'Precio',
+            'location' => 'Ubicación',
+            'status' => 'Estado',
+            'created' => 'Creado',
+        ],
+
+        'statuses' => [
+            'active' => 'Activo',
+            'inactive' => 'Inactivo',
+        ],
+    ],
+
+    'emails' => [
+        'search_placeholder' => 'Destinatario, asunto o tipo',
+        'empty' => 'Este negocio aún no ha enviado ningún correo.',
+        'manual' => 'Mensaje manual',
+        'automatic' => 'Automático',
+        'view_details' => 'Ver detalles',
+        'hide_details' => 'Ocultar detalles',
+
+        'col' => [
+            'sent' => 'Fecha y hora',
+            'recipient' => 'Destinatario',
+            'type' => 'Tipo',
+            'subject' => 'Asunto',
+            'status' => 'Estado',
+            'sent_by' => 'Enviado por',
+            'provider' => 'Proveedor',
+            'action' => 'Acción',
+        ],
+
+        'statuses' => [
+            'queued' => 'En cola',
+            'sent' => 'Enviado',
+            'delivered' => 'Entregado',
+            'failed' => 'Fallido',
+        ],
+
+        'detail' => [
+            'sender' => 'De',
+            'queued' => 'En cola el',
+            'sent' => 'Enviado el',
+            'booking' => 'Reserva',
+            'failure' => 'Por qué falló',
+            'message' => 'Mensaje',
+        ],
+    ],
+
+    'team' => [
+        'search_placeholder' => 'Nombre, correo o puesto',
+        'empty' => 'Este negocio aún no ha añadido miembros del equipo.',
+        'no_account' => 'Todavía sin cuenta',
+
+        'col' => [
+            'name' => 'Nombre',
+            'email' => 'Correo',
+            'role' => 'Rol',
+            'location' => 'Ubicación',
+            'status' => 'Estado',
+            'last_login' => 'Último acceso',
+            'created' => 'Creado',
+        ],
+    ],
+
+    'sms' => [
+        'title' => 'Registro de SMS',
+        'intro' => 'Historial de SMS, estado de entrega y actividad de mensajes de este cliente.',
+        'items' => [
+            'history' => 'Cada mensaje enviado, con su destinatario',
+            'delivery' => 'Estado de entrega y de error del proveedor',
+            'activity' => 'Qué parte del producto envió cada mensaje',
+            'spend' => 'Volumen de mensajes y gasto frente al plan',
+        ],
+    ],
+
+    'subscription' => [
+        'title' => 'Suscripción',
+        'intro' => 'Plan, ciclo de facturación y datos de pago de este cliente. El plan y las fechas de prueba ya conocidos están en la pestaña Resumen.',
+        'items' => [
+            'plan' => 'Plan actual',
+            'cycle' => 'Ciclo de facturación',
+            'status' => 'Estado de la suscripción',
+            'renewal' => 'Fecha de renovación',
+            'limits' => 'Límites de uso',
+            'method' => 'Método de pago',
+            'history' => 'Historial de facturación',
+            'change' => 'Mejorar, reducir o cancelar',
+        ],
     ],
 
     'dashboard' => [
@@ -248,6 +407,7 @@ return [
             'admin_password_changed' => 'Contraseña de administrador cambiada',
             'client_disabled' => 'Cliente desactivado',
             'client_enabled' => 'Cliente activado',
+            'client_password_reset_sent' => 'Restablecimiento de contraseña enviado al propietario del cliente',
         ],
     ],
 ];

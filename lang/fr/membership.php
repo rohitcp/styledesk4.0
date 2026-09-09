@@ -1,0 +1,456 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+| Abonnement.
+|
+| Deux publics, séparés par leurs clés de premier niveau : `settings` est lu
+| par la personne qui décide des conditions de vente, tout ce qui précède par
+| la personne à l’accueil avec un client devant elle.
+*/
+
+return [
+
+    'title' => 'Abonnement',
+
+    'types' => [
+        'recurring' => 'Abonnement récurrent',
+        'recurring_hint' => 'Prélevé automatiquement par cycle. Ses avantages se renouvellent à chaque prélèvement.',
+        'package' => 'Forfait d’abonnement',
+        'package_hint' => 'Acheté une fois, contient un nombre fixe de prestations et se termine quand elles sont utilisées.',
+    ],
+
+    'billing_frequencies' => [
+        'monthly' => 'Mensuel',
+        'quarterly' => 'Trimestriel',
+        'yearly' => 'Annuel',
+    ],
+
+    'activation' => [
+        'immediately' => 'Immédiatement',
+        'start_date' => 'À une date de début choisie',
+    ],
+
+    'credit_expiry' => [
+        'cycle' => 'À la fin de chaque cycle de facturation',
+        'never' => 'Jamais',
+        '1m' => 'Au bout d’1 mois',
+        '3m' => 'Au bout de 3 mois',
+        '6m' => 'Au bout de 6 mois',
+        '12m' => 'Au bout de 12 mois',
+    ],
+
+    'cancellation' => [
+        'end_of_cycle' => 'À la fin du cycle de facturation',
+        'immediately' => 'Immédiatement',
+    ],
+
+    'channels' => [
+        'in_store' => 'Sur place',
+        'in_store_hint' => 'Vendu à l’accueil depuis l’écran de réservation.',
+        'online' => 'En ligne',
+        'online_hint' => 'Acheté par les clients eux-mêmes sur votre page de réservation.',
+    ],
+
+    /* ------------------------------------------------------- le module -- */
+
+    'intro' => 'Les abonnements et forfaits que vous vendez. Les clients les achètent depuis l’écran de réservation.',
+    'new' => 'Créer un abonnement',
+    'none_yet' => 'Aucun abonnement pour l’instant',
+    'none_yet_hint' => 'Créez-en un : il apparaît dans l’écran de réservation dès que vous le publiez.',
+    'all_locations' => 'Tous les établissements',
+
+    'price_per' => ':price / :period',
+    'periods' => [
+        'monthly' => 'mois',
+        'quarterly' => 'trimestre',
+        'yearly' => 'an',
+    ],
+
+    'discount_off' => ':amount de remise sur les prestations supplémentaires',
+    'saving' => 'Économie client',
+    'regular_value' => 'Valeur habituelle',
+
+    'statuses' => [
+        'draft' => 'Brouillon',
+        'active' => 'Actif',
+        'disabled' => 'Désactivé',
+    ],
+
+    'created' => 'Abonnement créé.',
+    'saved' => 'Abonnement enregistré.',
+    'duplicated' => 'Copié. C’est un brouillon jusqu’à ce que vous le publiiez.',
+    'disabled' => 'Abonnement retiré de la vente.',
+    'enabled' => 'Abonnement remis en vente.',
+    'copy_of' => 'Copie de :name',
+
+    'tabs' => [
+        'overview' => 'Vue d’ensemble',
+        'plans' => 'Formules d’abonnement',
+        'packages' => 'Forfaits d’abonnement',
+        'members' => 'Membres',
+    ],
+
+    'summary' => [
+        'plans' => 'Formules en vente',
+        'packages' => 'Forfaits en vente',
+        'drafts' => 'Brouillons',
+        'members' => 'Membres',
+    ],
+
+    'search' => 'Rechercher par nom, code ou prestation incluse',
+    'filters' => [
+        'all_statuses' => 'Tous les statuts',
+        'all_locations' => 'Tous les établissements',
+        'reset' => 'Réinitialiser',
+    ],
+
+    'columns' => [
+        'name' => 'Nom',
+        'code' => 'Code',
+        'price' => 'Prix',
+        'includes' => 'Comprend',
+        'benefit' => 'Avantage membre',
+        'saving' => 'Économie',
+        'locations' => 'Établissements',
+        'status' => 'Statut',
+    ],
+
+    'results' => [
+        'zero' => 'Aucun abonnement ne correspond',
+        'one' => ':count abonnement',
+        'many' => ':count abonnements',
+        'clear' => 'Effacer les filtres',
+    ],
+    'empty' => 'Rien ne correspond à ces filtres.',
+    'showing' => 'Affichage de :from–:to sur :total',
+    'actions_for' => 'Actions pour :name',
+
+    'actions' => [
+        'view' => 'Voir',
+        'edit' => 'Modifier',
+        'duplicate' => 'Dupliquer',
+        'disable' => 'Retirer de la vente',
+        'enable' => 'Remettre en vente',
+    ],
+
+    'overview' => [
+        'title' => 'Vue d’ensemble',
+        'intro' => 'Ce que vous vendez, et où cela se vend.',
+        'recent' => 'Modifiés récemment',
+        'recent_empty' => 'Rien de créé pour l’instant.',
+        'terms' => 'Conditions de vente',
+        'terms_hint' => 'Elles s’appliquent à tous les abonnements que vous vendez. Elles se règlent dans les Paramètres de l’application.',
+        'terms_link' => 'Ouvrir les paramètres d’abonnement',
+        'term_channels' => 'Vendu',
+        'term_activation' => 'Débute',
+        'term_credits' => 'Crédits inutilisés',
+        'term_credits_rollover' => 'Reportés',
+        'term_credits_reset' => 'Remis à zéro à chaque cycle',
+        'term_cancellation' => 'Résiliation',
+        'term_cancellation_off' => 'Non autorisée',
+        'nothing_sellable' => 'Rien n’est en vente',
+        'nothing_sellable_hint' => 'Tous les abonnements créés sont des brouillons ou ont été retirés, donc l’écran de réservation n’a rien à proposer.',
+    ],
+
+    'members' => [
+        'title' => 'Membres',
+        'intro' => 'Toutes les personnes titulaires d’un abonnement, et ce qu’il leur reste.',
+        'none' => 'Personne n’a encore d’abonnement',
+        'none_hint' => 'Les abonnements se vendent depuis l’écran de réservation. Les personnes qui en achètent un apparaissent ici.',
+        'columns' => [
+            'client' => 'Client',
+            'membership' => 'Abonnement',
+            'status' => 'Statut',
+            'started' => 'Début',
+            'next_billing' => 'Prochain prélèvement',
+            'credits' => 'Crédits restants',
+        ],
+        'no_billing' => '—',
+        'credits_none' => 'Aucun crédit',
+    ],
+
+    'images' => [
+        'uploading' => 'Envoi en cours…',
+        'failed' => 'Cette image n’a pas pu être envoyée.',
+        'too_large' => 'Cette image est trop lourde. La limite est de 5 Mo.',
+        'wrong_type' => 'Utilisez un JPG, un PNG ou un WebP.',
+    ],
+
+    'member_statuses' => [
+        'scheduled' => 'Programmé',
+        'active' => 'Actif',
+        'paused' => 'En pause',
+        'cancelled' => 'Résilié',
+        'ended' => 'Terminé',
+    ],
+
+    'sale' => [
+        'not_on_sale' => 'Cet abonnement n’est pas en vente : c’est un brouillon, ou il a été retiré.',
+        'channel_closed' => 'Les abonnements ne peuvent pas être vendus à l’accueil. Ouvrez le canal sur place dans les Paramètres.',
+        'no_future_start' => 'Cet établissement n’autorise pas à différer le début d’un abonnement.',
+        'method_not_repeatable' => 'Un abonnement récurrent exige un moyen de paiement rechargeable. L’espèce achète un forfait ; elle ne renouvelle pas un abonnement.',
+    ],
+
+    'member' => [
+        'title' => 'Abonnement',
+        'none' => 'Pas abonné',
+        'none_hint' => 'Les abonnements se vendent depuis l’écran de réservation — choisissez Abonnement dans Choisir le type.',
+        'off' => 'Les abonnements sont désactivés',
+        'off_hint' => 'Plus rien ne peut être vendu. Ce que ce client possède déjà est conservé tel quel.',
+        'active' => 'Abonnement actif',
+        'past' => 'Abonnements passés',
+        'started' => 'Début',
+        'ends' => 'Se termine',
+        'ended' => 'Terminé',
+        'next_billing' => 'Prochain prélèvement',
+        'no_billing' => 'Plus aucun prélèvement',
+        'price' => 'Prix',
+        'sold_at' => 'Vendu à',
+        'credits' => 'Avantages disponibles',
+        'credits_none' => 'Aucun crédit disponible.',
+        'credit_count' => ':count disponibles',
+        'credit_expires' => 'Expire le :date',
+        'credits_paused' => 'Les crédits ne peuvent pas être utilisés tant que l’abonnement est en pause.',
+        'history_title' => 'Historique',
+        'history_none' => 'Rien ne s’est encore passé.',
+
+        'history' => [
+            'started' => 'Abonnement commencé',
+            'payment' => 'Paiement encaissé',
+            'redeemed' => 'Crédit utilisé',
+            'released' => 'Crédit rendu',
+            'paused' => 'Abonnement mis en pause',
+            'cancelled' => 'Abonnement résilié',
+            'ends_on' => 'Se termine le :date',
+        ],
+
+        'cancel' => 'Résilier l’abonnement',
+        'cancel_confirm' => 'Résilier cet abonnement ? Rien de ce qui est déjà payé n’est retiré.',
+        'pause' => 'Mettre en pause',
+        'pause_confirm' => 'Mettre cet abonnement en pause ? La facturation s’arrête et les crédits ne peuvent plus être utilisés jusqu’à la reprise.',
+        'resume' => 'Reprendre l’abonnement',
+        'cancelled_now' => 'Abonnement résilié.',
+        'cancelled_on' => 'L’abonnement se terminera le :date. Il reste utilisable jusque-là.',
+        'paused' => 'Abonnement mis en pause.',
+        'resumed' => 'Abonnement repris.',
+        'already_cancelled' => 'Cet abonnement est déjà résilié.',
+        'cannot_pause' => 'Seul un abonnement en cours peut être mis en pause.',
+        'not_paused' => 'Cet abonnement n’est pas en pause.',
+        'in_commitment' => 'Cet abonnement ne peut pas être résilié avant le :date — le client a accepté une durée d’engagement minimale.',
+        'cancel_not_allowed' => 'Cet établissement n’autorise pas la résiliation depuis cette page.',
+        'notice_note' => 'Une résiliation aujourd’hui prendra effet le :date.',
+    ],
+
+    'sold' => [
+        'title' => 'Abonnement activé',
+        'scheduled_title' => 'Abonnement programmé',
+        'intro' => ':client dispose désormais de cet abonnement.',
+        'scheduled_intro' => ':client disposera de cet abonnement à partir du :date. Ses crédits n’existent pas avant.',
+        'client' => 'Client',
+        'membership' => 'Abonnement',
+        'type' => 'Type',
+        'status' => 'Statut',
+        'start' => 'Date de début',
+        'paid' => 'Montant payé',
+        'billing' => 'Facturation',
+        'one_off' => 'Achat unique',
+        'next_billing' => 'Prochain prélèvement',
+        'benefits' => 'Avantages inclus',
+        'credits' => 'Crédits disponibles',
+        'credits_available' => ':count disponibles',
+        'credits_none' => 'Rien de disponible pour l’instant.',
+        'view_client' => 'Voir le client',
+        'view_membership' => 'Voir l’abonnement',
+        'another' => 'Créer un autre achat',
+    ],
+
+    'choose' => [
+        'title' => 'Créer un abonnement',
+        'question' => 'Quel type d’abonnement voulez-vous créer ?',
+        'intro' => 'C’est la seule réponse impossible à changer ensuite : ce sont deux produits différents, pas deux réglages d’un seul.',
+        'example' => 'Par exemple',
+        'recurring_example' => '79 $ par mois, avec un massage inclus chaque mois.',
+        'package_example' => 'Quatre massages pour 150 $, en un seul achat.',
+        'select' => 'Continuer',
+    ],
+
+    'form' => [
+        'create_title' => 'Créer un abonnement',
+        'edit_title' => 'Modifier l’abonnement',
+
+        'step' => 'Étape :number',
+
+        'basics' => 'Informations de base',
+        'basics_hint' => 'Son nom, et la façon dont il est décrit au client.',
+        'name' => 'Nom de l’abonnement',
+        'name_placeholder' => 'Abonnement massage mensuel',
+        'description' => 'Description',
+        'description_hint' => 'Une ou deux lignes. Les clients les lisent sur la carte dans l’écran de réservation.',
+        'image' => 'Image de l’abonnement',
+        'image_upload' => 'Envoyer une image',
+        'image_replace' => 'Remplacer l’image',
+        'image_hint' => 'JPG, PNG ou WebP, jusqu’à 5 Mo. Affichée sur la carte dans l’écran de réservation.',
+        'internal_code' => 'Code interne',
+        'internal_code_hint' => 'Votre propre référence. Lettres, chiffres et tirets.',
+
+        'pricing' => 'Tarification',
+        'pricing_hint_recurring' => 'Ce que le client paie à chaque cycle, et à quelle fréquence.',
+        'pricing_hint_package' => 'Ce que le client paie une fois, et ce que cela aurait coûté séparément.',
+        'price' => 'Prix de l’abonnement',
+        'package_price' => 'Prix du forfait',
+        'billing_frequency' => 'Fréquence de facturation',
+        'joining_fee' => 'Frais d’adhésion',
+        'setup_fee' => 'Frais de mise en service',
+        'trial_days' => 'Période d’essai',
+        'trial_days_hint' => 'Jours avant le premier prélèvement. Laissez vide pour aucun essai.',
+        'extras_hint' => 'Prélevés une seule fois, au départ, en plus du premier cycle. Laissez vide s’il n’y en a pas.',
+        'regular_value' => 'Valeur habituelle',
+        'regular_value_hint' => 'Ce que les prestations incluses coûteraient achetées séparément. Laissez vide pour n’annoncer aucune économie.',
+        'value_below_price' => 'La valeur habituelle doit être au moins égale au prix du forfait, sinon il n’y a aucune économie à afficher.',
+        'saving_preview' => 'Économie client : :amount',
+
+        'services' => 'Avantages et prestations',
+        'services_hint_recurring' => 'Ce que le membre reçoit à chaque cycle. Les crédits reviennent à chaque prélèvement.',
+        'services_hint_package' => 'Ce que le forfait contient au total. Une fois utilisés, c’est terminé.',
+        'add_service' => '+ Ajouter une prestation',
+        'service' => 'Prestation',
+        'quantity' => 'Quantité',
+        'remove' => 'Retirer',
+        'duplicate_service' => 'Chaque prestation ne peut figurer qu’une fois. Changez sa quantité plutôt que de l’ajouter deux fois.',
+        'no_services' => 'Ajoutez au moins une prestation — un abonnement qui n’inclut rien est un abonnement à rien.',
+
+        'benefits' => 'Avantages membre supplémentaires',
+        'benefits_hint' => 'Ce que le membre obtient sur tout le reste de ses achats. Facultatif.',
+        'discount_type' => 'Remise',
+        'discount_none' => 'Aucune remise',
+        'percent' => 'Pourcentage de remise',
+        'fixed' => 'Montant fixe de remise',
+        'discount_value' => 'Montant',
+        'priority_booking' => 'Réservation prioritaire',
+        'priority_booking_hint' => 'Les membres sont signalés à l’accueil pour être placés en premier.',
+
+        'credits' => 'Règles de crédits',
+        'credits_hint' => 'Laissez-les telles quelles pour suivre les paramètres de l’établissement. Ne changez que ce qui est réellement différent pour cet abonnement.',
+        'follow_business' => 'Suivre le paramètre de l’établissement (:value)',
+        'yes' => 'Oui',
+        'no' => 'Non',
+        'credit_expiry' => 'Expiration des crédits',
+        'rollover' => 'Les crédits inutilisés sont reportés',
+        'maximum_rollover' => 'Report maximal de crédits',
+        'substitution' => 'Les crédits peuvent payer une autre prestation',
+
+        'availability' => 'Disponibilité',
+        'availability_hint' => 'Où cet abonnement peut être vendu et utilisé, et par quels canaux.',
+        'locations' => 'Établissements',
+        'all_locations' => 'Tous les établissements',
+        'selected_locations' => 'Établissements sélectionnés',
+        'channels' => 'Canaux d’achat',
+        'channels_hint' => 'Les canaux de l’établissement sont le plafond : un abonnement proposé en ligne dans un établissement qui ne vend pas en ligne n’est pas en vente.',
+        'channel_closed' => 'Fermé dans les Paramètres',
+
+        'review' => 'Vérifier et publier',
+        'review_hint' => 'Un brouillon se modifie librement et ne peut pas être vendu. Le publier le place dans l’écran de réservation.',
+        'summary_includes' => 'Comprend',
+        'summary_benefit' => 'Avantage membre',
+        'summary_locations' => 'Établissements',
+        'summary_sold' => 'Vendu',
+        'save_draft' => 'Enregistrer comme brouillon',
+        'publish' => 'Publier l’abonnement',
+        'save' => 'Enregistrer les modifications',
+    ],
+
+    'show' => [
+        'includes' => 'Ce qu’il comprend',
+        'benefits' => 'Avantages membre',
+        'no_benefits' => 'Aucun avantage supplémentaire.',
+        'credits' => 'Règles de crédits',
+        'availability' => 'Disponibilité',
+        'sold_in_store' => 'À l’accueil',
+        'sold_online' => 'En ligne',
+        'sold_nowhere' => 'Nulle part — tous les canaux sont fermés.',
+        'draft_note' => 'Ceci est un brouillon. Il ne peut pas être vendu tant qu’il n’est pas publié.',
+        'disabled_note' => 'Cet abonnement a été retiré de la vente. Plus personne ne peut l’acheter ; celles et ceux qui l’ont déjà le gardent.',
+        'publish' => 'Publier',
+        'from_business' => 'Des paramètres de l’établissement',
+        'per_cycle' => 'à chaque cycle',
+        'in_total' => 'au total',
+        'created_by' => 'Créé par',
+        'joining_fee' => 'Frais d’adhésion',
+        'setup_fee' => 'Frais de mise en service',
+        'trial' => 'Essai',
+        'trial_days' => ':days jours',
+    ],
+
+    /* ------------------------------------------- paramètres de l’appli --- */
+
+    'settings' => [
+        'title' => 'Abonnement',
+        'intro' => 'Si vous vendez des abonnements, où ils peuvent être achetés, ce qu’il advient des crédits inutilisés et ce que signifie une résiliation.',
+
+        'enable' => 'Activer les abonnements',
+        'enable_hint' => 'Ajoute Abonnement dans Clients et en fait un type d’achat sur l’écran de réservation.',
+        'disabled_note' => 'Les abonnements sont désactivés. Plus rien ne peut être vendu — chaque membre actuel conserve sa formule, ses crédits et son historique tels quels.',
+
+        'saved' => 'Paramètres d’abonnement enregistrés.',
+
+        'selling' => 'Vente',
+        'selling_hint' => 'Où un abonnement peut être acheté et qui peut conclure la vente.',
+        'channels' => 'Canaux d’achat',
+        'channels_hint' => 'Tous les canaux fermés, plus rien ne peut être vendu, que les abonnements soient activés ou non.',
+        'coming_soon' => 'Bientôt disponible',
+        'allow_staff_to_sell' => 'Autoriser l’équipe à vendre des abonnements',
+        'allow_staff_to_sell_hint' => 'Toute personne ayant l’autorisation peut conclure une vente à l’accueil. Désactivé, seul un responsable le peut.',
+
+        'starting' => 'Date de début',
+        'starting_hint' => 'Quand commence un abonnement acheté aujourd’hui.',
+        'allow_start_date_selection' => 'Autoriser le choix de la date de début',
+        'allow_start_date_selection_hint' => 'L’équipe peut différer le départ. Désactivé, tout abonnement commence le jour de sa vente.',
+        'default_activation' => 'Activation par défaut',
+        'default_activation_hint' => 'Ce que propose l’écran d’achat avant tout choix.',
+
+        'credits' => 'Crédits',
+        'credits_hint' => 'Ce qu’il advient d’une prestation incluse que le client n’a pas utilisée.',
+        'allow_rollover' => 'Autoriser le report des crédits inutilisés',
+        'allow_rollover_hint' => 'Les crédits inutilisés passent au cycle suivant. Désactivé, chaque cycle repart de zéro.',
+        'maximum_rollover' => 'Report maximal de crédits',
+        'maximum_rollover_hint' => 'Le maximum qu’un client peut accumuler. Laissez vide pour aucune limite.',
+        'credit_expiry' => 'Expiration des crédits',
+        'credit_expiry_hint' => 'Combien de temps vit un crédit une fois accordé.',
+        'allow_credits_across_locations' => 'Autoriser les crédits sur plusieurs établissements',
+        'allow_credits_across_locations_hint' => 'Un crédit obtenu dans un établissement peut être utilisé dans un autre.',
+        'allow_service_substitution' => 'Autoriser la substitution de prestation',
+        'allow_service_substitution_hint' => 'Un crédit pour une prestation peut en payer une autre de même valeur.',
+
+        'cancellation' => 'Résiliation',
+        'cancellation_hint' => 'Ce qu’un membre peut faire quand il veut arrêter, et ce qui se passe alors.',
+        'allow_cancellation' => 'Autoriser la résiliation',
+        'allow_cancellation_hint' => 'Désactivé, seul quelqu’un ayant l’autorisation peut y mettre fin.',
+        'allow_pause' => 'Autoriser la mise en pause',
+        'allow_pause_hint' => 'Un membre peut suspendre son abonnement sans le perdre. La facturation s’arrête pendant la pause.',
+        'minimum_commitment_months' => 'Durée d’engagement minimale',
+        'minimum_commitment_months_hint' => 'Mois pendant lesquels un membre ne peut pas résilier. Zéro pour aucun.',
+        'cancellation_notice_days' => 'Préavis de résiliation',
+        'cancellation_notice_days_hint' => 'Jours de préavis que le membre doit donner. Zéro pour aucun.',
+        'cancellation_effective' => 'Résilier',
+        'cancellation_effective_hint' => 'Quand une résiliation prend effet.',
+        'months' => 'mois',
+        'days' => 'jours',
+
+        'payments' => 'Paiements',
+        'payments_hint' => 'Les abonnements se règlent avec les moyens que vous acceptez déjà. Rien de distinct à configurer ici.',
+        'payments_link' => 'Ouvrir les paramètres de paiement',
+
+        'rules' => 'Comment StyleDesk gère les abonnements',
+        'rules_hint' => 'Ce que l’application décide, plutôt que ce que vous décidez.',
+        'rule_recurring' => 'Un abonnement récurrent exige un moyen de paiement rechargeable',
+        'rule_recurring_body' => 'Une carte enregistrée, ou un autre moyen débitable sans le client. L’espèce achète un forfait ; elle ne renouvelle pas un abonnement.',
+        'rule_package' => 'Un forfait se termine quand ses prestations sont utilisées',
+        'rule_package_body' => 'Ni renouvellement, ni prochaine échéance. Ce que le client a acheté est la liste des prestations, et c’est fini quand la liste est vide.',
+        'rule_scheduled' => 'Un abonnement daté plus tard est Programmé, pas Actif',
+        'rule_scheduled_body' => 'Ses crédits n’existent pas et ses avantages ne s’appliquent pas avant la date de début.',
+        'rule_off' => 'Désactiver les abonnements arrête les ventes et rien d’autre',
+        'rule_off_body' => 'Les membres actuels conservent leur formule, leurs crédits et leur historique. Les renouvellements déjà convenus sont honorés.',
+    ],
+];

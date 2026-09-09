@@ -1,0 +1,455 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+| 会员。
+|
+| 两类读者，按顶层键区分：`settings` 面向决定销售条件的人，其余内容面向站在
+| 前台、正在接待客户的人。
+*/
+
+return [
+
+    'title' => '会员',
+
+    'types' => [
+        'recurring' => '周期性会员',
+        'recurring_hint' => '按周期自动扣款，每次扣款后权益重新发放。',
+        'package' => '会员套餐',
+        'package_hint' => '一次性购买，包含固定数量的服务，用完即结束。',
+    ],
+
+    'billing_frequencies' => [
+        'monthly' => '每月',
+        'quarterly' => '每季度',
+        'yearly' => '每年',
+    ],
+
+    'activation' => [
+        'immediately' => '立即生效',
+        'start_date' => '在选定的开始日期生效',
+    ],
+
+    'credit_expiry' => [
+        'cycle' => '每个账单周期结束时',
+        'never' => '永不过期',
+        '1m' => '1 个月后',
+        '3m' => '3 个月后',
+        '6m' => '6 个月后',
+        '12m' => '12 个月后',
+    ],
+
+    'cancellation' => [
+        'end_of_cycle' => '在账单周期结束时',
+        'immediately' => '立即',
+    ],
+
+    'channels' => [
+        'in_store' => '店内',
+        'in_store_hint' => '在前台通过预约界面出售。',
+        'online' => '线上',
+        'online_hint' => '客户在你的预约页面自行购买。',
+    ],
+
+    /* --------------------------------------------------------- 本模块 -- */
+
+    'intro' => '你所销售的会员和套餐。客户在预约界面购买。',
+    'new' => '创建会员',
+    'none_yet' => '还没有会员方案',
+    'none_yet_hint' => '创建一个，发布后即可在预约界面中选择。',
+    'all_locations' => '所有门店',
+
+    'price_per' => ':price / :period',
+    'periods' => [
+        'monthly' => '月',
+        'quarterly' => '季度',
+        'yearly' => '年',
+    ],
+
+    'discount_off' => '其他服务享 :amount 优惠',
+    'saving' => '客户可省',
+    'regular_value' => '原价',
+
+    'statuses' => [
+        'draft' => '草稿',
+        'active' => '在售',
+        'disabled' => '已下架',
+    ],
+
+    'created' => '会员方案已创建。',
+    'saved' => '会员方案已保存。',
+    'duplicated' => '已复制。发布前它是草稿。',
+    'disabled' => '会员方案已下架。',
+    'enabled' => '会员方案已重新上架。',
+    'copy_of' => ':name 的副本',
+
+    'tabs' => [
+        'overview' => '概览',
+        'plans' => '会员方案',
+        'packages' => '会员套餐',
+        'members' => '会员',
+    ],
+
+    'summary' => [
+        'plans' => '在售方案',
+        'packages' => '在售套餐',
+        'drafts' => '草稿',
+        'members' => '会员',
+    ],
+
+    'search' => '按名称、编号或包含的服务搜索',
+    'filters' => [
+        'all_statuses' => '所有状态',
+        'all_locations' => '所有门店',
+        'reset' => '重置',
+    ],
+
+    'columns' => [
+        'name' => '名称',
+        'code' => '编号',
+        'price' => '价格',
+        'includes' => '包含',
+        'benefit' => '会员权益',
+        'saving' => '节省',
+        'locations' => '门店',
+        'status' => '状态',
+    ],
+
+    'results' => [
+        'zero' => '没有符合条件的会员方案',
+        'one' => ':count 个会员方案',
+        'many' => ':count 个会员方案',
+        'clear' => '清除筛选',
+    ],
+    'empty' => '没有符合这些筛选条件的内容。',
+    'showing' => '显示第 :from–:to 条，共 :total 条',
+    'actions_for' => ':name 的操作',
+
+    'actions' => [
+        'view' => '查看',
+        'edit' => '编辑',
+        'duplicate' => '复制',
+        'disable' => '下架',
+        'enable' => '重新上架',
+    ],
+
+    'overview' => [
+        'title' => '概览',
+        'intro' => '你卖什么，以及在哪里销售。',
+        'recent' => '最近更新',
+        'recent_empty' => '还没有创建任何内容。',
+        'terms' => '销售条件',
+        'terms_hint' => '这些条件适用于你销售的每一份会员，在应用设置中配置。',
+        'terms_link' => '打开会员设置',
+        'term_channels' => '销售渠道',
+        'term_activation' => '生效时间',
+        'term_credits' => '未使用的次数',
+        'term_credits_rollover' => '可结转',
+        'term_credits_reset' => '每周期重置',
+        'term_cancellation' => '取消',
+        'term_cancellation_off' => '不允许',
+        'nothing_sellable' => '目前没有在售的会员',
+        'nothing_sellable_hint' => '你创建的会员方案都是草稿或已下架，因此预约界面没有可提供的内容。',
+    ],
+
+    'members' => [
+        'title' => '会员',
+        'intro' => '所有持有会员的客户，以及他们的剩余次数。',
+        'none' => '还没有人持有会员',
+        'none_hint' => '会员在预约界面销售。购买过的客户会出现在这里。',
+        'columns' => [
+            'client' => '客户',
+            'membership' => '会员',
+            'status' => '状态',
+            'started' => '开始日期',
+            'next_billing' => '下次扣款',
+            'credits' => '剩余次数',
+        ],
+        'no_billing' => '—',
+        'credits_none' => '没有剩余',
+    ],
+
+    'images' => [
+        'uploading' => '上传中…',
+        'failed' => '该图片上传失败。',
+        'too_large' => '该图片过大，上限为 5 MB。',
+        'wrong_type' => '请使用 JPG、PNG 或 WebP 格式。',
+    ],
+
+    'member_statuses' => [
+        'scheduled' => '已排期',
+        'active' => '有效',
+        'paused' => '已暂停',
+        'cancelled' => '已取消',
+        'ended' => '已结束',
+    ],
+
+    'sale' => [
+        'not_on_sale' => '该会员未在售——它是草稿或已下架。',
+        'channel_closed' => '会员无法在前台销售。请在应用设置中开启店内渠道。',
+        'no_future_start' => '本店不允许将会员的开始日期设在将来。',
+        'method_not_repeatable' => '周期性会员需要一种可再次扣款的付款方式。现金可以买套餐，但无法续订订阅。',
+    ],
+
+    'member' => [
+        'title' => '会员',
+        'none' => '尚未成为会员',
+        'none_hint' => '会员在预约界面销售——在「选择类型」中选择会员。',
+        'off' => '会员功能已关闭',
+        'off_hint' => '无法销售新的会员。该客户已持有的内容原样保留。',
+        'active' => '有效会员',
+        'past' => '历史会员',
+        'started' => '开始日期',
+        'ends' => '结束日期',
+        'ended' => '已结束',
+        'next_billing' => '下次扣款',
+        'no_billing' => '不再扣款',
+        'price' => '价格',
+        'sold_at' => '售出门店',
+        'credits' => '可用权益',
+        'credits_none' => '没有可用次数。',
+        'credit_count' => '可用 :count 次',
+        'credit_expires' => ':date 到期',
+        'credits_paused' => '会员暂停期间无法使用次数。',
+        'history_title' => '历史记录',
+        'history_none' => '目前还没有任何记录。',
+
+        'history' => [
+            'started' => '会员开始',
+            'payment' => '已收款',
+            'redeemed' => '已使用次数',
+            'released' => '次数已退回',
+            'paused' => '会员已暂停',
+            'cancelled' => '会员已取消',
+            'ends_on' => ':date 结束',
+        ],
+
+        'cancel' => '取消会员',
+        'cancel_confirm' => '确定取消该会员吗？已支付的内容不会被收回。',
+        'pause' => '暂停会员',
+        'pause_confirm' => '确定暂停该会员吗？扣款将停止，恢复前无法使用次数。',
+        'resume' => '恢复会员',
+        'cancelled_now' => '会员已取消。',
+        'cancelled_on' => '该会员将于 :date 结束，在此之前仍可使用。',
+        'paused' => '会员已暂停。',
+        'resumed' => '会员已恢复。',
+        'already_cancelled' => '该会员已经取消。',
+        'cannot_pause' => '只有进行中的会员才能暂停。',
+        'not_paused' => '该会员未处于暂停状态。',
+        'in_commitment' => '该会员在 :date 之前无法取消——客户已同意最短承诺期。',
+        'cancel_not_allowed' => '本店不允许在此取消会员。',
+        'notice_note' => '现在取消将于 :date 生效。',
+    ],
+
+    'sold' => [
+        'title' => '会员已激活',
+        'scheduled_title' => '会员已排期',
+        'intro' => ':client 现在持有该会员。',
+        'scheduled_intro' => ':client 将从 :date 起持有该会员，在此之前次数尚不存在。',
+        'client' => '客户',
+        'membership' => '会员',
+        'type' => '类型',
+        'status' => '状态',
+        'start' => '开始日期',
+        'paid' => '已付金额',
+        'billing' => '扣款周期',
+        'one_off' => '一次性购买',
+        'next_billing' => '下次扣款日期',
+        'benefits' => '包含权益',
+        'credits' => '可用次数',
+        'credits_available' => '可用 :count 次',
+        'credits_none' => '目前没有可用次数。',
+        'view_client' => '查看客户',
+        'view_membership' => '查看会员',
+        'another' => '再创建一笔购买',
+    ],
+
+    'choose' => [
+        'title' => '创建会员',
+        'question' => '你想创建哪种类型的会员？',
+        'intro' => '这是唯一之后无法更改的选择——两者是不同的产品，而不是同一产品的两种设置。',
+        'example' => '例如',
+        'recurring_example' => '每月 79 美元，每月包含一次按摩。',
+        'package_example' => '四次按摩 150 美元，一次性购买。',
+        'select' => '继续',
+    ],
+
+    'form' => [
+        'create_title' => '创建会员',
+        'edit_title' => '编辑会员',
+
+        'step' => '第 :number 步',
+
+        'basics' => '基本信息',
+        'basics_hint' => '它叫什么，以及如何向客户描述。',
+        'name' => '会员名称',
+        'name_placeholder' => '月度按摩会员',
+        'description' => '描述',
+        'description_hint' => '一到两行。客户会在预约界面的卡片上看到。',
+        'image' => '会员图片',
+        'image_upload' => '上传图片',
+        'image_replace' => '更换图片',
+        'image_hint' => 'JPG、PNG 或 WebP，最大 5 MB。会显示在预约界面的卡片上。',
+        'internal_code' => '内部编号',
+        'internal_code_hint' => '你自己的编号，可用字母、数字和连字符。',
+
+        'pricing' => '定价',
+        'pricing_hint_recurring' => '客户每个周期支付多少，以及多久扣款一次。',
+        'pricing_hint_package' => '客户一次性支付多少，以及单独购买要多少。',
+        'price' => '会员价格',
+        'package_price' => '套餐价格',
+        'billing_frequency' => '扣款周期',
+        'joining_fee' => '入会费',
+        'setup_fee' => '开通费',
+        'trial_days' => '试用期',
+        'trial_days_hint' => '首次扣款前的天数。留空表示不设试用。',
+        'extras_hint' => '在开始时一次性收取，与第一个周期一同结算。没有则留空。',
+        'regular_value' => '原价',
+        'regular_value_hint' => '所含服务单独购买的价格。留空则不展示节省金额。',
+        'value_below_price' => '原价至少要等于套餐价格，否则没有可展示的节省。',
+        'saving_preview' => '客户可省：:amount',
+
+        'services' => '权益与服务',
+        'services_hint_recurring' => '会员每个周期可获得的内容。每次扣款后次数会重新发放。',
+        'services_hint_package' => '套餐总共包含的内容。用完即结束。',
+        'add_service' => '+ 添加服务',
+        'service' => '服务',
+        'quantity' => '数量',
+        'remove' => '移除',
+        'duplicate_service' => '同一项服务只能列出一次，请修改数量而不是重复添加。',
+        'no_services' => '至少添加一项服务——不包含任何内容的会员没有意义。',
+
+        'benefits' => '额外会员权益',
+        'benefits_hint' => '会员购买其他内容时可享的优惠。可选。',
+        'discount_type' => '折扣',
+        'discount_none' => '无折扣',
+        'percent' => '按百分比折扣',
+        'fixed' => '固定金额折扣',
+        'discount_value' => '金额',
+        'priority_booking' => '优先预约',
+        'priority_booking_hint' => '前台会标记会员，方便优先安排。',
+
+        'credits' => '次数规则',
+        'credits_hint' => '保持原样即遵循店铺设置。仅在这份会员确实不同时才修改。',
+        'follow_business' => '遵循店铺设置（:value）',
+        'yes' => '是',
+        'no' => '否',
+        'credit_expiry' => '次数有效期',
+        'rollover' => '未使用的次数可结转',
+        'maximum_rollover' => '最多可结转次数',
+        'substitution' => '次数可用于其他服务',
+
+        'availability' => '可用范围',
+        'availability_hint' => '这份会员可在何处销售和使用，以及通过哪些渠道。',
+        'locations' => '门店',
+        'all_locations' => '所有门店',
+        'selected_locations' => '选定门店',
+        'channels' => '购买渠道',
+        'channels_hint' => '店铺渠道是上限：在不做线上销售的店铺中标为线上销售的会员并不会真正上架。',
+        'channel_closed' => '已在应用设置中关闭',
+
+        'review' => '检查并发布',
+        'review_hint' => '草稿可随意编辑且无法销售。发布后即出现在预约界面。',
+        'summary_includes' => '包含',
+        'summary_benefit' => '会员权益',
+        'summary_locations' => '门店',
+        'summary_sold' => '销售渠道',
+        'save_draft' => '保存为草稿',
+        'publish' => '发布会员',
+        'save' => '保存修改',
+    ],
+
+    'show' => [
+        'includes' => '包含内容',
+        'benefits' => '会员权益',
+        'no_benefits' => '没有额外权益。',
+        'credits' => '次数规则',
+        'availability' => '可用范围',
+        'sold_in_store' => '前台',
+        'sold_online' => '线上',
+        'sold_nowhere' => '无处销售——所有渠道均已关闭。',
+        'draft_note' => '这是草稿，发布前无法销售。',
+        'disabled_note' => '该会员已下架。新客户无法购买；已购买的客户仍然保留。',
+        'publish' => '发布',
+        'from_business' => '来自店铺设置',
+        'per_cycle' => '每个周期',
+        'in_total' => '总计',
+        'created_by' => '创建者',
+        'joining_fee' => '入会费',
+        'setup_fee' => '开通费',
+        'trial' => '试用',
+        'trial_days' => ':days 天',
+    ],
+
+    /* ------------------------------------------------------- 应用设置 -- */
+
+    'settings' => [
+        'title' => '会员',
+        'intro' => '是否销售会员、可在何处购买、未使用的次数如何处理，以及取消会员意味着什么。',
+
+        'enable' => '启用会员',
+        'enable_hint' => '在「客户」下加入会员，并使其成为预约界面中的一种购买类型。',
+        'disabled_note' => '会员功能已关闭，无法再销售新的会员。现有会员的方案、次数和记录都原样保留。',
+
+        'saved' => '会员设置已保存。',
+
+        'selling' => '销售',
+        'selling_hint' => '会员可在哪里购买，以及谁可以完成这笔销售。',
+        'channels' => '购买渠道',
+        'channels_hint' => '关闭全部渠道后就无法销售，无论会员功能是否启用。',
+        'coming_soon' => '即将推出',
+        'allow_staff_to_sell' => '允许员工销售会员',
+        'allow_staff_to_sell_hint' => '拥有该权限的人都可在前台完成销售。关闭后仅管理者可以。',
+
+        'starting' => '开始日期',
+        'starting_hint' => '今天购买的会员何时开始生效。',
+        'allow_start_date_selection' => '允许选择会员开始日期',
+        'allow_start_date_selection_hint' => '员工可以把会员日期往后设。关闭后，所有会员当天生效。',
+        'default_activation' => '默认激活方式',
+        'default_activation_hint' => '购买界面在无人选择时的默认答案。',
+
+        'credits' => '次数',
+        'credits_hint' => '客户没有使用的包含服务将如何处理。',
+        'allow_rollover' => '允许未使用的次数结转',
+        'allow_rollover_hint' => '未使用的次数带入下一周期。关闭后每个周期重新开始。',
+        'maximum_rollover' => '最多可结转次数',
+        'maximum_rollover_hint' => '客户最多能累积多少。留空表示不限。',
+        'credit_expiry' => '次数有效期',
+        'credit_expiry_hint' => '次数发放后可保留多久。',
+        'allow_credits_across_locations' => '允许跨门店使用会员次数',
+        'allow_credits_across_locations_hint' => '在一家门店获得的次数可在另一家使用。',
+        'allow_service_substitution' => '允许会员次数替换服务',
+        'allow_service_substitution_hint' => '某项服务的次数可用于抵扣同等价值的其他服务。',
+
+        'cancellation' => '取消',
+        'cancellation_hint' => '会员想停止时可以做什么，以及停止后会发生什么。',
+        'allow_cancellation' => '允许取消会员',
+        'allow_cancellation_hint' => '关闭后，只有拥有相应权限的人才能终止会员。',
+        'allow_pause' => '允许暂停会员',
+        'allow_pause_hint' => '会员可以暂停而不失去资格，暂停期间停止扣款。',
+        'minimum_commitment_months' => '最短承诺期',
+        'minimum_commitment_months_hint' => '在此期间内不能取消，单位为月。填 0 表示没有。',
+        'cancellation_notice_days' => '取消提前通知期',
+        'cancellation_notice_days_hint' => '会员须提前告知的天数。填 0 表示没有。',
+        'cancellation_effective' => '取消方式',
+        'cancellation_effective_hint' => '取消何时生效。',
+        'months' => '个月',
+        'days' => '天',
+
+        'payments' => '付款',
+        'payments_hint' => '会员使用你已接受的付款方式支付，这里没有额外需要配置的内容。',
+        'payments_link' => '打开付款设置',
+
+        'rules' => 'StyleDesk 如何处理会员',
+        'rules_hint' => '这些由应用决定，而不是由你设置。',
+        'rule_recurring' => '周期性会员需要一种可再次扣款的付款方式',
+        'rule_recurring_body' => '存档银行卡，或其他可在客户不在场时扣款的方式。现金可以买套餐，但无法续订订阅。',
+        'rule_package' => '套餐在其服务用完时结束',
+        'rule_package_body' => '没有续订，也没有下次扣款日期。客户买的是那份服务清单，清单用完就结束了。',
+        'rule_scheduled' => '设为将来生效的会员状态是「已排期」，而非「有效」',
+        'rule_scheduled_body' => '在开始日期到来之前，其次数不存在，权益也不适用。',
+        'rule_off' => '关闭会员只会停止销售，不影响其他',
+        'rule_off_body' => '现有会员保留方案、次数和记录，已约定的续订照常履行。',
+    ],
+];

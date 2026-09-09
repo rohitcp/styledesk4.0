@@ -111,8 +111,8 @@ return [
             'description' => 'Intake, consent and consultation forms, and when clients are asked to fill them.',
         ],
         'memberships' => [
-            'name' => 'Memberships',
-            'description' => 'Membership tiers, recurring benefits and how memberships are applied.',
+            'name' => 'Membership',
+            'description' => 'Whether the business sells memberships, where they can be bought, what happens to unused credits and what cancelling one means.',
         ],
         'packages' => [
             'name' => 'Packages',

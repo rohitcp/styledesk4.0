@@ -17,10 +17,15 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientEmailController;
 use App\Http\Controllers\ClientFileController;
 use App\Http\Controllers\ClientLoyaltyController;
+use App\Http\Controllers\ClientMembershipController;
 use App\Http\Controllers\ClientNoteController;
+use App\Http\Controllers\ClientPaymentMethodController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GettingStartedController;
 use App\Http\Controllers\Marketing\EmailCampaignController;
+use App\Http\Controllers\MembershipImageController;
+use App\Http\Controllers\MembershipPlanController;
+use App\Http\Controllers\MembershipSaleController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\PromotionController;
@@ -43,6 +48,7 @@ use App\Http\Controllers\Settings\GmailConnectionController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
 use App\Http\Controllers\Settings\LoyaltySettingsController;
+use App\Http\Controllers\Settings\MembershipSettingsController;
 use App\Http\Controllers\Settings\PaymentSettingsController;
 use App\Http\Controllers\Settings\ReasonCodeController;
 use App\Http\Controllers\Settings\ResourceCategoryController;
@@ -505,6 +511,20 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
         Route::controller(LoyaltySettingsController::class)
             ->prefix('loyalty')
             ->name('loyalty.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::patch('/', 'update')->name('update');
+            });
+
+        /*
+        | Whether this business sells memberships and on what terms. Inside
+        | the settings group like loyalty, and gated a second time on the
+        | membership permissions — somebody who may configure the salon is not
+        | automatically somebody who decides what its clients commit to.
+        */
+        Route::controller(MembershipSettingsController::class)
+            ->prefix('membership')
+            ->name('membership.')
             ->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::patch('/', 'update')->name('update');
@@ -1004,6 +1024,107 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::patch('{promotion}', 'update')->name('update');
             Route::get('{promotion}/duplicate', 'duplicate')->name('duplicate');
             Route::patch('{promotion}/status', 'toggle')->name('toggle');
+        });
+
+    /*
+    | Membership — the plans and packages the business sells.
+    |
+    | Under clients rather than settings for the same reason promotions are:
+    | a membership is something a business sells to people, and the people
+    | are here. What lives in App Settings is the terms every membership is
+    | sold on, which is a different decision.
+    |
+    | Declared before the client routes below, or /clients/membership would
+    | be read as a client whose id is "membership".
+    */
+    /*
+    | The picture on a membership.
+    |
+    | Its own prefix rather than a segment under clients/membership, or
+    | "images" would be read as a plan whose id is "images". Uploaded before
+    | the plan exists and claimed on save, the same way a service picture is.
+    */
+    Route::controller(MembershipImageController::class)
+        ->prefix('membership/images')
+        ->name('membership.images.')
+        ->group(function () {
+            Route::post('/', 'store')->name('store');
+            Route::delete('{storedFile}', 'destroy')->name('destroy');
+        });
+
+    /*
+    | Selling one, from the booking screen.
+    |
+    | Its own controller and prefix rather than a branch under the plans: a
+    | membership sale takes no slot, needs no staff member and has no
+    | duration, so almost nothing the booking store does applies to it.
+    */
+    /*
+    | A client's saved cards.
+    |
+    | Every route here handles a reference to a card, never a card: the
+    | number is typed into the gateway's own component in the browser and
+    | goes straight to the gateway. What arrives here is the token.
+    |
+    | Declared before the client routes below, or /clients/cards would be
+    | read as a client whose id is "cards".
+    */
+    Route::controller(ClientPaymentMethodController::class)
+        ->prefix('clients/cards/{client}')
+        ->name('client-cards.')
+        ->group(function () {
+            Route::post('setup', 'setup')->name('setup');
+            Route::post('/', 'store')->name('store');
+            Route::patch('{method}/default', 'makeDefault')->name('default');
+            Route::delete('{method}', 'destroy')->name('destroy');
+        });
+
+    /*
+    | Ending, pausing and restarting a membership somebody holds.
+    |
+    | Under the client rather than under the plans: this is one person's
+    | subscription, and the page it is operated from is their profile.
+    | Gated on membership.manage_members — correcting a phone number and
+    | stopping a subscription are not the same authority.
+    */
+    Route::controller(ClientMembershipController::class)
+        ->prefix('clients/memberships/{membership}')
+        ->name('client-memberships.')
+        ->group(function () {
+            Route::patch('cancel', 'cancel')->name('cancel');
+            Route::patch('pause', 'pause')->name('pause');
+            Route::patch('resume', 'resume')->name('resume');
+        });
+
+    Route::controller(MembershipSaleController::class)
+        ->prefix('membership/sales')
+        ->name('membership.sales.')
+        ->group(function () {
+            Route::post('/', 'store')->name('store');
+            Route::get('{membership}', 'show')->name('show');
+        });
+
+    Route::controller(MembershipPlanController::class)
+        ->prefix('clients/membership')
+        ->name('membership.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+
+            /* Every literal segment before {plan}: one declared after a
+               parameter is reached by matching it as an id. */
+            Route::get('plans', 'plans')->defaults('type', 'recurring')->name('plans');
+            Route::get('packages', 'plans')->defaults('type', 'package')->name('packages');
+            Route::get('members', 'members')->name('members');
+            Route::get('plans/data', 'data')->defaults('type', 'recurring')->name('plans.data');
+            Route::get('packages/data', 'data')->defaults('type', 'package')->name('packages.data');
+            Route::get('create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+
+            Route::get('{plan}', 'show')->name('show');
+            Route::get('{plan}/edit', 'edit')->name('edit');
+            Route::patch('{plan}', 'update')->name('update');
+            Route::get('{plan}/duplicate', 'duplicate')->name('duplicate');
+            Route::patch('{plan}/status', 'toggle')->name('toggle');
         });
 
     /*

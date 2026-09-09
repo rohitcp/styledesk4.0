@@ -51,6 +51,16 @@ const props = defineProps({
     client: { type: Object, default: null },
     /** Walk-in mode, when the screen was opened from the walk-in entry. */
     walkIn: { type: Boolean, default: false },
+    /** What this screen may be used to sell, and whether each can be yet. */
+    purchaseTypes: { type: Array, default: () => [] },
+    /** The memberships the desk may sell, as the cards read them. */
+    membershipPlans: { type: Array, default: () => [] },
+    /** Where a membership sale posts. Not where a booking posts. */
+    membershipAction: { type: String, default: '' },
+    /** The two selling terms the purchase screen has to obey. */
+    membershipSettings: { type: Object, default: () => ({}) },
+    /** Where a card would be kept, and what the browser needs to put one there. */
+    cardVault: { type: Object, default: () => ({ available: false }) },
     services: { type: Array, default: () => [] },
     /** The categories something is actually offered in, id => name. */
     categories: { type: Object, default: () => ({}) },
@@ -233,6 +243,23 @@ const couponError = ref('');
 const appliedCoupon = ref('');
 const tipPercent = ref(null);
 const customTip = ref('');
+
+/* Whether anybody has answered the tip question yet.
+ *
+ * Not the same as "the tip is nought". A business that configured 15/18/20/25
+ * with 15 as its default meant the screen to open on 15; opening on nothing
+ * is the screen choosing No Tip on the client's behalf, which is the one
+ * answer nobody asked for. Until this is true the server applies the
+ * business's default and the screen shows what came back. */
+const tipChosen = ref(false);
+
+/* Which lines the desk has chosen to pay for with a membership credit.
+ *
+ * Service ids, one entry per covered line: two massages on one booking are
+ * two credits, so the same id can appear twice. A request rather than an
+ * instruction — the server decides what can actually be covered against the
+ * credits that exist, and hands back what it took. */
+const creditsApplied = ref([]);
 const quoting = ref(false);
 let quoteTimer = null;
 let quoteRequest = 0;
@@ -262,11 +289,13 @@ async function refreshQuote() {
                 client_id: client.value?.id ?? null,
                 location_id: locationId.value || null,
                 coupon: appliedCoupon.value || null,
+                membership_credits: creditsApplied.value,
                 /* One or the other, never both: a typed amount is a decision
                    and a percentage is a share, and sending both would leave
                    the server guessing which the reader meant. */
                 tip_percent: customTip.value === '' ? tipPercent.value : null,
                 tip_amount: customTip.value === '' ? null : customTip.value,
+                tip_chosen: tipChosen.value,
             }),
         });
 
@@ -278,6 +307,19 @@ async function refreshQuote() {
 
         quote.value = payload;
         couponError.value = payload.coupon_error ?? '';
+
+        /* The business's default, as the server resolved it, mirrored into
+           the controls so the right chip is lit. Only while nobody has
+           answered — once somebody has, these refs are the answer and the
+           quote is downstream of them. */
+        if (! tipChosen.value && payload.tips_enabled) {
+            tipPercent.value = payload.tip_percent;
+            /* A fixed default has no chip to light, so it lands in the
+               custom box — which is where it would be edited anyway. */
+            customTip.value = payload.tip_percent === null && payload.tip_minor > 0
+                ? (payload.tip_minor / 100).toFixed(2)
+                : '';
+        }
 
         /* A coupon the server refused is not applied, whatever the box
            still says. */
@@ -294,6 +336,103 @@ async function refreshQuote() {
     }
 }
 
+/* ---------------------------------------------------- membership credits ---
+
+   What the client already bought, spent on what they are booking now.
+
+   The offer comes back with the quote rather than being asked for separately:
+   what is coverable depends on the services chosen, the client, and credits
+   that may have been spent elsewhere since the page loaded — all of which the
+   quote already knows. */
+
+/** What this client could cover, keyed by service id, from the last quote. */
+const creditOffers = computed(() => quote.value?.membership_offers ?? {});
+
+/** Whether any line on this booking could be paid for with a credit. */
+const hasCreditOffers = computed(() => chosen.value.some((service) => creditOffers.value[service.id]));
+
+/** The credit offer for one service, or null. */
+function creditOffer(serviceId) {
+    return creditOffers.value[serviceId] ?? null;
+}
+
+/** How many of this service the desk has already covered. */
+function creditsAppliedTo(serviceId) {
+    return creditsApplied.value.filter((id) => id === serviceId).length;
+}
+
+/**
+ * Whether one more of this service could be covered.
+ *
+ * Counted against how many the client holds and how many are already on this
+ * booking: a client with one massage credit booking two massages may cover
+ * the first, and the second is paid for.
+ */
+function canCover(serviceId) {
+    const offer = creditOffer(serviceId);
+
+    if (! offer) {
+        return false;
+    }
+
+    const booked = chosen.value.filter((service) => service.id === serviceId).length;
+
+    return creditsAppliedTo(serviceId) < Math.min(offer.remaining, booked);
+}
+
+function applyCredit(serviceId) {
+    if (! canCover(serviceId)) {
+        return;
+    }
+
+    creditsApplied.value = [...creditsApplied.value, serviceId];
+    refreshQuote();
+}
+
+function removeCredit(serviceId) {
+    const next = [...creditsApplied.value];
+    const at = next.indexOf(serviceId);
+
+    if (at === -1) {
+        return;
+    }
+
+    next.splice(at, 1);
+    creditsApplied.value = next;
+    refreshQuote();
+}
+
+/* A credit applied to a service that is then taken off the booking is a
+   credit spent on nothing. Dropped whenever the chosen list changes, so the
+   two can never disagree. */
+watch(chosen, (services) => {
+    if (! creditsApplied.value.length) {
+        return;
+    }
+
+    const counts = {};
+    services.forEach((service) => { counts[service.id] = (counts[service.id] ?? 0) + 1; });
+
+    const kept = [];
+    creditsApplied.value.forEach((id) => {
+        if ((counts[id] ?? 0) > kept.filter((k) => k === id).length) {
+            kept.push(id);
+        }
+    });
+
+    if (kept.length !== creditsApplied.value.length) {
+        creditsApplied.value = kept;
+    }
+});
+
+/* And a credit belongs to the client it was offered to. Changing who the
+   booking is for cannot carry the last client's membership with it. */
+watch(client, () => {
+    if (creditsApplied.value.length) {
+        creditsApplied.value = [];
+    }
+});
+
 function applyCoupon() {
     couponError.value = '';
     appliedCoupon.value = couponCode.value.trim().toUpperCase();
@@ -309,14 +448,47 @@ function removeCoupon() {
 
 /** A percentage: recalculated whenever anything it is a share of moves. */
 function chooseTipPercent(percent) {
+    tipChosen.value = true;
     tipPercent.value = percent;
     customTip.value = '';
+
+    /* Any typing still waiting to be quoted is not what the reader means any
+       more — they have just pressed a percentage over it. */
+    window.clearTimeout(quoteTimer);
     refreshQuote();
 }
 
-/** An amount somebody typed: left exactly as typed. */
+/**
+ * An amount somebody typed: left exactly as typed.
+ *
+ * Settled a beat after the typing stops rather than on every keystroke.
+ * "12.50" is one answer, not five, and requoting per character would have
+ * the total flicker through $1, $12, $12.5 on its way to the number the
+ * reader meant.
+ */
 function applyCustomTip() {
+    tipChosen.value = true;
     tipPercent.value = null;
+
+    window.clearTimeout(quoteTimer);
+    quoteTimer = window.setTimeout(refreshQuote, 250);
+}
+
+/**
+ * Open the custom box.
+ *
+ * Its own function because pressing Custom is an answer — without it the
+ * business's default would be reapplied by the next quote and overwrite the
+ * empty box the reader was about to type into.
+ *
+ * It requotes like every other chip. Pressing Custom takes the previous tip
+ * off the bill, and a total still showing the percentage that was pressed a
+ * moment ago is the summary disagreeing with the chip above it.
+ */
+function chooseCustomTip() {
+    tipChosen.value = true;
+    tipPercent.value = null;
+    customTip.value = '';
     refreshQuote();
 }
 
@@ -329,6 +501,332 @@ function serviceMinor(service) {
 const waiverReason = ref('');
 const confirmation = ref('both');
 const sending = ref(false);
+
+/* What is being sold.
+ *
+ * Services is the answer for almost every use of this screen, and it is the
+ * one this card opens on — a receptionist taking an appointment should never
+ * have to answer "what kind of sale is this" before they can start.
+ *
+ * It lives above the service card rather than inside it because it decides
+ * what that card asks: a membership has no staff, no room and no time, so
+ * "which services" is not a smaller version of the same question. */
+const purchaseType = ref('services');
+
+/** Whether the switcher is worth showing at all. */
+const canSwitchType = computed(() => props.purchaseTypes.length > 1);
+
+function chooseType(type) {
+    /* A type that is not ready is refused here as well as being disabled in
+       the markup: `disabled` is a hint to a pointer and not a rule. */
+    if (!type.ready) {
+        return;
+    }
+
+    purchaseType.value = type.key;
+
+    /* Straight on to what that answer changes, which is the card below. */
+    open.value = 'service';
+}
+
+const sellingMembership = computed(() => purchaseType.value === 'membership');
+
+/* ------------------------------------------------------ the membership sale
+
+   A membership takes no slot, needs no staff member and has no duration, so
+   the cards that ask about those are not shown for one. What is left is the
+   same three questions every sale has: who, what, and how they are paying —
+   which is why this lives on the booking screen rather than in a checkout of
+   its own. */
+
+const membershipTab = ref('recurring');
+const membershipPlanId = ref('');
+const membershipStart = ref('today');
+const membershipDate = ref(props.today);
+const membershipMethod = ref('');
+
+/* ------------------------------------------------------- recurring billing ---
+
+   Whether this membership renews, and the card it renews on.
+
+   A recurring plan renews unless somebody says otherwise — that is what the
+   client is being sold — and a package never does, because there is nothing
+   left to renew once its services are used. */
+const autoRenew = ref(true);
+
+/** Only a plan that bills again can renew. */
+const canRenew = computed(() => chosenMembership.value?.billing_frequency != null);
+
+/** Cards this client has on file. Empty until one is chosen. */
+const clientCards = ref([]);
+const cardId = ref('');
+const addingCard = ref(false);
+const cardError = ref('');
+
+/** Whether this business can keep a card at all. */
+const canVaultCards = computed(() => props.cardVault.available === true);
+
+/** Whether the sale needs a card before it can go through. */
+const needsCard = computed(() => canRenew.value && autoRenew.value);
+
+const chosenCard = computed(() => clientCards.value.find((card) => card.id === cardId.value) ?? null);
+
+/**
+ * The cards worth offering.
+ *
+ * An expired card cannot be charged next month, so it is not a choice for a
+ * renewal — showing it would be offering a payment that fails on the day it
+ * matters.
+ */
+const usableCards = computed(() => clientCards.value.filter((card) => card.chargeable));
+
+/* A membership that renews has to renew on something. Said before the button
+   rather than after it. */
+watch([clientCards, needsCard], () => {
+    if (! needsCard.value || cardId.value) {
+        return;
+    }
+
+    const preferred = usableCards.value.find((card) => card.is_default) ?? usableCards.value[0];
+
+    cardId.value = preferred ? preferred.id : '';
+});
+
+/* A card belongs to the client it was saved for. Changing who the booking is
+   for cannot carry the last client's card with it. */
+watch(client, (chosen) => {
+    clientCards.value = chosen?.cards ?? [];
+    cardId.value = '';
+    cardError.value = '';
+});
+
+/**
+ * Add a card, without the card passing through StyleDesk.
+ *
+ * The number is typed into the gateway's own component, which is mounted
+ * against a client secret this page was handed. It goes from that component
+ * straight to the gateway; what comes back here is a token, and the token is
+ * all that is posted.
+ *
+ * If this function ever reads a card number, the architecture has been
+ * broken — the whole point of the secure component is that it cannot.
+ */
+let stripe = null;
+let stripeElements = null;
+const cardFormOpen = ref(false);
+
+async function openCardForm() {
+    if (! client.value || ! canVaultCards.value) {
+        return;
+    }
+
+    cardError.value = '';
+    addingCard.value = true;
+
+    try {
+        const response = await fetch(props.cardVault.setup_url.replace(':id', client.value.id), {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': props.csrf },
+        });
+
+        const payload = await response.json();
+
+        if (! response.ok) {
+            throw new Error(payload.message ?? props.labels.cards?.failed);
+        }
+
+        /* Loaded on demand rather than on every booking screen: most sales
+           are not memberships and most memberships are not new cards. */
+        if (! window.Stripe) {
+            await loadStripeJs();
+        }
+
+        stripe = window.Stripe(payload.publishable_key, { stripeAccount: payload.stripe_account ?? undefined });
+        stripeElements = stripe.elements({ clientSecret: payload.client_secret });
+
+        cardFormOpen.value = true;
+        await nextTick();
+
+        stripeElements.create('payment', { layout: 'tabs' }).mount('[data-card-element]');
+        cardSetup.value = payload;
+    } catch (error) {
+        cardError.value = error.message || props.labels.cards?.failed;
+        cardFormOpen.value = false;
+    } finally {
+        addingCard.value = false;
+    }
+}
+
+const cardSetup = ref(null);
+
+function loadStripeJs() {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error(props.labels.cards?.failed));
+        document.head.appendChild(script);
+    });
+}
+
+/**
+ * Confirm the card with the gateway, then tell StyleDesk its id.
+ *
+ * Two steps, and the order matters: the gateway stores the card first, and
+ * StyleDesk hears about it only once that has succeeded. A row written before
+ * the gateway agreed would be a reference to a card that does not exist.
+ */
+async function saveCard() {
+    if (! stripe || ! stripeElements || ! client.value) {
+        return;
+    }
+
+    addingCard.value = true;
+    cardError.value = '';
+
+    try {
+        const { error, setupIntent } = await stripe.confirmSetup({
+            elements: stripeElements,
+            redirect: 'if_required',
+        });
+
+        if (error) {
+            throw new Error(error.message ?? props.labels.cards?.failed);
+        }
+
+        const response = await fetch(props.cardVault.store_url.replace(':id', client.value.id), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': props.csrf,
+            },
+            body: JSON.stringify({
+                payment_method_id: setupIntent.payment_method,
+                customer_id: cardSetup.value.customer_id,
+                make_default: usableCards.value.length === 0,
+            }),
+        });
+
+        const payload = await response.json();
+
+        if (! response.ok) {
+            throw new Error(payload.message ?? props.labels.cards?.failed);
+        }
+
+        clientCards.value = [payload.card, ...clientCards.value];
+        cardId.value = payload.card.id;
+        closeCardForm();
+    } catch (error) {
+        cardError.value = error.message || props.labels.cards?.failed;
+    } finally {
+        addingCard.value = false;
+    }
+}
+
+function closeCardForm() {
+    cardFormOpen.value = false;
+    stripeElements = null;
+    stripe = null;
+    cardSetup.value = null;
+}
+
+const membershipTabs = computed(() => [
+    { key: 'recurring', label: props.labels.membership?.plans },
+    { key: 'package', label: props.labels.membership?.packages },
+]);
+
+/* Only the ones this branch could actually deliver. A plan tied to other
+   locations is not on sale at this desk, and offering it would be a sale the
+   server then refuses. */
+const availableMembershipPlans = computed(() => props.membershipPlans.filter((plan) => (
+    plan.location_ids.length === 0 || plan.location_ids.includes(locationId.value)
+)));
+
+const membershipPlansOfTab = computed(() =>
+    availableMembershipPlans.value.filter((plan) => plan.type === membershipTab.value));
+
+const chosenMembership = computed(() =>
+    props.membershipPlans.find((plan) => plan.id === membershipPlanId.value) ?? null);
+
+/* What the till is about to ask for. The plan's own figure, worked out on the
+   server: the first cycle plus any one-off fees, which is not always the
+   headline price. */
+const membershipDueMinor = computed(() => chosenMembership.value?.due_today_minor ?? 0);
+
+/** The day it begins, as the server will read it. */
+const membershipStartsOn = computed(() => (
+    membershipStart.value === 'today' ? props.today : membershipDate.value
+));
+
+const membershipIsScheduled = computed(() => membershipStartsOn.value > props.today);
+
+/** The methods this particular membership may be bought with. */
+const membershipMethods = computed(() => {
+    const allowed = chosenMembership.value?.methods ?? [];
+
+    return props.methods.filter((method) => method.ready && allowed.includes(method.key));
+});
+
+function chooseMembership(plan) {
+    membershipPlanId.value = plan.id;
+
+    /* A recurring plan renews unless somebody says otherwise; a package
+       cannot renew at all. Reset per plan rather than carried over, or a
+       package chosen after a subscription would arrive still ticked. */
+    autoRenew.value = plan.billing_frequency != null;
+
+    /* A method that cannot buy this plan is not kept from the last one: a
+       recurring membership needs one that can be charged again, and a stale
+       "cash" would be refused on save with no sign of why. */
+    if (!(plan.methods ?? []).includes(membershipMethod.value)) {
+        membershipMethod.value = '';
+    }
+}
+
+/** What is missing before this membership can be sold, in the reader's words. */
+const membershipBlocker = computed(() => {
+    if (client.value === null) {
+        return props.labels.membership?.client_required;
+    }
+
+    if (chosenMembership.value === null) {
+        return props.labels.membership?.plan_required;
+    }
+
+    if (!membershipMethod.value) {
+        return props.labels.pay?.choose_method ?? props.labels.membership?.method_note;
+    }
+
+    /* A subscription with no card is one the client believes they have and
+       the business cannot charge for. Refused here and again on the server. */
+    if (needsCard.value && !cardId.value) {
+        return props.labels.cards?.required;
+    }
+
+    return null;
+});
+
+/* The business may forbid dating one forward. Enforced on the server as well;
+   this is what stops the reader being offered a choice that will be refused. */
+const canDateMembership = computed(() => props.membershipSettings.allow_start_date !== false);
+
+watch(purchaseType, (type) => {
+    if (type !== 'membership') {
+        return;
+    }
+
+    /* Open on the tab that has something in it, so a business selling only
+       packages does not land on an empty list. */
+    if (!membershipPlansOfTab.value.length) {
+        const other = availableMembershipPlans.value[0];
+        if (other) membershipTab.value = other.type;
+    }
+
+    if (props.membershipSettings.default_activation === 'start_date' && canDateMembership.value) {
+        membershipStart.value = 'later';
+    }
+});
 
 /* Which section is open. One at a time: five accordions all open is the long
    form this screen exists to avoid. */
@@ -1682,6 +2180,59 @@ const dueMinor = computed(() => booking.value?.due_minor ?? estimate.value.total
  */
 const payableMinor = computed(() => quote.value?.total_minor ?? estimate.value.total);
 
+/* ------------------------------------------------------ the till's answer ---
+
+   What the payment panel is about to take, reported up as it is typed.
+
+   The panel owns those inputs, so it is the only thing that can be certain of
+   them — and once the booking exists the summary above it has to agree. A
+   receptionist who changes the tip from 18% to 20% at the till must not be
+   able to see 18% in one card and 20% in the other. */
+const tillTipMinor = ref(null);
+
+function onPaymentDraft(draft) {
+    tillTipMinor.value = draft?.tip ?? null;
+}
+
+/** The tip the summary shows: the till's while it is open, the quote's before. */
+const summaryTipMinor = computed(() => (
+    booking.value !== null && tillTipMinor.value !== null
+        ? tillTipMinor.value
+        : (quote.value?.tip_minor ?? 0)
+));
+
+/**
+ * The percentage beside it, where the amount is one.
+ *
+ * Matched against what the till suggested rather than divided out: 18% of a
+ * bill that does not divide evenly is a number the arithmetic would round to
+ * 17, and a summary saying 17% beside a till saying 18% is the disagreement
+ * this exists to prevent.
+ */
+const summaryTipPercent = computed(() => {
+    if (booking.value === null || tillTipMinor.value === null) {
+        return quote.value?.tip_percent ?? null;
+    }
+
+    const match = (booking.value.tips?.suggested ?? [])
+        .find((option) => option.minor === tillTipMinor.value);
+
+    return match ? match.percent : null;
+});
+
+/**
+ * What the booking comes to, tip included.
+ *
+ * Once it exists, its own total is the bill — that is the record, and the
+ * quote was advisory. The tip is the one part still moving, so it is the one
+ * part read from the till.
+ */
+const summaryTotalMinor = computed(() => (
+    booking.value !== null && tillTipMinor.value !== null
+        ? (booking.value.total_minor ?? 0) + tillTipMinor.value
+        : payableMinor.value
+));
+
 /*
  * The deposit, as a percentage where one was chosen.
  *
@@ -1696,12 +2247,23 @@ const payableMinor = computed(() => quote.value?.total_minor ?? estimate.value.t
  */
 const depositPercent = ref(null);
 
+/**
+ * What a deposit percentage is a percentage of.
+ *
+ * The bill without the tip. A deposit is money taken up front against the
+ * work; a tip is a gratuity decided at the till and not part of what is owed
+ * for the appointment. Charging a share of one as though it were the other
+ * would take money in advance against a gratuity nobody has agreed to — and
+ * it would move every deposit the day the business changed its default tip.
+ */
+const depositBaseMinor = computed(() => Math.max(0, payableMinor.value - (quote.value?.tip_minor ?? 0)));
+
 const depositMinor = computed(() => (depositPercent.value === null
     ? Math.round(Number(deposit.value || 0) * 100)
-    : Math.round(payableMinor.value * depositPercent.value / 100)));
+    : Math.round(depositBaseMinor.value * depositPercent.value / 100)));
 
 /** What is still owed after the deposit — the number the desk chases later. */
-const remainingMinor = computed(() => Math.max(0, payableMinor.value - depositMinor.value));
+const remainingMinor = computed(() => Math.max(0, summaryTotalMinor.value - depositMinor.value));
 
 /* Refused rather than silently clamped: a receptionist who typed 500 against
    a $150 bill has made a mistake worth seeing, and a box that quietly
@@ -2033,6 +2595,10 @@ function bookingBody() {
          */
         payment_method: paymentMethod.value,
         coupon: appliedCoupon.value || null,
+        /* Which lines the client is paying for with what they already bought.
+           Sent for the same reason the coupon is: the quote endpoint was told,
+           and a save that was not would write a bill the screen never showed. */
+        membership_credits: creditsApplied.value,
         tip_percent: customTip.value === '' ? tipPercent.value : null,
         tip_amount: customTip.value === '' ? null : customTip.value,
         waiver_reason: collectionMethod.value === 'waive' ? waiverReason.value : null,
@@ -2254,9 +2820,33 @@ const summaryOf = (section) => {
 </script>
 
 <template>
-    <form :action="action" method="POST" class="contents" @submit="sending = true">
+    <!-- One form, two destinations. A membership sale posts somewhere else
+         entirely — it takes no slot and has no duration, so nothing the
+         booking store does applies to it — and switching the action is what
+         keeps the client column, the type switcher and the submit button one
+         piece of markup instead of two screens. -->
+    <form :action="sellingMembership ? membershipAction : action" method="POST" class="contents" @submit="sending = true">
         <input type="hidden" name="_token" :value="csrf">
         <input type="hidden" name="client_id" :value="client?.id ?? ''">
+
+        <!-- The credits the desk chose to spend on this booking, one hidden
+             field per covered line. Checked again on the server: this list
+             was assembled before Confirm was pressed, and a credit can be
+             spent elsewhere in between. -->
+        <input v-for="(serviceId, index) in creditsApplied" :key="`credit-${index}`"
+               type="hidden" name="membership_credits[]" :value="serviceId">
+
+        <!-- What a membership sale posts, and only when it is one. The price
+             is deliberately absent: what it costs is the server's answer, and
+             a figure posted from a page is one somebody can edit. -->
+        <template v-if="sellingMembership">
+            <input type="hidden" name="membership_plan_id" :value="membershipPlanId">
+            <input type="hidden" name="starts_on" :value="membershipStartsOn">
+            <input type="hidden" name="payment_method" :value="membershipMethod">
+            <input type="hidden" name="location_id" :value="locationId ?? ''">
+            <input type="hidden" name="auto_renew" :value="autoRenew ? 1 : 0">
+            <input type="hidden" name="card_id" :value="needsCard ? cardId : ''">
+        </template>
         <!-- The branch this booking is being taken at, in the page header.
 
              Teleported: the title beside it is server rendered, and the card
@@ -3053,8 +3643,234 @@ const summaryOf = (section) => {
 
         <!-- =============================================== column 2 — booking -->
         <section v-show="stage !== 'done'" class="lg:col-span-6 min-w-0 space-y-3" :aria-label="labels.sections?.service">
-            <!-- Service -->
-            <section class="bg-white border border-line rounded-card overflow-hidden">
+            <!-- Select type.
+
+                 Above the services rather than inside them, because it
+                 decides what that card asks. A membership has no staff, no
+                 room and no time, so "which services" is not a smaller
+                 version of the same question.
+
+                 Shut by default, showing the answer. Services is what almost
+                 every use of this screen is, and a receptionist taking an
+                 appointment should not have to answer "what kind of sale is
+                 this" before they can start. -->
+            <section v-if="canSwitchType" class="bg-white border border-line rounded-card overflow-hidden">
+                <button type="button" class="styledesk_weekhead" :aria-expanded="open === 'type'"
+                        @click="toggle('type')">
+                    <span class="styledesk_bookingtick is-done" aria-hidden="true">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="min-w-0 flex-1 text-left text-[13px] font-semibold text-head">
+                        {{ labels.purchase?.title }}
+                    </span>
+                    <span class="text-[12px] text-sub shrink-0">{{ labels.purchase?.[purchaseType] }}</span>
+                    <span v-if="open !== 'type'" class="text-[12px] font-semibold text-link shrink-0">
+                        {{ labels.steps?.edit }}
+                    </span>
+                </button>
+
+                <div v-show="open === 'type'" class="p-4 pt-0">
+                    <p class="text-[12.5px] text-sub mt-2.5">{{ labels.purchase?.question }}</p>
+
+                    <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                        <!-- A type that cannot be sold is shown and disabled
+                             with the reason beside it. A missing option reads
+                             as a product StyleDesk does not have; a disabled
+                             one names the switch somebody can go and turn
+                             on. -->
+                        <button v-for="type in purchaseTypes" :key="type.key" type="button"
+                                :disabled="!type.ready"
+                                :aria-pressed="purchaseType === type.key"
+                                class="text-left rounded-lg border px-3.5 py-3 transition-colors"
+                                :class="[
+                                    purchaseType === type.key ? 'border-brand bg-brand/5' : 'border-line',
+                                    type.ready ? 'hover:border-brand cursor-pointer' : 'opacity-60 cursor-not-allowed',
+                                ]"
+                                @click="chooseType(type)">
+                            <span class="block text-[13px] font-semibold text-head">
+                                {{ labels.purchase?.[type.key] }}
+                            </span>
+                            <span class="block text-[12px] text-sub mt-0.5 leading-snug">
+                                {{ labels.purchase?.[`${type.key}_hint`] }}
+                            </span>
+                            <span v-if="type.reason" class="block text-[11.5px] font-semibold text-faint mt-1.5">
+                                {{ type.reason }}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Select membership.
+
+                 The Services card's opposite number: the same place in the
+                 same column, asking the one question this kind of sale has.
+                 Two tabs because a recurring membership and a package are
+                 different products — one renews and one runs out — and a
+                 single list would make the desk read every card to tell which
+                 is which. -->
+            <section v-if="sellingMembership" class="bg-white border border-line rounded-card overflow-hidden">
+                <button type="button" class="styledesk_weekhead" :aria-expanded="open === 'service'"
+                        @click="toggle('service')">
+                    <span class="styledesk_bookingtick" :class="{ 'is-done': chosenMembership !== null }" aria-hidden="true">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="min-w-0 flex-1 text-left text-[13px] font-semibold text-head">
+                        {{ labels.membership?.select }}
+                    </span>
+                    <span class="text-[12px] text-sub shrink-0 min-w-0 truncate">
+                        {{ chosenMembership?.name ?? '—' }}
+                    </span>
+                </button>
+
+                <div v-show="open === 'service'" class="p-4 pt-0">
+                    <!-- Nothing to sell is a state with a cause and a fix,
+                         so it says both rather than showing an empty list. -->
+                    <div v-if="!availableMembershipPlans.length" class="mt-3 rounded-lg bg-hover px-3 py-3">
+                        <p class="text-[13px] font-semibold text-head">{{ labels.membership?.none }}</p>
+                        <p class="text-[12.5px] text-sub mt-1">{{ labels.membership?.none_hint }}</p>
+                    </div>
+
+                    <template v-else>
+                        <div class="mt-3 flex gap-1 border-b border-line">
+                            <button v-for="tab in membershipTabs" :key="tab.key" type="button"
+                                    class="h-9 px-3.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors"
+                                    :class="membershipTab === tab.key
+                                        ? 'border-brand text-brand'
+                                        : 'border-transparent text-sub hover:text-ink'"
+                                    :aria-pressed="membershipTab === tab.key"
+                                    @click="membershipTab = tab.key">
+                                {{ tab.label }}
+                            </button>
+                        </div>
+
+                        <p v-if="!membershipPlansOfTab.length" class="mt-3 text-[12.5px] text-sub">
+                            {{ labels.membership?.none }}
+                        </p>
+
+                        <ul v-else class="mt-3 space-y-2.5">
+                            <li v-for="plan in membershipPlansOfTab" :key="plan.id">
+                                <!-- The whole card is the control. A small
+                                     Select button beside a card the reader is
+                                     already pointing at is a small target for
+                                     no reason. -->
+                                <button type="button"
+                                        class="w-full text-left rounded-lg border px-3.5 py-3 transition-colors"
+                                        :class="membershipPlanId === plan.id
+                                            ? 'border-brand bg-brand/5'
+                                            : 'border-line hover:border-brand'"
+                                        :aria-pressed="membershipPlanId === plan.id"
+                                        @click="chooseMembership(plan)">
+                                    <div class="flex items-start gap-3">
+                                        <img v-if="plan.image" :src="plan.image" alt=""
+                                             class="h-14 w-20 shrink-0 rounded-md object-cover border border-line">
+
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex flex-wrap items-baseline gap-x-2">
+                                                <span class="text-[13.5px] font-semibold text-head">{{ plan.name }}</span>
+                                                <span class="text-[13.5px] font-bold text-brand">{{ plan.price }}</span>
+                                            </div>
+
+                                            <p v-if="plan.description" class="text-[12.5px] text-sub mt-0.5 leading-snug">
+                                                {{ plan.description }}
+                                            </p>
+
+                                            <p class="text-[12px] text-sub mt-1.5">
+                                                <span class="font-semibold text-head">{{ labels.membership?.includes }}:</span>
+                                                <span v-for="(line, index) in plan.includes" :key="line.name">
+                                                    <template v-if="index"> · </template>{{ line.quantity }} × {{ line.name }}
+                                                </span>
+                                            </p>
+
+                                            <p class="text-[12px] text-sub mt-1 flex flex-wrap gap-x-3">
+                                                <span v-if="plan.benefit">{{ plan.benefit }}</span>
+                                                <span v-if="plan.saving" class="font-semibold text-brand">
+                                                    {{ (labels.membership?.saving ?? '').replace(':amount', plan.saving) }}
+                                                </span>
+                                                <span v-if="plan.trial_days">
+                                                    {{ (labels.membership?.trial ?? '').replace(':days', plan.trial_days) }}
+                                                </span>
+                                                <span v-if="plan.joining_fee">
+                                                    {{ (labels.membership?.joining_fee ?? '').replace(':amount', plan.joining_fee) }}
+                                                </span>
+                                                <span v-if="plan.setup_fee">
+                                                    {{ (labels.membership?.setup_fee ?? '').replace(':amount', plan.setup_fee) }}
+                                                </span>
+                                                <span class="text-faint">{{ plan.locations }}</span>
+                                            </p>
+                                        </div>
+
+                                        <span v-if="membershipPlanId === plan.id"
+                                              class="text-[12px] font-semibold text-brand shrink-0">
+                                            {{ labels.membership?.selected }}
+                                        </span>
+                                    </div>
+                                </button>
+                            </li>
+                        </ul>
+                    </template>
+                </div>
+            </section>
+
+            <!-- When it starts.
+
+                 Its own card rather than a field on the one above, because it
+                 is the answer that decides whether the client walks out with
+                 something they can use today or something Scheduled. -->
+            <section v-if="sellingMembership" class="bg-white border border-line rounded-card"
+                     :class="open === 'when' ? 'overflow-visible' : 'overflow-hidden'">
+                <button type="button" class="styledesk_weekhead rounded-t-card" :aria-expanded="open === 'when'"
+                        @click="toggle('when')">
+                    <span class="styledesk_bookingtick is-done" aria-hidden="true">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="min-w-0 flex-1 text-left text-[13px] font-semibold text-head">
+                        {{ labels.membership?.start }}
+                    </span>
+                    <span class="text-[12px] text-sub shrink-0">
+                        {{ membershipStart === 'today' ? labels.membership?.start_today : membershipDate }}
+                    </span>
+                </button>
+
+                <div v-show="open === 'when'" class="p-4 pt-0">
+                    <!-- A business that does not allow dating one forward gets
+                         the fact, not a picker with one option in it. -->
+                    <p v-if="!canDateMembership" class="mt-3 text-[12.5px] text-sub bg-hover rounded-lg px-3 py-2">
+                        {{ labels.membership?.start_locked }}
+                    </p>
+
+                    <template v-else>
+                        <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                            <label v-for="option in ['today', 'later']" :key="option"
+                                   class="flex items-start gap-2.5 rounded-lg border px-3.5 py-3 cursor-pointer transition-colors"
+                                   :class="membershipStart === option ? 'border-brand' : 'border-line hover:border-brand'">
+                                <input v-model="membershipStart" type="radio" :value="option" class="mt-0.5 sd-radio">
+                                <span class="text-[13px] font-semibold text-head">
+                                    {{ option === 'today' ? labels.membership?.start_today : labels.membership?.start_later }}
+                                </span>
+                            </label>
+                        </div>
+
+                        <div v-if="membershipStart === 'later'" class="mt-3 sm:w-[220px]">
+                            <input v-model="membershipDate" type="date" class="sd-input" :min="today">
+                        </div>
+                    </template>
+
+                    <p v-if="membershipIsScheduled" class="mt-3 text-[12px] text-sub">
+                        {{ (labels.membership?.scheduled_note ?? '').replace(':date', membershipStartsOn) }}
+                    </p>
+                </div>
+            </section>
+
+            <!-- Service.
+
+                 Hidden while a membership is being sold, along with the four
+                 cards below it. A membership takes no slot, needs no staff
+                 member and has no duration, so those cards do not ask smaller
+                 versions of their questions — they ask questions that have no
+                 answer. They are v-if rather than v-show so nothing they hold
+                 is posted with a sale it does not belong to. -->
+            <section v-if="!sellingMembership" class="bg-white border border-line rounded-card overflow-hidden">
                 <button type="button" class="styledesk_weekhead" :aria-expanded="open === 'service'"
                         @click="toggle('service')">
                     <span class="styledesk_bookingtick" :class="{ 'is-done': stepsDone.service || chosen.length }" aria-hidden="true">
@@ -3209,7 +4025,7 @@ const summaryOf = (section) => {
 
             <!-- Staff & time. The card stops clipping while it is open, or
                  it would cut the date picker off at its own bottom edge. -->
-            <section class="bg-white border border-line rounded-card"
+            <section v-if="!sellingMembership" class="bg-white border border-line rounded-card"
                      :class="open === 'when' ? 'overflow-visible' : 'overflow-hidden'">
                 <button type="button" class="styledesk_weekhead rounded-t-card" :aria-expanded="open === 'when'"
                         @click="toggle('when')">
@@ -3412,7 +4228,7 @@ const summaryOf = (section) => {
             </section>
 
             <!-- Booking details -->
-            <section class="bg-white border border-line rounded-card overflow-hidden">
+            <section v-if="!sellingMembership" class="bg-white border border-line rounded-card overflow-hidden">
                 <button type="button" class="styledesk_weekhead" :aria-expanded="open === 'details'"
                         @click="toggle('details')">
                     <span class="styledesk_bookingtick" :class="{ 'is-done': stepsDone.details || notes || clientNote }" aria-hidden="true">
@@ -3484,7 +4300,7 @@ const summaryOf = (section) => {
             </section>
 
             <!-- Deposit / payment -->
-            <section class="bg-white border border-line rounded-card overflow-hidden">
+            <section v-if="!sellingMembership" class="bg-white border border-line rounded-card overflow-hidden">
                 <button type="button" class="styledesk_weekhead" :aria-expanded="open === 'payment'"
                         @click="toggle('payment')">
                     <span class="styledesk_bookingtick" :class="{ 'is-done': stepsDone.payment || payType === 'deposit' }" aria-hidden="true">
@@ -3709,7 +4525,7 @@ const summaryOf = (section) => {
             </section>
 
             <!-- Communication -->
-            <section class="bg-white border border-line rounded-card overflow-hidden">
+            <section v-if="!sellingMembership" class="bg-white border border-line rounded-card overflow-hidden">
                 <button type="button" class="styledesk_weekhead" :aria-expanded="open === 'comms'"
                         @click="toggle('comms')">
                     <span class="styledesk_bookingtick is-done" aria-hidden="true">
@@ -3987,7 +4803,212 @@ const summaryOf = (section) => {
              page for the money would take the receptionist off the screen
              holding everything they might still be asked about, and the shut
              heads keep the whole workflow readable while one step is open. -->
-        <section v-show="stage !== 'done'" class="lg:col-span-3 lg:sticky lg:top-[73px] space-y-3" :aria-label="labels.sections?.summary">
+        <!-- The purchase summary, when a membership is what is being sold.
+
+             The booking summary's opposite number, in the same column: a
+             membership has no time, no staff member and no duration, so the
+             rows that describe an appointment are replaced rather than left
+             empty. What stays is the shape — who, what, what it costs, and
+             the button that commits it. -->
+        <section v-if="sellingMembership" class="lg:col-span-3 lg:sticky lg:top-[73px] space-y-3"
+                 :aria-label="labels.membership?.purchase_summary">
+            <div class="bg-white border rounded-card overflow-hidden styledesk_workcard">
+                <div class="styledesk_weekhead">
+                    <span class="styledesk_bookingtick" :class="{ 'is-done': chosenMembership !== null }" aria-hidden="true">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="min-w-0 flex-1 text-left text-[13px] font-semibold text-brand">
+                        {{ labels.membership?.purchase_summary }}
+                    </span>
+                </div>
+
+                <dl class="p-4 space-y-2.5 text-[13px]">
+                    <div class="flex items-baseline justify-between gap-3">
+                        <dt class="text-sub">{{ labels.summary?.client }}</dt>
+                        <dd class="font-semibold text-head text-right min-w-0 truncate">{{ who ?? '—' }}</dd>
+                    </div>
+
+                    <div class="flex items-baseline justify-between gap-3">
+                        <dt class="text-sub">{{ labels.purchase?.membership }}</dt>
+                        <dd class="font-semibold text-head text-right min-w-0 truncate">
+                            {{ chosenMembership?.name ?? '—' }}
+                        </dd>
+                    </div>
+
+                    <div v-if="chosenMembership" class="flex items-baseline justify-between gap-3">
+                        <dt class="text-sub">{{ labels.membership?.billing }}</dt>
+                        <dd class="font-semibold text-head text-right">
+                            {{ chosenMembership.frequency_label ?? labels.membership?.one_off }}
+                        </dd>
+                    </div>
+
+                    <div class="flex items-baseline justify-between gap-3">
+                        <dt class="text-sub">{{ labels.membership?.start }}</dt>
+                        <dd class="font-semibold text-head text-right">{{ membershipStartsOn }}</dd>
+                    </div>
+
+                    <!-- Whether it renews, said plainly. A client agreeing to
+                         a subscription should be able to read that they are
+                         agreeing to one. -->
+                    <div v-if="canRenew" class="flex items-baseline justify-between gap-3">
+                        <dt class="text-sub">{{ labels.cards?.summary_recurring }}</dt>
+                        <dd class="font-semibold text-head text-right">
+                            {{ autoRenew ? labels.cards?.yes : labels.cards?.no }}
+                        </dd>
+                    </div>
+
+                    <div v-if="needsCard && chosenCard" class="flex items-baseline justify-between gap-3">
+                        <dt class="text-sub">{{ labels.cards?.summary_payment_method }}</dt>
+                        <dd class="font-semibold text-head text-right min-w-0 truncate">{{ chosenCard.label }}</dd>
+                    </div>
+
+                    <div v-if="chosenMembership" class="pt-2.5 border-t border-line space-y-1.5">
+                        <div v-for="line in chosenMembership.includes" :key="line.name"
+                             class="flex items-baseline justify-between gap-3">
+                            <dt class="text-sub min-w-0 truncate">{{ line.name }}</dt>
+                            <dd class="text-head shrink-0">× {{ line.quantity }}</dd>
+                        </div>
+                    </div>
+
+                    <div class="pt-2.5 border-t border-line flex items-baseline justify-between gap-3">
+                        <dt class="text-[13px] font-semibold text-head">{{ labels.membership?.due_today }}</dt>
+                        <dd class="text-[15px] font-bold text-head">{{ money(membershipDueMinor) }}</dd>
+                    </div>
+                </dl>
+
+                <!-- Whether it renews, and what it renews on.
+
+                     Above the method list because it changes what that list
+                     is for: a one-off purchase is paid today and forgotten,
+                     and a subscription needs something the business can
+                     charge again in a month with nobody at the desk. -->
+                <div v-if="chosenMembership && canRenew" class="px-4 pb-3 border-t border-line pt-3">
+                    <label class="flex items-start gap-2.5 cursor-pointer">
+                        <input v-model="autoRenew" type="checkbox" class="mt-0.5 sd-check">
+                        <span class="min-w-0">
+                            <span class="block text-[12.5px] font-semibold text-head">
+                                {{ labels.cards?.recurring }}
+                                <template v-if="chosenMembership.price"> — {{ chosenMembership.price }}</template>
+                            </span>
+                            <span class="block text-[11.5px] text-sub leading-snug">
+                                {{ autoRenew ? labels.cards?.recurring_hint : labels.cards?.one_off }}
+                            </span>
+                        </span>
+                    </label>
+                </div>
+
+                <!-- Card on file.
+
+                     Only when something is going to renew. A one-off purchase
+                     is paid at the till like anything else and does not need
+                     a card kept afterwards. -->
+                <div v-if="chosenMembership && needsCard" class="px-4 pb-4">
+                    <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.cards?.title }}</p>
+
+                    <!-- No processor connected, so there is nowhere to keep a
+                         card. Said plainly, with the setting that would fix
+                         it — offering the button and failing on press is the
+                         version that wastes the conversation. -->
+                    <div v-if="!canVaultCards" class="rounded-lg bg-hover px-3 py-2.5">
+                        <p class="text-[12px] font-semibold text-head">{{ labels.cards?.unavailable }}</p>
+                        <p class="text-[11.5px] text-sub mt-0.5 leading-snug">{{ labels.cards?.unavailable_hint }}</p>
+                    </div>
+
+                    <p v-else-if="!client" class="text-[12px] text-sub">{{ labels.cards?.client_first }}</p>
+
+                    <template v-else>
+                        <p class="text-[11.5px] text-sub mb-2 leading-snug">{{ labels.cards?.why }}</p>
+
+                        <div v-if="usableCards.length" class="grid gap-1.5">
+                            <label v-for="card in usableCards" :key="card.id"
+                                   class="flex items-start gap-2.5 rounded-lg border px-3 py-2 cursor-pointer transition-colors"
+                                   :class="cardId === card.id ? 'border-brand bg-brand/5' : 'border-line hover:border-brand'">
+                                <input v-model="cardId" type="radio" :value="card.id" class="mt-0.5 sd-radio">
+                                <span class="min-w-0 flex-1">
+                                    <span class="block text-[12.5px] font-semibold text-head">
+                                        {{ card.label }}
+                                        <span v-if="card.is_default" class="ml-1 text-[11px] font-semibold text-brand">
+                                            {{ labels.cards?.default }}
+                                        </span>
+                                    </span>
+                                    <span class="block text-[11.5px]"
+                                          :class="card.expiring_soon ? 'text-danger font-semibold' : 'text-sub'">
+                                        <template v-if="card.expiring_soon">{{ labels.cards?.expiring }}</template>
+                                        <template v-else>{{ (labels.cards?.expires ?? '').replace(':date', card.expiry ?? '') }}</template>
+                                    </span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <p v-else class="text-[12px] text-sub">{{ labels.cards?.none }}</p>
+
+                        <!-- The gateway's own component mounts here. The
+                             number is typed into it and goes straight to the
+                             gateway; this page never sees it. -->
+                        <div v-if="cardFormOpen" class="mt-2.5 rounded-lg border border-line p-3">
+                            <div data-card-element></div>
+
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <button type="button" class="styledesk_action" :disabled="addingCard" @click="saveCard">
+                                    {{ addingCard ? labels.cards?.adding : labels.cards?.save }}
+                                </button>
+                                <button type="button" class="styledesk_action" :disabled="addingCard" @click="closeCardForm">
+                                    {{ labels.cards?.cancel }}
+                                </button>
+                            </div>
+
+                            <p class="mt-2 text-[11px] text-faint leading-snug">{{ labels.cards?.save_required }}</p>
+                        </div>
+
+                        <button v-else type="button" class="mt-2 text-[12px] font-semibold text-link hover:underline"
+                                :disabled="addingCard" @click="openCardForm">
+                            {{ addingCard ? labels.cards?.adding : labels.cards?.add }}
+                        </button>
+
+                        <p v-if="cardError" class="mt-1.5 text-[11.5px] text-danger">{{ cardError }}</p>
+                    </template>
+                </div>
+
+                <!-- How they are paying. The same method list the booking
+                     uses, narrowed to the ones this membership may be bought
+                     with: a recurring one needs a method that can be charged
+                     again, and the card says so rather than letting the desk
+                     find out when the save is refused. -->
+                <div v-if="chosenMembership" class="px-4 pb-4">
+                    <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.pay?.method }}</p>
+
+                    <div class="grid gap-1.5">
+                        <label v-for="method in membershipMethods" :key="method.key"
+                               class="flex items-start gap-2.5 rounded-lg border px-3 py-2 cursor-pointer transition-colors"
+                               :class="membershipMethod === method.key ? 'border-brand bg-brand/5' : 'border-line hover:border-brand'">
+                            <input v-model="membershipMethod" type="radio" :value="method.key" class="mt-0.5 sd-radio">
+                            <span class="min-w-0">
+                                <span class="block text-[12.5px] font-semibold text-head">{{ method.name }}</span>
+                                <span class="block text-[11.5px] text-sub">{{ method.hint }}</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <p v-if="chosenMembership.billing_frequency" class="mt-2 text-[11.5px] text-sub leading-snug">
+                        {{ labels.membership?.method_note }}
+                    </p>
+                </div>
+
+                <div class="px-4 pb-4">
+                    <!-- What is missing, said before the button rather than
+                         after it: a disabled button with no reason beside it
+                         is a dead end the reader has to guess at. -->
+                    <p v-if="membershipBlocker" class="text-[12px] text-sub mb-2">{{ membershipBlocker }}</p>
+
+                    <button type="submit" class="w-full h-10 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            :disabled="membershipBlocker !== null || sending">
+                        {{ labels.membership?.complete }}
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section v-show="!sellingMembership && stage !== 'done'" class="lg:col-span-3 lg:sticky lg:top-[73px] space-y-3" :aria-label="labels.sections?.summary">
 
             <!-- ---------------------------------------------------- 1 · summary -->
             <!-- Marked apart from the seven cards beside them: these two are
@@ -4001,7 +5022,7 @@ const summaryOf = (section) => {
                     <span class="min-w-0 flex-1 text-left text-[13px] font-semibold text-brand">
                         {{ labels.sections?.summary }}
                     </span>
-                    <span v-if="chosen.length" class="text-[12px] text-brand/75 shrink-0">{{ money(payableMinor) }}</span>
+                    <span v-if="chosen.length" class="text-[12px] text-brand/75 shrink-0">{{ money(summaryTotalMinor) }}</span>
                 </button>
 
                 <div v-show="stage === 'summary'">
@@ -4035,10 +5056,46 @@ const summaryOf = (section) => {
                     </div>
 
                     <div v-if="chosen.length" class="pt-2.5 border-t border-line space-y-1.5">
-                        <div v-for="service in chosen" :key="service.id"
-                             class="flex items-baseline justify-between gap-3">
-                            <dt class="text-sub min-w-0 truncate">{{ service.name }}</dt>
-                            <dd class="text-head shrink-0">{{ service.price }}</dd>
+                        <div v-for="(service, index) in chosen" :key="`${service.id}-${index}`">
+                            <div class="flex items-baseline justify-between gap-3">
+                                <dt class="text-sub min-w-0 truncate">{{ service.name }}</dt>
+                                <dd class="shrink-0"
+                                    :class="index < creditsAppliedTo(service.id) ? 'text-faint line-through' : 'text-head'">
+                                    {{ service.price }}
+                                </dd>
+                            </div>
+
+                            <!-- The client already bought this.
+
+                                 Beside the line it pays for rather than as a
+                                 total somewhere else: "you have a massage
+                                 credit" is about this massage, and a number
+                                 at the bottom of the panel would make the
+                                 desk work out which line it belongs to.
+
+                                 Offered, never applied on its own. Whether to
+                                 spend a credit today is the client's decision
+                                 and the desk asks it out loud. -->
+                            <div v-if="index < creditsAppliedTo(service.id)"
+                                 class="mt-1 flex items-center gap-2 rounded-md bg-brand/5 border border-brand/30 px-2.5 py-1.5">
+                                <span class="min-w-0 flex-1 text-[11.5px] font-semibold text-brand truncate">
+                                    {{ labels.credits?.applied }}
+                                </span>
+                                <button type="button" class="text-[11.5px] font-semibold text-link hover:underline shrink-0"
+                                        @click="removeCredit(service.id)">{{ labels.credits?.remove }}</button>
+                            </div>
+
+                            <div v-else-if="canCover(service.id)"
+                                 class="mt-1 rounded-md bg-hover px-2.5 py-1.5">
+                                <p class="text-[11.5px] font-semibold text-head">{{ labels.credits?.available }}</p>
+                                <p class="text-[11px] text-sub mt-0.5 leading-snug">
+                                    {{ (labels.credits?.from ?? '').replace(':name', creditOffer(service.id)?.membership_name ?? '') }}
+                                    ·
+                                    {{ (labels.credits?.remaining ?? '').replace(':count', creditOffer(service.id)?.remaining ?? 0) }}
+                                </p>
+                                <button type="button" class="mt-1.5 text-[11.5px] font-semibold text-link hover:underline"
+                                        @click="applyCredit(service.id)">{{ labels.credits?.apply }}</button>
+                            </div>
                         </div>
                     </div>
 
@@ -4118,13 +5175,17 @@ const summaryOf = (section) => {
                         </button>
 
                         <button type="button" class="styledesk_tipchip"
-                                :class="{ 'styledesk_tipchip--on': customTip !== '' }"
-                                @click="tipPercent = null">
+                                :class="{ 'styledesk_tipchip--on': tipChosen && tipPercent === null }"
+                                @click="chooseCustomTip">
                             <span class="font-semibold">{{ labels.pay?.custom_tip }}</span>
                         </button>
                     </div>
 
-                    <div v-if="tipPercent === null" class="mt-2 w-[150px]">
+                    <!-- Only once somebody has asked for it. It used to show
+                         whenever no percentage was set, which was also the
+                         state the screen opened in — so every booking began
+                         with an empty amount box and no chip lit. -->
+                    <div v-if="tipChosen && tipPercent === null" class="mt-2 w-[150px]">
                         <input v-model="customTip" type="text" inputmode="decimal" class="sd-input !h-9"
                                :placeholder="money(0)" @input="applyCustomTip">
                     </div>
@@ -4136,6 +5197,17 @@ const summaryOf = (section) => {
                             <dd class="text-head">{{ quote?.subtotal ?? money(estimate.subtotal) }}</dd>
                         </div>
 
+                        <!-- Its own line, above the discount and never
+                             folded into it. A coupon is the business giving
+                             money away and a credit is the client spending
+                             something they already bought; a receipt that
+                             called them the same thing is one nobody can
+                             reconcile. -->
+                        <div v-if="quote?.membership_credit_minor > 0" class="flex items-baseline justify-between gap-3">
+                            <dt class="min-w-0 text-sub truncate">{{ labels.credits?.line }}</dt>
+                            <dd class="text-head shrink-0">−{{ quote.membership_credit }}</dd>
+                        </div>
+
                         <div v-if="quote?.discount_minor > 0" class="flex items-baseline justify-between gap-3">
                             <dt class="min-w-0 text-sub truncate">
                                 {{ labels.pay?.discount }}<template v-if="quote.coupon"> — {{ quote.coupon.code }}</template>
@@ -4143,11 +5215,14 @@ const summaryOf = (section) => {
                             <dd class="text-head shrink-0">−{{ quote.discount }}</dd>
                         </div>
 
-                        <div v-if="quote?.tip_minor > 0" class="flex items-baseline justify-between gap-3">
+                        <!-- One figure, wherever it was last changed. While
+                             the till is open this is the till's tip; before
+                             that it is the quote's. -->
+                        <div v-if="summaryTipMinor > 0" class="flex items-baseline justify-between gap-3">
                             <dt class="text-sub">
-                                {{ labels.pay?.tip }}<template v-if="quote.tip_percent"> — {{ quote.tip_percent }}%</template>
+                                {{ labels.pay?.tip }}<template v-if="summaryTipPercent"> — {{ summaryTipPercent }}%</template>
                             </dt>
-                            <dd class="text-head">+{{ quote.tip }}</dd>
+                            <dd class="text-head">+{{ money(summaryTipMinor) }}</dd>
                         </div>
 
                         <div v-if="quote ? quote.tax_minor > 0 : estimate.tax" class="flex items-baseline justify-between gap-3">
@@ -4157,7 +5232,7 @@ const summaryOf = (section) => {
 
                         <div class="flex items-baseline justify-between gap-3 pt-1.5 border-t border-line">
                             <dt class="font-semibold text-head">{{ labels.summary?.total }}</dt>
-                            <dd class="font-semibold text-head">{{ money(payableMinor) }}</dd>
+                            <dd class="font-semibold text-head">{{ money(summaryTotalMinor) }}</dd>
                         </div>
 
                         <div v-if="payType === 'deposit' && depositMinor > 0" class="flex items-baseline justify-between gap-3">
@@ -4250,6 +5325,7 @@ const summaryOf = (section) => {
                 <PaymentPanel :booking="booking" :methods="methods" :csrf="csrf"
                               :priced-for="paymentMethod"
                               :labels="{ ...labels, currency_symbol: currencySymbol }"
+                              @draft="onPaymentDraft"
                               @paid="onPaid" />
 
                 <div class="px-4 py-3.5 border-t border-line space-y-2">

@@ -33,6 +33,13 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <!-- The two idle timeouts, pinned. A developer who has switched them
+             off locally is still entitled to a suite that exercises them. -->
+        <env name="SESSION_IDLE_TIMEOUT" value="30"/>
+        <env name="BACKOFFICE_SESSION_TIMEOUT_MINUTES" value="30"/>
+        <!-- The seeder reads this. A blank one locally is a valid choice and
+             must not make the suite assert against an admin with no address. -->
+        <env name="BACKOFFICE_SUPER_OWNER_EMAIL" value="super-owner@styledesk.test"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

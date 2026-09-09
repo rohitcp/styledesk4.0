@@ -71,7 +71,7 @@ return [
     'loyalty' => '会员积分',
     'groups' => '分组',
     'forms_waivers' => '表单与同意书',
-    'memberships_packages' => '会员与套餐',
+    'membership' => '会员',
 
     /* 打开的菜单中，每组条目上方的标题。 */
     'sections' => [

@@ -388,6 +388,7 @@ return [
             ],
             'tabs' => [
                 'rewards' => '奖励',
+                'membership' => '会员',
                 'leads' => '意向',
                 'activity' => '动态',
                 'bookings' => '预约',

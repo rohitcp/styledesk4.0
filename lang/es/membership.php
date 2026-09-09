@@ -1,0 +1,456 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+| Membresía.
+|
+| Dos públicos, separados por sus claves de primer nivel: `settings` lo lee
+| quien decide las condiciones con las que se vende, y todo lo anterior quien
+| está en recepción con un cliente delante.
+*/
+
+return [
+
+    'title' => 'Membresía',
+
+    'types' => [
+        'recurring' => 'Membresía recurrente',
+        'recurring_hint' => 'Se cobra automáticamente por ciclos. Sus ventajas se renuevan con cada cobro.',
+        'package' => 'Paquete de membresía',
+        'package_hint' => 'Se compra una vez, incluye un número fijo de servicios y termina cuando se usan.',
+    ],
+
+    'billing_frequencies' => [
+        'monthly' => 'Mensual',
+        'quarterly' => 'Trimestral',
+        'yearly' => 'Anual',
+    ],
+
+    'activation' => [
+        'immediately' => 'Inmediatamente',
+        'start_date' => 'En una fecha de inicio elegida',
+    ],
+
+    'credit_expiry' => [
+        'cycle' => 'Al final de cada ciclo de facturación',
+        'never' => 'Nunca',
+        '1m' => 'Al cabo de 1 mes',
+        '3m' => 'Al cabo de 3 meses',
+        '6m' => 'Al cabo de 6 meses',
+        '12m' => 'Al cabo de 12 meses',
+    ],
+
+    'cancellation' => [
+        'end_of_cycle' => 'Al final del ciclo de facturación',
+        'immediately' => 'Inmediatamente',
+    ],
+
+    'channels' => [
+        'in_store' => 'En el local',
+        'in_store_hint' => 'Se vende en recepción desde la pantalla de reservas.',
+        'online' => 'En línea',
+        'online_hint' => 'La compran los propios clientes en tu página de reservas.',
+    ],
+
+    /* ------------------------------------------------------- el módulo -- */
+
+    'intro' => 'Las membresías y paquetes que vendes. Los clientes los compran desde la pantalla de reservas.',
+    'new' => 'Crear membresía',
+    'none_yet' => 'Todavía no hay membresías',
+    'none_yet_hint' => 'Crea una y estará disponible en la pantalla de reservas en cuanto la publiques.',
+    'all_locations' => 'Todas las ubicaciones',
+
+    'price_per' => ':price / :period',
+    'periods' => [
+        'monthly' => 'mes',
+        'quarterly' => 'trimestre',
+        'yearly' => 'año',
+    ],
+
+    'discount_off' => ':amount de descuento en servicios adicionales',
+    'saving' => 'Ahorro del cliente',
+    'regular_value' => 'Valor habitual',
+
+    'statuses' => [
+        'draft' => 'Borrador',
+        'active' => 'Activa',
+        'disabled' => 'Desactivada',
+    ],
+
+    'created' => 'Membresía creada.',
+    'saved' => 'Membresía guardada.',
+    'duplicated' => 'Copiada. Es un borrador hasta que la publiques.',
+    'disabled' => 'Membresía retirada de la venta.',
+    'enabled' => 'Membresía de nuevo a la venta.',
+    'copy_of' => 'Copia de :name',
+
+    'tabs' => [
+        'overview' => 'Resumen',
+        'plans' => 'Planes de membresía',
+        'packages' => 'Paquetes de membresía',
+        'members' => 'Miembros',
+    ],
+
+    'summary' => [
+        'plans' => 'Planes a la venta',
+        'packages' => 'Paquetes a la venta',
+        'drafts' => 'Borradores',
+        'members' => 'Miembros',
+    ],
+
+    'search' => 'Buscar por nombre, código o servicio incluido',
+    'filters' => [
+        'all_statuses' => 'Todos los estados',
+        'all_locations' => 'Todas las ubicaciones',
+        'reset' => 'Restablecer',
+    ],
+
+    'columns' => [
+        'name' => 'Nombre',
+        'code' => 'Código',
+        'price' => 'Precio',
+        'includes' => 'Incluye',
+        'benefit' => 'Ventaja para el miembro',
+        'saving' => 'Ahorro',
+        'locations' => 'Ubicaciones',
+        'status' => 'Estado',
+    ],
+
+    'results' => [
+        'zero' => 'Ninguna membresía coincide',
+        'one' => ':count membresía',
+        'many' => ':count membresías',
+        'clear' => 'Quitar filtros',
+    ],
+    'empty' => 'Nada coincide con esos filtros.',
+    'showing' => 'Mostrando :from–:to de :total',
+    'actions_for' => 'Acciones para :name',
+
+    'actions' => [
+        'view' => 'Ver',
+        'edit' => 'Editar',
+        'duplicate' => 'Duplicar',
+        'disable' => 'Retirar de la venta',
+        'enable' => 'Poner a la venta',
+    ],
+
+    'overview' => [
+        'title' => 'Resumen',
+        'intro' => 'Qué vendes y dónde se vende.',
+        'recent' => 'Actualizadas recientemente',
+        'recent_empty' => 'Todavía no has creado nada.',
+        'terms' => 'Condiciones de venta',
+        'terms_hint' => 'Se aplican a todas las membresías que vendes. Se configuran en Ajustes de la aplicación.',
+        'terms_link' => 'Abrir ajustes de membresía',
+        'term_channels' => 'Se vende',
+        'term_activation' => 'Empieza',
+        'term_credits' => 'Créditos no usados',
+        'term_credits_rollover' => 'Se acumulan',
+        'term_credits_reset' => 'Se reinician cada ciclo',
+        'term_cancellation' => 'Cancelación',
+        'term_cancellation_off' => 'No permitida',
+        'nothing_sellable' => 'No hay nada a la venta',
+        'nothing_sellable_hint' => 'Todas las membresías que has creado son borradores o están retiradas, así que la pantalla de reservas no tiene nada que ofrecer.',
+    ],
+
+    'members' => [
+        'title' => 'Miembros',
+        'intro' => 'Todas las personas con una membresía y lo que les queda.',
+        'none' => 'Todavía nadie tiene una membresía',
+        'none_hint' => 'Las membresías se venden desde la pantalla de reservas. Quienes compren una aparecerán aquí.',
+        'columns' => [
+            'client' => 'Cliente',
+            'membership' => 'Membresía',
+            'status' => 'Estado',
+            'started' => 'Inicio',
+            'next_billing' => 'Próximo cobro',
+            'credits' => 'Créditos restantes',
+        ],
+        'no_billing' => '—',
+        'credits_none' => 'Sin créditos',
+    ],
+
+    'images' => [
+        'uploading' => 'Subiendo…',
+        'failed' => 'No se pudo subir esa imagen.',
+        'too_large' => 'Esa imagen es demasiado grande. El límite es 5 MB.',
+        'wrong_type' => 'Usa un JPG, PNG o WebP.',
+    ],
+
+    'member_statuses' => [
+        'scheduled' => 'Programada',
+        'active' => 'Activa',
+        'paused' => 'En pausa',
+        'cancelled' => 'Cancelada',
+        'ended' => 'Finalizada',
+    ],
+
+    'sale' => [
+        'not_on_sale' => 'Esa membresía no está a la venta: es un borrador o ha sido retirada.',
+        'channel_closed' => 'Las membresías no se pueden vender en recepción. Abre el canal en el local en Ajustes de la aplicación.',
+        'no_future_start' => 'Este negocio no permite posponer el inicio de una membresía.',
+        'method_not_repeatable' => 'Una membresía recurrente necesita un método de pago que se pueda volver a cobrar. Con efectivo se compra un paquete; no se renueva una suscripción.',
+    ],
+
+    'member' => [
+        'title' => 'Membresía',
+        'none' => 'No es miembro',
+        'none_hint' => 'Las membresías se venden desde la pantalla de reservas: elige Membresía en Seleccionar tipo.',
+        'off' => 'La membresía está desactivada',
+        'off_hint' => 'No se puede vender nada nuevo. Lo que este cliente ya tiene se conserva tal cual.',
+        'active' => 'Membresía activa',
+        'past' => 'Membresías anteriores',
+        'started' => 'Inicio',
+        'ends' => 'Termina',
+        'ended' => 'Finalizada',
+        'next_billing' => 'Próximo cobro',
+        'no_billing' => 'Sin más cobros',
+        'price' => 'Precio',
+        'sold_at' => 'Vendida en',
+        'credits' => 'Ventajas disponibles',
+        'credits_none' => 'No hay créditos disponibles.',
+        'credit_count' => ':count disponibles',
+        'credit_expires' => 'Caduca el :date',
+        'credits_paused' => 'Los créditos no se pueden usar mientras la membresía está en pausa.',
+        'history_title' => 'Historial',
+        'history_none' => 'Todavía no ha pasado nada.',
+
+        'history' => [
+            'started' => 'Membresía iniciada',
+            'payment' => 'Pago cobrado',
+            'redeemed' => 'Crédito usado',
+            'released' => 'Crédito devuelto',
+            'paused' => 'Membresía pausada',
+            'cancelled' => 'Membresía cancelada',
+            'ends_on' => 'Termina el :date',
+        ],
+
+        'cancel' => 'Cancelar membresía',
+        'cancel_confirm' => '¿Cancelar esta membresía? No se quita nada de lo ya pagado.',
+        'pause' => 'Pausar membresía',
+        'pause_confirm' => '¿Pausar esta membresía? El cobro se detiene y los créditos no se pueden usar hasta que se reanude.',
+        'resume' => 'Reanudar membresía',
+        'cancelled_now' => 'Membresía cancelada.',
+        'cancelled_on' => 'La membresía terminará el :date. Se puede usar hasta entonces.',
+        'paused' => 'Membresía pausada.',
+        'resumed' => 'Membresía reanudada.',
+        'already_cancelled' => 'Esa membresía ya está cancelada.',
+        'cannot_pause' => 'Solo se puede pausar una membresía en curso.',
+        'not_paused' => 'Esa membresía no está en pausa.',
+        'in_commitment' => 'Esta membresía no se puede cancelar hasta el :date: el cliente aceptó una permanencia mínima.',
+        'cancel_not_allowed' => 'Este negocio no permite cancelar membresías desde aquí.',
+        'notice_note' => 'Cancelar ahora surtirá efecto el :date.',
+    ],
+
+    'sold' => [
+        'title' => 'Membresía activada',
+        'scheduled_title' => 'Membresía programada',
+        'intro' => ':client ya tiene esta membresía.',
+        'scheduled_intro' => ':client tendrá esta membresía a partir del :date. Sus créditos no existen hasta entonces.',
+        'client' => 'Cliente',
+        'membership' => 'Membresía',
+        'type' => 'Tipo',
+        'status' => 'Estado',
+        'start' => 'Fecha de inicio',
+        'paid' => 'Importe pagado',
+        'billing' => 'Cobro',
+        'one_off' => 'Compra única',
+        'next_billing' => 'Próxima fecha de cobro',
+        'benefits' => 'Ventajas incluidas',
+        'credits' => 'Créditos disponibles',
+        'credits_available' => ':count disponibles',
+        'credits_none' => 'Todavía no hay nada disponible.',
+        'view_client' => 'Ver cliente',
+        'view_membership' => 'Ver membresía',
+        'another' => 'Crear otra compra',
+    ],
+
+    'choose' => [
+        'title' => 'Crear membresía',
+        'question' => '¿Qué tipo de membresía quieres crear?',
+        'intro' => 'Es la única respuesta que no podrás cambiar después: son dos productos distintos, no dos ajustes de uno.',
+        'example' => 'Por ejemplo',
+        'recurring_example' => '79 $ al mes, con un masaje incluido cada mes.',
+        'package_example' => 'Cuatro masajes por 150 $, en una sola compra.',
+        'select' => 'Continuar',
+    ],
+
+    'form' => [
+        'create_title' => 'Crear membresía',
+        'edit_title' => 'Editar membresía',
+
+        'step' => 'Paso :number',
+
+        'basics' => 'Información básica',
+        'basics_hint' => 'Cómo se llama y cómo se le describe al cliente.',
+        'name' => 'Nombre de la membresía',
+        'name_placeholder' => 'Membresía mensual de masajes',
+        'description' => 'Descripción',
+        'description_hint' => 'Una o dos líneas. El cliente las lee en la tarjeta de la pantalla de reservas.',
+        'image' => 'Imagen de la membresía',
+        'image_upload' => 'Subir imagen',
+        'image_replace' => 'Reemplazar imagen',
+        'image_hint' => 'JPG, PNG o WebP, hasta 5 MB. Se muestra en la tarjeta de la pantalla de reservas.',
+        'internal_code' => 'Código interno',
+        'internal_code_hint' => 'Tu propia referencia. Letras, dígitos y guiones.',
+
+        'pricing' => 'Precio',
+        'pricing_hint_recurring' => 'Lo que paga el cliente en cada ciclo, y con qué frecuencia.',
+        'pricing_hint_package' => 'Lo que paga el cliente una vez, y lo que habría costado por separado.',
+        'price' => 'Precio de la membresía',
+        'package_price' => 'Precio del paquete',
+        'billing_frequency' => 'Frecuencia de cobro',
+        'joining_fee' => 'Cuota de alta',
+        'setup_fee' => 'Cuota de activación',
+        'trial_days' => 'Periodo de prueba',
+        'trial_days_hint' => 'Días antes del primer cobro. Déjalo vacío para no ofrecer prueba.',
+        'extras_hint' => 'Se cobran una sola vez, al inicio, además del primer ciclo. Déjalos vacíos si no hay.',
+        'regular_value' => 'Valor habitual',
+        'regular_value_hint' => 'Lo que costarían los servicios incluidos comprados por separado. Déjalo vacío para no anunciar ningún ahorro.',
+        'value_below_price' => 'El valor habitual tiene que ser al menos el precio del paquete, o no hay ahorro que mostrar.',
+        'saving_preview' => 'Ahorro del cliente: :amount',
+
+        'services' => 'Ventajas y servicios',
+        'services_hint_recurring' => 'Lo que recibe el miembro en cada ciclo. Los créditos vuelven cada vez que se cobra.',
+        'services_hint_package' => 'Lo que contiene el paquete en total. Cuando se usan, se acabó.',
+        'add_service' => '+ Añadir servicio',
+        'service' => 'Servicio',
+        'quantity' => 'Cantidad',
+        'remove' => 'Quitar',
+        'duplicate_service' => 'Cada servicio solo puede aparecer una vez. Cambia su cantidad en lugar de añadirlo dos veces.',
+        'no_services' => 'Añade al menos un servicio: una membresía que no incluye nada es una suscripción a nada.',
+
+        'benefits' => 'Ventajas adicionales para el miembro',
+        'benefits_hint' => 'Lo que el miembro obtiene en todo lo demás que compre. Opcional.',
+        'discount_type' => 'Descuento',
+        'discount_none' => 'Sin descuento',
+        'percent' => 'Porcentaje de descuento',
+        'fixed' => 'Importe fijo de descuento',
+        'discount_value' => 'Importe',
+        'priority_booking' => 'Reserva prioritaria',
+        'priority_booking_hint' => 'Los miembros se destacan en recepción para poder encajarlos primero.',
+
+        'credits' => 'Reglas de créditos',
+        'credits_hint' => 'Déjalas como están para seguir los ajustes del negocio. Cambia alguna solo si esta membresía es realmente distinta.',
+        'follow_business' => 'Seguir el ajuste del negocio (:value)',
+        'yes' => 'Sí',
+        'no' => 'No',
+        'credit_expiry' => 'Caducidad de los créditos',
+        'rollover' => 'Los créditos no usados se acumulan',
+        'maximum_rollover' => 'Máximo de créditos acumulables',
+        'substitution' => 'Los créditos pueden pagar otro servicio',
+
+        'availability' => 'Disponibilidad',
+        'availability_hint' => 'Dónde se puede vender y usar esta membresía, y por qué canales.',
+        'locations' => 'Ubicaciones',
+        'all_locations' => 'Todas las ubicaciones',
+        'selected_locations' => 'Ubicaciones seleccionadas',
+        'channels' => 'Canales de compra',
+        'channels_hint' => 'Los canales del negocio son el techo: una membresía ofrecida en línea en un negocio que no vende en línea no está a la venta.',
+        'channel_closed' => 'Cerrado en Ajustes de la aplicación',
+
+        'review' => 'Revisar y publicar',
+        'review_hint' => 'Un borrador se puede editar libremente y no se puede vender. Publicarlo lo pone en la pantalla de reservas.',
+        'summary_includes' => 'Incluye',
+        'summary_benefit' => 'Ventaja para el miembro',
+        'summary_locations' => 'Ubicaciones',
+        'summary_sold' => 'Se vende',
+        'save_draft' => 'Guardar como borrador',
+        'publish' => 'Publicar membresía',
+        'save' => 'Guardar cambios',
+    ],
+
+    'show' => [
+        'includes' => 'Qué incluye',
+        'benefits' => 'Ventajas del miembro',
+        'no_benefits' => 'Sin ventajas adicionales.',
+        'credits' => 'Reglas de créditos',
+        'availability' => 'Disponibilidad',
+        'sold_in_store' => 'En recepción',
+        'sold_online' => 'En línea',
+        'sold_nowhere' => 'En ningún sitio: todos los canales están cerrados.',
+        'draft_note' => 'Esto es un borrador. No se puede vender hasta que se publique.',
+        'disabled_note' => 'Esta membresía se ha retirado de la venta. Nadie nuevo puede comprarla; quien ya la tiene la conserva.',
+        'publish' => 'Publicar',
+        'from_business' => 'De los ajustes del negocio',
+        'per_cycle' => 'en cada ciclo',
+        'in_total' => 'en total',
+        'created_by' => 'Creada por',
+        'joining_fee' => 'Cuota de alta',
+        'setup_fee' => 'Cuota de activación',
+        'trial' => 'Prueba',
+        'trial_days' => ':days días',
+    ],
+
+    /* ------------------------------------------------- ajustes de la app -- */
+
+    'settings' => [
+        'title' => 'Membresía',
+        'intro' => 'Si vendes membresías, dónde se pueden comprar, qué pasa con los créditos que nadie usó y qué significa cancelar una.',
+
+        'enable' => 'Activar Membresía',
+        'enable_hint' => 'Añade Membresía dentro de Clientes y la convierte en un tipo de compra en la pantalla de reservas.',
+        'disabled_note' => 'La membresía está desactivada. No se puede vender nada nuevo: cada miembro actual conserva su plan, sus créditos y su historial tal como están.',
+
+        'saved' => 'Ajustes de membresía guardados.',
+
+        'selling' => 'Venta',
+        'selling_hint' => 'Dónde se puede comprar una membresía y quién puede completar la venta.',
+        'channels' => 'Canales de compra',
+        'channels_hint' => 'Si apagas todos los canales, no se puede vender nada, esté activada la membresía o no.',
+        'coming_soon' => 'Próximamente',
+        'allow_staff_to_sell' => 'Permitir que el personal venda membresías',
+        'allow_staff_to_sell_hint' => 'Cualquiera con el permiso puede completar una venta en recepción. Desactivado, solo un gerente puede.',
+
+        'starting' => 'Fecha de inicio',
+        'starting_hint' => 'Cuándo empieza una membresía comprada hoy.',
+        'allow_start_date_selection' => 'Permitir elegir la fecha de inicio',
+        'allow_start_date_selection_hint' => 'El personal puede posponer el inicio. Desactivado, toda membresía empieza el día en que se vende.',
+        'default_activation' => 'Activación predeterminada',
+        'default_activation_hint' => 'Lo que ofrece la pantalla de compra antes de que nadie elija.',
+
+        'credits' => 'Créditos',
+        'credits_hint' => 'Qué pasa con un servicio incluido que el cliente no usó.',
+        'allow_rollover' => 'Permitir acumular los créditos no usados',
+        'allow_rollover_hint' => 'Los créditos sin usar pasan al ciclo siguiente. Desactivado, cada ciclo empieza de cero.',
+        'maximum_rollover' => 'Máximo de créditos acumulables',
+        'maximum_rollover_hint' => 'Lo máximo que un cliente puede acumular. Déjalo vacío para no poner límite.',
+        'credit_expiry' => 'Caducidad de los créditos',
+        'credit_expiry_hint' => 'Cuánto vive un crédito desde que se concede.',
+        'allow_credits_across_locations' => 'Permitir usar los créditos en varias ubicaciones',
+        'allow_credits_across_locations_hint' => 'Un crédito obtenido en un local se puede usar en otro.',
+        'allow_service_substitution' => 'Permitir sustituir el servicio de un crédito',
+        'allow_service_substitution_hint' => 'Un crédito de un servicio puede pagar otro del mismo valor.',
+
+        'cancellation' => 'Cancelación',
+        'cancellation_hint' => 'Qué puede hacer un miembro cuando quiere darse de baja, y qué ocurre cuando lo hace.',
+        'allow_cancellation' => 'Permitir cancelar la membresía',
+        'allow_cancellation_hint' => 'Desactivado, solo puede darla de baja alguien con el permiso para hacerlo.',
+        'allow_pause' => 'Permitir pausar la membresía',
+        'allow_pause_hint' => 'El miembro puede congelarla sin perderla. El cobro se detiene mientras está en pausa.',
+        'minimum_commitment_months' => 'Permanencia mínima',
+        'minimum_commitment_months_hint' => 'Meses durante los cuales no se puede cancelar. Cero para ninguno.',
+        'cancellation_notice_days' => 'Preaviso de cancelación',
+        'cancellation_notice_days_hint' => 'Días de aviso que debe dar el miembro. Cero para ninguno.',
+        'cancellation_effective' => 'Cancelar',
+        'cancellation_effective_hint' => 'Cuándo surte efecto una cancelación.',
+        'months' => 'meses',
+        'days' => 'días',
+
+        'payments' => 'Pagos',
+        'payments_hint' => 'Las membresías se pagan con los métodos que ya aceptas. Aquí no hay nada aparte que configurar.',
+        'payments_link' => 'Abrir ajustes de pagos',
+
+        'rules' => 'Cómo gestiona StyleDesk las membresías',
+        'rules_hint' => 'Lo que decide la aplicación, no lo que decides tú.',
+        'rule_recurring' => 'Una membresía recurrente necesita un método de pago que se pueda volver a cobrar',
+        'rule_recurring_body' => 'Una tarjeta guardada, u otro método cobrable sin el cliente delante. Con efectivo se compra un paquete; no se renueva una suscripción.',
+        'rule_package' => 'Un paquete termina cuando se usan sus servicios',
+        'rule_package_body' => 'Sin renovación ni próxima fecha de cobro. Lo que el cliente compró es la lista de servicios, y acaba cuando la lista se vacía.',
+        'rule_scheduled' => 'Una membresía con fecha futura está Programada, no Activa',
+        'rule_scheduled_body' => 'Sus créditos no existen y sus ventajas no se aplican hasta que llega la fecha de inicio.',
+        'rule_off' => 'Desactivar la membresía detiene las ventas y nada más',
+        'rule_off_body' => 'Los miembros actuales conservan su plan, sus créditos y su historial. Las renovaciones ya acordadas se respetan.',
+    ],
+];

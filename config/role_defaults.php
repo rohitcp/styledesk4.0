@@ -230,6 +230,13 @@ return [
             'loyalty.view_rewards' => 'all',
             'loyalty.adjust_points' => 'all',
             'loyalty.redeem_points' => 'all',
+
+            /* Membership. Full access, settings included: the terms the
+               business sells on are an administrative decision. */
+            'membership.view_settings' => 'all',
+            'membership.manage_settings' => 'all',
+            'membership.view_members' => 'all',
+            'membership.manage_members' => 'all',
         ],
     ],
 
@@ -371,6 +378,13 @@ return [
             'loyalty.view_rewards' => 'location',
             'loyalty.adjust_points' => 'all',
             'loyalty.redeem_points' => 'all',
+
+            /* Membership. They read the terms so they can answer "can I
+               cancel?" at the desk, and they can act on the answer. Setting
+               the terms everybody is sold on is still not theirs. */
+            'membership.view_settings' => 'all',
+            'membership.view_members' => 'all',
+            'membership.manage_members' => 'all',
         ],
     ],
 
@@ -441,6 +455,10 @@ return [
                points is somebody else's decision. */
             'loyalty.view_rewards' => 'location',
             'loyalty.redeem_points' => 'all',
+
+            /* Reads a client's membership to answer "what have I got left".
+               Ending one is somebody else's decision. */
+            'membership.view_members' => 'all',
         ],
     ],
 

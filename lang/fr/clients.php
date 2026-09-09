@@ -399,6 +399,7 @@ return [
             ],
             'tabs' => [
                 'rewards' => 'Récompenses',
+                'membership' => 'Abonnement',
                 'leads' => 'Demandes',
                 'activity' => 'Activité',
                 'bookings' => 'Réservations',

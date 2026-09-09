@@ -182,10 +182,29 @@ class SmileSpaBookingsSeeder extends Seeder
                     'client_ref' => Client::nextRef($this->tenant->getTenantKey()),
                     'first_name' => $first,
                     'last_name' => $last,
-                    'mobile' => '+1 201 555 '.str_pad((string) mt_rand(1000, 9999), 4, '0', STR_PAD_LEFT),
                     'status' => 'active',
                     'preferred_location_id' => $this->location->id,
                 ])->save();
+
+                /* Through the sync methods, not by filling the columns.
+                 *
+                 * `clients.mobile` and `clients.email` are a cache of the
+                 * primary contact; the record is client_phones and
+                 * client_emails. Writing the columns directly produced
+                 * clients whose number showed in the listing — which reads
+                 * the cache — and nowhere on their profile, which reads the
+                 * record. */
+                $client->syncPhones([[
+                    'number' => '+1 201 555 '.str_pad((string) mt_rand(1000, 9999), 4, '0', STR_PAD_LEFT),
+                    'type' => 'mobile',
+                    'is_primary' => true,
+                ]]);
+
+                $client->syncEmails([[
+                    'email' => $email,
+                    'type' => 'personal',
+                    'is_primary' => true,
+                ]]);
             }
 
             return $client;

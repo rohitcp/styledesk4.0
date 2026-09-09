@@ -5,6 +5,7 @@ paths:
   - 'app/{Models/Booking.php,Models/BookingLead.php,Support/BookingAvailability.php,Http/Controllers/BookingController.php,Http/Controllers/BookingLeadController.php}'
   - 'app/{Models/BookingPaymentLink.php,Http/Controllers/PaymentLinkController.php,Http/Controllers/BookingController.php}'
   - 'app/{Models/BookingStatusChange.php,Models/ReasonCode.php,Support/BookingStatusHistory.php,Http/Controllers/BookingStatusController.php}'
+  - 'app/{Models/ClientMembership.php,Models/MembershipCredit.php,Models/MembershipPayment.php,Support/MembershipPurchase.php,Http/Controllers/MembershipSaleController.php}'
 ---
 
 # Controllers
@@ -58,3 +59,14 @@ The confirmation screen is full-width at the TOP of the create page (`stage === 
 Rows are immutable: `UPDATED_AT = null`, and `booted()` returns false on updating/deleting. Do not add an edit path.
 
 What can be done to a booking, from which statuses, and on which permission, lives in one place: `config('bookings.status_actions')`. `Booking::availableActions($user)` reads it for the header; `BookingStatusController::permit()` reads it again for the request. Add an action there, not in a blade `@if`. 403 = may not; 422 = allowed, but the booking is not in a state where the act means anything.
+
+## A membership sale freezes its terms and grants credits in one transaction
+`client_memberships` copies price_minor, billing_frequency, type and the fees off the plan at the moment of sale and NEVER reads them back through `membership_plans`. The plan is what the business offers today; the membership is what one person agreed to on one day, and a repricing in June must not reach into March. Only `membership_plan_id` stays live, so "what does this include" still resolves.
+
+`MembershipPurchase::sell()` is the one entry point and wraps membership + credits + payment in a DB transaction — done in sequence they leave clients holding a membership with no credits, or credits nobody paid for. The amount charged is always `MembershipPurchase::dueTodayMinor($plan)` (first cycle + joining + setup fees); never trust a figure posted from the form.
+
+Status is stored, with one exception: `ClientMembership::status()` reports 'active' for a stored 'scheduled' whose start date has arrived. Nothing rewrites the column — waiting for a job would leave it reading "Scheduled" on the morning it began. Always call `status()`, never read `$membership->status` directly for display. `scopeOfStatus('scheduled')` matches only future starts so the filter agrees with the badge.
+
+Credits are granted/used pairs, not a balance, and expiry is evaluated on read (`MembershipCredit::isSpendable()` / `scopeSpendable`) like loyalty points — no nightly sweep. 'cycle' expiry is not a duration: it resolves to the period end, and on a package (no cycle) it means never.
+
+`config('membership.repeatable_methods')` gates recurring sales — cash buys a package, it cannot renew a subscription. Enforced in `MembershipSaleController::guardMethod()` and mirrored in the booking screen's per-plan `methods` list so the desk sees it before the save is refused.

@@ -64,7 +64,7 @@ return [
     'loyalty' => 'Fidelización',
     'groups' => 'Grupos',
     'forms_waivers' => 'Formularios y consentimientos',
-    'memberships_packages' => 'Membresías y paquetes',
+    'membership' => 'Membresía',
 
     /* Los encabezados de cada grupo de entradas dentro de un menú abierto. */
     'sections' => [

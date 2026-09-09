@@ -2,9 +2,8 @@
 
 namespace App\Actions\Fortify;
 
-use App\Support\InputCase;
-
 use App\Models\User;
+use App\Support\InputCase;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;

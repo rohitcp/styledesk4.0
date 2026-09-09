@@ -11,8 +11,12 @@ use App\Models\BookingLead;
 use App\Models\BookingPaymentLink;
 use App\Models\BookingService;
 use App\Models\Client;
+use App\Models\ClientPaymentMethod;
 use App\Models\ClientSettings;
 use App\Models\Location;
+use App\Models\MembershipPlan;
+use App\Models\MembershipPlanService;
+use App\Models\MembershipSettings;
 use App\Models\Promotion;
 use App\Models\ReasonCode;
 use App\Models\Resource;
@@ -23,6 +27,7 @@ use App\Models\Staff;
 use App\Models\TipSettings;
 use App\Payments\PaymentGatewayManager;
 use App\Payments\PaymentRequest;
+use App\Payments\StripeGateway;
 use App\Support\BookingAvailability;
 use App\Support\BookingDuplicates;
 use App\Support\BookingTotals;
@@ -30,6 +35,8 @@ use App\Support\ClientActivityLog;
 use App\Support\ClientBookingContext;
 use App\Support\ClientInsights;
 use App\Support\Currencies;
+use App\Support\MembershipCredits;
+use App\Support\MembershipPurchase;
 use App\Support\Money;
 use App\Support\Promotions;
 use App\Support\ResourceAllocator;
@@ -283,6 +290,29 @@ class BookingController extends Controller
                 'current_step' => $lead->current_step,
             ],
             'walkIn' => $request->boolean('walk-in'),
+            /* What this screen can be used to sell.
+             *
+             * Services always. The other two are modules — a business that
+             * has not switched Membership on has no memberships, and gift
+             * cards are not built at all — so each carries whether it can be
+             * chosen rather than being hidden. A type that is missing reads
+             * as a product StyleDesk does not have; one that is present and
+             * disabled says what would make it work.
+             *
+             * `ready` is deliberately narrower than `enabled`: the module can
+             * be on and the purchase flow still not built, and this screen
+             * must not offer a path that ends nowhere. */
+            'purchaseTypes' => $this->purchaseTypes(),
+            /* The memberships the desk may sell, and where the sale posts.
+               Empty when the module is off, which is what closes the type. */
+            'membershipPlans' => $this->membershipPlans($currency),
+            'membershipAction' => route('membership.sales.store'),
+            'membershipSettings' => $this->membershipSaleSettings(),
+            /* Whether this business can keep a card at all. Everything the
+               Card on File section offers depends on it, and a screen that
+               offered it without a processor would be one that fails at the
+               last step. */
+            'cardVault' => $this->cardVault(),
             'currency' => $currency,
             'services' => Service::query()->active()->with(['prices', 'resources', 'locations'])->inOrder()->get()
                 ->map(fn (Service $service) => [
@@ -631,8 +661,36 @@ class BookingController extends Controller
         $this->allow($request, 'appointments.create');
 
         return response()->json(
-            ClientBookingContext::for($client->load('bookingPreferences'))->toArray(),
+            ClientBookingContext::for($client->load('bookingPreferences'))->toArray()
+                /* And the cards this client has on file, so a membership
+                   sold to them can offer one without a second round trip.
+                   References only: brand, last four, expiry. */
+                + ['cards' => $this->cardsFor($client)],
         );
+    }
+
+    /**
+     * The cards this client can be charged on again, as a screen reads them.
+     *
+     * Empty where the business has no processor connected — there is nowhere
+     * to keep a card, and the screen offers Card on File only when there is.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function cardsFor(Client $client): array
+    {
+        if (app(PaymentGatewayManager::class)->vault($client->tenant) === null) {
+            return [];
+        }
+
+        return ClientPaymentMethod::query()
+            ->forClient($client->id)
+            ->usable()
+            ->orderByDesc('is_default')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (ClientPaymentMethod $card) => ClientPaymentMethodController::present($card))
+            ->all();
     }
 
     /**
@@ -962,6 +1020,12 @@ class BookingController extends Controller
                receptionist who settled fifteen per cent with the client
                should not have to remember it at the counter. */
             'coupon' => ['nullable', 'string', 'max:40'],
+            /* Which lines the desk chose to pay for with a membership credit.
+               A request rather than an instruction: what can actually be
+               covered is decided against the credits that exist at save
+               time, because one can be spent elsewhere in between. */
+            'membership_credits' => ['nullable', 'array'],
+            'membership_credits.*' => ['integer'],
             'tip_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
             'tip_amount' => ['nullable', 'numeric', 'min:0'],
             'waiver_reason' => ['nullable', 'string', 'max:300'],
@@ -1041,12 +1105,63 @@ class BookingController extends Controller
 
         $prices = $services->map(fn (Service $service) => $this->priceOf($service, $currency, $pricedFor));
 
+        /* Membership credits, before the coupon and checked again here.
+         *
+         * A credit pays for one whole service, so a covered line leaves the
+         * payable bill entirely. It has to come first: a coupon worked out
+         * before the credits would take a percentage off work the client is
+         * not paying for.
+         *
+         * What was asked for is a request. The screen assembled it before
+         * Confirm was pressed and a credit can be spent elsewhere in
+         * between, so `coverable` answers it against what exists now — and
+         * anything that has gone is simply paid for rather than refusing a
+         * booking with the client standing at the desk. */
+        $creditClient = empty($data['client_id']) ? null : Client::query()->find($data['client_id']);
+        $coveredServiceIds = MembershipCredits::coverable(
+            $creditClient,
+            array_map('intval', $data['membership_credits'] ?? []),
+        );
+
+        /* What each covered line is worth, and the lines left to charge for.
+           Walked together so two of one service with one credit covers the
+           first and bills the second. */
+        $remainingCover = array_count_values($coveredServiceIds);
+        $creditMinor = 0;
+        $creditValues = [];
+        $payableServices = collect();
+        $payablePrices = collect();
+
+        foreach ($services as $index => $service) {
+            $price = (int) $prices[$index];
+            $serviceId = (int) $service->id;
+
+            if (($remainingCover[$serviceId] ?? 0) > 0) {
+                $remainingCover[$serviceId]--;
+                $creditMinor += $price;
+                $creditValues[$serviceId] = $price;
+
+                continue;
+            }
+
+            $payableServices->push($service);
+            $payablePrices->push($price);
+        }
+
         /* The coupon, checked again here rather than trusted from the screen:
            the quote the reader saw was advisory, and a promotion can be used
-           up between quoting it and pressing Confirm. */
-        [$promotion, $discountMinor] = $this->couponFor($data, $services, $prices, $currency, $request);
+           up between quoting it and pressing Confirm. Against what is left to
+           pay, for the reason above. */
+        [$promotion, $discountMinor] = $this->couponFor(
+            $data, $payableServices->values(), $payablePrices->values(), $currency, $request,
+        );
 
-        $totals = BookingTotals::of($prices, $currency, $discountMinor);
+        /* The credits reduce the bill alongside the discount because that is
+           what they do to it. They are stored apart because a coupon is the
+           business giving money away and a credit is the client spending
+           something they already bought, and a receipt that called them the
+           same thing is one nobody can reconcile. */
+        $totals = BookingTotals::of($prices, $currency, $discountMinor + $creditMinor);
 
         /* What was agreed as a tip. Not money yet — that lands on a payment
            — but the answer the till should open with. */
@@ -1120,7 +1235,7 @@ class BookingController extends Controller
             }
         }
 
-        $booking = DB::transaction(function () use ($data, $lead, $services, $minutes, $starts, $currency, $totals, $request, $depositMinor, $collectionMethod, $pricedFor, $promotion, $tipPercent, $tipMinor) {
+        $booking = DB::transaction(function () use ($data, $lead, $services, $minutes, $starts, $currency, $totals, $request, $depositMinor, $collectionMethod, $pricedFor, $promotion, $tipPercent, $tipMinor, $discountMinor, $creditMinor, $creditClient, $coveredServiceIds, $creditValues) {
             $attributes = [
                 'client_id' => $data['client_id'] ?? null,
                 'guest_name' => $data['guest_name'] ?? null,
@@ -1149,7 +1264,11 @@ class BookingController extends Controller
                 'source' => $data['source'] ?? 'front-desk',
                 'is_walk_in' => empty($data['client_id']),
                 'subtotal_minor' => $totals->subtotalMinor,
-                'discount_minor' => $totals->discountMinor,
+                /* The coupon's share of the reduction, not the credits'.
+                   A column holding both would make "what did we discount"
+                   and "what did members spend" one unanswerable number. */
+                'discount_minor' => $discountMinor,
+                'membership_credit_minor' => $creditMinor,
                 'tax_minor' => $totals->taxMinor,
                 'total_minor' => $totals->totalMinor,
                 'currency_code' => $currency,
@@ -1219,6 +1338,17 @@ class BookingController extends Controller
                 ]);
 
                 $lead->note('converted', $booking->reference, $request->user()->id);
+            }
+
+            /* The credits, held down inside the booking's own transaction so
+               an appointment that fails to save has not spent anybody's
+               massage. Never for a draft: a booking promised to nobody has
+               not used anything yet, and a credit held against one somebody
+               abandons is a massage the client cannot book. */
+            if ($creditClient !== null && $coveredServiceIds !== [] && $booking->status !== 'draft') {
+                MembershipCredits::apply(
+                    $booking, $creditClient, $coveredServiceIds, $creditValues, $request->user(),
+                );
             }
 
             return $booking;
@@ -2582,6 +2712,178 @@ class BookingController extends Controller
      * empty page: a booking screen a reader may not use is not a booking
      * screen with nothing in it.
      */
+    /**
+     * The three things this screen can be used to sell, and whether each can.
+     *
+     * Services is always both available and ready. Membership is available
+     * once the business has switched the module on and published something
+     * to sell — a type that opens onto an empty list is worse than one that
+     * says why it is closed — and `ready` stays false until the purchase
+     * flow behind it exists. Gift cards are neither: the module is not built.
+     *
+     * Present and disabled rather than hidden, because a missing option
+     * reads as a product StyleDesk does not have, and a disabled one with a
+     * reason beside it reads as a switch somebody can go and turn on.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function purchaseTypes(): array
+    {
+        $membership = MembershipSettings::forTenant(request()->user()?->tenant);
+
+        $hasPlans = $membership->is_enabled
+            && MembershipPlan::query()->sellable()->exists();
+
+        return [
+            [
+                'key' => 'services',
+                'available' => true,
+                'ready' => true,
+                'reason' => null,
+            ],
+            [
+                'key' => 'membership',
+                'available' => $hasPlans,
+                /* Ready exactly when there is something to sell. The two are
+                   the same answer now that the purchase flow exists; they
+                   stay separate columns because a module can be on and its
+                   flow still be unbuilt, which is what gift cards are. */
+                'ready' => $hasPlans,
+                'reason' => $hasPlans ? null : $this->membershipReason($membership->is_enabled, $hasPlans),
+            ],
+            [
+                'key' => 'gift_card',
+                'available' => false,
+                'ready' => false,
+                'reason' => __('bookings.purchase.coming_soon'),
+            ],
+        ];
+    }
+
+    /** Why memberships cannot be sold here, in the words that name the fix. */
+    private function membershipReason(bool $enabled, bool $hasPlans): string
+    {
+        return $enabled
+            ? __('bookings.purchase.membership_empty')
+            : __('bookings.purchase.membership_off');
+    }
+
+    /**
+     * The memberships this screen can offer, as the cards read them.
+     *
+     * Everything a card shows is worked out here rather than in the browser:
+     * the price with its period, the saving, what it includes and what it
+     * costs today are all money or copy, and a screen that assembled them
+     * would be a second place for them to disagree with the receipt.
+     *
+     * Empty where the module is off, which is what keeps the type closed.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function membershipPlans(string $currency): array
+    {
+        if (! MembershipSettings::forTenant(request()->user()?->tenant)->is_enabled) {
+            return [];
+        }
+
+        return MembershipPlan::query()
+            ->sellable()
+            ->where('sell_in_store', true)
+            ->with(['planServices.service', 'locations'])
+            ->orderBy('name')
+            ->get()
+            ->map(fn (MembershipPlan $plan) => [
+                'id' => $plan->id,
+                'type' => $plan->type,
+                'name' => $plan->name,
+                'description' => $plan->description,
+                'image' => $plan->imageUrl(),
+                'price' => $plan->priceLabel($currency),
+                'price_minor' => (int) $plan->price_minor,
+                'billing_frequency' => $plan->billing_frequency,
+                'frequency_label' => $plan->billing_frequency === null
+                    ? null
+                    : __('membership.billing_frequencies.'.$plan->billing_frequency),
+                'includes' => $plan->planServices
+                    ->map(fn (MembershipPlanService $line) => [
+                        'name' => $line->service?->name ?? '—',
+                        'quantity' => (int) $line->quantity,
+                    ])->values(),
+                'benefit' => $plan->discountLabel($currency),
+                'priority_booking' => (bool) $plan->priority_booking,
+                'saving' => $plan->savingMinor() > 0
+                    ? Money::format($plan->savingMinor() / 100, $currency)
+                    : null,
+                /* The first cycle plus any one-off fees — what the till is
+                   about to ask for, which is not always the headline price. */
+                'due_today' => Money::format(MembershipPurchase::dueTodayMinor($plan) / 100, $currency),
+                'due_today_minor' => MembershipPurchase::dueTodayMinor($plan),
+                'joining_fee' => $plan->joining_fee_minor === null
+                    ? null
+                    : Money::format($plan->joining_fee_minor / 100, $currency),
+                'setup_fee' => $plan->setup_fee_minor === null
+                    ? null
+                    : Money::format($plan->setup_fee_minor / 100, $currency),
+                'trial_days' => $plan->trial_days,
+                'locations' => $plan->location_mode === 'all'
+                    ? __('membership.all_locations')
+                    : $plan->locations->pluck('name')->join(', '),
+                'location_ids' => $plan->location_mode === 'all'
+                    ? []
+                    : $plan->locations->pluck('id')->values(),
+                /* Which methods may buy it. A recurring membership needs one
+                   that can be charged again — cash buys a package, it does
+                   not renew a subscription — and the card says so rather than
+                   letting the desk find out when the save is refused. */
+                'methods' => $plan->isRecurring()
+                    ? config('membership.repeatable_methods')
+                    : array_keys(config('bookings.methods')),
+            ])->values()->all();
+    }
+
+    /**
+     * The terms the sale screen has to obey.
+     *
+     * Only the handful the purchase screen asks about. The rest — cancellation,
+     * rollover — belong to a membership that already exists.
+     *
+     * @return array<string, mixed>
+     */
+    /**
+     * Where a card would be kept, and what the browser needs to put one there.
+     *
+     * Null gateway means no processor is connected: the screen says so rather
+     * than offering Card on File and failing when somebody presses it.
+     *
+     * @return array<string, mixed>
+     */
+    private function cardVault(): array
+    {
+        $tenant = request()->user()?->tenant;
+        $vault = app(PaymentGatewayManager::class)->vault($tenant);
+
+        return [
+            'available' => $vault !== null,
+            'gateway' => $vault?->key(),
+            'gateway_label' => $vault?->label(),
+            /* Publishable, and only publishable. The secret key never leaves
+               the server, and this one is designed to be on the page. */
+            'publishable_key' => StripeGateway::accountFor($tenant)?->publishable_key,
+            'setup_url' => route('client-cards.setup', ['client' => ':id']),
+            'store_url' => route('client-cards.store', ['client' => ':id']),
+        ];
+    }
+
+    private function membershipSaleSettings(): array
+    {
+        $settings = MembershipSettings::forTenant(request()->user()?->tenant);
+
+        return [
+            'allow_start_date' => (bool) $settings->allow_start_date_selection,
+            'default_activation' => $settings->default_activation,
+        ];
+    }
+
     private function allow(Request $request, string $permission): void
     {
         abort_unless($request->user()?->hasPermission($permission, 'own'), 403);

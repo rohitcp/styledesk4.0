@@ -70,7 +70,10 @@ return [
                 ['key' => 'loyalty', 'label' => 'Loyalty'],
                 ['key' => 'groups', 'label' => 'Groups'],
                 ['key' => 'forms_waivers', 'label' => 'Forms & Waivers'],
-                ['key' => 'memberships_packages', 'label' => 'Memberships & Packages'],
+                /* Only where the business has switched Membership on in App
+                   Settings. The screens 404 when it is off, so the entry has
+                   to go with them. */
+                ['key' => 'membership', 'label' => 'Membership', 'route' => 'membership.index', 'feature' => 'membership'],
             ],
         ],
 

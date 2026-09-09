@@ -31,6 +31,11 @@
         </a>
         <div class="sd-menu__pop" data-menu-pop hidden role="menu" aria-label="{{ __('navigation.menu_for', ['name' => App\Support\Nav::aria($item)]) }}">
           @foreach ($item['children'] as $child)
+            {{-- A module the business has switched off has no menu entry:
+                 the screen behind it answers 404, and a link that leads
+                 there is a link that lies. --}}
+            @continue (! App\Support\Nav::visible($child))
+
             @if (! empty($child['separator']))
               <div class="sd-menu__rule" role="separator"></div>
             @elseif (! empty($child['section']))

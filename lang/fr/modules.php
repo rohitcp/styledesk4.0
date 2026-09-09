@@ -112,8 +112,8 @@ return [
             'description' => 'Formulaires d’accueil, de consentement et de consultation, et quand les clients doivent les remplir.',
         ],
         'memberships' => [
-            'name' => 'Abonnements',
-            'description' => 'Niveaux d’abonnement, avantages récurrents et application des abonnements.',
+            'name' => 'Abonnement',
+            'description' => 'Si l’établissement vend des abonnements, où ils peuvent être achetés, ce qu’il advient des crédits inutilisés et ce que signifie une résiliation.',
         ],
         'packages' => [
             'name' => 'Forfaits',

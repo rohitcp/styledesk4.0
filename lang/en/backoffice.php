@@ -107,6 +107,7 @@ return [
             'new_this_month' => 'New this month',
             'services' => 'Services',
             'users' => 'Users',
+            'bookings' => 'Bookings',
         ],
 
         'search_label' => 'Search',
@@ -144,6 +145,7 @@ return [
         'owner_name' => 'Name',
         'owner_email' => 'Email',
         'owner_phone' => 'Phone',
+        'subscription' => 'Subscription',
         'trial_started' => 'Trial started',
         'trial_ends' => 'Trial ends',
         'location_name' => 'Location',
@@ -201,6 +203,46 @@ return [
         'disabled_detail' => 'Disabled by :who on :when.',
         'no_users' => 'No users yet.',
 
+        'usage' => 'Usage',
+        'account' => 'Account',
+        'business_name' => 'Business name',
+        'primary_contact' => 'Primary contact',
+        'last_activity' => 'Last activity',
+
+        'quick_action' => 'Quick Action',
+        'quick_action_placeholder' => 'Select Quick Action',
+        'quick_action_search' => 'Search actions',
+        'quick_action_none' => 'No action matches that.',
+        'copied_url' => 'Client URL copied.',
+        'copied_id' => 'Client ID copied.',
+        'copy_failed' => 'Nothing was copied — your browser refused access to the clipboard.',
+
+        'action_groups' => [
+            'go' => 'Go to',
+            'copy' => 'Copy',
+            'tell' => 'Send',
+            'account' => 'Account',
+        ],
+
+        'actions' => [
+            'open_app' => 'Open client application',
+            'view_profile' => 'View client profile',
+            'view_services' => 'View services',
+            'view_team' => 'View team members',
+            'view_email_logs' => 'View email logs',
+            'copy_url' => 'Copy client URL',
+            'copy_id' => 'Copy client ID',
+            'send_email' => 'Send email',
+            'resend_welcome' => 'Resend welcome email',
+            'send_password_reset' => 'Send password reset',
+            'activate' => 'Activate client',
+            'deactivate' => 'Deactivate client',
+        ],
+
+        'reset_sent' => 'A password reset link has been emailed to :email.',
+        'reset_failed' => 'No reset link was sent. One may have been sent very recently — wait a few minutes and try again.',
+        'reset_no_owner' => 'This business has no owner, so there is nobody to send a reset link to.',
+
         'none' => '—',
         'no_owner' => 'No owner',
         'no_plan' => 'No plan',
@@ -208,6 +250,123 @@ return [
 
         'empty' => 'No business has signed up yet.',
         'no_matches' => 'No business matches those filters.',
+    ],
+
+    'tabs' => [
+        'label' => 'Client sections',
+        'overview' => 'Overview',
+        'services' => 'Services',
+        'email_log' => 'Email Log',
+        'sms_log' => 'SMS Log',
+        'team' => 'Team Members',
+        'subscription' => 'Subscription',
+        'coming_soon' => 'Coming soon',
+    ],
+
+    'table' => [
+        'search' => 'Search',
+        'per_page' => 'Rows',
+        'no_matches' => 'Nothing matches those filters.',
+    ],
+
+    'services' => [
+        'search_placeholder' => 'Service, description or category',
+        'empty' => 'This business has not added any services yet.',
+        'no_price' => 'Not priced',
+        'all_locations' => 'All locations',
+
+        'col' => [
+            'name' => 'Service',
+            'category' => 'Category',
+            'duration' => 'Duration',
+            'price' => 'Price',
+            'location' => 'Location',
+            'status' => 'Status',
+            'created' => 'Created',
+        ],
+
+        'statuses' => [
+            'active' => 'Active',
+            'inactive' => 'Inactive',
+        ],
+    ],
+
+    'emails' => [
+        'search_placeholder' => 'Recipient, subject or type',
+        'empty' => 'This business has not sent any email yet.',
+        'manual' => 'Manual message',
+        'automatic' => 'Automatic',
+        'view_details' => 'View details',
+        'hide_details' => 'Hide details',
+
+        'col' => [
+            'sent' => 'Date / time',
+            'recipient' => 'Recipient',
+            'type' => 'Type',
+            'subject' => 'Subject',
+            'status' => 'Status',
+            'sent_by' => 'Sent by',
+            'provider' => 'Provider',
+            'action' => 'Action',
+        ],
+
+        'statuses' => [
+            'queued' => 'Queued',
+            'sent' => 'Sent',
+            'delivered' => 'Delivered',
+            'failed' => 'Failed',
+        ],
+
+        'detail' => [
+            'sender' => 'From',
+            'queued' => 'Queued at',
+            'sent' => 'Sent at',
+            'booking' => 'Booking',
+            'failure' => 'Why it failed',
+            'message' => 'Message',
+        ],
+    ],
+
+    'team' => [
+        'search_placeholder' => 'Name, email or job title',
+        'empty' => 'This business has not added any team members yet.',
+        'no_account' => 'No account yet',
+
+        'col' => [
+            'name' => 'Name',
+            'email' => 'Email',
+            'role' => 'Role',
+            'location' => 'Location',
+            'status' => 'Status',
+            'last_login' => 'Last login',
+            'created' => 'Created',
+        ],
+    ],
+
+    'sms' => [
+        'title' => 'SMS Log',
+        'intro' => 'SMS communication history, delivery status and message activity for this client.',
+        'items' => [
+            'history' => 'Every message sent, with its recipient',
+            'delivery' => 'Delivery and failure status from the provider',
+            'activity' => 'Which part of the product sent each message',
+            'spend' => 'Message volume and spend against the plan',
+        ],
+    ],
+
+    'subscription' => [
+        'title' => 'Subscription',
+        'intro' => 'Plan, billing cycle and payment details for this client. The plan and trial dates already known are on the Overview tab.',
+        'items' => [
+            'plan' => 'Current plan',
+            'cycle' => 'Billing cycle',
+            'status' => 'Subscription status',
+            'renewal' => 'Renewal date',
+            'limits' => 'Usage limits',
+            'method' => 'Payment method',
+            'history' => 'Billing history',
+            'change' => 'Upgrade, downgrade or cancel',
+        ],
     ],
 
     'dashboard' => [
@@ -262,6 +421,7 @@ return [
             'admin_password_changed' => 'Administrator password changed',
             'client_disabled' => 'Client disabled',
             'client_enabled' => 'Client enabled',
+            'client_password_reset_sent' => 'Password reset sent to the client owner',
         ],
     ],
 ];

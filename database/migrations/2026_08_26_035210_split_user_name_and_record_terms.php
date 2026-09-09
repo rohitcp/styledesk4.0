@@ -30,10 +30,10 @@ return new class extends Migration
         });
 
         // Split any existing rows before the source column goes away.
-        foreach (\DB::table('users')->select('id', 'name')->get() as $user) {
+        foreach (DB::table('users')->select('id', 'name')->get() as $user) {
             $parts = preg_split('/\s+/', trim((string) $user->name), 2);
 
-            \DB::table('users')->where('id', $user->id)->update([
+            DB::table('users')->where('id', $user->id)->update([
                 'first_name' => $parts[0] ?? '',
                 'last_name' => $parts[1] ?? '',
             ]);
@@ -50,8 +50,8 @@ return new class extends Migration
             $table->string('name')->after('tenant_id')->default('');
         });
 
-        foreach (\DB::table('users')->select('id', 'first_name', 'last_name')->get() as $user) {
-            \DB::table('users')->where('id', $user->id)->update([
+        foreach (DB::table('users')->select('id', 'first_name', 'last_name')->get() as $user) {
+            DB::table('users')->where('id', $user->id)->update([
                 'name' => trim($user->first_name.' '.$user->last_name),
             ]);
         }

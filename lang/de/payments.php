@@ -34,7 +34,47 @@ return [
         ],
     ],
 
+    /* Card brands, as a person writes them rather than as a gateway keys
+       them. Anything not listed falls back to its own key, tidied up — a new
+       brand should read as itself rather than as nothing. */
+    'methods_list' => [
+        'no_vault' => 'Es ist kein Zahlungsdienstleister verbunden, daher können keine Karten hinterlegt werden.',
+        'default_set' => ':card ist jetzt die Standard-Zahlungsmethode.',
+        'removed' => ':card wurde entfernt.',
+        'title' => 'Zahlungsmethoden',
+        'none' => 'Keine Karten gespeichert',
+        'none_hint' => 'Eine hier gespeicherte Karte kann für Verlängerungen ohne anwesende Kundin belastet werden.',
+        'default' => 'Standard',
+        'make_default' => 'Als Standard festlegen',
+        'expires' => 'Gültig bis :date',
+        'expired' => 'Abgelaufen',
+        'expiring' => 'Läuft diesen Monat ab',
+        'needs_attention' => 'Zahlungsmethode braucht Aufmerksamkeit',
+        'add' => 'Karte hinzufügen',
+        'remove' => 'Karte entfernen',
+        'remove_confirm' => 'Diese Karte entfernen? Sie kann dann nicht mehr belastet werden.',
+        'in_use' => 'Diese Karte verlängert :name. Wählen Sie zuerst eine andere Zahlungsmethode.',
+        'used_by' => 'Verlängert :name',
+        'gateway' => 'Abgewickelt über :name',
+        'statuses' => [
+            'active' => 'Aktiv',
+            'expired' => 'Abgelaufen',
+            'removed' => 'Entfernt',
+        ],
+    ],
+
+    'brands' => [
+        'visa' => 'Visa',
+        'mastercard' => 'Mastercard',
+        'amex' => 'American Express',
+        'discover' => 'Discover',
+        'diners' => 'Diners Club',
+        'jcb' => 'JCB',
+        'unionpay' => 'UnionPay',
+    ],
+
     'stripe' => [
+        'not_settled' => 'Die Karte wurde nicht belastet. Die Zahlung wurde nicht abgeschlossen.',
         'connect' => 'Stripe verbinden',
         'continue' => 'Einrichtung fortsetzen',
         'manage' => 'Konto verwalten',

@@ -34,7 +34,47 @@ return [
         ],
     ],
 
+    /* Card brands, as a person writes them rather than as a gateway keys
+       them. Anything not listed falls back to its own key, tidied up — a new
+       brand should read as itself rather than as nothing. */
+    'methods_list' => [
+        'no_vault' => 'Aucun prestataire de paiement n’est connecté, les cartes ne peuvent pas être enregistrées.',
+        'default_set' => ':card est désormais le moyen de paiement par défaut.',
+        'removed' => ':card a été retirée.',
+        'title' => 'Moyens de paiement',
+        'none' => 'Aucune carte enregistrée',
+        'none_hint' => 'Une carte enregistrée ici peut être débitée pour les renouvellements d’abonnement sans le client.',
+        'default' => 'Par défaut',
+        'make_default' => 'Définir par défaut',
+        'expires' => 'Expire le :date',
+        'expired' => 'Expirée',
+        'expiring' => 'Expire ce mois-ci',
+        'needs_attention' => 'Le moyen de paiement demande votre attention',
+        'add' => 'Ajouter une carte',
+        'remove' => 'Retirer la carte',
+        'remove_confirm' => 'Retirer cette carte ? Elle ne pourra plus être débitée.',
+        'in_use' => 'Cette carte renouvelle :name. Choisissez un autre moyen de paiement avant de la retirer.',
+        'used_by' => 'Renouvelle :name',
+        'gateway' => 'Traité par :name',
+        'statuses' => [
+            'active' => 'Active',
+            'expired' => 'Expirée',
+            'removed' => 'Retirée',
+        ],
+    ],
+
+    'brands' => [
+        'visa' => 'Visa',
+        'mastercard' => 'Mastercard',
+        'amex' => 'American Express',
+        'discover' => 'Discover',
+        'diners' => 'Diners Club',
+        'jcb' => 'JCB',
+        'unionpay' => 'UnionPay',
+    ],
+
     'stripe' => [
+        'not_settled' => 'La carte n’a pas été débitée. Le paiement n’a pas abouti.',
         'connect' => 'Connecter Stripe',
         'continue' => 'Poursuivre la configuration',
         'manage' => 'Gérer le compte',

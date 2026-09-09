@@ -72,7 +72,7 @@ return [
     'loyalty' => 'Treueprogramm',
     'groups' => 'Gruppen',
     'forms_waivers' => 'Formulare und Einverständnisse',
-    'memberships_packages' => 'Mitgliedschaften und Pakete',
+    'membership' => 'Mitgliedschaft',
 
     /* Die Überschriften über einer Gruppe von Einträgen in einem offenen Menü. */
     'sections' => [

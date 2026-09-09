@@ -111,7 +111,7 @@ return [
         ],
         'memberships' => [
             'name' => '会员',
-            'description' => '会员等级、周期性权益，以及会员权益的使用方式。',
+            'description' => '本店是否销售会员、可在何处购买、未使用的次数如何处理，以及取消会员意味着什么。',
         ],
         'packages' => [
             'name' => '套餐',
