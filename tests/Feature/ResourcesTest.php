@@ -541,4 +541,30 @@ class ResourcesTest extends TestCase
 
         $this->assertSame('Their chair', $theirs->fresh()->name);
     }
+
+    /**
+     * A resource carries no timings of its own.
+     *
+     * Interval, preparation, cleanup and buffer used to be asked here and
+     * read nowhere: the lead and trail around a booking come from the service
+     * being performed, which is what ResourceAllocator uses. Four questions
+     * that changed nothing are four chances to be wrong about the diary.
+     */
+    public function test_the_form_does_not_ask_about_booking_timings(): void
+    {
+        $resource = Resource::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(), 'name' => 'Chair 1', 'capacity' => 1,
+        ]);
+
+        foreach ([route('resources.create'), route('resources.edit', $resource), route('resources.show', $resource)] as $url) {
+            $page = $this->actingAs($this->owner)->get($url)->assertOk();
+
+            foreach (['booking_interval_minutes', 'preparation_minutes', 'cleanup_minutes', 'buffer_minutes'] as $field) {
+                $page->assertDontSee('"name":"'.$field.'"', false)
+                    ->assertDontSee('name="'.$field.'"', false);
+            }
+
+            $page->assertDontSee(__('resources.form.booking'));
+        }
+    }
 }

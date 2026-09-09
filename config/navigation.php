@@ -102,9 +102,11 @@ return [
 
                 ['section' => 'Resources', 'key' => 'resources'],
                 ['key' => 'all_resources', 'label' => 'All Resources', 'route' => 'resources.index'],
-                // The resources list adds through a dialog rather than a page
-                // of its own, so this opens the list with it already up.
-                ['key' => 'add_resource', 'label' => 'Add Resource', 'route' => 'resources.index', 'params' => ['add' => 1]],
+                // A page of its own, like Add Service above it. This used to
+                // open the list with ?add=1 because adding was a dialog on
+                // it; the dialog is gone, nothing reads that parameter any
+                // more, and the entry was quietly landing on the list.
+                ['key' => 'add_resource', 'label' => 'Add Resource', 'route' => 'resources.create'],
                 ['key' => 'resource_availability', 'label' => 'Resource Availability', 'route' => 'resources.availability'],
                 ['key' => 'resource_utilization', 'label' => 'Resource Utilization', 'route' => 'resources.utilization'],
             ],

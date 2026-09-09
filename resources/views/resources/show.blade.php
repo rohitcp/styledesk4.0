@@ -124,16 +124,6 @@
           @endif
         </x-settings.card>
 
-        <x-settings.card title="{{ __('resources.form.booking') }}">
-          <x-settings.field label="{{ __('resources.form.interval') }}"
-                            :value="$resource->booking_interval_minutes
-                                ? __('resources.form.minutes', ['count' => $resource->booking_interval_minutes])
-                                : __('resources.form.inherit')" />
-          <x-settings.field label="{{ __('resources.form.preparation') }}" :value="__('resources.form.minutes', ['count' => $resource->preparation_minutes])" />
-          <x-settings.field label="{{ __('resources.form.cleanup') }}" :value="__('resources.form.minutes', ['count' => $resource->cleanup_minutes])" />
-          <x-settings.field label="{{ __('resources.form.buffer') }}" :value="__('resources.form.minutes', ['count' => $resource->buffer_minutes])" />
-        </x-settings.card>
-
         <x-settings.card title="{{ __('resources.form.services') }}">
           <x-settings.field label="{{ __('resources.form.assigned_services') }}">
             @if ($resource->services->isEmpty())

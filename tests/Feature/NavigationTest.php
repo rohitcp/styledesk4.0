@@ -210,4 +210,26 @@ class NavigationTest extends TestCase
             ->assertSee('href="'.route('staff.index').'"', false)
             ->assertSee('href="'.route('staff.create').'"', false);
     }
+
+    /**
+     * "Add" goes to the add page, not to the list.
+     *
+     * Adding a resource used to be a dialog on the list, so this entry opened
+     * the list with a query parameter. The dialog became a page and the entry
+     * did not, which left "Add Resource" landing on All Resources — the row
+     * directly above it.
+     */
+    public function test_every_add_entry_opens_its_own_form(): void
+    {
+        $page = $this->actingAs($this->member('owner'))
+            ->get('http://styledesk.test/dashboard')
+            ->assertOk();
+
+        foreach (['services.create', 'resources.create', 'staff.create'] as $form) {
+            $page->assertSee('href="'.route($form).'"', false);
+        }
+
+        /* And no longer through the list it used to be a dialog on. */
+        $page->assertDontSee('href="'.route('resources.index').'?add=1"', false);
+    }
 }

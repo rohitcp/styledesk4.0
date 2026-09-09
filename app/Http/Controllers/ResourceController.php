@@ -492,8 +492,6 @@ class ResourceController extends Controller
      */
     private function validated(Request $request, ?Resource $resource = null): array
     {
-        $ancillary = config('resources.ancillary_minutes');
-
         return $request->validate([
             'name' => ['required', 'string', 'max:120'],
             /* Unique within the business, and only there: two salons both
@@ -526,12 +524,11 @@ class ResourceController extends Controller
             'availability_status' => ['required', Rule::in(config('resources.availability_statuses'))],
             'availability_type' => ['required', Rule::in(config('resources.availability_types'))],
 
-            /* Null is "whatever App Settings says", which is a different
-               answer from any number — including zero. */
-            'booking_interval_minutes' => ['nullable', Rule::in(config('resources.intervals'))],
-            'preparation_minutes' => ['nullable', Rule::in($ancillary)],
-            'cleanup_minutes' => ['nullable', Rule::in($ancillary)],
-            'buffer_minutes' => ['nullable', Rule::in($ancillary)],
+            /* No interval, preparation, cleanup or buffer: a resource does
+               not carry its own timings. The lead and trail around a booking
+               come from the service, which is what ResourceAllocator reads —
+               these four were saved and never looked at again, and a field
+               the app ignores is one the form should not offer. */
 
             'services' => ['array'],
             'services.*' => [Rule::exists('services', 'id')->where('tenant_id', $request->user()->tenant?->getTenantKey())],

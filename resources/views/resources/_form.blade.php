@@ -10,13 +10,12 @@
     submission the server refused comes back with what was typed.
 --}}
 @php
-    $minutes = collect(config('resources.ancillary_minutes'))
-        ->mapWithKeys(fn (int $m) => [$m => $m === 0 ? __('resources.form.no_time') : __('resources.form.minutes', ['count' => $m])])
-        ->all();
-
-    $intervals = collect(config('resources.intervals'))
-        ->mapWithKeys(fn (int $m) => [$m => __('resources.form.minutes', ['count' => $m])])
-        ->all();
+    /* The Booking card that used to stand here — interval, preparation,
+       cleanup and buffer — has gone. Those four were written by this form and
+       read by nothing: ResourceAllocator and ResourceAvailability take the
+       lead and trail from the *service* being booked, which is where a
+       treatment's own timings belong. Four questions that changed no
+       behaviour are four chances to be wrong about the diary. */
 
     $statusOptions = [
         1 => __('resources.form.active'),
@@ -193,30 +192,6 @@
                 </div>
             @endforeach
         </div>
-    </div>
-</section>
-
-<section class="bg-white border border-line rounded-card p-5">
-    <h2 class="text-[15px] font-semibold text-head">{{ __('resources.form.booking') }}</h2>
-    <p class="text-[13px] text-sub mt-1 leading-relaxed">{{ __('resources.form.booking_hint') }}</p>
-
-    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-        <x-combo name="booking_interval_minutes" :label="__('resources.form.interval')"
-                 :options="$intervals"
-                 :selected="old('booking_interval_minutes', $resource?->booking_interval_minutes)"
-                 :placeholder="__('resources.form.inherit')" />
-
-        <x-combo name="preparation_minutes" :label="__('resources.form.preparation')"
-                 :options="$minutes"
-                 :selected="old('preparation_minutes', $resource?->preparation_minutes ?? 0)" />
-
-        <x-combo name="cleanup_minutes" :label="__('resources.form.cleanup')"
-                 :options="$minutes"
-                 :selected="old('cleanup_minutes', $resource?->cleanup_minutes ?? 0)" />
-
-        <x-combo name="buffer_minutes" :label="__('resources.form.buffer')"
-                 :options="$minutes"
-                 :selected="old('buffer_minutes', $resource?->buffer_minutes ?? 0)" />
     </div>
 </section>
 
