@@ -327,6 +327,20 @@ class MembershipPlanController extends Controller
         $tenantKey = $request->user()->tenant?->getTenantKey();
         $isRecurring = $request->input('type') === 'recurring';
 
+        $enabled = Currencies::enabledFor($request->user()->tenant);
+        $primaryCurrency = Currencies::primaryFor($request->user()->tenant);
+
+        /* Only a currency this business actually prices in. Without this a
+           request could add a price in a currency no screen would ever show
+           and every total would quietly ignore. */
+        $currencyKeys = function (string $attribute, mixed $value, callable $fail) use ($enabled) {
+            foreach (array_keys((array) $value) as $code) {
+                if (! $enabled->contains($code)) {
+                    $fail(__('validation.in', ['attribute' => $attribute]));
+                }
+            }
+        };
+
         $data = $request->validate([
             /* Not editable after the fact. A plan that changed kind would
                have to change what every credit already granted under it
@@ -352,19 +366,33 @@ class MembershipPlanController extends Controller
                     ->ignore($plan?->id),
             ],
 
+            /* One price per currency the business sells in, keyed by the
+               code — the shape service prices already use. Nothing converts:
+               $150 and C$205 are two decisions, not one and an exchange rate
+               that moves overnight.
+
+               The primary currency is required and the rest are not: a plan
+               has to be sellable somewhere, and a business that prices in
+               three currencies but only sells this membership in one is
+               making a normal decision. */
+            'price' => ['required', 'array', $currencyKeys],
+            'price.'.$primaryCurrency => ['required', 'numeric', 'min:0.01', 'max:1000000'],
             /* Free is not a membership. Somebody giving one away can price
                it at a penny; zero is a form that was not filled in. */
-            'price' => ['required', 'numeric', 'min:0.01', 'max:1000000'],
+            'price.*' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
 
             'billing_frequency' => [
                 Rule::requiredIf($isRecurring), 'nullable',
                 Rule::in(MembershipSettings::billingFrequencies()),
             ],
-            'joining_fee' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
-            'setup_fee' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
+            'joining_fee' => ['array', $currencyKeys],
+            'joining_fee.*' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
+            'setup_fee' => ['array', $currencyKeys],
+            'setup_fee.*' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
             'trial_days' => ['nullable', 'integer', 'min:1', 'max:365'],
 
-            'regular_value' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
+            'regular_value' => ['array', $currencyKeys],
+            'regular_value.*' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
 
             /* At least one, and a real one — where this business's
                memberships include anything at all. With credits switched off
@@ -418,13 +446,24 @@ class MembershipPlanController extends Controller
             ]);
         }
 
-        /* A package that claims a saving must claim a real one. */
-        if (! $isRecurring
-            && ($data['regular_value'] ?? null) !== null
-            && (float) $data['regular_value'] < (float) $data['price']) {
-            throw ValidationException::withMessages([
-                'regular_value' => __('membership.form.value_below_price'),
-            ]);
+        /* A package that claims a saving must claim a real one — in every
+           currency it claims it in. Checked per currency because the two
+           numbers are only comparable within one: C$300 is not more than
+           $150 in any sense a saving could be worked out from. */
+        if (! $isRecurring) {
+            foreach ((array) ($data['regular_value'] ?? []) as $code => $value) {
+                $price = $data['price'][$code] ?? null;
+
+                if ($value === null || $value === '' || $price === null || $price === '') {
+                    continue;
+                }
+
+                if ((float) $value < (float) $price) {
+                    throw ValidationException::withMessages([
+                        'regular_value.'.$code => __('membership.form.value_below_price'),
+                    ]);
+                }
+            }
         }
 
         return $data;
@@ -440,9 +479,17 @@ class MembershipPlanController extends Controller
     {
         $isRecurring = $data['type'] === 'recurring';
         $percent = ($data['discount_type'] ?? null) === 'percent';
-        $minor = fn (?string $key) => ($data[$key] ?? null) === null
-            ? null
-            : (int) round(((float) $data[$key]) * 100);
+
+        /* The money on the plan itself is the primary currency's copy. It is
+           written here so a new plan is never momentarily priceless, and
+           written again by syncPrices from the rows — one answer, two places
+           that cannot disagree because the same save writes both. */
+        $primary = Currencies::primaryFor(request()->user()->tenant);
+        $minor = function (string $key) use ($data, $primary) {
+            $amount = $data[$key][$primary] ?? null;
+
+            return $amount === null || $amount === '' ? null : (int) round(((float) $amount) * 100);
+        };
 
         return [
             'type' => $data['type'],
@@ -452,7 +499,7 @@ class MembershipPlanController extends Controller
                 ? null
                 : mb_strtoupper(trim($data['internal_code'])),
 
-            'price_minor' => $minor('price'),
+            'price_minor' => $minor('price') ?? 0,
 
             /* Only the columns this kind uses. A package carrying a billing
                frequency is a row that would eventually be read as one. */
@@ -512,6 +559,21 @@ class MembershipPlanController extends Controller
                 'position' => $position,
             ]);
         }
+
+        /* Every currency the form posted, and only those: a currency the
+           business stopped pricing this plan in has to actually go, or the
+           sale screen keeps offering a price nobody maintains. */
+        $plan->syncPrices(
+            collect($data['price'] ?? [])
+                ->mapWithKeys(fn ($price, string $code) => [$code => [
+                    'price' => $price,
+                    'regular_value' => $data['regular_value'][$code] ?? null,
+                    'joining_fee' => $data['joining_fee'][$code] ?? null,
+                    'setup_fee' => $data['setup_fee'][$code] ?? null,
+                ]])
+                ->all(),
+            Currencies::primaryFor($plan->tenant),
+        );
 
         $plan->locations()->sync($data['location_mode'] === 'selected' ? ($data['locations'] ?? []) : []);
 

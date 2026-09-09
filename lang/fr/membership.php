@@ -308,6 +308,7 @@ return [
         'extras_hint' => 'Prélevés une seule fois, au départ, en plus du premier cycle. Laissez vide s’il n’y en a pas.',
         'regular_value' => 'Valeur habituelle',
         'regular_value_hint' => 'Ce que les prestations incluses coûteraient achetées séparément. Laissez vide pour n’annoncer aucune économie.',
+        'currency_optional_hint' => 'Facultatif. Laissez vide si cet abonnement n’est pas vendu dans cette devise.',
         'value_below_price' => 'La valeur habituelle doit être au moins égale au prix du forfait, sinon il n’y a aucune économie à afficher.',
         'saving_preview' => 'Économie client : :amount',
 

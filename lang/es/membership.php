@@ -308,6 +308,7 @@ return [
         'extras_hint' => 'Se cobran una sola vez, al inicio, además del primer ciclo. Déjalos vacíos si no hay.',
         'regular_value' => 'Valor habitual',
         'regular_value_hint' => 'Lo que costarían los servicios incluidos comprados por separado. Déjalo vacío para no anunciar ningún ahorro.',
+        'currency_optional_hint' => 'Opcional. Déjalo en blanco si esta membresía no se vende en esta moneda.',
         'value_below_price' => 'El valor habitual tiene que ser al menos el precio del paquete, o no hay ahorro que mostrar.',
         'saving_preview' => 'Ahorro del cliente: :amount',
 

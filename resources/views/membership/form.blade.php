@@ -25,10 +25,17 @@
     $isRecurring = $type === 'recurring';
     $money = fn (?int $minor) => $minor === null ? null : number_format($minor / 100, 2, '.', '');
 
-    $price = old('price', $plan === null ? null : $money($plan->price_minor));
-    $joiningFee = old('joining_fee', $money($plan?->joining_fee_minor));
-    $setupFee = old('setup_fee', $money($plan?->setup_fee_minor));
-    $regularValue = old('regular_value', $money($plan?->regular_value_minor));
+    /* One price per currency the business sells in, the primary first —
+       which is the order Currencies::enabledFor already returns. A business
+       pricing in one currency sees one row and cannot tell this changed;
+       nothing here converts between them. */
+    $priceCurrencies = App\Support\Currencies::enabledFor(auth()->user()?->tenant);
+    $storedPrices = $plan?->prices->keyBy('currency_code') ?? collect();
+
+    $amountIn = fn (string $field, string $code, string $column) => old(
+        $field.'.'.$code,
+        $storedPrices->get($code)?->amount($column),
+    );
 
     $discountType = old('discount_type', $plan?->discount_type ?? '');
     $discountValue = old('discount_value', $plan === null || $plan->discount_type === null
@@ -211,81 +218,139 @@
             {{ $isRecurring ? __('membership.form.pricing_hint_recurring') : __('membership.form.pricing_hint_package') }}
           </p>
 
-          <div class="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <label for="mPrice" class="block text-[13px] font-medium text-ink mb-1.5">
-                {{ $isRecurring ? __('membership.form.price') : __('membership.form.package_price') }}
-                <span class="text-danger" aria-hidden="true">*</span>
-              </label>
-              <div class="relative">
-                <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">{{ $symbol }}</span>
-                <input id="mPrice" name="price" type="number" min="0.01" step="0.01" required
-                       class="sd-input styledesk_input--prefixed" value="{{ $price }}" data-price>
-              </div>
-              <p data-error-for="price" role="alert" class="mt-1.5 text-[12px] text-danger"
-                 @unless ($errors->has('price')) hidden @endunless>{{ $errors->first('price') }}</p>
+          {{-- The billing frequency is one answer for the plan, not one per
+               currency: a membership billed monthly is billed monthly in
+               every money it is sold in. --}}
+          @if ($isRecurring)
+            <div class="mt-4 sm:w-1/2 sm:pr-2">
+              <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('membership.form.billing_frequency') }}</span>
+              <x-combo name="billing_frequency"
+                       :options="collect($frequencies)->mapWithKeys(fn (string $f) => [$f => __('membership.billing_frequencies.'.$f)])"
+                       :selected="$value('billing_frequency', config('membership.defaults.billing_frequency'))" />
             </div>
+          @endif
 
-            @if ($isRecurring)
-              <div>
-                <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('membership.form.billing_frequency') }}</span>
-                <x-combo name="billing_frequency"
-                         :options="collect($frequencies)->mapWithKeys(fn (string $f) => [$f => __('membership.billing_frequencies.'.$f)])"
-                         :selected="$value('billing_frequency', config('membership.defaults.billing_frequency'))" />
-              </div>
-            @else
-              <div>
-                <label for="mRegular" class="block text-[13px] font-medium text-ink mb-1.5">
-                  {{ __('membership.form.regular_value') }}
-                  <span class="text-faint font-normal">{{ __('common.optional') }}</span>
-                </label>
-                <div class="relative">
-                  <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">{{ $symbol }}</span>
-                  <input id="mRegular" name="regular_value" type="number" min="0.01" step="0.01"
-                         class="sd-input styledesk_input--prefixed" value="{{ $regularValue }}" data-regular-value>
+          {{-- One block per currency, the business's own first — which is the
+               order Currencies::enabledFor already returns. A business
+               pricing in one currency gets exactly the row it always had, no
+               code beside the label and nothing to read past. Nothing here
+               converts: each price is a decision the business made. --}}
+          <div class="mt-4 space-y-4">
+            @foreach ($priceCurrencies as $code)
+              @php $symbolFor = App\Support\Money::symbol($code); @endphp
+
+              <div data-price-row data-currency="{{ $code }}" data-symbol="{{ $symbolFor }}">
+                @if ($priceCurrencies->count() > 1)
+                  <p class="text-[12px] font-semibold uppercase tracking-wide text-faint mb-2">
+                    {{ $code }} <span class="font-normal normal-case tracking-normal">· {{ $symbolFor }}</span>
+                  </p>
+                @endif
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label for="mPrice_{{ $code }}" class="block text-[13px] font-medium text-ink mb-1.5">
+                      {{ $isRecurring ? __('membership.form.price') : __('membership.form.package_price') }}
+                      @if ($loop->first)
+                        <span class="text-danger" aria-hidden="true">*</span>
+                      @else
+                        <span class="text-faint font-normal">{{ __('common.optional') }}</span>
+                      @endif
+                    </label>
+
+                    <div class="relative">
+                      <input id="mPrice_{{ $code }}" name="price[{{ $code }}]" type="number" min="0.01" step="0.01"
+                             @required($loop->first)
+                             class="sd-input" data-price
+                             value="{{ $amountIn('price', $code, 'price_minor') }}"
+                             aria-label="{{ ($isRecurring ? __('membership.form.price') : __('membership.form.package_price')).' — '.$code }}">
+                    </div>
+
+                    @if ($priceCurrencies->count() > 1 && ! $loop->first)
+                      <p class="text-[12px] text-faint mt-1.5">{{ __('membership.form.currency_optional_hint') }}</p>
+                    @endif
+
+                    <p data-error-for="price.{{ $code }}" role="alert" class="mt-1.5 text-[12px] text-danger"
+                       @unless ($errors->has('price.'.$code)) hidden @endunless>{{ $errors->first('price.'.$code) }}</p>
+                  </div>
+
+                  @unless ($isRecurring)
+                    <div>
+                      <label for="mRegular_{{ $code }}" class="block text-[13px] font-medium text-ink mb-1.5">
+                        {{ __('membership.form.regular_value') }}
+                        <span class="text-faint font-normal">{{ __('common.optional') }}</span>
+                      </label>
+
+                      <div class="relative">
+                        <input id="mRegular_{{ $code }}" name="regular_value[{{ $code }}]" type="number" min="0.01" step="0.01"
+                               class="sd-input" data-regular-value
+                               value="{{ $amountIn('regular_value', $code, 'regular_value_minor') }}"
+                               aria-label="{{ __('membership.form.regular_value').' — '.$code }}">
+                      </div>
+
+                      <p class="text-[12px] text-faint mt-1.5">{{ __('membership.form.regular_value_hint') }}</p>
+
+                      <p data-error-for="regular_value.{{ $code }}" role="alert" class="mt-1.5 text-[12px] text-danger"
+                         @unless ($errors->has('regular_value.'.$code)) hidden @endunless>{{ $errors->first('regular_value.'.$code) }}</p>
+                    </div>
+                  @endunless
                 </div>
-                <p class="text-[12px] text-faint mt-1.5">{{ __('membership.form.regular_value_hint') }}</p>
-                <p data-error-for="regular_value" role="alert" class="mt-1.5 text-[12px] text-danger"
-                   @unless ($errors->has('regular_value')) hidden @endunless>{{ $errors->first('regular_value') }}</p>
+
+                @if ($isRecurring)
+                  <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label for="mJoining_{{ $code }}" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('membership.form.joining_fee') }}</label>
+                      <div class="relative">
+                        <input id="mJoining_{{ $code }}" name="joining_fee[{{ $code }}]" type="number" min="0.01" step="0.01"
+                               class="sd-input"
+                               value="{{ $amountIn('joining_fee', $code, 'joining_fee_minor') }}"
+                               aria-label="{{ __('membership.form.joining_fee').' — '.$code }}">
+                      </div>
+                    </div>
+
+                    <div>
+                      <label for="mSetup_{{ $code }}" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('membership.form.setup_fee') }}</label>
+                      <div class="relative">
+                        <input id="mSetup_{{ $code }}" name="setup_fee[{{ $code }}]" type="number" min="0.01" step="0.01"
+                               class="sd-input"
+                               value="{{ $amountIn('setup_fee', $code, 'setup_fee_minor') }}"
+                               aria-label="{{ __('membership.form.setup_fee').' — '.$code }}">
+                      </div>
+                    </div>
+                  </div>
+                @endif
+
+                @unless ($isRecurring)
+                  {{-- The saving, worked out as they type. It is the claim the
+                       business is making to the client, so they should see it
+                       while choosing the two numbers that make it — and per
+                       currency, because that is the only pair it can be
+                       worked out from. --}}
+                  <p class="mt-3 text-[13px] font-semibold text-brand" data-saving hidden></p>
+                @endunless
               </div>
-            @endif
+
+              {{-- Between blocks, never after the last. --}}
+              @unless ($loop->last)
+                <hr class="border-line">
+              @endunless
+            @endforeach
           </div>
 
-          @unless ($isRecurring)
-            {{-- The saving, worked out as they type. It is the claim the
-                 business is making to the client, so they should see it
-                 while choosing the two numbers that make it. --}}
-            <p class="mt-3 text-[13px] font-semibold text-brand" data-saving hidden></p>
-          @endunless
+          @if ($priceCurrencies->count() > 1)
+            <p class="mt-3 text-[12px] text-sub">{{ __('currency.no_conversion') }}</p>
+          @endif
 
           @if ($isRecurring)
-            <h3 class="text-[13px] font-semibold text-head mt-6">{{ __('membership.form.extras_hint') }}</h3>
-
-            <div class="mt-3 grid gap-4 sm:grid-cols-3">
-              <div>
-                <label for="mJoining" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('membership.form.joining_fee') }}</label>
-                <div class="relative">
-                  <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">{{ $symbol }}</span>
-                  <input id="mJoining" name="joining_fee" type="number" min="0.01" step="0.01"
-                         class="sd-input styledesk_input--prefixed" value="{{ $joiningFee }}">
-                </div>
-              </div>
-
-              <div>
-                <label for="mSetup" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('membership.form.setup_fee') }}</label>
-                <div class="relative">
-                  <span class="styledesk_input__prefix pointer-events-none" aria-hidden="true">{{ $symbol }}</span>
-                  <input id="mSetup" name="setup_fee" type="number" min="0.01" step="0.01"
-                         class="sd-input styledesk_input--prefixed" value="{{ $setupFee }}">
-                </div>
-              </div>
-
-              <div>
-                <label for="mTrial" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('membership.form.trial_days') }}</label>
-                <input id="mTrial" name="trial_days" type="number" min="1" max="365" step="1"
-                       class="sd-input" value="{{ $value('trial_days') }}">
-                <p class="text-[12px] text-faint mt-1.5">{{ __('membership.form.trial_days_hint') }}</p>
-              </div>
+            {{-- Days, not money: one answer for the plan however many
+                 currencies it is sold in. The joining and setup fees moved
+                 up into the per-currency blocks, where they belong — a CAD
+                 sale taking a USD joining fee is the bug that split would
+                 otherwise leave waiting. --}}
+            <div class="mt-5 sm:w-1/2 sm:pr-2">
+              <label for="mTrial" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('membership.form.trial_days') }}</label>
+              <input id="mTrial" name="trial_days" type="number" min="1" max="365" step="1"
+                     class="sd-input" value="{{ $value('trial_days') }}">
+              <p class="text-[12px] text-faint mt-1.5">{{ __('membership.form.trial_days_hint') }}</p>
             </div>
           @endif
         </section>

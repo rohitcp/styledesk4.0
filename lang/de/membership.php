@@ -308,6 +308,7 @@ return [
         'extras_hint' => 'Einmalig zu Beginn, zusätzlich zum ersten Zyklus. Leer lassen, wenn es keine gibt.',
         'regular_value' => 'Regulärer Wert',
         'regular_value_hint' => 'Was die enthaltenen Leistungen einzeln kosten würden. Leer lassen, um keine Ersparnis auszuloben.',
+        'currency_optional_hint' => 'Optional. Leer lassen, wenn diese Mitgliedschaft nicht in dieser Währung verkauft wird.',
         'value_below_price' => 'Der reguläre Wert muss mindestens dem Paketpreis entsprechen, sonst gibt es keine Ersparnis zu zeigen.',
         'saving_preview' => 'Ersparnis: :amount',
 

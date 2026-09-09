@@ -10,6 +10,8 @@ use App\Models\StoredFile;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
+use App\Support\Currencies;
+use App\Support\MembershipPurchase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -94,7 +96,10 @@ class MembershipPlanTest extends TestCase
             'type' => 'recurring',
             'name' => 'Monthly Massage Membership',
             'description' => 'One massage a month.',
-            'price' => '79',
+            /* Keyed by currency, the shape the pricing card posts: a plan
+               carries one price per currency the business sells in, and
+               nothing converts between them. */
+            'price' => [Currencies::primaryFor($this->tenant) => '79'],
             'billing_frequency' => 'monthly',
             'services' => [
                 ['service_id' => $this->service()->id, 'quantity' => 1],
@@ -203,8 +208,8 @@ class MembershipPlanTest extends TestCase
             ->post(route('membership.store'), $this->payload([
                 'type' => 'package',
                 'name' => 'Massage Package',
-                'price' => '150',
-                'regular_value' => '200',
+                'price' => [Currencies::primaryFor($this->tenant) => '150'],
+                'regular_value' => [Currencies::primaryFor($this->tenant) => '200'],
                 /* A stale field from the recurring form must not survive
                    onto a product that never bills again. */
                 'billing_frequency' => 'monthly',
@@ -247,6 +252,187 @@ class MembershipPlanTest extends TestCase
             ->assertSessionHasErrors('services');
     }
 
+    // ------------------------------------------------- multi-currency
+
+    /**
+     * A plan carries one price per currency, and nothing converts.
+     *
+     * $150 and C$205 are two decisions the business made about two markets.
+     * A rate moving overnight must not change what a client was quoted, which
+     * is why each price is stored exactly as it was typed.
+     */
+    public function test_a_plan_is_priced_in_every_currency_the_business_sells_in(): void
+    {
+        $this->membershipOn();
+        $this->tenant->syncCurrencies(['USD', 'CAD', 'EUR']);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'type' => 'package', 'name' => 'Massage Package', 'billing_frequency' => null,
+                'price' => ['USD' => '150', 'CAD' => '205', 'EUR' => '140'],
+                'regular_value' => ['USD' => '220', 'CAD' => '300', 'EUR' => '205'],
+            ]))
+            ->assertRedirect();
+
+        $plan = MembershipPlan::withoutGlobalScopes()->with('prices')->firstOrFail();
+
+        $this->assertSame(15000, $plan->priceIn('USD')->price_minor);
+        $this->assertSame(20500, $plan->priceIn('CAD')->price_minor);
+        $this->assertSame(14000, $plan->priceIn('EUR')->price_minor);
+
+        /* The saving is worked out inside each currency, never across them:
+           C$300 is not more than $150 in any sense worth printing. */
+        $this->assertSame(7000, $plan->savingMinor('USD'));
+        $this->assertSame(9500, $plan->savingMinor('CAD'));
+        $this->assertSame(6500, $plan->savingMinor('EUR'));
+
+        /* And the plan's own columns stay in step as the primary currency's
+           copy, so nothing that still reads them can disagree. */
+        $this->assertSame(15000, (int) $plan->price_minor);
+    }
+
+    /** A currency the business does not price in is one the plan is not sold in. */
+    public function test_a_plan_need_not_be_priced_in_every_currency(): void
+    {
+        $this->membershipOn();
+        $this->tenant->syncCurrencies(['USD', 'CAD']);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'price' => ['USD' => '79', 'CAD' => ''],
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $plan = MembershipPlan::withoutGlobalScopes()->with('prices')->firstOrFail();
+
+        $this->assertTrue($plan->isPricedIn('USD'));
+        $this->assertFalse($plan->isPricedIn('CAD'));
+    }
+
+    /** The business's own currency is the one a plan must be priced in. */
+    public function test_the_primary_currency_price_is_required(): void
+    {
+        $this->membershipOn();
+        $this->tenant->syncCurrencies(['USD', 'CAD']);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'price' => ['CAD' => '99'],
+            ]))
+            ->assertSessionHasErrors('price.USD');
+    }
+
+    /** And a currency the business does not use at all is refused outright. */
+    public function test_a_price_in_an_unused_currency_is_refused(): void
+    {
+        $this->membershipOn();
+        $this->tenant->syncCurrencies(['USD']);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'price' => ['USD' => '79', 'JPY' => '9000'],
+            ]))
+            ->assertSessionHasErrors('price');
+    }
+
+    /**
+     * Dropping a currency drops its price.
+     *
+     * A row left behind is a price nobody maintains, still being quoted at
+     * the till.
+     */
+    public function test_clearing_a_currency_removes_its_price(): void
+    {
+        $this->membershipOn();
+        $this->tenant->syncCurrencies(['USD', 'CAD']);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'price' => ['USD' => '79', 'CAD' => '105'],
+            ]))
+            ->assertRedirect();
+
+        $plan = MembershipPlan::withoutGlobalScopes()->firstOrFail();
+
+        $this->actingAs($this->owner())
+            ->patch(route('membership.update', $plan), $this->payload([
+                'price' => ['USD' => '79', 'CAD' => ''],
+            ]))
+            ->assertRedirect();
+
+        $this->assertSame(['USD'], $plan->fresh()->prices->pluck('currency_code')->all());
+    }
+
+    /** The fees travel with the price: a CAD sale never takes a USD joining fee. */
+    public function test_the_fees_are_held_per_currency(): void
+    {
+        $this->membershipOn();
+        $this->tenant->syncCurrencies(['USD', 'CAD']);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'price' => ['USD' => '79', 'CAD' => '105'],
+                'joining_fee' => ['USD' => '20', 'CAD' => '28'],
+                'setup_fee' => ['USD' => '10', 'CAD' => '14'],
+            ]))
+            ->assertRedirect();
+
+        $plan = MembershipPlan::withoutGlobalScopes()->with('prices')->firstOrFail();
+
+        $this->assertSame(2000, $plan->priceIn('USD')->joining_fee_minor);
+        $this->assertSame(2800, $plan->priceIn('CAD')->joining_fee_minor);
+        $this->assertSame(1400, $plan->priceIn('CAD')->setup_fee_minor);
+
+        /* Which is what the till is asked for, in the money it is asked in. */
+        $this->assertSame(10900, MembershipPurchase::dueTodayMinor($plan, 'USD'));
+        $this->assertSame(14700, MembershipPurchase::dueTodayMinor($plan, 'CAD'));
+    }
+
+    /**
+     * A business with one currency sees one price field, unchanged.
+     *
+     * The card grew a currency heading and a code beside each amount; neither
+     * belongs on a screen with one answer to give.
+     */
+    public function test_a_single_currency_business_sees_one_simple_price_field(): void
+    {
+        $this->membershipOn();
+        $this->tenant->syncCurrencies(['USD']);
+
+        $html = $this->actingAs($this->owner())
+            ->get(route('membership.create', ['type' => 'package']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, 'name="price[USD]"'));
+        $this->assertStringNotContainsString(__('currency.no_conversion'), $html);
+        $this->assertStringNotContainsString(__('membership.form.currency_optional_hint'), $html);
+    }
+
+    /** And a business with three sees three, its own first. */
+    public function test_a_multi_currency_business_sees_a_block_for_each_currency(): void
+    {
+        $this->membershipOn();
+        $this->tenant->syncCurrencies(['USD', 'CAD', 'EUR']);
+
+        $html = $this->actingAs($this->owner())
+            ->get(route('membership.create', ['type' => 'package']))
+            ->assertOk()
+            ->getContent();
+
+        foreach (['USD', 'CAD', 'EUR'] as $code) {
+            $this->assertStringContainsString('name="price['.$code.']"', $html);
+            $this->assertStringContainsString('name="regular_value['.$code.']"', $html);
+        }
+
+        /* The business's own currency leads. */
+        $this->assertLessThan(strpos($html, 'name="price[CAD]"'), strpos($html, 'name="price[USD]"'));
+        $this->assertLessThan(strpos($html, 'name="price[EUR]"'), strpos($html, 'name="price[CAD]"'));
+
+        /* And the screen says plainly that nothing is converted. */
+        $this->assertStringContainsString(__('currency.no_conversion'), $html);
+    }
+
     public function test_a_package_cannot_claim_a_saving_it_does_not_make(): void
     {
         $this->membershipOn();
@@ -254,11 +440,11 @@ class MembershipPlanTest extends TestCase
         $this->actingAs($this->owner())
             ->post(route('membership.store'), $this->payload([
                 'type' => 'package',
-                'price' => '200',
-                'regular_value' => '150',
+                'price' => [Currencies::primaryFor($this->tenant) => '200'],
+                'regular_value' => [Currencies::primaryFor($this->tenant) => '150'],
                 'billing_frequency' => null,
             ]))
-            ->assertSessionHasErrors('regular_value');
+            ->assertSessionHasErrors('regular_value.'.Currencies::primaryFor($this->tenant));
     }
 
     public function test_a_plan_cannot_change_kind_after_it_exists(): void
@@ -633,7 +819,8 @@ class MembershipPlanTest extends TestCase
         $this->plan();
         $this->actingAs($this->owner())
             ->post(route('membership.store'), $this->payload([
-                'type' => 'package', 'name' => 'Massage Package', 'price' => '150',
+                'type' => 'package', 'name' => 'Massage Package',
+                'price' => [Currencies::primaryFor($this->tenant) => '150'],
                 'billing_frequency' => null,
                 'services' => [['service_id' => $this->service()->id, 'quantity' => 4]],
             ]));

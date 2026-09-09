@@ -307,6 +307,7 @@ return [
         'extras_hint' => '在开始时一次性收取，与第一个周期一同结算。没有则留空。',
         'regular_value' => '原价',
         'regular_value_hint' => '所含服务单独购买的价格。留空则不展示节省金额。',
+        'currency_optional_hint' => '可选。如果这个会员不以该货币出售，请留空。',
         'value_below_price' => '原价至少要等于套餐价格，否则没有可展示的节省。',
         'saving_preview' => '客户可省：:amount',
 

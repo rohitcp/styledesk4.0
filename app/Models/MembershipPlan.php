@@ -89,6 +89,19 @@ class MembershipPlan extends Model
         return $this->belongsToMany(Location::class, 'membership_plan_location');
     }
 
+    /**
+     * What this costs, once per currency the business prices in.
+     *
+     * The money lives here rather than on the plan: a business selling in
+     * dollars and pounds sets two prices, and nothing converts between them.
+     * The columns on the plan itself are the primary currency's copy, kept in
+     * step by syncPrices so nothing that still reads them can disagree.
+     */
+    public function prices(): HasMany
+    {
+        return $this->hasMany(MembershipPlanPrice::class);
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -159,10 +172,120 @@ class MembershipPlan extends Model
 
     /* ----------------------------------------------------------- money -- */
 
+    /**
+     * This plan's money in one currency, or nothing.
+     *
+     * Null where the business does not sell this plan in that currency —
+     * which is a real answer, and the reason the sale screen can refuse
+     * rather than quote a price in the wrong money. Falls back to the plan's
+     * own columns only for a plan saved before it had rows, so an old plan
+     * keeps its price rather than becoming unsellable.
+     */
+    public function priceIn(?string $currency = null): ?MembershipPlanPrice
+    {
+        $code = mb_strtoupper($currency ?: Currencies::resolve());
+
+        $row = $this->relationLoaded('prices')
+            ? $this->prices->firstWhere('currency_code', $code)
+            : $this->prices()->where('currency_code', $code)->first();
+
+        if ($row !== null) {
+            return $row;
+        }
+
+        /* A plan from before this table existed. Its one price is in the
+           business's primary currency, so it answers for that and nothing
+           else. */
+        if ($this->prices()->exists() || $code !== mb_strtoupper(Currencies::primaryFor($this->tenant))) {
+            return null;
+        }
+
+        return new MembershipPlanPrice([
+            'membership_plan_id' => $this->id,
+            'currency_code' => $code,
+            'price_minor' => (int) $this->price_minor,
+            'regular_value_minor' => $this->regular_value_minor,
+            'joining_fee_minor' => $this->joining_fee_minor,
+            'setup_fee_minor' => $this->setup_fee_minor,
+        ]);
+    }
+
+    /**
+     * Replace the price set.
+     *
+     * The whole set every time, because the form posts the whole set: a
+     * currency the business stopped pricing in has to actually go, or the
+     * sale screen keeps offering a price nobody maintains.
+     *
+     * The primary currency is also written back onto the plan's own columns.
+     * Those are a copy, not a second answer — everything that still reads
+     * them gets the same number the rows hold, and one save writes both.
+     *
+     * @param  array<string, array<string, string|null>>  $prices  currency => amounts
+     */
+    public function syncPrices(array $prices, ?string $primary = null): void
+    {
+        $primary = mb_strtoupper($primary ?: Currencies::primaryFor($this->tenant));
+        $minor = fn ($amount) => $amount === null || $amount === '' ? null : (int) round(((float) $amount) * 100);
+
+        $kept = [];
+
+        foreach ($prices as $currency => $amounts) {
+            $currency = mb_strtoupper((string) $currency);
+            $price = $minor($amounts['price'] ?? null);
+
+            /* No price is not a price of nothing: a currency left blank is
+               one this plan is not sold in, and its row goes. */
+            if ($price === null) {
+                continue;
+            }
+
+            $kept[] = $currency;
+
+            $this->prices()->updateOrCreate(
+                ['currency_code' => $currency],
+                [
+                    'price_minor' => $price,
+                    /* Each belongs to one kind of plan; the other is nulled
+                       so a package that was once recurring stops carrying a
+                       joining fee nobody can see. */
+                    'regular_value_minor' => $this->isRecurring() ? null : $minor($amounts['regular_value'] ?? null),
+                    'joining_fee_minor' => $this->isRecurring() ? $minor($amounts['joining_fee'] ?? null) : null,
+                    'setup_fee_minor' => $this->isRecurring() ? $minor($amounts['setup_fee'] ?? null) : null,
+                ]
+            );
+        }
+
+        $this->prices()->whereNotIn('currency_code', $kept ?: ['-'])->delete();
+
+        $lead = $this->prices()->where('currency_code', $primary)->first()
+            ?? $this->prices()->orderBy('id')->first();
+
+        if ($lead !== null) {
+            $this->forceFill([
+                'price_minor' => $lead->price_minor,
+                'regular_value_minor' => $lead->regular_value_minor,
+                'joining_fee_minor' => $lead->joining_fee_minor,
+                'setup_fee_minor' => $lead->setup_fee_minor,
+            ])->save();
+        }
+
+        $this->load('prices');
+    }
+
+    /** Whether this plan can be sold in that money at all. */
+    public function isPricedIn(?string $currency = null): bool
+    {
+        return $this->priceIn($currency) !== null;
+    }
+
     /** "$79 / month", or "$150" for something bought once. */
     public function priceLabel(?string $currency = null): string
     {
-        $price = Money::format($this->price_minor / 100, $currency ?: Currencies::resolve());
+        $code = $currency ?: Currencies::resolve();
+        $minor = $this->priceIn($code)?->price_minor ?? $this->price_minor;
+
+        $price = Money::format($minor / 100, $code);
 
         return $this->isRecurring()
             ? __('membership.price_per', [
@@ -184,13 +307,13 @@ class MembershipPlan extends Model
      * Never negative: a package priced above its own regular value is a
      * mistake somebody will fix, not a saving of minus fifty pounds.
      */
-    public function savingMinor(): int
+    public function savingMinor(?string $currency = null): int
     {
-        if ($this->isRecurring() || $this->regular_value_minor === null) {
+        if ($this->isRecurring()) {
             return 0;
         }
 
-        return max(0, $this->regular_value_minor - $this->price_minor);
+        return $this->priceIn($currency)?->savingMinor() ?? 0;
     }
 
     /** "10% off" or "$15 off", for a card that has to be read at a glance. */

@@ -2789,17 +2789,23 @@ class BookingController extends Controller
         return MembershipPlan::query()
             ->sellable()
             ->where('sell_in_store', true)
-            ->with(['planServices.service', 'locations'])
+            ->with(['planServices.service', 'locations', 'prices'])
             ->orderBy('name')
             ->get()
+            /* Only the plans this business actually prices in the money
+               this booking is being taken in. A plan sold in dollars has no
+               price to quote on a euro booking, and converting one would
+               invent a number nobody agreed to. */
+            ->filter(fn (MembershipPlan $plan) => $plan->isPricedIn($currency))
             ->map(fn (MembershipPlan $plan) => [
                 'id' => $plan->id,
                 'type' => $plan->type,
                 'name' => $plan->name,
                 'description' => $plan->description,
                 'image' => $plan->imageUrl(),
+                'currency' => $currency,
                 'price' => $plan->priceLabel($currency),
-                'price_minor' => (int) $plan->price_minor,
+                'price_minor' => (int) $plan->priceIn($currency)->price_minor,
                 'billing_frequency' => $plan->billing_frequency,
                 'frequency_label' => $plan->billing_frequency === null
                     ? null
@@ -2811,19 +2817,19 @@ class BookingController extends Controller
                     ])->values(),
                 'benefit' => $plan->discountLabel($currency),
                 'priority_booking' => (bool) $plan->priority_booking,
-                'saving' => $plan->savingMinor() > 0
-                    ? Money::format($plan->savingMinor() / 100, $currency)
+                'saving' => $plan->savingMinor($currency) > 0
+                    ? Money::format($plan->savingMinor($currency) / 100, $currency)
                     : null,
                 /* The first cycle plus any one-off fees — what the till is
                    about to ask for, which is not always the headline price. */
-                'due_today' => Money::format(MembershipPurchase::dueTodayMinor($plan) / 100, $currency),
-                'due_today_minor' => MembershipPurchase::dueTodayMinor($plan),
-                'joining_fee' => $plan->joining_fee_minor === null
+                'due_today' => Money::format(MembershipPurchase::dueTodayMinor($plan, $currency) / 100, $currency),
+                'due_today_minor' => MembershipPurchase::dueTodayMinor($plan, $currency),
+                'joining_fee' => $plan->priceIn($currency)->joining_fee_minor === null
                     ? null
-                    : Money::format($plan->joining_fee_minor / 100, $currency),
-                'setup_fee' => $plan->setup_fee_minor === null
+                    : Money::format($plan->priceIn($currency)->joining_fee_minor / 100, $currency),
+                'setup_fee' => $plan->priceIn($currency)->setup_fee_minor === null
                     ? null
-                    : Money::format($plan->setup_fee_minor / 100, $currency),
+                    : Money::format($plan->priceIn($currency)->setup_fee_minor / 100, $currency),
                 'trial_days' => $plan->trial_days,
                 'locations' => $plan->location_mode === 'all'
                     ? __('membership.all_locations')

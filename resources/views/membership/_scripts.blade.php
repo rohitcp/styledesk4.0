@@ -90,6 +90,34 @@
         }
 
         if (select) select.focus();
+        syncServiceOptions();
+      });
+    }
+
+    /* A service belongs to one line or none.
+
+       Two lines naming the same service are two rows claiming the same
+       entitlement, and the credit engine would have to pick one — so a
+       service already spoken for is taken out of every other row's list
+       rather than left there to be chosen and then refused. Removing the
+       line hands it straight back. The server checks the same thing; this
+       only means nobody has to be told about it after the fact. */
+    function syncServiceOptions() {
+      if (!rows) return;
+
+      var selects = rows.querySelectorAll('[data-service-select]');
+      var taken = {};
+
+      selects.forEach(function (select) {
+        if (select.value) taken[select.value] = true;
+      });
+
+      selects.forEach(function (select) {
+        Array.prototype.forEach.call(select.options, function (option) {
+          /* Never the row's own answer, or it would disappear from the one
+             field that is meant to be showing it. */
+          option.disabled = option.value !== '' && option.value !== select.value && !!taken[option.value];
+        });
       });
     }
 
@@ -102,8 +130,17 @@
         if (row) row.remove();
 
         syncRemoveButtons();
+        syncServiceOptions();
+      });
+
+      /* The combo posts its answer through the native select and fires
+         change on it, so one listener covers both. */
+      rows.addEventListener('change', function (event) {
+        if (event.target.closest('[data-service-select]')) syncServiceOptions();
       });
     }
+
+    syncServiceOptions();
 
     /* Credits follows quantity until somebody says otherwise.
 
@@ -240,11 +277,16 @@
 
     /* --------------------------------------------- the package's saving */
 
-    var price = form.querySelector('[data-price]');
-    var regular = form.querySelector('[data-regular-value]');
-    var saving = form.querySelector('[data-saving]');
+    /* Once per currency: a saving is the gap between two numbers in the same
+       money, and there is no sense in which C$300 is more than $150. Each
+       block works its own out, and each wears its own symbol. */
+    var savingWords = @json($savingWords);
 
-    function showSaving() {
+    function showSaving(row) {
+      var saving = row.querySelector('[data-saving]');
+      var price = row.querySelector('[data-price]');
+      var regular = row.querySelector('[data-regular-value]');
+
       if (!saving || !price || !regular) return;
 
       var difference = parseFloat(regular.value) - parseFloat(price.value);
@@ -257,13 +299,20 @@
         return;
       }
 
-      saving.textContent = @json($savingWords).replace('__AMOUNT__', symbol + difference.toFixed(2));
+      saving.textContent = savingWords.replace(
+        '__AMOUNT__',
+        (row.dataset.symbol || symbol) + difference.toFixed(2)
+      );
       saving.hidden = false;
     }
 
-    if (price) price.addEventListener('input', showSaving);
-    if (regular) regular.addEventListener('input', showSaving);
-    showSaving();
+    form.querySelectorAll('[data-price-row]').forEach(function (row) {
+      row.addEventListener('input', function (event) {
+        if (event.target.closest('[data-price], [data-regular-value]')) showSaving(row);
+      });
+
+      showSaving(row);
+    });
 
     /* ------------------------------------------------- discount, % or money */
 

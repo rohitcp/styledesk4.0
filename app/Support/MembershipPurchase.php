@@ -17,6 +17,7 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 /**
  * Selling a membership.
@@ -48,6 +49,7 @@ class MembershipPurchase
         ?User $seller = null,
         ?ClientPaymentMethod $card = null,
         bool $autoRenew = false,
+        ?string $currency = null,
     ): ClientMembership {
         $settings = MembershipSettings::forTenant($client->tenant);
 
@@ -56,7 +58,19 @@ class MembershipPurchase
            has already finished. */
         $renews = $autoRenew && $plan->isRecurring();
 
-        return DB::transaction(function () use ($plan, $client, $startsOn, $location, $payment, $seller, $settings, $card, $renews) {
+        /* The price in the money this sale is being taken in. A plan the
+           business does not price in that currency cannot be sold in it —
+           refused here rather than quietly charged a number from another
+           market. */
+        $priced = $plan->priceIn($currency);
+
+        if ($priced === null) {
+            throw new InvalidArgumentException(
+                'Membership plan '.$plan->id.' has no price in '.Currencies::resolve($currency).'.'
+            );
+        }
+
+        return DB::transaction(function () use ($plan, $client, $startsOn, $location, $payment, $seller, $settings, $card, $renews, $priced) {
             $membership = ClientMembership::create([
                 'tenant_id' => $client->tenant_id,
                 'client_id' => $client->id,
@@ -69,13 +83,18 @@ class MembershipPurchase
                 'status' => $startsOn->isFuture() ? 'scheduled' : 'active',
                 'starts_on' => $startsOn->toDateString(),
 
-                /* Frozen at the moment of sale. */
+                /* Frozen at the moment of sale, in the money it was sold
+                   in. The plan carries a price per currency and nothing
+                   converts between them, so the row for this sale's currency
+                   is the only one that answers — and once copied here, a
+                   later price change cannot reach a membership already
+                   bought. */
                 'type' => $plan->type,
-                'price_minor' => (int) $plan->price_minor,
-                'currency_code' => Currencies::resolve(),
+                'price_minor' => (int) $priced->price_minor,
+                'currency_code' => $priced->currency_code,
                 'billing_frequency' => $plan->billing_frequency,
-                'joining_fee_minor' => $plan->joining_fee_minor,
-                'setup_fee_minor' => $plan->setup_fee_minor,
+                'joining_fee_minor' => $priced->joining_fee_minor,
+                'setup_fee_minor' => $priced->setup_fee_minor,
 
                 /* The first renewal is a cycle after it starts, not a cycle
                    after it was sold: a membership bought on the 1st to begin
@@ -215,11 +234,9 @@ class MembershipPurchase
      * a trial delays is the *second* payment, and a plan that asked for
      * nothing today would be one the till cannot take money for.
      */
-    public static function dueTodayMinor(MembershipPlan $plan): int
+    public static function dueTodayMinor(MembershipPlan $plan, ?string $currency = null): int
     {
-        return (int) $plan->price_minor
-            + (int) $plan->joining_fee_minor
-            + (int) $plan->setup_fee_minor;
+        return $plan->priceIn($currency)?->totalMinor() ?? 0;
     }
 
     /**

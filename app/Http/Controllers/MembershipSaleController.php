@@ -100,6 +100,10 @@ class MembershipSaleController extends Controller
 
         $this->guardCard($autoRenew, $card);
 
+        /* The money this sale is taken in — the same one the booking screen
+           priced it in, and the one the receipt will carry. */
+        $currency = Currencies::resolve();
+
         $membership = MembershipPurchase::sell(
             plan: $plan,
             client: $client,
@@ -109,11 +113,12 @@ class MembershipSaleController extends Controller
                 /* What it costs is the server's answer, never the form's. A
                    price posted from a page is a price somebody can edit. */
                 'method' => $data['payment_method'],
-                'amount_minor' => MembershipPurchase::dueTodayMinor($plan),
+                'amount_minor' => MembershipPurchase::dueTodayMinor($plan, $currency),
             ],
             seller: $request->user(),
             card: $card,
             autoRenew: $autoRenew,
+            currency: $currency,
         );
 
         return redirect()->route('membership.sales.show', $membership);

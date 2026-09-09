@@ -333,6 +333,7 @@ return [
         'extras_hint' => 'Charged once, at the start, on top of the first cycle. Leave empty for none.',
         'regular_value' => 'Regular value',
         'regular_value_hint' => 'What the included services would cost bought separately. Leave empty to make no saving claim.',
+        'currency_optional_hint' => 'Optional. Leave blank if this membership is not sold in this currency.',
         'value_below_price' => 'The regular value has to be at least the package price, or there is no saving to show.',
         'saving_preview' => 'Customer saving: :amount',
 

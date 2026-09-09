@@ -564,7 +564,9 @@ class ResourcesTest extends TestCase
                     ->assertDontSee('name="'.$field.'"', false);
             }
 
-            $page->assertDontSee(__('resources.form.booking'));
+            /* The card's own label rather than its heading: "Booking" alone
+               is a word the navigation says too. */
+            $page->assertDontSee(__('resources.form.interval'));
         }
     }
 }

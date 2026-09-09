@@ -487,9 +487,16 @@ window.SD = (function () {
     if (options.search === false) search.classList.add('sr-only');
 
     function items() {
+      /* A disabled or hidden option is one this field is not offering — the
+         membership form marks a service already added on another line that
+         way. The one currently chosen is always kept, or a row would stop
+         showing its own answer. */
       return Array.prototype.map.call(select.options, function (o, i) {
-        return { i: i, value: o.value, text: o.textContent, placeholder: o.value === '' };
-      });
+        return {
+          i: i, value: o.value, text: o.textContent, placeholder: o.value === '',
+          offered: !(o.disabled || o.hidden) || o.value === select.value,
+        };
+      }).filter(function (o) { return o.offered; });
     }
 
     function paintButton() {
