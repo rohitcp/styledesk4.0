@@ -398,6 +398,7 @@ return [
             'tabs' => [
                 'rewards' => 'Rewards',
                 'membership' => 'Membership',
+                'payments' => 'Payments',
                 'leads' => 'Leads',
                 'activity' => 'Activity',
                 'bookings' => 'Bookings',

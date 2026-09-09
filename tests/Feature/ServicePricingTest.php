@@ -10,6 +10,7 @@ use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\TipSettings;
 use App\Models\User;
+use App\Support\Currencies;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -544,11 +545,13 @@ class ServicePricingTest extends TestCase
     }
 
     /**
-     * The deposit value field follows the deposit type.
+     * Both deposit fields are offered, and each wears its own unit.
      *
-     * An amount is money and wears the currency symbol; a percentage is not.
-     * A reader who has just chosen "percentage" and sees a $ in the box will
-     * type dollars.
+     * An amount is money and wears the currency symbol; a percentage is not,
+     * and wears a per-cent sign. A reader who has just chosen "percentage"
+     * and sees a $ in the box will type dollars. Both are rendered, and the
+     * script shows whichever the type calls for, so neither needs a round
+     * trip to appear.
      */
     public function test_the_deposit_field_offers_both_units(): void
     {
@@ -560,15 +563,45 @@ class ServicePricingTest extends TestCase
         $this->assertStringContainsString(__('services.deposit_amount'), $html);
         $this->assertStringContainsString(__('services.deposit_percent'), $html);
 
-        /* Both affordances are rendered; the script shows whichever the type
-           calls for, so neither needs a round trip to appear. */
+        /* The per-cent sign sits in the box; the currency does not — the
+           amount field's label names the money, the way the price fields
+           beneath it do. */
         $this->assertStringContainsString('styledesk_input__suffix', $html);
-        $this->assertStringContainsString('data-deposit-value-field', $html);
+        $this->assertStringContainsString('data-deposit-percent-field', $html);
+        $this->assertStringContainsString('data-deposit-amount-fields', $html);
         $this->assertStringContainsString('data-deposit-type', $html);
     }
 
-    /** The switch inside the Price card carries no card of its own. */
-    public function test_the_deposit_toggle_is_bare_inside_the_price_card(): void
+    /**
+     * The deposit is asked for once, in its own card, above the prices.
+     *
+     * It used to be a switch on every price, which asks a business pricing
+     * in three currencies the same question three times.
+     */
+    public function test_the_deposit_is_asked_once_above_the_prices(): void
+    {
+        $currency = Currencies::primaryFor($this->tenant);
+
+        $html = $this->actingAs($this->owner)
+            ->get(route('services.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('data-deposit-card', $html);
+        /* Once as the switch itself. The pair — a hidden 0 beside the
+           checkbox — is how every toggle in the app posts an "off". */
+        $this->assertSame(1, substr_count($html, 'name="deposit_required" value="1"'));
+        $this->assertStringNotContainsString('name="deposit['.$currency.'][required]"', $html);
+
+        /* And it comes before the prices it governs. */
+        $this->assertLessThan(
+            strpos($html, __('services.section.price')),
+            strpos($html, __('services.section.deposit')),
+        );
+    }
+
+    /** The switch carries no card of its own inside the one it sits in. */
+    public function test_the_deposit_toggle_is_bare(): void
     {
         $this->actingAs($this->owner)
             ->get(route('services.create'))

@@ -103,7 +103,45 @@ return [
 
     'transaction_statuses' => [
         'pending', 'authorized', 'paid', 'partially_paid', 'failed',
-        'cancelled', 'refunded', 'partially_refunded', 'disputed',
+        'cancelled', 'refunded', 'partially_refunded', 'disputed', 'chargeback',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | What a business lets its payments do
+    |--------------------------------------------------------------------------
+    |
+    | Two groups, because they fail in different ways and are switched on at
+    | different times. In-person needs hardware or a person at a terminal;
+    | online needs a page a client can reach.
+    |
+    | `available` false renders the switch disabled and labelled, the same way
+    | config/loyalty.php treats a purchase nothing can earn on yet — the screen
+    | should say what is planned rather than offer a switch that does nothing.
+    |
+    | `needs_processor` marks the ones that cannot work by recording alone: a
+    | salon writing down cash cannot take a payment link, because there is
+    | nothing at the other end of the link.
+    |
+    */
+    'capabilities' => [
+        'in_person' => [
+            'card' => ['available' => true, 'needs_processor' => false, 'default' => true],
+            'manual_card_entry' => ['available' => true, 'needs_processor' => true, 'default' => true],
+            'tap_to_pay' => ['available' => false, 'needs_processor' => true, 'default' => false],
+            'card_reader' => ['available' => false, 'needs_processor' => true, 'default' => false],
+        ],
+
+        'online' => [
+            'booking_deposit' => ['available' => true, 'needs_processor' => true, 'default' => true],
+            'full_payment' => ['available' => true, 'needs_processor' => true, 'default' => true],
+            'payment_link' => ['available' => true, 'needs_processor' => true, 'default' => true],
+            'card_on_file' => ['available' => true, 'needs_processor' => true, 'default' => true],
+            'membership_payment' => ['available' => true, 'needs_processor' => true, 'default' => true],
+            'online_booking' => ['available' => false, 'needs_processor' => true, 'default' => false],
+            'invoice_payment' => ['available' => false, 'needs_processor' => true, 'default' => false],
+            'gift_card' => ['available' => false, 'needs_processor' => true, 'default' => false],
+        ],
     ],
 
     /*

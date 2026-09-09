@@ -156,7 +156,7 @@ return [
         'recurring_hint' => 'Verlängert sich automatisch bis zur Kündigung.',
         'recurring_locked' => 'Diese Mitgliedschaft wird als Abo verkauft und verlängert sich immer.',
         'renews' => 'Verlängert sich :price',
-        'one_off' => 'Einmalig belasten, nicht verlängern',
+        'one_off' => 'Jede Verlängerung am Empfang einziehen',
         'title' => 'Hinterlegte Karte',
         'why' => 'Für die automatische Verlängerung erforderlich.',
         'existing' => 'Vorhandene Karte verwenden',
@@ -792,6 +792,10 @@ return [
     ],
 
     'payment_statuses' => [
+        'authorized' => ['label' => 'Autorisiert'],
+        'cancelled' => ['label' => 'Storniert'],
+        'disputed' => ['label' => 'Angefochten'],
+        'chargeback' => ['label' => 'Rückbuchung'],
         'unpaid' => ['label' => 'Unbezahlt'],
         'partial' => ['label' => 'Teilweise bezahlt'],
         'paid' => ['label' => 'Bezahlt'],

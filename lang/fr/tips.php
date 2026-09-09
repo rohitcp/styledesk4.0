@@ -40,6 +40,9 @@ return [
     ],
     'default_tip' => 'Pourboire par défaut',
     'default_tip_hint' => 'Un pourcentage de la part pourboirable de la note, ou une somme forfaitaire.',
+    'tip_amount' => 'Montant du pourboire',
+    'tip_amount_hint' => 'Une somme fixe, proposée en caisse à la place du pourcentage de l’établissement.',
+    'follows_default_note' => 'Propose la valeur par défaut de l’établissement, :amount, en caisse. Elle reste modifiable sur la réservation.',
 
     'percentages' => 'Proposé en caisse',
     'percentages_hint' => 'Jusqu’à six. Le client dispose aussi d’un champ pour saisir le sien.',
@@ -65,6 +68,8 @@ return [
         'status' => 'Statut',
     ],
     'follows_default' => 'Suit la valeur par défaut',
+    'follows_default_with' => 'Suit la valeur par défaut (:amount)',
+    'offered_at_till' => 'Proposé en caisse',
     'accepted' => 'Acceptés',
     'not_accepted' => 'Sans pourboire',
     'no_services' => 'Aucune prestation active à configurer pour l’instant.',

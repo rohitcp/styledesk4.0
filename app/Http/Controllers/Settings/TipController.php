@@ -114,19 +114,26 @@ class TipController extends Controller
     {
         $data = $request->validate([
             'accepts_tips' => ['nullable', 'boolean'],
-            'tip_type' => ['nullable', Rule::in(TipSettings::TYPES)],
+            /* A service says "a flat sum" or says nothing: the percentage
+               is the business's own answer, and the service form offers the
+               same two. */
+            'tip_type' => ['nullable', Rule::in(TipSettings::SERVICE_TYPES)],
             'tip_value' => ['nullable', 'integer', 'min:0', 'max:100'],
             'tip_required' => ['nullable', 'boolean'],
             'allow_no_tip' => ['nullable', 'boolean'],
         ]);
 
+        $fixed = ($data['tip_type'] ?? null) === 'fixed';
+
         $service->update([
             'accepts_tips' => (bool) ($data['accepts_tips'] ?? false),
-            'tip_type' => $data['tip_type'] ?? null,
+            'tip_type' => $fixed ? 'fixed' : null,
             /* Blank rather than nought: a default of nothing and no default
                at all are different, and only one of them follows the
-               business when it changes its mind. */
-            'tip_value' => ($data['tip_value'] ?? null) === null ? null : (int) $data['tip_value'],
+               business when it changes its mind. A value without a flat sum
+               to be is nothing — it would otherwise outrank the default it
+               claims to be following. */
+            'tip_value' => $fixed && ($data['tip_value'] ?? null) !== null ? (int) $data['tip_value'] : null,
             'tip_required' => (bool) ($data['tip_required'] ?? false),
             'allow_no_tip' => (bool) ($data['allow_no_tip'] ?? false),
         ]);

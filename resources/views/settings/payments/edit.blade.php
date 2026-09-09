@@ -136,6 +136,34 @@
                           ])>{{ __('payments.stripe.statuses.'.$stripe->statusKey()) }}</span>
                         </div>
 
+                        {{-- How this business connected, and whether the
+                             connection moves real money.
+
+                             Both read off the key rather than from a setting:
+                             a Stripe secret is test or live in itself, so
+                             sandbox is not something a salon can flip. A
+                             badge that claimed otherwise would be the worst
+                             lie on this screen — a business believing it was
+                             testing while charging real cards. --}}
+                        <p class="mt-2 text-[12px] text-sub">
+                          {{ $stripe->providerLabel() }}
+                          @if ($stripe->stripe_account_id)
+                            · <span class="font-mono">{{ $stripe->stripe_account_id }}</span>
+                          @endif
+                          @if ($stripe->connected_at)
+                            · {{ $stripe->connected_at->translatedFormat('j M Y') }}
+                          @endif
+                        </p>
+
+                        @if ($stripe->isSandbox())
+                          <div class="mt-2.5 rounded-lg bg-hover px-3 py-2.5">
+                            <p class="text-[12px] font-semibold text-head">{{ __('payments.stripe.sandbox') }}</p>
+                            <p class="text-[11.5px] text-sub mt-0.5 leading-snug">
+                              {{ __('payments.stripe.sandbox_notice') }}
+                            </p>
+                          </div>
+                        @endif
+
                         {{-- Stripe's own words for what is missing. "We need
                              more information" helps nobody; the field names
                              are what an owner has to go and supply. --}}
@@ -183,8 +211,16 @@
                         @endif
 
                         @if ($stripe)
+                          {{-- Disconnecting is not a settings change; it is
+                               the moment online bookings, deposits, renewals
+                               and every saved card stop working. The list is
+                               what makes that a decision rather than a
+                               discovery. --}}
                           <button type="submit" form="stripe-disconnect"
-                                  class="styledesk_action styledesk_action--sm styledesk_action--danger">
+                                  class="styledesk_action styledesk_action--sm styledesk_action--danger"
+                                  data-confirm-title="{{ __('payments.stripe.disconnect_title') }}"
+                                  data-confirm="{{ __('payments.stripe.disconnect_warning') }}"
+                                  data-confirm-label="{{ __('payments.stripe.disconnect') }}">
                             {{ __('payments.stripe.disconnect') }}
                           </button>
                         @endif
@@ -246,6 +282,58 @@
           </section>
 
           {{-- --------------------------------------------- the methods --}}
+          {{-- What this business's payments are allowed to do.
+
+               Separate from the method list above it, because they answer
+               different questions: a method is how the money arrives, a
+               capability is whether StyleDesk offers that route at all. A
+               salon may take cards and still not want a payment link.
+
+               Anything that needs a processor is shown disabled with the
+               reason, rather than as a switch that would quietly do nothing
+               — see PaymentCapabilities::grouped. --}}
+          <section class="bg-white border border-line rounded-card p-5">
+            <h2 class="text-[15px] font-semibold text-head">{{ __('payments.capabilities.title') }}</h2>
+            <p class="text-[13px] text-sub mt-1">{{ __('payments.capabilities.hint') }}</p>
+
+            @foreach ($capabilities as $group => $items)
+              <h3 class="text-[13px] font-semibold text-head mt-4">
+                {{ __('payments.capabilities.groups.'.$group) }}
+              </h3>
+
+              <div class="mt-2 grid sm:grid-cols-2 gap-2">
+                @foreach ($items as $capability)
+                  <label @class(['flex items-start gap-2.5', 'opacity-50' => $capability['blocked_by'] !== null])>
+                    <input type="checkbox" name="capabilities[]" value="{{ $capability['key'] }}"
+                           class="sd-check mt-0.5"
+                           @checked($capability['enabled'] && $capability['blocked_by'] === null)
+                           @disabled($capability['blocked_by'] !== null)>
+
+                    <span class="min-w-0">
+                      <span class="block text-[13px] text-ink">
+                        {{ __('payments.capabilities.items.'.$capability['key']) }}
+                      </span>
+
+                      @if ($capability['blocked_by'])
+                        <span class="block text-[12px] text-faint">
+                          {{ __('payments.capabilities.blocked.'.$capability['blocked_by']) }}
+                        </span>
+                      @endif
+                    </span>
+                  </label>
+
+                  {{-- A disabled box posts nothing, which would switch off a
+                       capability the business had chosen merely because its
+                       processor is briefly unreachable. Its own answer
+                       travels instead. --}}
+                  @if ($capability['blocked_by'] === 'no_processor' && $capability['enabled'])
+                    <input type="hidden" name="capabilities[]" value="{{ $capability['key'] }}">
+                  @endif
+                @endforeach
+              </div>
+            @endforeach
+          </section>
+
           <section class="bg-white border border-line rounded-card p-5">
             <h2 class="text-[15px] font-semibold text-head">{{ __('payments.methods') }}</h2>
             <p class="text-[13px] text-sub mt-1">{{ __('payments.methods_hint') }}</p>

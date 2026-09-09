@@ -272,6 +272,7 @@ class MembershipPlanController extends Controller
                 'membership_plan_id' => $copy->id,
                 'service_id' => $line->service_id,
                 'quantity' => $line->quantity,
+                'credits' => $line->grantedCredits(),
                 'position' => $line->position,
             ]);
         }
@@ -365,14 +366,24 @@ class MembershipPlanController extends Controller
 
             'regular_value' => ['nullable', 'numeric', 'min:0.01', 'max:1000000'],
 
-            /* At least one, and a real one. A membership that includes
-                nothing is a subscription to nothing. */
-            'services' => ['required', 'array', 'min:1'],
+            /* At least one, and a real one — where this business's
+               memberships include anything at all. With credits switched off
+               a membership is its discount and its standing, and insisting on
+               a service list would make that product unsellable. */
+            'services' => [
+                Rule::requiredIf(fn () => MembershipSettings::forTenant($request->user()->tenant)->grantsCredits()),
+                'array',
+            ],
             'services.*.service_id' => [
                 'required',
                 Rule::exists('services', 'id')->where('tenant_id', $tenantKey),
             ],
             'services.*.quantity' => ['required', 'integer', 'min:1', 'max:99'],
+            /* What can actually be redeemed. Optional on the wire and
+               defaulted to the quantity, so a form or an integration that
+               only knows about quantity still describes a coherent benefit
+               rather than granting one of everything. */
+            'services.*.credits' => ['nullable', 'integer', 'min:1', 'max:99'],
 
             'discount_type' => ['nullable', Rule::in(MembershipPlan::DISCOUNT_TYPES)],
             'discount_value' => ['nullable', 'numeric', 'min:0',
@@ -399,7 +410,7 @@ class MembershipPlanController extends Controller
         /* One service named twice is two rows claiming to be the same
            entitlement, and the credit engine would have to pick one. Caught
            here rather than by the unique index, which would 500. */
-        $ids = array_column($data['services'], 'service_id');
+        $ids = array_column($data['services'] ?? [], 'service_id');
 
         if (count($ids) !== count(array_unique($ids))) {
             throw ValidationException::withMessages([
@@ -492,11 +503,12 @@ class MembershipPlanController extends Controller
            time, and a line the reader deleted has to actually go. */
         $plan->planServices()->delete();
 
-        foreach (array_values($data['services']) as $position => $line) {
+        foreach (array_values($data['services'] ?? []) as $position => $line) {
             MembershipPlanService::create([
                 'membership_plan_id' => $plan->id,
                 'service_id' => (int) $line['service_id'],
                 'quantity' => (int) $line['quantity'],
+                'credits' => (int) ($line['credits'] ?? $line['quantity']),
                 'position' => $position,
             ]);
         }

@@ -312,11 +312,17 @@ return [
         'saving_preview' => 'Ersparnis: :amount',
 
         'services' => 'Vorteile und Leistungen',
-        'services_hint_recurring' => 'Was das Mitglied je Zyklus bekommt. Das Guthaben kommt mit jeder Abbuchung zurück.',
+        'services_hint_recurring' => 'Vorteile und Guthaben werden nach jeder erfolgreichen Abbuchung erneut gewährt.',
         'services_hint_package' => 'Was das Paket insgesamt enthält. Sind sie aufgebraucht, ist es beendet.',
         'add_service' => '+ Leistung hinzufügen',
         'service' => 'Leistung',
+        'service_search' => 'Leistungen suchen…',
         'quantity' => 'Anzahl',
+        'credits_column' => 'Guthaben',
+        'count_placeholder' => 'z. B. 4',
+        'services_intro' => 'Was das Mitglied mit dieser Mitgliedschaft bekommt.',
+        'credits_recurring' => 'Guthaben wird nach jeder erfolgreichen Abbuchung erneut gewährt — nie während eine Zahlung fehlgeschlagen ist oder die Mitgliedschaft pausiert oder gekündigt ist.',
+        'credits_package' => 'Guthaben wird einmalig beim Kauf des Pakets gewährt und nicht aufgefüllt.',
         'remove' => 'Entfernen',
         'duplicate_service' => 'Jede Leistung darf nur einmal vorkommen. Ändern Sie die Anzahl, statt sie zweimal hinzuzufügen.',
         'no_services' => 'Fügen Sie mindestens eine Leistung hinzu — eine Mitgliedschaft ohne Inhalt ist ein Abo auf nichts.',
@@ -328,6 +334,7 @@ return [
         'percent' => 'Prozentualer Rabatt',
         'fixed' => 'Fester Rabattbetrag',
         'discount_value' => 'Betrag',
+        'discount_percentage' => 'Prozentsatz',
         'priority_booking' => 'Bevorzugte Terminvergabe',
         'priority_booking_hint' => 'Mitglieder werden am Empfang gekennzeichnet, damit sie zuerst untergebracht werden.',
 
@@ -412,6 +419,8 @@ return [
 
         'credits' => 'Guthaben',
         'credits_hint' => 'Was mit einer enthaltenen Leistung geschieht, die nicht genutzt wurde.',
+        'credits_enabled' => 'Leistungen in Mitgliedschaften enthalten',
+        'credits_enabled_hint' => 'Mitgliedschaften gewähren Leistungen, die die Kundin einlösen kann. Aus, und die Mitgliedschaft besteht nur aus Rabatt und Vorteilen — es gibt nichts einzulösen.',
         'allow_rollover' => 'Ungenutztes Guthaben übertragen',
         'allow_rollover_hint' => 'Ungenutzte Guthaben gehen in den nächsten Zyklus über. Aus, und jeder Zyklus beginnt neu.',
         'maximum_rollover' => 'Maximal übertragbares Guthaben',
@@ -437,10 +446,6 @@ return [
         'cancellation_effective_hint' => 'Wann eine Kündigung wirksam wird.',
         'months' => 'Monate',
         'days' => 'Tage',
-
-        'payments' => 'Zahlungen',
-        'payments_hint' => 'Mitgliedschaften werden mit den Methoden bezahlt, die Sie ohnehin akzeptieren. Hier gibt es nichts Zusätzliches einzustellen.',
-        'payments_link' => 'Zahlungseinstellungen öffnen',
 
         'rules' => 'Wie StyleDesk Mitgliedschaften behandelt',
         'rules_hint' => 'Was die App entscheidet, nicht was Sie entscheiden.',

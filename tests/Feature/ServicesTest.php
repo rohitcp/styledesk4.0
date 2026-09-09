@@ -725,35 +725,80 @@ class ServicesTest extends TestCase
     }
 
     /**
-     * A deposit belongs to the price it is a deposit on.
+     * The deposit is answered once and written onto every price.
      *
      * 20% of one price and 20% of another are different amounts, so the
-     * setting cannot live on the service — and switching it on for one price
-     * must leave every other price alone.
+     * figure has to be stored per price — but the *rule* is one answer, and
+     * a business pricing in three currencies should not be asked for it
+     * three times and able to give three different answers.
      */
-    public function test_each_price_carries_its_own_deposit(): void
+    public function test_one_deposit_answer_is_written_onto_every_price(): void
     {
-        $currency = Currencies::primaryFor($this->tenant);
+        $this->tenant->syncCurrencies(['USD', 'EUR']);
 
         $this->actingAs($this->owner)
             ->post(route('services.store'), [
                 'name' => 'Balayage', 'duration_minutes' => 90,
                 'locations' => [$this->location()->id],
-                'price' => [$currency => '120.00'],
-                'deposit' => [$currency => ['required' => 1, 'type' => 'percent', 'value' => '20']],
+                'price' => ['USD' => '120.00', 'EUR' => '110.00'],
+                'deposit_required' => 1, 'deposit_type' => 'percent', 'deposit_percent' => '20',
             ])
             ->assertSessionHasNoErrors();
 
-        $price = Service::withoutGlobalScopes()->where('name', 'Balayage')->firstOrFail()
-            ->prices->firstWhere('currency_code', $currency);
+        $prices = Service::withoutGlobalScopes()->where('name', 'Balayage')->firstOrFail()->prices;
 
-        $this->assertTrue($price->deposit_required);
-        $this->assertSame('percent', $price->deposit_type);
-        $this->assertSame(20, $price->deposit_value);
-        $this->assertSame('20%', $price->depositLabel());
+        $this->assertCount(2, $prices);
+
+        foreach ($prices as $price) {
+            $this->assertTrue($price->deposit_required);
+            $this->assertSame('percent', $price->deposit_type);
+            $this->assertSame(20, $price->deposit_value);
+            $this->assertSame('20%', $price->depositLabel());
+        }
+
+        /* And the figure follows each price rather than being restated:
+           20% of $120, 20% of €110. */
+        $this->assertSame(2400, $prices->firstWhere('currency_code', 'USD')->requiredDepositMinor());
+        $this->assertSame(2200, $prices->firstWhere('currency_code', 'EUR')->requiredDepositMinor());
     }
 
-    /** A fixed deposit is stored in minor units, like the price beside it. */
+    /**
+     * Changing the one answer changes every price with it.
+     *
+     * The whole point of asking once: 20% becoming 25% is one edit, not one
+     * edit per price.
+     */
+    public function test_changing_the_deposit_updates_every_price(): void
+    {
+        $this->tenant->syncCurrencies(['USD', 'EUR']);
+
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Balayage', 'duration_minutes' => 90,
+                'locations' => [$this->location()->id],
+                'price' => ['USD' => '120.00', 'EUR' => '110.00'],
+                'deposit_required' => 1, 'deposit_type' => 'percent', 'deposit_percent' => '20',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $service = Service::withoutGlobalScopes()->where('name', 'Balayage')->firstOrFail();
+
+        $this->actingAs($this->owner)
+            ->patch(route('services.update', $service), [
+                'name' => 'Balayage', 'duration_minutes' => 90,
+                'locations' => [$this->location()->id],
+                'price' => ['USD' => '120.00', 'EUR' => '110.00'],
+                'deposit_required' => 1, 'deposit_type' => 'percent', 'deposit_percent' => '25',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame([25, 25], $service->fresh()->prices->pluck('deposit_value')->sort()->values()->all());
+    }
+
+    /**
+     * A fixed deposit is stored in minor units, like the price beside it —
+     * and is asked for per currency, because $25 is not also €25.
+     */
     public function test_a_fixed_deposit_is_stored_in_minor_units(): void
     {
         $currency = Currencies::primaryFor($this->tenant);
@@ -763,7 +808,8 @@ class ServicesTest extends TestCase
                 'name' => 'Colour', 'duration_minutes' => 60,
                 'locations' => [$this->location()->id],
                 'price' => [$currency => '120.00'],
-                'deposit' => [$currency => ['required' => 1, 'type' => 'fixed', 'value' => '40.00']],
+                'deposit_required' => 1, 'deposit_type' => 'fixed',
+                'deposit_amount' => [$currency => '40.00'],
             ])
             ->assertSessionHasNoErrors();
 
@@ -772,6 +818,9 @@ class ServicesTest extends TestCase
 
         $this->assertSame(4000, $price->deposit_value);
         $this->assertSame('40.00', $price->depositValue());
+
+        /* A flat sum is the same on every price, unlike a percentage. */
+        $this->assertSame(4000, $price->requiredDepositMinor());
     }
 
     /**
@@ -787,7 +836,7 @@ class ServicesTest extends TestCase
                 'name' => 'Trim', 'duration_minutes' => 20,
                 'locations' => [$this->location()->id],
                 'price' => [$currency => '20.00'],
-                'deposit' => [$currency => ['required' => 0]],
+                'deposit_required' => 0,
             ])
             ->assertSessionHasNoErrors();
 
@@ -799,7 +848,8 @@ class ServicesTest extends TestCase
                 'name' => 'Trim', 'duration_minutes' => 20,
                 'locations' => [$this->location()->id],
                 'price' => [$currency => '20.00'],
-                'deposit' => [$currency => ['required' => 1, 'type' => 'fixed', 'value' => '5.00']],
+                'deposit_required' => 1, 'deposit_type' => 'fixed',
+                'deposit_amount' => [$currency => '5.00'],
             ])
             ->assertSessionHasNoErrors();
 
@@ -807,12 +857,47 @@ class ServicesTest extends TestCase
     }
 
     /**
-     * A deposit is saved where it is configured, and reopens there.
+     * Switching the deposit off clears it from every price.
      *
-     * One switch, on the price it is a deposit on. There used to be a second
-     * one on the Booking rules card which posted a value the save discarded —
-     * the service column is a summary of its prices — so a reader who turned
-     * it on there found it off again the next time they looked.
+     * Otherwise a service would keep taking a deposit the card says it does
+     * not take.
+     */
+    public function test_switching_the_deposit_off_clears_it_from_the_prices(): void
+    {
+        $currency = Currencies::primaryFor($this->tenant);
+
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Trim', 'duration_minutes' => 20,
+                'locations' => [$this->location()->id],
+                'price' => [$currency => '20.00'],
+                'deposit_required' => 1, 'deposit_type' => 'percent', 'deposit_percent' => '20',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $service = Service::withoutGlobalScopes()->where('name', 'Trim')->firstOrFail();
+
+        $this->actingAs($this->owner)
+            ->patch(route('services.update', $service), [
+                'name' => 'Trim', 'duration_minutes' => 20,
+                'locations' => [$this->location()->id],
+                'price' => [$currency => '20.00'],
+                'deposit_required' => 0,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $price = $service->fresh()->prices->firstWhere('currency_code', $currency);
+
+        $this->assertFalse($price->deposit_required);
+        $this->assertNull($price->deposit_value);
+        $this->assertSame(0, $price->requiredDepositMinor());
+    }
+
+    /**
+     * A deposit is asked for once, and reopens in the one place it was asked.
+     *
+     * It used to be a switch per price, which is the same question asked as
+     * many times as the business has currencies.
      */
     public function test_a_deposit_reopens_on_the_form_exactly_as_it_was_saved(): void
     {
@@ -823,7 +908,7 @@ class ServicesTest extends TestCase
                 'name' => 'Hair Cut & Style', 'duration_minutes' => 60,
                 'locations' => [$this->location()->id],
                 'price' => [$currency => '100.00'],
-                'deposit' => [$currency => ['required' => 1, 'type' => 'percent', 'value' => '20']],
+                'deposit_required' => 1, 'deposit_type' => 'percent', 'deposit_percent' => '20',
             ])
             ->assertSessionHasNoErrors();
 
@@ -833,12 +918,37 @@ class ServicesTest extends TestCase
 
         $page = $this->actingAs($this->owner)->get(route('services.edit', $service))->assertOk();
 
-        $page->assertSeeInOrder(['name="deposit['.$currency.'][required]" value="1"', 'checked'], false)
+        $page->assertSeeInOrder(['name="deposit_required" value="1"', 'checked'], false)
+            ->assertSee('name="deposit_percent"', false)
             ->assertSee('value="20"', false)
-            ->assertSee('"modelValue":["percent"],"name":"deposit['.$currency.'][type]"', false);
+            ->assertSee('"modelValue":["percent"],"name":"deposit_type"', false);
 
-        /* And nowhere else: the switch the save threw away is gone. */
-        $page->assertDontSee('name="deposit_required"', false);
+        /* And nowhere else: the per-price switches are gone. */
+        $page->assertDontSee('name="deposit['.$currency.'][required]"', false)
+            ->assertDontSee('name="deposit['.$currency.'][value]"', false);
+    }
+
+    /** The pricing card reports what the one rule comes to, without asking again. */
+    public function test_the_pricing_card_shows_the_inherited_deposit(): void
+    {
+        $currency = Currencies::primaryFor($this->tenant);
+
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Hair Cut & Style', 'duration_minutes' => 60,
+                'locations' => [$this->location()->id],
+                'price' => [$currency => '100.00'],
+                'deposit_required' => 1, 'deposit_type' => 'percent', 'deposit_percent' => '20',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $service = Service::withoutGlobalScopes()->where('name', 'Hair Cut & Style')->firstOrFail();
+
+        $this->actingAs($this->owner)
+            ->get(route('services.edit', $service))
+            ->assertOk()
+            ->assertSee(__('services.deposit_of', ['amount' => '20% · $20.00']), false)
+            ->assertSee(__('services.deposit_inherits'));
     }
 
     /** The listing names the deposit that was configured, not merely that one was. */
@@ -851,7 +961,7 @@ class ServicesTest extends TestCase
                 'name' => 'Hair Cut & Style', 'duration_minutes' => 60,
                 'locations' => [$this->location()->id],
                 'price' => [$currency => '100.00'],
-                'deposit' => [$currency => ['required' => 1, 'type' => 'percent', 'value' => '20']],
+                'deposit_required' => 1, 'deposit_type' => 'percent', 'deposit_percent' => '20',
             ])
             ->assertSessionHasNoErrors();
 
@@ -876,10 +986,27 @@ class ServicesTest extends TestCase
         $this->actingAs($this->owner)
             ->post(route('services.store'), [
                 'name' => 'Vague', 'duration_minutes' => 30,
+                'locations' => [$this->location()->id],
                 'price' => [$currency => '50.00'],
-                'deposit' => [$currency => ['required' => 1, 'type' => 'percent', 'value' => '']],
+                'deposit_required' => 1, 'deposit_type' => 'percent', 'deposit_percent' => '',
             ])
-            ->assertSessionHasErrors('deposit');
+            ->assertSessionHasErrors('deposit_required');
+    }
+
+    /** A fixed deposit has to name an amount for each priced currency. */
+    public function test_a_fixed_deposit_without_an_amount_is_refused(): void
+    {
+        $currency = Currencies::primaryFor($this->tenant);
+
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Vague', 'duration_minutes' => 30,
+                'locations' => [$this->location()->id],
+                'price' => [$currency => '50.00'],
+                'deposit_required' => 1, 'deposit_type' => 'fixed',
+                'deposit_amount' => [$currency => ''],
+            ])
+            ->assertSessionHasErrors('deposit_required');
     }
 
     /** A deposit larger than the whole price is a typo, not a policy. */
@@ -890,10 +1017,11 @@ class ServicesTest extends TestCase
         $this->actingAs($this->owner)
             ->post(route('services.store'), [
                 'name' => 'Greedy', 'duration_minutes' => 30,
+                'locations' => [$this->location()->id],
                 'price' => [$currency => '50.00'],
-                'deposit' => [$currency => ['required' => 1, 'type' => 'percent', 'value' => '150']],
+                'deposit_required' => 1, 'deposit_type' => 'percent', 'deposit_percent' => '150',
             ])
-            ->assertSessionHasErrors('deposit');
+            ->assertSessionHasErrors('deposit_percent');
     }
 
     // --------------------------------------------------------- editing

@@ -51,83 +51,141 @@ export function initColorPickers(root = document) {
 }
 
 /**
- * A price's deposit fields, revealed by its own toggle.
+ * The service's one deposit rule, and what it comes to on each price.
  *
- * Delegated and scoped to the row the toggle is in, so switching the deposit
- * on for one price leaves every other price alone — which is the whole point
- * of the deposit belonging to the price rather than to the service.
+ * The rule used to be configured on every price, which meant a business
+ * pricing in three currencies answered the same question three times and
+ * could answer it three different ways. It is asked once now, and this keeps
+ * the price rows showing what that one answer works out to.
  */
 export function initDepositToggles(root = document) {
-    root.addEventListener('change', (event) => {
-        const toggle = event.target.closest('[data-deposit-toggle] input[type="checkbox"]');
+    const card = root.querySelector('[data-deposit-card]');
 
-        if (!toggle) {
-            return;
-        }
-
-        const row = toggle.closest('[data-deposit-row]');
-        const fields = row?.querySelector('[data-deposit-fields]');
-
-        if (fields) {
-            fields.hidden = !toggle.checked;
-        }
-    });
-
-    syncDepositUnits(root);
-}
-
-/**
- * The deposit value field follows the deposit type.
- *
- * An amount is money and wears the currency symbol; a percentage is not, and
- * wearing one would be a field that lies about what it holds — a reader who
- * has just chosen "percentage" and sees a $ in the box will type dollars.
- *
- * The type combo posts a hidden input rather than firing events on a field, so
- * the DOM is watched instead of listened to. Same reason the email editor
- * watches its own controls.
- */
-function syncDepositUnits(root) {
-    const rows = root.querySelectorAll('[data-deposit-row]');
-
-    if (!rows.length) {
+    if (!card) {
         return;
     }
 
-    const apply = (row) => {
-        const type = row.querySelector('[data-deposit-type] input[type="hidden"]')?.value ?? 'percent';
-        const field = row.querySelector('[data-deposit-value-field]');
+    const fields = card.querySelector('[data-deposit-fields]');
+    const percentField = card.querySelector('[data-deposit-percent-field]');
+    const amountFields = card.querySelector('[data-deposit-amount-fields]');
+    const percentInput = card.querySelector('[data-deposit-percent]');
+    const typeHolder = card.querySelector('[data-deposit-type]');
 
-        if (!field) {
-            return;
+    const on = () => card.querySelector('[data-deposit-toggle] input[type="checkbox"]')?.checked ?? false;
+
+    /* Re-queried rather than held: the combo is a Vue island and the hidden
+       input it posts through is not the node that was there at load — and
+       for the first moments of the page there is no such node at all, which
+       is why the card states the saved type as a fallback. Reading 'percent'
+       in that window would blank a saved fixed deposit's figures. */
+    const type = () => typeHolder?.querySelector('input[type="hidden"]')?.value
+        || card.dataset.depositSavedType
+        || 'percent';
+
+    /* Trailing zeroes off a percentage — "20%" rather than "20.00%" — and two
+       places kept on money, where they are how the amount is read. */
+    const trim = (number) => String(Number(number.toFixed(2)));
+    const money = (symbol, minorish) => symbol + minorish.toFixed(2);
+
+    const apply = () => {
+        const enabled = on();
+        const fixed = type() === 'fixed';
+
+        if (fields) {
+            fields.hidden = !enabled;
         }
 
-        const fixed = type === 'fixed';
-        const input = field.querySelector('[data-deposit-value]');
-        const label = field.querySelector('[data-deposit-label]');
-
-        field.querySelector('[data-deposit-prefix]').hidden = !fixed;
-        field.querySelector('[data-deposit-suffix]').hidden = fixed;
-        input.classList.toggle('styledesk_input--prefixed', fixed);
-
-        /* The label carries the unit too. Somebody filling this in from the
-           keyboard never sees the symbol in the box. */
-        const wording = fixed ? field.dataset.amountLabel : field.dataset.percentLabel;
-
-        if (wording) {
-            label.textContent = wording;
-            input.setAttribute('aria-label', wording);
+        if (percentField) {
+            percentField.hidden = fixed;
         }
+
+        if (amountFields) {
+            amountFields.hidden = !fixed;
+        }
+
+
+        root.querySelectorAll('[data-price-row]').forEach((row) => {
+            const preview = row.querySelector('[data-deposit-preview]');
+
+            if (!preview) {
+                return;
+            }
+
+            const words = describe(row, enabled, fixed, preview);
+
+            preview.hidden = words === null;
+            preview.textContent = words === null
+                ? ''
+                : (preview.dataset.pattern || '__AMOUNT__').replace('__AMOUNT__', words);
+        });
     };
 
-    rows.forEach((row) => {
-        apply(row);
+    /**
+     * What the rule comes to on one price, in words, or nothing.
+     *
+     * A percentage says both halves — "20% · $12.00" — because the rate is
+     * the rule and the figure is what the client will actually be asked for.
+     * Nothing at all where the sum cannot be worked out yet: a percentage of
+     * a price nobody has typed is not a figure worth printing.
+     */
+    const describe = (row, enabled, fixed, preview) => {
+        if (!enabled) {
+            return null;
+        }
 
-        /* Attributes, because Vue writes the hidden input's value as one. */
-        new MutationObserver(() => apply(row)).observe(row, {
+        const symbol = preview.dataset.symbol || '';
+        const price = Number(row.querySelector('input[name^="price["]')?.value);
+
+        /* Nothing where there is no price: a currency this service is not
+           priced in stores no deposit either. */
+        if (!Number.isFinite(price) || price <= 0) {
+            return null;
+        }
+
+        if (fixed) {
+            const amount = Number(
+                card.querySelector(`[data-deposit-amount][name="deposit_amount[${row.dataset.currency}]"]`)?.value,
+            );
+
+            return Number.isFinite(amount) && amount > 0 ? money(symbol, amount) : null;
+        }
+
+        const percent = Number(percentInput?.value);
+
+        return Number.isFinite(percent) && percent > 0
+            ? `${trim(percent)}% · ${money(symbol, (price * percent) / 100)}`
+            : null;
+    };
+
+    /* input rather than change on the numbers, so the figure follows the
+       price as it is typed rather than when the field is left. */
+    root.addEventListener('input', (event) => {
+        if (event.target.closest('[data-deposit-percent], [data-deposit-amount], [data-price-row] input')) {
+            apply();
+        }
+    });
+
+    root.addEventListener('change', (event) => {
+        if (event.target.closest('[data-deposit-toggle]')) {
+            apply();
+        }
+    });
+
+    /* The type combo posts a hidden input rather than firing events on a
+       field, so the DOM is watched instead of listened to. Same reason the
+       email editor watches its own controls. */
+    if (typeHolder) {
+        /* childList as well as attributes: the island mounting is what puts
+           the hidden input there in the first place, and that is a child
+           being added rather than a value changing. Watching only attributes
+           meant the first answer after mount was never noticed. */
+        new MutationObserver(apply).observe(typeHolder, {
             attributes: true,
+            childList: true,
             subtree: true,
             attributeFilter: ['value'],
         });
-    });
+    }
+
+    apply();
 }

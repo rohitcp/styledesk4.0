@@ -300,5 +300,14 @@ return [
         'failed' => ['class' => 'styledesk_badge--soon'],
         'refunded' => ['class' => 'styledesk_badge--soon'],
         'partially-refunded' => ['class' => 'styledesk_badge--soon'],
+        /* Held, not yet taken: a card authorised at the desk and captured
+           when the visit is finished. */
+        'authorized' => ['class' => 'styledesk_badge--soon'],
+        'cancelled' => ['class' => 'styledesk_badge--soon'],
+        /* The client has queried it and Stripe is holding the money while
+           the case runs. Not a refund — nothing has gone back yet. */
+        'disputed' => ['class' => 'styledesk_badge--danger'],
+        /* The case was lost. The money has genuinely gone. */
+        'chargeback' => ['class' => 'styledesk_badge--danger'],
     ],
 ];

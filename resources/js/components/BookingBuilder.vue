@@ -545,6 +545,24 @@ const membershipStart = ref('today');
 const membershipDate = ref(props.today);
 const membershipMethod = ref('');
 
+const membershipTabs = computed(() => [
+    { key: 'recurring', label: props.labels.membership?.plans },
+    { key: 'package', label: props.labels.membership?.packages },
+]);
+
+/* Only the ones this branch could actually deliver. A plan tied to other
+   locations is not on sale at this desk, and offering it would be a sale the
+   server then refuses. */
+const availableMembershipPlans = computed(() => props.membershipPlans.filter((plan) => (
+    plan.location_ids.length === 0 || plan.location_ids.includes(locationId.value)
+)));
+
+const membershipPlansOfTab = computed(() =>
+    availableMembershipPlans.value.filter((plan) => plan.type === membershipTab.value));
+
+const chosenMembership = computed(() =>
+    props.membershipPlans.find((plan) => plan.id === membershipPlanId.value) ?? null);
+
 /* ------------------------------------------------------- recurring billing ---
 
    Whether this membership renews, and the card it renews on.
@@ -552,7 +570,7 @@ const membershipMethod = ref('');
    A recurring plan renews unless somebody says otherwise — that is what the
    client is being sold — and a package never does, because there is nothing
    left to renew once its services are used. */
-const autoRenew = ref(true);
+const autoRenew = ref(false);
 
 /** Only a plan that bills again can renew. */
 const canRenew = computed(() => chosenMembership.value?.billing_frequency != null);
@@ -731,23 +749,6 @@ function closeCardForm() {
     cardSetup.value = null;
 }
 
-const membershipTabs = computed(() => [
-    { key: 'recurring', label: props.labels.membership?.plans },
-    { key: 'package', label: props.labels.membership?.packages },
-]);
-
-/* Only the ones this branch could actually deliver. A plan tied to other
-   locations is not on sale at this desk, and offering it would be a sale the
-   server then refuses. */
-const availableMembershipPlans = computed(() => props.membershipPlans.filter((plan) => (
-    plan.location_ids.length === 0 || plan.location_ids.includes(locationId.value)
-)));
-
-const membershipPlansOfTab = computed(() =>
-    availableMembershipPlans.value.filter((plan) => plan.type === membershipTab.value));
-
-const chosenMembership = computed(() =>
-    props.membershipPlans.find((plan) => plan.id === membershipPlanId.value) ?? null);
 
 /* What the till is about to ask for. The plan's own figure, worked out on the
    server: the first cycle plus any one-off fees, which is not always the
@@ -773,8 +774,13 @@ function chooseMembership(plan) {
 
     /* A recurring plan renews unless somebody says otherwise; a package
        cannot renew at all. Reset per plan rather than carried over, or a
-       package chosen after a subscription would arrive still ticked. */
-    autoRenew.value = plan.billing_frequency != null;
+       package chosen after a subscription would arrive still ticked.
+
+       And only where a card can actually be kept. A business with no
+       processor connected has nowhere to charge from next month, so the
+       honest default there is a subscription the desk collects by hand —
+       which is what it was doing before cards existed. */
+    autoRenew.value = plan.billing_frequency != null && canVaultCards.value;
 
     /* A method that cannot buy this plan is not kept from the last one: a
        recurring membership needs one that can be charged again, and a stale
@@ -3775,7 +3781,7 @@ const summaryOf = (section) => {
                                                 {{ plan.description }}
                                             </p>
 
-                                            <p class="text-[12px] text-sub mt-1.5">
+                                            <p v-if="plan.includes.length" class="text-[12px] text-sub mt-1.5">
                                                 <span class="font-semibold text-head">{{ labels.membership?.includes }}:</span>
                                                 <span v-for="(line, index) in plan.includes" :key="line.name">
                                                     <template v-if="index"> · </template>{{ line.quantity }} × {{ line.name }}

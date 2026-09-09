@@ -28,6 +28,9 @@ return [
     ],
     'default_tip' => 'Propina predeterminada',
     'default_tip_hint' => 'Un porcentaje de la parte de la cuenta con propina, o una cantidad fija.',
+    'tip_amount' => 'Importe de la propina',
+    'tip_amount_hint' => 'Una cantidad fija, sugerida en la caja en lugar del porcentaje del negocio.',
+    'follows_default_note' => 'Sugiere el valor predeterminado del negocio, :amount, en la caja. Se puede cambiar en la reserva.',
 
     'percentages' => 'Opciones al cobrar',
     'percentages_hint' => 'Hasta seis. El cliente también dispone de una casilla para escribir la suya.',
@@ -51,6 +54,8 @@ return [
         'status' => 'Estado',
     ],
     'follows_default' => 'Sigue el valor predeterminado',
+    'follows_default_with' => 'Sigue el valor predeterminado (:amount)',
+    'offered_at_till' => 'Ofrecido en la caja',
     'accepted' => 'Aceptadas',
     'not_accepted' => 'Sin propina',
     'no_services' => 'Todavía no hay servicios activos que configurar.',

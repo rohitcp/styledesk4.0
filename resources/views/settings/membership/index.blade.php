@@ -68,6 +68,7 @@
         <input type="hidden" name="allow_staff_to_sell" value="{{ (int) $settings->allow_staff_to_sell }}">
         <input type="hidden" name="allow_start_date_selection" value="{{ (int) $settings->allow_start_date_selection }}">
         <input type="hidden" name="default_activation" value="{{ $settings->default_activation }}">
+        <input type="hidden" name="credits_enabled" value="{{ (int) $settings->credits_enabled }}">
         <input type="hidden" name="allow_rollover" value="{{ (int) $settings->allow_rollover }}">
         @if ($settings->maximum_rollover !== null)
           <input type="hidden" name="maximum_rollover" value="{{ $settings->maximum_rollover }}">
@@ -116,7 +117,13 @@
              not in this form, so its answer travels as a hidden field. --}}
         <input type="hidden" name="is_enabled" value="1">
 
-        <fieldset @disabled(! $canManage) class="contents">
+        {{-- `space-y-5` as well as `contents`.
+
+             The form's own `space-y-5` is a `> * + *` rule, so it only ever
+             sees this fieldset — one child, nothing to space. Every card
+             inside it came out flush against its neighbour. The gap has to be
+             declared where the cards actually are. --}}
+        <fieldset @disabled(! $canManage) class="contents space-y-5">
 
         {{-- ---------------------------------------------- Card 1: selling --}}
         <div class="sd-card p-5">
@@ -177,44 +184,55 @@
           <h2 class="text-[15px] font-semibold text-head">{{ __('membership.settings.credits') }}</h2>
           <p class="text-[12.5px] text-sub mt-1 leading-relaxed">{{ __('membership.settings.credits_hint') }}</p>
 
-          {{-- Rollover only. "Reset each cycle" is the same question asked
-               backwards, and offering both is how a business ends up with
-               credits that survive the month and are wiped by it — so the
-               server stores reset as this switch's opposite. --}}
+          {{-- The master switch. Off, and a membership includes nothing to
+               draw down: what the client buys is the discount and the
+               standing, which is a real product a lot of businesses sell.
+
+               Above rollover rather than beside it, because rollover asks
+               whether an unused credit survives its cycle and this asks
+               whether there is a credit at all. --}}
           <div class="mt-4">
-            <x-toggle name="allow_rollover" :label="__('membership.settings.allow_rollover')"
-                      :hint="__('membership.settings.allow_rollover_hint')"
-                      :checked="(bool) old('allow_rollover', $settings->allow_rollover)" />
+            <x-toggle name="credits_enabled" :label="__('membership.settings.credits_enabled')"
+                      :hint="__('membership.settings.credits_enabled_hint')"
+                      :checked="(bool) old('credits_enabled', $settings->credits_enabled)"
+                      data-credits-toggle />
           </div>
 
-          <div class="mt-5 grid gap-4 sm:grid-cols-2">
-            <div>
-              <label for="maximum_rollover" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('membership.settings.maximum_rollover') }}</label>
-              <input id="maximum_rollover" name="maximum_rollover" type="number" min="1" step="1" max="1000"
-                     class="sd-input" value="{{ old('maximum_rollover', $settings->maximum_rollover) }}">
-              <p class="mt-1.5 text-[12px] text-sub">{{ __('membership.settings.maximum_rollover_hint') }}</p>
+          {{-- Everything else, which only means anything once there are
+               credits to have rules about.
+
+               Hidden rather than removed, and every field still posting.
+               That is what makes it safe: flicking the switch off and on
+               again costs nobody the answers they already gave, rather than
+               silently resetting them to the defaults. --}}
+          <div data-credit-fields @unless ((bool) old('credits_enabled', $settings->credits_enabled)) hidden @endunless>
+            <div class="mt-4">
+              <x-toggle name="allow_rollover" :label="__('membership.settings.allow_rollover')"
+                        :hint="__('membership.settings.allow_rollover_hint')"
+                        :checked="(bool) old('allow_rollover', $settings->allow_rollover)" />
             </div>
-          </div>
+            {{-- The rollover cap and the credit expiry are not asked here.
 
-          <h3 class="text-[13px] font-semibold text-head mt-6">{{ __('membership.settings.credit_expiry') }}</h3>
-          <p class="text-[12.5px] text-sub mt-1 leading-relaxed">{{ __('membership.settings.credit_expiry_hint') }}</p>
+                 They still exist on the row and still govern how credits
+                 behave — MembershipPurchase reads both — so their stored
+                 answers travel with every save. Dropping the fields without
+                 these would not hide two questions; it would silently answer
+                 them, wiping a cap somebody set and resetting the expiry to
+                 whatever validation defaulted to. --}}
+            <input type="hidden" name="credit_expiry" value="{{ old('credit_expiry', $settings->credit_expiry) }}">
+            @if (old('maximum_rollover', $settings->maximum_rollover) !== null)
+              <input type="hidden" name="maximum_rollover" value="{{ old('maximum_rollover', $settings->maximum_rollover) }}">
+            @endif
 
-          <div class="mt-3 grid gap-2 sm:grid-cols-2">
-            @foreach ($creditExpiries as $expiry)
-              <x-choice type="radio" name="credit_expiry" :value="$expiry"
-                        :label="__('membership.credit_expiry.'.$expiry)"
-                        :checked="old('credit_expiry', $settings->credit_expiry) === $expiry" />
-            @endforeach
-          </div>
+            <div class="mt-4 space-y-3">
+              <x-toggle name="allow_credits_across_locations" :label="__('membership.settings.allow_credits_across_locations')"
+                        :hint="__('membership.settings.allow_credits_across_locations_hint')"
+                        :checked="(bool) old('allow_credits_across_locations', $settings->allow_credits_across_locations)" />
 
-          <div class="mt-6 space-y-3">
-            <x-toggle name="allow_credits_across_locations" :label="__('membership.settings.allow_credits_across_locations')"
-                      :hint="__('membership.settings.allow_credits_across_locations_hint')"
-                      :checked="(bool) old('allow_credits_across_locations', $settings->allow_credits_across_locations)" />
-
-            <x-toggle name="allow_service_substitution" :label="__('membership.settings.allow_service_substitution')"
-                      :hint="__('membership.settings.allow_service_substitution_hint')"
-                      :checked="(bool) old('allow_service_substitution', $settings->allow_service_substitution)" />
+              <x-toggle name="allow_service_substitution" :label="__('membership.settings.allow_service_substitution')"
+                        :hint="__('membership.settings.allow_service_substitution_hint')"
+                        :checked="(bool) old('allow_service_substitution', $settings->allow_service_substitution)" />
+            </div>
           </div>
         </div>
 
@@ -259,20 +277,6 @@
                         :checked="old('cancellation_effective', $settings->cancellation_effective) === $timing" />
             @endforeach
           </div>
-        </div>
-
-        {{-- --------------------------------------------- Card 5: payments --}}
-        {{-- Nothing to set. Memberships are paid for with the methods the
-             business already accepts, and a second list of payment methods
-             here is the one that drifts from the first. --}}
-        <div class="sd-card p-5">
-          <h2 class="text-[15px] font-semibold text-head">{{ __('membership.settings.payments') }}</h2>
-          <p class="text-[12.5px] text-sub mt-1 leading-relaxed">{{ __('membership.settings.payments_hint') }}</p>
-
-          <a href="{{ route('settings.payments.show') }}" class="styledesk_action mt-4">
-            <x-icon name="credit-card" size="14" />
-            {{ __('membership.settings.payments_link') }}
-          </a>
         </div>
 
         {{-- ------------------------------------------------ Card 6: rules --}}
@@ -336,6 +340,21 @@
 
       toggle.addEventListener('change', function () {
         form.submit();
+      });
+    }());
+
+    /* The credit questions, which only exist while there are credits.
+
+       Hidden rather than removed, and still posting, so flicking the switch
+       back and forth does not cost somebody the answers they already gave. */
+    (function () {
+      var credits = document.querySelector('[data-credits-toggle] input[type="checkbox"]');
+      var fields = document.querySelector('[data-credit-fields]');
+
+      if (!credits || !fields) return;
+
+      credits.addEventListener('change', function () {
+        fields.hidden = !credits.checked;
       });
     }());
   </script>

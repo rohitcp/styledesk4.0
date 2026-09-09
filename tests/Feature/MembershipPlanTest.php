@@ -436,6 +436,163 @@ class MembershipPlanTest extends TestCase
             ->assertSessionHasErrors('image');
     }
 
+    // ------------------------------------------------------ credits per line
+
+    /* Quantity describes the benefit; credits is what can be redeemed. They
+       agree in every ordinary membership, and credits is the one the engine
+       reads where they differ. */
+    public function test_a_line_stores_its_quantity_and_its_credits(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'services' => [['service_id' => $this->service()->id, 'quantity' => 2, 'credits' => 3]],
+            ]))
+            ->assertRedirect();
+
+        $line = MembershipPlan::withoutGlobalScopes()->with('planServices')->firstOrFail()->planServices->first();
+
+        $this->assertSame(2, $line->quantity);
+        $this->assertSame(3, $line->credits);
+        $this->assertSame(3, $line->grantedCredits());
+    }
+
+    /* A form or an integration that only knows about quantity still
+       describes a coherent benefit rather than granting one of everything. */
+    public function test_credits_fall_back_to_the_quantity_when_not_given(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'services' => [['service_id' => $this->service()->id, 'quantity' => 4]],
+            ]))
+            ->assertRedirect();
+
+        $line = MembershipPlan::withoutGlobalScopes()->with('planServices')->firstOrFail()->planServices->first();
+
+        $this->assertSame(4, $line->quantity);
+        $this->assertSame(4, $line->credits);
+    }
+
+    /* What the form actually posts when the credits box is left alone: the
+       key is there and empty, not absent. */
+    public function test_credits_fall_back_to_the_quantity_when_left_blank(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'services' => [['service_id' => $this->service()->id, 'quantity' => 4, 'credits' => '']],
+            ]))
+            ->assertRedirect();
+
+        $line = MembershipPlan::withoutGlobalScopes()->with('planServices')->firstOrFail()->planServices->first();
+
+        $this->assertSame(4, $line->quantity);
+        $this->assertSame(4, $line->credits);
+    }
+
+    /* A pre-filled 1 is a number nobody chose, and it saves as though they
+       had. The first row opens empty and the operator says how many. */
+    public function test_the_first_service_row_opens_with_no_numbers_in_it(): void
+    {
+        $this->membershipOn();
+
+        $html = $this->actingAs($this->owner())
+            ->get(route('membership.create', ['type' => 'package']))
+            ->assertOk()
+            ->getContent();
+
+        foreach (['quantity', 'credits'] as $field) {
+            $this->assertSame(
+                1,
+                preg_match('/<input[^>]*name="services\[0\]\['.$field.'\]"[^>]*>/', $html, $matches),
+                "no services[0][{$field}] input rendered"
+            );
+
+            $this->assertStringContainsString('value=""', $matches[0]);
+        }
+    }
+
+    public function test_a_copy_carries_the_credits_across(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'services' => [['service_id' => $this->service()->id, 'quantity' => 1, 'credits' => 5]],
+            ]));
+
+        $plan = MembershipPlan::withoutGlobalScopes()->firstOrFail();
+
+        $this->actingAs($this->owner())->get(route('membership.duplicate', $plan));
+
+        $copy = MembershipPlan::withoutGlobalScopes()
+            ->with('planServices')->where('id', '!=', $plan->id)->firstOrFail();
+
+        $this->assertSame(5, $copy->planServices->first()->credits);
+    }
+
+    public function test_a_credit_count_below_one_is_refused(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload([
+                'services' => [['service_id' => $this->service()->id, 'quantity' => 1, 'credits' => 0]],
+            ]))
+            ->assertSessionHasErrors('services.0.credits');
+    }
+
+    // ------------------------------------------------- credits switched off
+
+    /* A business whose memberships are discount-only sells the perks, not a
+       list of services. Insisting on one would make that product
+       unsellable. */
+    public function test_a_membership_needs_no_services_when_credits_are_off(): void
+    {
+        $this->membershipOn(['credits_enabled' => false]);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload(['services' => []]))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $plan = MembershipPlan::withoutGlobalScopes()->with('planServices')->firstOrFail();
+
+        $this->assertCount(0, $plan->planServices);
+        /* The discount is what the client bought. */
+        $this->assertSame('percent', $plan->discount_type);
+    }
+
+    public function test_the_plan_form_stops_asking_about_credits(): void
+    {
+        $this->membershipOn(['credits_enabled' => false]);
+
+        $this->actingAs($this->owner())
+            ->get(route('membership.create', ['type' => 'recurring']))
+            ->assertOk()
+            /* Nothing to draw down, so no list to build and no rules to
+               overrule. */
+            ->assertDontSee(__('membership.form.services'))
+            ->assertDontSee(__('membership.form.credits'))
+            /* What the client does get is still asked about. */
+            ->assertSee(__('membership.form.benefits'));
+    }
+
+    public function test_the_plan_form_asks_about_both_when_credits_are_on(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->get(route('membership.create', ['type' => 'recurring']))
+            ->assertOk()
+            ->assertSee(__('membership.form.services'))
+            ->assertSee(__('membership.form.credits'));
+    }
+
     // ------------------------------------------------------ credit rules
 
     public function test_a_plan_with_no_opinion_follows_the_business_credit_rules(): void

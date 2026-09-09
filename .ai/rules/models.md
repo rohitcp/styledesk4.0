@@ -2,6 +2,7 @@
 paths:
   - 'app/{Models/ClientActivity.php,Support/ClientActivityLog.php}'
   - 'app/{Models/ClientPaymentMethod.php,Payments/VaultsCards.php,Payments/StripeGateway.php,Payments/PaymentGatewayManager.php}'
+  - 'app/{Models/TenantStripeAccount.php,Models/StripeWebhookEvent.php,Payments/StripeWebhook.php}'
 ---
 
 # Models
@@ -29,3 +30,12 @@ Card capture goes browser → gateway's own secure component (Stripe Payment Ele
 Renewals use `chargeSavedCard()` with `off_session`, and the SetupIntent is created with `usage: off_session` so Stripe collects the extra authentication while the client is present rather than failing the first renewal. Anything but `succeeded` throws — a "processing" intent has not paid for the month, and issuing credits against it gives away a massage on a promise. Idempotency keys are mandatory on both charge paths.
 
 A card expires at the END of its month (`expiresAfter()` = end of exp_month). Using the 1st would refuse a valid card for thirty days. `markRemoved()` never deletes: a membership renewed on that card still points at it. `client_memberships.payment_method_id` is nullOnDelete so losing a card makes the next renewal ask for a new one instead of taking the membership down.
+
+## Sandbox is read off the Stripe key, never from a setting
+Whether a Stripe connection moves real money is decided by the KEY: `sk_test_`/`rk_test_` cannot charge a real card and `sk_live_`/`rk_live_` cannot avoid it. `TenantStripeAccount::isLive()` derives it; `tenant_stripe_accounts.livemode` is only a CACHE so badges and lists need not decrypt a secret to render. Never add a user-facing sandbox toggle — a business believing it is testing while charging real cards is the worst failure this screen can produce. An unrecognised key prefix is treated as NOT live, because the safe direction for a wrong guess is a business told it is in sandbox when it is not.
+
+`statusKey()` returns 'sandbox' ahead of 'connected' for a working test connection: "Connected" where no real money can move is the reading that gets a salon to open for business on test keys. It still returns 'needs_attention' when Stripe will not let the account charge — sandbox is not an excuse to claim connected.
+
+Every webhook is written to `stripe_webhook_events` BEFORE it is acted on, keyed by Stripe's unique `event_id`. Stripe delivers at least once and retries on any non-2xx, so `begin()` recognises a repeat as the same row and increments `attempts`. Handlers return the tenant id they touched (or null); null means 'ignored', which is an OUTCOME not a failure — logging the events StyleDesk has no opinion about as errors buries the ones that matter. Exceptions are caught, logged to the row and reported, and the endpoint still answers 200: a non-2xx makes Stripe retry an event that will fail identically forever.
+
+`api_key` is `encrypted` + `$hidden`. A Stripe secret can charge, refund and read every customer on the account — it is never rendered, logged or serialised, and `StripeSandboxTest` asserts it never reaches a screen.

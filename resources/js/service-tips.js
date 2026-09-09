@@ -5,11 +5,11 @@
  *
  * - everything below "Accept tips for this service" only means anything while
  *   that switch is on, so it goes away when it is not;
- * - the quick picks belong to the tip type — percentages where the tip is a
- *   percentage, flat sums where it is a sum — and the wrong set beside a
- *   number is worse than no set at all;
- * - a pick fills the box rather than replacing it, so a service wanting 18
- *   where the business offers 15, 20 and 25 can still say so.
+ * - a service either follows the business default or names a flat sum, so the
+ *   amount field and the sentence explaining the default take turns — an
+ *   empty box beside "follows the default" only invites a number that would
+ *   then outrank it;
+ * - a quick pick fills the box rather than replacing it.
  *
  * The fields keep posting while hidden — they are still in the form — so
  * switching off and on again does not cost somebody the tip they had set.
@@ -34,29 +34,30 @@ export function initServiceTips(root = document) {
         const types = card.querySelectorAll('[data-tip-type] input[type="radio"]');
         const presets = card.querySelectorAll('[data-tip-preset]');
         const value = card.querySelector('[data-tip-value]');
+        const amount = card.querySelector('[data-tip-amount]');
+        const note = card.querySelector('[data-tip-default-note]');
 
-        if (!types.length || !presets.length || !value) {
+        if (!types.length || !value) {
             return;
         }
 
-        /* "Follows the default" is a percentage until the business says
-           otherwise, so its quick picks are the percentages — the same ones
-           the till would offer if this service never disagreed. */
-        const chosenType = () => {
-            const checked = card.querySelector('[data-tip-type] input[type="radio"]:checked');
-
-            return checked && checked.value === 'fixed' ? 'fixed' : 'percent';
-        };
+        const isFixed = () => card.querySelector('[data-tip-type] input[type="radio"]:checked')?.value === 'fixed';
 
         const paint = () => {
-            const type = chosenType();
+            const fixed = isFixed();
+
+            /* The amount and the sentence explaining the default are the two
+               halves of the same answer, so exactly one of them shows. */
+            if (amount) {
+                amount.hidden = !fixed;
+            }
+
+            if (note) {
+                note.hidden = fixed;
+            }
 
             presets.forEach((preset) => {
-                preset.hidden = preset.dataset.tipPresetFor !== type;
-                preset.classList.toggle(
-                    'is-active',
-                    !preset.hidden && preset.dataset.tipPreset === value.value.trim(),
-                );
+                preset.classList.toggle('is-active', preset.dataset.tipPreset === value.value.trim());
             });
         };
 

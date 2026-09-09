@@ -10,6 +10,47 @@
     with what was stored — the reason a page beats the dialog this replaced.
 --}}
 
+@php
+    /* The deposit, gathered into one answer.
+
+       It is stored on each price — which is what the booking screen reads,
+       and what lets a percentage settle against the price actually being
+       charged — but it is asked for once. Every stored row carries the same
+       policy, so the card reads whichever row answers first and the save
+       writes the one answer back to all of them.
+
+       old() first throughout, so a submission the server refused comes back
+       with what was typed. */
+    $storedDeposits = collect($depositValues ?? []);
+    $storedDeposit = $storedDeposits->first(fn ($row) => (bool) ($row['required'] ?? false));
+
+    $depositCurrencies = App\Support\Currencies::enabledFor(auth()->user()?->tenant);
+
+    $depositOn = (bool) old('deposit_required', $storedDeposit !== null);
+    $depositType = old('deposit_type', $storedDeposit['type'] ?? 'percent');
+
+    $depositPercent = ($storedDeposit['type'] ?? null) === 'percent'
+        ? ($storedDeposit['value'] ?? '')
+        : '';
+
+    /* Keyed by currency, because a fixed deposit is money and $25 is not
+       also €25. A percentage needs no such split. */
+    $depositAmounts = $storedDeposits
+        ->map(fn ($row) => ($row['type'] ?? null) === 'fixed' ? (string) ($row['value'] ?? '') : '')
+        ->all();
+
+    $depositConfig = [
+        'required' => $depositOn,
+        'type' => $depositType,
+        'percent' => old('deposit_percent', $depositPercent),
+        'amounts' => $depositCurrencies
+            ->mapWithKeys(fn (string $code) => [
+                $code => old('deposit_amount.'.$code, $depositAmounts[$code] ?? ''),
+            ])
+            ->all(),
+    ];
+@endphp
+
 <section class="bg-white border border-line rounded-card p-5">
     <h2 class="text-[15px] font-semibold text-head">{{ __('services.section.about') }}</h2>
 
@@ -103,12 +144,106 @@
 
 </section>
 
+{{-- The deposit, once, before the prices it governs.
+
+     It used to be configured on each price, which meant a business pricing
+     in three currencies answered the same question three times and could
+     answer it three different ways. One card here, and every price below
+     inherits it: a percentage works itself out against whatever each price
+     is, so it never has to be restated. --}}
+<section class="bg-white border border-line rounded-card p-5"
+         data-deposit-card data-deposit-saved-type="{{ $depositType }}">
+    <h2 class="text-[15px] font-semibold text-head">{{ __('services.section.deposit') }}</h2>
+    <p class="text-[13px] text-sub mt-1 leading-relaxed">{{ __('services.deposit_card_hint') }}</p>
+
+    <div class="mt-4">
+        <x-toggle class="styledesk_toggle--bare" name="deposit_required"
+                  :label="__('services.deposit_take')" :hint="__('services.deposit_required_hint')"
+                  :checked="$depositOn" data-deposit-toggle />
+    </div>
+
+    {{-- Hidden until the switch is on, so a service that takes no deposit is
+         a card with one control in it. The fields keep posting while hidden;
+         switching back and forth does not cost the number already typed. --}}
+    <div class="mt-4 flex flex-wrap items-end gap-3" data-deposit-fields @unless ($depositOn) hidden @endunless>
+        <div class="w-[170px]">
+            <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('services.deposit_type') }}</span>
+
+            <x-combo data-deposit-type name="deposit_type"
+                     :options="['percent' => __('services.deposit_types.percent'), 'fixed' => __('services.deposit_types.fixed')]"
+                     :selected="$depositType"
+                     :ariaLabel="__('services.deposit_type')" />
+        </div>
+
+        {{-- A percentage is one number however many currencies the business
+             prices in — twenty per cent of each price is still twenty per
+             cent. A fixed amount is money, and money is per currency: $25
+             cannot also be €25, so that one gets a field per currency. --}}
+        <div data-deposit-percent-field @if ($depositType === 'fixed') hidden @endif>
+            <label for="serviceDepositPercent" class="block text-[13px] font-medium text-ink mb-1.5">
+                {{ __('services.deposit_percent') }}
+            </label>
+
+            <div class="relative w-[130px]">
+                <span class="styledesk_input__suffix pointer-events-none text-sub" aria-hidden="true">%</span>
+
+                <input id="serviceDepositPercent" type="text" inputmode="decimal" name="deposit_percent"
+                       class="sd-input w-[130px]" data-deposit-percent autocomplete="off"
+                       value="{{ old('deposit_percent', $depositPercent) }}"
+                       aria-label="{{ __('services.deposit_percent') }}">
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-end gap-3" data-deposit-amount-fields
+             @unless ($depositType === 'fixed') hidden @endunless>
+            @foreach ($depositCurrencies as $code)
+                {{-- One box per currency the business prices in, whether or
+                     not this service is priced in it yet: a flat sum is
+                     money, and $25 is not also €25, so the question genuinely
+                     has one answer per currency. A currency left blank
+                     simply takes no deposit. --}}
+                <div data-deposit-amount-for="{{ $code }}">
+                    <label for="serviceDepositAmount_{{ $code }}" class="block text-[13px] font-medium text-ink mb-1.5">
+                        {{ $depositCurrencies->count() > 1
+                            ? __('services.deposit_amount').' · '.$code
+                            : __('services.deposit_amount') }}
+                    </label>
+
+                    {{-- No symbol in the box: the label above says which
+                         money this is, and a second reading of it inside
+                         only crowds the amount. The prices below are written
+                         the same way. --}}
+                    <div class="relative w-[130px]">
+                        <input id="serviceDepositAmount_{{ $code }}" type="text" inputmode="decimal"
+                               name="deposit_amount[{{ $code }}]"
+                               class="sd-input w-[130px]" data-deposit-amount
+                               autocomplete="off"
+                               value="{{ old('deposit_amount.'.$code, $depositAmounts[$code] ?? '') }}"
+                               aria-label="{{ __('services.deposit_amount').' — '.$code }}">
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
+    {{-- One place for the card's refusals. The check runs on the switch,
+         because which of the fields below has to hold something depends on
+         answers no single field can see. --}}
+    @foreach (['deposit_required', 'deposit_type', 'deposit_percent', 'deposit_amount'] as $field)
+        @error($field)<p class="mt-3 text-[12px] text-danger" role="alert">{{ $message }}</p>@enderror
+    @endforeach
+
+    @foreach ($depositCurrencies as $code)
+        @error('deposit_amount.'.$code)<p class="mt-3 text-[12px] text-danger" role="alert">{{ $message }}</p>@enderror
+    @endforeach
+</section>
+
 <section class="bg-white border border-line rounded-card p-5">
     <h2 class="text-[15px] font-semibold text-head">{{ __('services.section.price') }}</h2>
 
     <div class="mt-4">
         <x-price-input name="price" :label="__('services.price')" :values="$priceValues"
-                       :cash-values="$cashPriceValues" :deposits="$depositValues ?? null" />
+                       :cash-values="$cashPriceValues" :deposit="$depositConfig" />
     </div>
 </section>
 
@@ -255,23 +390,37 @@
     @php
         $acceptsTips = (bool) old('accepts_tips', $service?->accepts_tips ?? true);
 
-        /* A new service opens on what the business already suggests, so the
-           common case is saved without opening this card at all. A service
-           that exists keeps its own answer — including the blank one, which
-           is a deliberate "follow the business" and must not be overwritten
-           the next time the settings change. */
-        $tipType = old('tip_type', $service ? $service->tip_type : $tips->default_tip_type);
-        $tipValue = old('tip_value', $service ? $service->tip_value : $tips->default_tip_value);
+        /* Two answers, not three: follow the business, or name a flat sum.
+           The percentage is the business's own — set once in App settings →
+           Tips and changeable on the booking — so anything that is not a
+           fixed sum here is "follows the default", including a percentage a
+           service was given before this card asked only these two. */
+        $tipType = old('tip_type', $service?->tip_type) === 'fixed' ? 'fixed' : '';
+
+        /* Only meaningful as a flat sum now. A number left over from a
+           percentage would otherwise sit in the box looking like an answer,
+           and outrank the business default the moment it was saved. */
+        $tipValue = $tipType === 'fixed' ? old('tip_value', $service?->tip_value) : '';
 
         /* A flat sum is a sum of something: the quick picks wear the money
            this business prices in. */
         $tipSymbol = App\Support\Money::symbol(App\Support\Currencies::primaryFor(auth()->user()?->tenant));
 
-        /* Built here rather than in the loop: a directive argument holding a
-           comma inside brackets is not parsed, it is counted. */
-        $tipTypeOptions = ['' => __('tips.follows_default')];
+        /* What following the default actually gets you, in words, so the
+           choice is not between a phrase and a number. */
+        $tipDefaultWords = $tips->default_tip_type === 'fixed'
+            ? $tipSymbol.number_format((float) $tips->default_tip_value, 2)
+            : $tips->default_tip_value.'%';
 
-        foreach (App\Models\TipSettings::TYPES as $tipTypeOption) {
+        /* Built here rather than in the loop: a directive argument holding a
+           comma inside brackets is not parsed, it is counted.
+
+           The default wears its own figure — "Follows the default (20%)" —
+           because the choice is otherwise between a phrase and a number, and
+           only one of them says what the client will be asked for. */
+        $tipTypeOptions = ['' => __('tips.follows_default_with', ['amount' => $tipDefaultWords])];
+
+        foreach (App\Models\TipSettings::SERVICE_TYPES as $tipTypeOption) {
             $tipTypeOptions[$tipTypeOption] = __('tips.types.'.$tipTypeOption);
         }
     @endphp
@@ -289,9 +438,9 @@
                  It keeps posting while hidden, so switching off and back on
                  does not cost somebody the tip they had set. --}}
             <div class="mt-4 pl-[3.25rem] space-y-5" data-tip-fields @unless ($acceptsTips) hidden @endunless>
-                {{-- Three answers on one line rather than a dropdown: they
-                     are the whole set, and the middle one changes what the
-                     amounts below mean. --}}
+                {{-- Both answers on one line rather than a dropdown: they
+                     are the whole set, and the second one brings a field
+                     with it. --}}
                 <fieldset>
                     <legend class="block text-[13px] font-medium text-ink mb-1.5">{{ __('tips.tip_type') }}</legend>
 
@@ -305,37 +454,59 @@
                     </div>
                 </fieldset>
 
-                <div>
+                {{-- What following the business actually gets you. Shown
+                     instead of the amount field rather than beside it: a
+                     service that has not disagreed has no number of its own,
+                     and an empty box next to "follows the default" invites
+                     one to be typed.
+
+                     The till's own row, with the default marked — read-only,
+                     because these are the business's answer and are edited in
+                     App settings → Tips. Shown rather than described so that
+                     "follows the default" is a thing somebody can see. --}}
+                <div data-tip-default-note @if ($tipType === 'fixed') hidden @endif>
+                    @if ($tips->default_tip_type !== 'fixed')
+                        <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('tips.offered_at_till') }}</span>
+
+                        <div class="flex flex-wrap gap-2" aria-hidden="true">
+                            @foreach ($tips->offeredPercentages() as $percent)
+                                <span @class([
+                                    'styledesk_chipbtn styledesk_chipbtn--static',
+                                    'is-active' => (int) $percent === (int) $tips->default_tip_value,
+                                ])>{{ $percent }}%</span>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    <p class="text-[12px] text-sub mt-2">
+                        {{ __('tips.follows_default_note', ['amount' => $tipDefaultWords]) }}
+                    </p>
+                </div>
+
+                <div data-tip-amount @unless ($tipType === 'fixed') hidden @endunless>
                     <label for="serviceTipValue" class="block text-[13px] font-medium text-ink mb-1.5">
-                        {{ __('tips.default_tip') }}
+                        {{ __('tips.tip_amount') }}
                     </label>
 
-                    {{-- The quick picks are the business's own suggestions,
-                         so the common answer is one click. They fill the box
-                         beside them rather than replacing it: a service that
-                         wants 18 where the business offers 15, 20 and 25 is
-                         exactly the case this card exists for. --}}
+                    {{-- The quick picks fill the box beside them rather than
+                         replacing it: three round numbers save the typing
+                         without claiming to be the only answers. --}}
                     <div class="flex flex-wrap items-center gap-2">
                         <div class="flex flex-wrap gap-2" data-tip-presets>
-                            @foreach ($tips->offeredPercentages() as $percent)
-                                <button type="button" class="styledesk_chipbtn" data-tip-preset="{{ $percent }}"
-                                        data-tip-preset-for="percent">{{ $percent }}%</button>
-                            @endforeach
-
                             @foreach (\App\Models\TipSettings::QUICK_FIXED_AMOUNTS as $amount)
                                 <button type="button" class="styledesk_chipbtn" data-tip-preset="{{ $amount }}"
-                                        data-tip-preset-for="fixed" hidden>{{ $tipSymbol }}{{ $amount }}</button>
+                                        data-tip-preset-for="fixed">{{ $tipSymbol }}{{ $amount }}</button>
                             @endforeach
                         </div>
 
                         <div class="w-[110px]">
                             <input id="serviceTipValue" name="tip_value" type="number" min="0" max="100"
-                                   class="sd-input" placeholder="{{ __('tips.follows_default') }}"
+                                   class="sd-input" placeholder="{{ $tipSymbol }}0"
                                    value="{{ $tipValue }}" data-tip-value>
                         </div>
                     </div>
 
-                    <p class="text-[12px] text-faint mt-1.5">{{ __('tips.default_tip_hint') }}</p>
+                    <p class="text-[12px] text-faint mt-1.5">{{ __('tips.tip_amount_hint') }}</p>
                 </div>
 
                 <div class="space-y-4 border-t border-line pt-4">

@@ -75,7 +75,58 @@ return [
         'unionpay' => 'UnionPay',
     ],
 
+    /* The Stripe events StyleDesk received, and what it did about them. */
+    /* What a business lets its payments do, and what each payment cost.
+       A capability that needs a processor says so rather than offering a
+       switch that would do nothing. */
+    'capabilities' => [
+        'title' => 'What payments can do',
+        'hint' => 'Switch off anything this business does not offer. A feature that needs a processor stays off until one is connected.',
+        'groups' => [
+            'in_person' => 'In-person payments',
+            'online' => 'Online payments',
+        ],
+        'items' => [
+            'card' => 'Credit and debit card',
+            'manual_card_entry' => 'Manual card entry',
+            'tap_to_pay' => 'Tap to Pay',
+            'card_reader' => 'Card reader',
+            'booking_deposit' => 'Booking deposit',
+            'full_payment' => 'Full payment',
+            'payment_link' => 'Payment link',
+            'card_on_file' => 'Card on file',
+            'membership_payment' => 'Membership payment',
+            'online_booking' => 'Online booking payment',
+            'invoice_payment' => 'Invoice payment',
+            'gift_card' => 'Gift card purchase',
+        ],
+        'blocked' => [
+            'unbuilt' => 'Coming soon',
+            'no_processor' => 'Needs a connected payment processor',
+        ],
+    ],
+
+    'fees' => [
+        'title' => 'Fees',
+        'processor' => 'Processing fee',
+        'platform' => 'StyleDesk fee',
+        'net' => 'Net',
+        'unknown' => 'Settling',
+    ],
+
+    'webhooks' => [
+        'unhandled' => 'StyleDesk has no handler for this event.',
+    ],
+
     'stripe' => [
+        'disputed' => 'Disputed by the client (:reason).',
+        'disconnect_title' => 'Disconnect Stripe?',
+        'disconnect_warning' => 'Disconnecting affects online bookings, deposits, membership renewals, payment links, saved cards and any outstanding balances. Existing records are kept, but nothing new can be charged until Stripe is reconnected.',
+        'sandbox' => 'Sandbox',
+        'live' => 'Live',
+        'sandbox_notice' => 'Sandbox mode is on. Payments taken here are test transactions and will not move real money.',
+        'provider_platform' => 'StyleDesk Stripe',
+        'provider_own' => 'Your own Stripe account',
         'not_settled' => 'The card was not charged. The payment did not settle.',
         'connect' => 'Connect Stripe',
         'continue' => 'Continue setup',
@@ -110,6 +161,7 @@ return [
         'platform_unavailable' => 'Connecting through StyleDesk is not available on this installation. You can still use your own Stripe account below.',
         'statuses' => [
             'connected' => 'Connected',
+            'sandbox' => 'Sandbox',
             'needs_attention' => 'Needs attention',
             'incomplete' => 'Setup incomplete',
         ],

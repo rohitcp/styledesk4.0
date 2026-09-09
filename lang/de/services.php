@@ -66,6 +66,7 @@ return [
     'correct_fields' => 'Bitte korrigieren Sie die markierten Felder.',
 
     'section' => [
+        'deposit' => 'Anzahlung erforderlich',
         'about' => 'Über diese Leistung',
         'price' => 'Preis',
         'who_where' => 'Wer und wo',
@@ -127,6 +128,9 @@ return [
         'percent' => 'Prozentsatz',
     ],
     'deposit_required_hint' => 'Die Kundin oder der Kunde zahlt einen Teil des Preises, um den Termin zu halten.',
+    'deposit_take' => 'Für diese Leistung eine Anzahlung verlangen',
+    'deposit_card_hint' => 'Wird hier einmal eingegeben und für alle Preise unten verwendet.',
+    'deposit_inherits' => 'Alle Preise verwenden die oben festgelegte Anzahlung.',
 
     'search' => 'Leistungen durchsuchen…',
     'all_categories' => 'Alle Kategorien',

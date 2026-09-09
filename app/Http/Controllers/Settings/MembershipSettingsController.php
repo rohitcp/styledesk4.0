@@ -64,6 +64,9 @@ class MembershipSettingsController extends Controller
             'allow_start_date_selection' => ['nullable', 'boolean'],
             'default_activation' => ['required', Rule::in(MembershipSettings::activations())],
 
+            /* The master switch above every other credit question. */
+            'credits_enabled' => ['nullable', 'boolean'],
+
             'reset_credits_on_cycle' => ['nullable', 'boolean'],
             'allow_rollover' => ['nullable', 'boolean'],
             /* Null is "as many as they accrue", which is different from a cap
@@ -95,6 +98,8 @@ class MembershipSettingsController extends Controller
                 'allow_staff_to_sell' => (bool) ($data['allow_staff_to_sell'] ?? false),
                 'allow_start_date_selection' => (bool) ($data['allow_start_date_selection'] ?? false),
                 'default_activation' => $data['default_activation'],
+
+                'credits_enabled' => (bool) ($data['credits_enabled'] ?? false),
 
                 /* Rollover and reset are one question asked from both ends.
                    Storing them independently is how a business ends up with

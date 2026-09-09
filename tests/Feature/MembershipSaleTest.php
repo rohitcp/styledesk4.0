@@ -226,6 +226,44 @@ class MembershipSaleTest extends TestCase
         $this->assertSame(7900, $this->sold()->price_minor);
     }
 
+    /* Credits governs what the client can redeem, not the quantity printed
+       beside it on the card. */
+    public function test_the_sale_grants_what_credits_says(): void
+    {
+        $this->membershipOn();
+
+        $plan = $this->plan();
+        $plan->planServices()->update(['quantity' => 1, 'credits' => 3]);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($plan->fresh('planServices')))
+            ->assertRedirect();
+
+        $credit = $this->sold()->credits->first();
+
+        $this->assertSame(3, $credit->quantity_granted);
+        $this->assertSame(3, $credit->remaining());
+    }
+
+    /* A line written without naming credits grants what it describes. A
+       default of one would quietly turn a four-massage package into a
+       one-massage one. */
+    public function test_a_line_written_without_credits_grants_its_quantity(): void
+    {
+        $this->membershipOn();
+
+        $plan = $this->plan([
+            'type' => 'package', 'name' => 'Massage Package', 'billing_frequency' => null,
+        ], quantity: 4);
+
+        $this->assertSame(4, $plan->planServices->first()->credits);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($plan, ['payment_method' => 'cash']));
+
+        $this->assertSame(4, $this->sold()->credits->first()->quantity_granted);
+    }
+
     // ------------------------------------------------------- the start date
 
     public function test_a_membership_dated_forward_is_scheduled_and_grants_nothing_yet(): void
@@ -375,6 +413,25 @@ class MembershipSaleTest extends TestCase
 
         $this->assertTrue($credit->isExpired());
         $this->assertFalse($credit->isSpendable());
+    }
+
+    /* A membership that includes nothing grants nothing. Writing credit rows
+       for it would put massages on the client's profile nobody sold them. */
+    public function test_a_discount_only_membership_grants_no_credits(): void
+    {
+        $this->membershipOn(['credits_enabled' => false]);
+        $plan = $this->plan();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($plan))
+            ->assertRedirect();
+
+        $membership = $this->sold();
+
+        $this->assertCount(0, $membership->credits);
+        /* The membership itself is real — it is the perks the client bought. */
+        $this->assertSame('active', $membership->status());
+        $this->assertSame(7900, $membership->price_minor);
     }
 
     // ------------------------------------------------------- after the sale

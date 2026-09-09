@@ -156,7 +156,7 @@ return [
         'recurring_hint' => 'Se renouvelle automatiquement jusqu’à résiliation.',
         'recurring_locked' => 'Cet abonnement est vendu comme un abonnement et se renouvelle toujours.',
         'renews' => 'Se renouvelle :price',
-        'one_off' => 'Débiter une fois, sans renouvellement',
+        'one_off' => 'Encaisser chaque renouvellement à l’accueil',
         'title' => 'Carte enregistrée',
         'why' => 'Nécessaire au renouvellement automatique de l’abonnement.',
         'existing' => 'Utiliser une carte existante',
@@ -791,6 +791,10 @@ return [
     ],
 
     'payment_statuses' => [
+        'authorized' => ['label' => 'Autorisé'],
+        'cancelled' => ['label' => 'Annulé'],
+        'disputed' => ['label' => 'Contesté'],
+        'chargeback' => ['label' => 'Rétrofacturation'],
         'unpaid' => ['label' => 'Impayée'],
         'partial' => ['label' => 'Partiellement payée'],
         'paid' => ['label' => 'Payée'],

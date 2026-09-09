@@ -155,7 +155,7 @@ return [
         'recurring_hint' => 'Se renueva automáticamente hasta que se cancele.',
         'recurring_locked' => 'Esta membresía se vende como suscripción y siempre se renueva.',
         'renews' => 'Se renueva :price',
-        'one_off' => 'Cobrar una vez, sin renovar',
+        'one_off' => 'Cobrar cada renovación en recepción',
         'title' => 'Tarjeta guardada',
         'why' => 'Necesaria para la renovación automática de la membresía.',
         'existing' => 'Usar una tarjeta existente',
@@ -717,6 +717,10 @@ return [
     ],
 
     'payment_statuses' => [
+        'authorized' => ['label' => 'Autorizado'],
+        'cancelled' => ['label' => 'Cancelado'],
+        'disputed' => ['label' => 'Disputado'],
+        'chargeback' => ['label' => 'Contracargo'],
         'unpaid' => ['label' => 'Sin pagar'],
         'partial' => ['label' => 'Pago parcial'],
         'paid' => ['label' => 'Pagado'],

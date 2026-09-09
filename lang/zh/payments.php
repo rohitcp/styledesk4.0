@@ -73,7 +73,58 @@ return [
         'unionpay' => '银联',
     ],
 
+    /* The Stripe events StyleDesk received, and what it did about them. */
+    /* What a business lets its payments do, and what each payment cost.
+       A capability that needs a processor says so rather than offering a
+       switch that would do nothing. */
+    'capabilities' => [
+        'title' => '付款可用功能',
+        'hint' => '关闭本店不提供的功能。需要支付服务商的功能在连接之前保持关闭。',
+        'groups' => [
+            'in_person' => '线下付款',
+            'online' => '线上付款',
+        ],
+        'items' => [
+            'card' => '信用卡与借记卡',
+            'manual_card_entry' => '手动输入卡号',
+            'tap_to_pay' => 'Tap to Pay',
+            'card_reader' => '读卡器',
+            'booking_deposit' => '预约定金',
+            'full_payment' => '全额付款',
+            'payment_link' => '付款链接',
+            'card_on_file' => '存档银行卡',
+            'membership_payment' => '会员付款',
+            'online_booking' => '线上预约付款',
+            'invoice_payment' => '账单付款',
+            'gift_card' => '购买礼品卡',
+        ],
+        'blocked' => [
+            'unbuilt' => '即将推出',
+            'no_processor' => '需要已连接的支付服务商',
+        ],
+    ],
+
+    'fees' => [
+        'title' => '手续费',
+        'processor' => '处理手续费',
+        'platform' => 'StyleDesk 费用',
+        'net' => '净额',
+        'unknown' => '结算中',
+    ],
+
+    'webhooks' => [
+        'unhandled' => 'StyleDesk 不处理该类型的事件。',
+    ],
+
     'stripe' => [
+        'disputed' => '客户已提出争议（:reason）。',
+        'disconnect_title' => '要断开 Stripe 吗？',
+        'disconnect_warning' => '断开会影响线上预约、定金、会员续费、付款链接、已保存的银行卡以及未结余额。已有记录会保留，但在重新连接 Stripe 之前无法进行新的扣款。',
+        'sandbox' => '沙盒',
+        'live' => '正式',
+        'sandbox_notice' => '当前为沙盒模式。此处的付款为测试交易，不会产生真实资金流动。',
+        'provider_platform' => 'StyleDesk Stripe',
+        'provider_own' => '你自己的 Stripe 账户',
         'not_settled' => '未扣款，该笔支付未完成结算。',
         'connect' => '连接 Stripe',
         'continue' => '继续设置',
@@ -108,6 +159,7 @@ return [
         'platform_unavailable' => '本次部署不支持通过 StyleDesk 连接。你仍然可以在下方使用自己的 Stripe 账号。',
         'statuses' => [
             'connected' => '已连接',
+            'sandbox' => '沙盒',
             'needs_attention' => '需要处理',
             'incomplete' => '设置未完成',
         ],

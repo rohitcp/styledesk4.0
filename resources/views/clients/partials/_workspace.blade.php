@@ -29,7 +29,7 @@
              same terms: both are read with a client in front of you — "what
              have you got, and can you use it today" — and both are only there
              where the business runs the scheme and the reader may see it. --}}
-        @foreach (array_filter(['bookings', $hasLeads ? 'leads' : null, 'services', $canViewRewards ? 'rewards' : null, $canViewMemberships ? 'membership' : null, 'notes', 'files', 'activity']) as $tab)
+        @foreach (array_filter(['bookings', $hasLeads ? 'leads' : null, 'services', $canViewRewards ? 'rewards' : null, $canViewMemberships ? 'membership' : null, $canViewCards ? 'payments' : null, 'notes', 'files', 'activity']) as $tab)
             <button type="button" role="tab" data-tab="{{ $tab }}"
                     id="tab-{{ $tab }}" aria-controls="panel-{{ $tab }}"
                     aria-selected="{{ $loop->first ? 'true' : 'false' }}"
@@ -395,6 +395,11 @@
 {{-- --------------------------------------------------------- membership --}}
 @if ($canViewMemberships)
     @include('clients.partials._membership')
+@endif
+
+{{-- ----------------------------------------------------- payment methods --}}
+@if ($canViewCards)
+    @include('clients.partials._payment-methods')
 @endif
 
 <div id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" data-panel="notes" class="pt-4" hidden>

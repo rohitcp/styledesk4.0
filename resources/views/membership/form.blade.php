@@ -42,8 +42,12 @@
        repeater that opens with nothing is one where the first press is
        "add" before anything can be typed. */
     $lines = old('services', $plan?->planServices
-        ->map(fn ($line) => ['service_id' => $line->service_id, 'quantity' => $line->quantity])
-        ->values()->all() ?: null) ?? [['service_id' => '', 'quantity' => 1]];
+        ->map(fn ($line) => [
+            'service_id' => $line->service_id,
+            'quantity' => $line->quantity,
+            'credits' => $line->grantedCredits(),
+        ])
+        ->values()->all() ?: null) ?? [['service_id' => '', 'quantity' => '', 'credits' => '']];
 
     /* Three-state overrides post as '' / '0' / '1'. Blank is "follow the
        business", which is why it cannot be a checkbox. */
@@ -287,9 +291,16 @@
         </section>
 
         {{-- ----------------------------------------- Step 4: services -- --}}
+        {{-- What the membership includes, where it includes anything.
+
+             With credits switched off in App Settings a membership is its
+             discount and its standing — there is nothing to draw down, so
+             there is no list to build. --}}
+        @if ($settings->grantsCredits())
         <section class="sd-card p-5" id="services">
           <p class="text-[11.5px] font-semibold uppercase tracking-wide text-faint">{{ __('membership.form.step', ['number' => ++$step]) }}</p>
           <h2 class="text-[15px] font-semibold text-head mt-1">{{ __('membership.form.services') }}</h2>
+          <p class="text-[12.5px] text-sub mt-1 leading-relaxed">{{ __('membership.form.services_intro') }}</p>
           <p class="text-[12.5px] text-sub mt-1 leading-relaxed">
             {{ $isRecurring ? __('membership.form.services_hint_recurring') : __('membership.form.services_hint_package') }}
           </p>
@@ -302,7 +313,14 @@
               <div class="flex flex-wrap items-end gap-2" data-service-row>
                 <div class="min-w-[200px] flex-1">
                   <label class="block text-[12.5px] font-medium text-ink mb-1.5">{{ __('membership.form.service') }}</label>
-                  <select name="services[{{ $index }}][service_id]" class="sd-input" required data-service-select>
+                  {{-- Upgraded to the app's searchable combo. The native
+                       select stays the value holder — SD.combo wraps it
+                       rather than replacing it — so the repeater, the form
+                       serialisation and validation all keep working on the
+                       element they already know about. --}}
+                  <select name="services[{{ $index }}][service_id]" class="sd-input" required
+                          data-service-select data-combo
+                          data-combo-options='@json(['searchPlaceholder' => __('membership.form.service_search')])'>
                     <option value="">—</option>
                     @foreach ($services as $service)
                       <option value="{{ $service->id }}" @selected((string) ($line['service_id'] ?? '') === (string) $service->id)>{{ $service->name }}</option>
@@ -310,10 +328,23 @@
                   </select>
                 </div>
 
-                <div class="w-[110px]">
+                <div class="w-[100px]">
                   <label class="block text-[12.5px] font-medium text-ink mb-1.5">{{ __('membership.form.quantity') }}</label>
                   <input name="services[{{ $index }}][quantity]" type="number" min="1" max="99" step="1" required
-                         class="sd-input" value="{{ $line['quantity'] ?? 1 }}">
+                         class="sd-input" data-service-quantity
+                         placeholder="{{ __('membership.form.count_placeholder') }}"
+                         value="{{ $line['quantity'] ?? '' }}">
+                </div>
+
+                {{-- What can actually be redeemed. Quantity describes the
+                     benefit; this is the number the redemption engine draws
+                     down, and it is the one that governs where they differ. --}}
+                <div class="w-[100px]">
+                  <label class="block text-[12.5px] font-medium text-ink mb-1.5">{{ __('membership.form.credits_column') }}</label>
+                  <input name="services[{{ $index }}][credits]" type="number" min="1" max="99" step="1"
+                         class="sd-input" data-service-credits
+                         placeholder="{{ __('membership.form.count_placeholder') }}"
+                         value="{{ $line['credits'] ?? '' }}">
                 </div>
 
                 <button type="button" class="styledesk_action shrink-0" data-remove-service
@@ -323,6 +354,10 @@
               </div>
             @endforeach
           </div>
+
+          <p class="mt-2.5 text-[12px] text-faint leading-snug">
+            {{ $isRecurring ? __('membership.form.credits_recurring') : __('membership.form.credits_package') }}
+          </p>
 
           <button type="button" class="styledesk_action mt-3" data-add-service>
             {{ __('membership.form.add_service') }}
@@ -335,7 +370,9 @@
             <div class="flex flex-wrap items-end gap-2" data-service-row>
               <div class="min-w-[200px] flex-1">
                 <label class="block text-[12.5px] font-medium text-ink mb-1.5">{{ __('membership.form.service') }}</label>
-                <select name="services[__INDEX__][service_id]" class="sd-input" required data-service-select>
+                <select name="services[__INDEX__][service_id]" class="sd-input" required
+                        data-service-select data-combo
+                        data-combo-options='@json(['searchPlaceholder' => __('membership.form.service_search')])'>
                   <option value="">—</option>
                   @foreach ($services as $service)
                     <option value="{{ $service->id }}">{{ $service->name }}</option>
@@ -343,10 +380,18 @@
                 </select>
               </div>
 
-              <div class="w-[110px]">
+              <div class="w-[100px]">
                 <label class="block text-[12.5px] font-medium text-ink mb-1.5">{{ __('membership.form.quantity') }}</label>
                 <input name="services[__INDEX__][quantity]" type="number" min="1" max="99" step="1" required
-                       class="sd-input" value="1">
+                       class="sd-input" data-service-quantity
+                       placeholder="{{ __('membership.form.count_placeholder') }}" value="">
+              </div>
+
+              <div class="w-[100px]">
+                <label class="block text-[12.5px] font-medium text-ink mb-1.5">{{ __('membership.form.credits_column') }}</label>
+                <input name="services[__INDEX__][credits]" type="number" min="1" max="99" step="1"
+                       class="sd-input" data-service-credits
+                       placeholder="{{ __('membership.form.count_placeholder') }}" value="">
               </div>
 
               <button type="button" class="styledesk_action shrink-0" data-remove-service
@@ -356,6 +401,7 @@
             </div>
           </template>
         </section>
+        @endif
 
         {{-- ----------------------------------------- Step 5: benefits -- --}}
         <section class="sd-card p-5" id="benefits">
@@ -369,13 +415,38 @@
               <x-combo name="discount_type"
                        :options="['percent' => __('membership.form.percent'), 'fixed' => __('membership.form.fixed')]"
                        :selected="$discountType"
-                       :placeholder="__('membership.form.discount_none')" />
+                       :placeholder="__('membership.form.discount_none')"
+                       data-discount-type />
             </div>
 
+            {{-- A percentage and a sum of money are not the same question,
+                 and one box labelled "Amount" for both is how a business ends
+                 up offering 10% off and meaning $10. The label, the affix and
+                 the step all follow the type — the same arrangement the
+                 promotion form uses. --}}
             <div>
-              <label for="mDiscount" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('membership.form.discount_value') }}</label>
-              <input id="mDiscount" name="discount_value" type="number" min="0" step="0.01"
-                     class="sd-input" value="{{ $discountValue }}">
+              <label for="mDiscount" class="block text-[13px] font-medium text-ink mb-1.5">
+                <span data-discount-label>
+                  {{ $discountType === 'fixed' ? __('membership.form.discount_value') : __('membership.form.discount_percentage') }}
+                </span>
+              </label>
+
+              <div class="relative">
+                {{-- The currency in front where it is money. --}}
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-faint pointer-events-none"
+                      data-discount-prefix @unless ($discountType === 'fixed') hidden @endunless>{{ $symbol }}</span>
+
+                <input id="mDiscount" name="discount_value" type="number" min="0"
+                       class="sd-input" value="{{ $discountValue }}" data-discount-value
+                       step="{{ $discountType === 'fixed' ? '0.01' : '1' }}"
+                       @unless ($discountType === 'fixed') max="100" @endunless
+                       style="{{ $discountType === 'fixed' ? 'padding-left:1.75rem' : 'padding-right:2rem' }}">
+
+                {{-- And the per cent behind it where it is a rate. --}}
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-faint pointer-events-none"
+                      data-discount-suffix @if ($discountType === 'fixed') hidden @endif>%</span>
+              </div>
+
               <p data-error-for="discount_value" role="alert" class="mt-1.5 text-[12px] text-danger"
                  @unless ($errors->has('discount_value')) hidden @endunless>{{ $errors->first('discount_value') }}</p>
             </div>
@@ -389,6 +460,17 @@
         </section>
 
         {{-- ------------------------------------------ Step 6: credits -- --}}
+        {{-- Only where this business's memberships include anything.
+
+             Every question in this card is an override of a credit rule set
+             in App Settings → Membership. With credits switched off there are
+             no credits to have rules about, so asking a plan to overrule them
+             is asking somebody to decide something that cannot happen.
+
+             The step numbering is worked out as the cards render, so the
+             cards below simply close the gap rather than leaving a hole where
+             this one was. --}}
+        @if ($settings->grantsCredits())
         <section class="sd-card p-5" id="credits">
           <p class="text-[11.5px] font-semibold uppercase tracking-wide text-faint">{{ __('membership.form.step', ['number' => ++$step]) }}</p>
           <h2 class="text-[15px] font-semibold text-head mt-1">{{ __('membership.form.credits') }}</h2>
@@ -430,6 +512,24 @@
             </div>
           </div>
         </section>
+        @else
+          {{-- The card is not asked for, but a plan that already carries
+               overrides keeps them: a business switching rollover off for a
+               month must not silently rewrite what every plan agreed to.
+               Null stays null, which reads as "follow the business". --}}
+          @if ($plan?->credit_expiry !== null)
+            <input type="hidden" name="credit_expiry" value="{{ $plan->credit_expiry }}">
+          @endif
+          @if ($plan?->allow_rollover !== null)
+            <input type="hidden" name="allow_rollover" value="{{ (int) $plan->allow_rollover }}">
+          @endif
+          @if ($plan?->maximum_rollover !== null)
+            <input type="hidden" name="maximum_rollover" value="{{ $plan->maximum_rollover }}">
+          @endif
+          @if ($plan?->allow_service_substitution !== null)
+            <input type="hidden" name="allow_service_substitution" value="{{ (int) $plan->allow_service_substitution }}">
+          @endif
+        @endif
 
         {{-- ------------------------------------- Step 7: availability -- --}}
         <section class="sd-card p-5" id="availability">
@@ -495,14 +595,18 @@
           <div class="mt-5 flex flex-wrap gap-2">
             {{-- Two buttons posting one form, differing only in what they
                  say about is_draft. A "publish" that was a second request
-                 after a save is a plan that exists for a moment as neither. --}}
-            <button type="submit" name="is_draft" value="1" class="styledesk_action">
-              {{ __('membership.form.save_draft') }}
-            </button>
+                 after a save is a plan that exists for a moment as neither.
 
+                 Publishing leads, because it is what almost everybody came
+                 to do. It is therefore also the button the Enter key
+                 presses — the first submit in a form always is. --}}
             <button type="submit" name="is_draft" value="0"
                     class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
               {{ $plan && ! $plan->is_draft ? __('membership.form.save') : __('membership.form.publish') }}
+            </button>
+
+            <button type="submit" name="is_draft" value="1" class="styledesk_action">
+              {{ __('membership.form.save_draft') }}
             </button>
           </div>
         </section>

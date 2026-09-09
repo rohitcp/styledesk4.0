@@ -152,7 +152,7 @@ return [
         'recurring_hint' => '在取消之前将自动续费。',
         'recurring_locked' => '该会员以订阅方式销售，始终自动续费。',
         'renews' => '续费 :price',
-        'one_off' => '仅扣款一次，不续费',
+        'one_off' => '每次续费在前台收取',
         'title' => '存档银行卡',
         'why' => '自动续费需要绑定银行卡。',
         'existing' => '使用已有银行卡',
@@ -771,6 +771,10 @@ return [
     ],
 
     'payment_statuses' => [
+        'authorized' => ['label' => '已授权'],
+        'cancelled' => ['label' => '已取消'],
+        'disputed' => ['label' => '有争议'],
+        'chargeback' => ['label' => '拒付'],
         'unpaid' => ['label' => '未付款'],
         'partial' => ['label' => '部分付款'],
         'paid' => ['label' => '已付款'],

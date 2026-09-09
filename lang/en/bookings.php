@@ -172,7 +172,7 @@ return [
         'recurring_hint' => 'Renews automatically until it is cancelled.',
         'recurring_locked' => 'This membership is sold as a subscription and always renews.',
         'renews' => 'Renews :price',
-        'one_off' => 'Charge once, do not renew',
+        'one_off' => 'Collect each renewal at the desk',
         'title' => 'Card on file',
         'why' => 'Required for automatic membership renewal.',
         'existing' => 'Use an existing card',
@@ -806,6 +806,10 @@ return [
     ],
 
     'payment_statuses' => [
+        'authorized' => ['label' => 'Authorised'],
+        'cancelled' => ['label' => 'Cancelled'],
+        'disputed' => ['label' => 'Disputed'],
+        'chargeback' => ['label' => 'Chargeback'],
         'unpaid' => ['label' => 'Unpaid'],
         'partial' => ['label' => 'Partially paid'],
         'paid' => ['label' => 'Paid'],

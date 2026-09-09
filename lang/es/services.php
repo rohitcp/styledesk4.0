@@ -66,6 +66,7 @@ return [
     'correct_fields' => 'Corrige los campos marcados.',
 
     'section' => [
+        'deposit' => 'Requiere depósito',
         'about' => 'Sobre este servicio',
         'price' => 'Precio',
         'who_where' => 'Quién y dónde',
@@ -125,6 +126,9 @@ return [
         'percent' => 'Porcentaje',
     ],
     'deposit_required_hint' => 'El cliente paga parte del precio para retener la cita.',
+    'deposit_take' => 'Cobrar un depósito por este servicio',
+    'deposit_card_hint' => 'Se introduce una sola vez aquí y se aplica a todos los precios de abajo.',
+    'deposit_inherits' => 'Todos los precios aplican el depósito indicado arriba.',
 
     'search' => 'Buscar servicios…',
     'all_categories' => 'Todas las categorías',

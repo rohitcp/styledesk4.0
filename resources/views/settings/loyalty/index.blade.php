@@ -114,7 +114,13 @@
         {{-- Look but do not touch, for a reader holding the view permission
              and not the manage one. Refused by the browser rather than by a
              403 after the form has been filled in. --}}
-        <fieldset @disabled(! $canManage) class="contents">
+        {{-- `space-y-5` as well as `contents`.
+
+             The form's own `space-y-5` is a `> * + *` rule, so it only ever
+             sees this fieldset — one child, nothing to space. Every card
+             inside it came out flush against its neighbour. The gap has to be
+             declared where the cards actually are. --}}
+        <fieldset @disabled(! $canManage) class="contents space-y-5">
 
         {{-- --------------------------------------------- Card 1: program --}}
         <div class="sd-card p-5">

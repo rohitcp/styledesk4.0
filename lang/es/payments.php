@@ -73,7 +73,58 @@ return [
         'unionpay' => 'UnionPay',
     ],
 
+    /* The Stripe events StyleDesk received, and what it did about them. */
+    /* What a business lets its payments do, and what each payment cost.
+       A capability that needs a processor says so rather than offering a
+       switch that would do nothing. */
+    'capabilities' => [
+        'title' => 'Qué pueden hacer los pagos',
+        'hint' => 'Desactiva lo que este negocio no ofrece. Una función que necesita pasarela permanece desactivada hasta conectar una.',
+        'groups' => [
+            'in_person' => 'Pagos presenciales',
+            'online' => 'Pagos en línea',
+        ],
+        'items' => [
+            'card' => 'Tarjeta de crédito y débito',
+            'manual_card_entry' => 'Entrada manual de tarjeta',
+            'tap_to_pay' => 'Tap to Pay',
+            'card_reader' => 'Lector de tarjetas',
+            'booking_deposit' => 'Depósito de la reserva',
+            'full_payment' => 'Pago completo',
+            'payment_link' => 'Enlace de pago',
+            'card_on_file' => 'Tarjeta guardada',
+            'membership_payment' => 'Pago de membresía',
+            'online_booking' => 'Pago de reserva en línea',
+            'invoice_payment' => 'Pago de factura',
+            'gift_card' => 'Compra de tarjeta regalo',
+        ],
+        'blocked' => [
+            'unbuilt' => 'Próximamente',
+            'no_processor' => 'Necesita una pasarela de pago conectada',
+        ],
+    ],
+
+    'fees' => [
+        'title' => 'Comisiones',
+        'processor' => 'Comisión de procesamiento',
+        'platform' => 'Comisión de StyleDesk',
+        'net' => 'Neto',
+        'unknown' => 'Liquidando',
+    ],
+
+    'webhooks' => [
+        'unhandled' => 'StyleDesk no gestiona este tipo de evento.',
+    ],
+
     'stripe' => [
+        'disputed' => 'Disputado por el cliente (:reason).',
+        'disconnect_title' => '¿Desconectar Stripe?',
+        'disconnect_warning' => 'Desconectar afecta a las reservas en línea, los depósitos, las renovaciones de membresía, los enlaces de pago, las tarjetas guardadas y los saldos pendientes. Los registros se conservan, pero no se podrá cobrar nada nuevo hasta volver a conectar Stripe.',
+        'sandbox' => 'Pruebas',
+        'live' => 'Real',
+        'sandbox_notice' => 'El modo de pruebas está activo. Los pagos que se hagan aquí son transacciones de prueba y no mueven dinero real.',
+        'provider_platform' => 'Stripe de StyleDesk',
+        'provider_own' => 'Tu propia cuenta de Stripe',
         'not_settled' => 'No se cobró la tarjeta. El pago no se liquidó.',
         'connect' => 'Conectar Stripe',
         'continue' => 'Continuar configuración',
@@ -108,6 +159,7 @@ return [
         'platform_unavailable' => 'Conectar a través de StyleDesk no está disponible en esta instalación. Aun así puedes usar tu propia cuenta de Stripe más abajo.',
         'statuses' => [
             'connected' => 'Conectado',
+            'sandbox' => 'Pruebas',
             'needs_attention' => 'Requiere atención',
             'incomplete' => 'Configuración incompleta',
         ],

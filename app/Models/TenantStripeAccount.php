@@ -32,6 +32,7 @@ class TenantStripeAccount extends Model
     protected function casts(): array
     {
         return [
+            'livemode' => 'boolean',
             'charges_enabled' => 'boolean',
             'payouts_enabled' => 'boolean',
             'details_submitted' => 'boolean',
@@ -65,6 +66,54 @@ class TenantStripeAccount extends Model
     public function usesOwnKeys(): bool
     {
         return $this->mode === self::MODE_OWN;
+    }
+
+    /* --------------------------------------------------- test or live -- */
+
+    /**
+     * Whether this connection moves real money.
+     *
+     * Read from the key rather than from a setting, because the key already
+     * decides it: `sk_test_` cannot charge a real card and `sk_live_` cannot
+     * avoid it. A switch a business could flip independently would be the
+     * worst possible lie to tell on a payments screen — a salon believing it
+     * was testing while charging clients.
+     *
+     * The stored column is a cache of this, kept for lists and badges that
+     * should not decrypt a secret on every render.
+     */
+    public function isLive(): bool
+    {
+        return self::keyIsLive($this->usesOwnKeys()
+            ? (string) $this->api_key
+            : (string) config('services.stripe.secret'));
+    }
+
+    /** The other way round, because "are we in sandbox" is how it is asked. */
+    public function isSandbox(): bool
+    {
+        return ! $this->isLive();
+    }
+
+    /**
+     * Whether a Stripe secret key is a live one.
+     *
+     * Stripe's own prefixes. Anything unrecognised is treated as NOT live:
+     * the safe direction for a wrong guess is a business told it is in
+     * sandbox when it is not — they will check — rather than one told it is
+     * live when it is testing, which they will not.
+     */
+    public static function keyIsLive(string $key): bool
+    {
+        return str_starts_with($key, 'sk_live_') || str_starts_with($key, 'rk_live_');
+    }
+
+    /** "Live" or "Sandbox", for a badge. */
+    public function environmentLabel(): string
+    {
+        return $this->isLive()
+            ? __('payments.stripe.live')
+            : __('payments.stripe.sandbox');
     }
 
     /**
@@ -113,9 +162,22 @@ class TenantStripeAccount extends Model
     public function statusKey(): string
     {
         return match (true) {
+            /* Sandbox outranks connected, because it is the more important
+               half of the sentence. "Connected" on a screen where no real
+               money can move is the reading that gets a salon to open for
+               business on test keys. */
+            $this->canCharge() && ! filled($this->outstanding()) && $this->isSandbox() => 'sandbox',
             $this->canCharge() && ! filled($this->outstanding()) => 'connected',
             $this->details_submitted => 'needs_attention',
             default => 'incomplete',
         };
+    }
+
+    /** How this business connected, as the settings screen names it. */
+    public function providerLabel(): string
+    {
+        return $this->usesOwnKeys()
+            ? __('payments.stripe.provider_own')
+            : __('payments.stripe.provider_platform');
     }
 }

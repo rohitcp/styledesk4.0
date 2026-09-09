@@ -337,11 +337,17 @@ return [
         'saving_preview' => 'Customer saving: :amount',
 
         'services' => 'Benefits & services',
-        'services_hint_recurring' => 'What the member gets each cycle. The credits come back every time it bills.',
+        'services_hint_recurring' => 'Benefits and credits are issued again after each successful billing cycle.',
         'services_hint_package' => 'What the package contains in total. When they are used, it is finished.',
         'add_service' => '+ Add service',
         'service' => 'Service',
+        'service_search' => 'Search services…',
         'quantity' => 'Quantity',
+        'credits_column' => 'Credits',
+        'count_placeholder' => 'e.g. 4',
+        'services_intro' => 'What the member gets with this membership.',
+        'credits_recurring' => 'Credits are issued again after every successful billing cycle — never while a payment has failed, or the membership is paused or cancelled.',
+        'credits_package' => 'Credits are issued once when the package is purchased, and are not replenished.',
         'remove' => 'Remove',
         'duplicate_service' => 'Each service can only be listed once. Change its quantity instead of adding it twice.',
         'no_services' => 'Add at least one service — a membership that includes nothing is a subscription to nothing.',
@@ -353,6 +359,7 @@ return [
         'percent' => 'Percentage off',
         'fixed' => 'Fixed amount off',
         'discount_value' => 'Amount',
+        'discount_percentage' => 'Percentage',
         'priority_booking' => 'Priority booking',
         'priority_booking_hint' => 'Members are flagged at the desk so they can be fitted in first.',
 
@@ -442,6 +449,8 @@ return [
         /* --- credits --- */
         'credits' => 'Credits',
         'credits_hint' => 'What happens to an included service the client did not use.',
+        'credits_enabled' => 'Include services in memberships',
+        'credits_enabled_hint' => 'Memberships grant services the client can draw down. Off, and a membership is its discount and its perks — nothing to redeem.',
         'allow_rollover' => 'Allow unused credits to roll over',
         'allow_rollover_hint' => 'Unused credits carry into the next cycle. Off, and each cycle starts fresh.',
         'maximum_rollover' => 'Maximum rollover credits',
@@ -468,11 +477,6 @@ return [
         'cancellation_effective_hint' => 'When a cancellation takes effect.',
         'months' => 'months',
         'days' => 'days',
-
-        /* --- payments --- */
-        'payments' => 'Payments',
-        'payments_hint' => 'Memberships are paid for with the methods you already accept. There is nothing separate to configure here.',
-        'payments_link' => 'Open Payment settings',
 
         /* --- what StyleDesk decides --- */
         'rules' => 'How StyleDesk handles memberships',

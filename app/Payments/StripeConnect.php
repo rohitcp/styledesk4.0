@@ -166,6 +166,12 @@ class StripeConnect
             'payouts_enabled' => (bool) data_get($remote, 'payouts_enabled'),
             'details_submitted' => (bool) data_get($remote, 'details_submitted'),
             'requirements' => data_get($remote, 'requirements'),
+            /* Stripe's own answer where it gives one, and the key's otherwise.
+               Cached so a badge does not decrypt a secret to be drawn; the key
+               stays the authority — see TenantStripeAccount::isLive. */
+            'livemode' => data_get($remote, 'charges_enabled') === null
+                ? $account->isLive()
+                : (bool) (data_get($remote, 'livemode') ?? $account->isLive()),
             'synced_at' => now(),
         ])->save();
 

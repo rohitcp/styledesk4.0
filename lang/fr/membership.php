@@ -312,11 +312,17 @@ return [
         'saving_preview' => 'Économie client : :amount',
 
         'services' => 'Avantages et prestations',
-        'services_hint_recurring' => 'Ce que le membre reçoit à chaque cycle. Les crédits reviennent à chaque prélèvement.',
+        'services_hint_recurring' => 'Les avantages et les crédits sont réémis après chaque prélèvement réussi.',
         'services_hint_package' => 'Ce que le forfait contient au total. Une fois utilisés, c’est terminé.',
         'add_service' => '+ Ajouter une prestation',
         'service' => 'Prestation',
+        'service_search' => 'Rechercher une prestation…',
         'quantity' => 'Quantité',
+        'credits_column' => 'Crédits',
+        'count_placeholder' => 'ex. 4',
+        'services_intro' => 'Ce que le membre obtient avec cet abonnement.',
+        'credits_recurring' => 'Les crédits sont réémis après chaque prélèvement réussi — jamais tant qu’un paiement a échoué, ni si l’abonnement est en pause ou résilié.',
+        'credits_package' => 'Les crédits sont émis une seule fois à l’achat du forfait et ne sont pas renouvelés.',
         'remove' => 'Retirer',
         'duplicate_service' => 'Chaque prestation ne peut figurer qu’une fois. Changez sa quantité plutôt que de l’ajouter deux fois.',
         'no_services' => 'Ajoutez au moins une prestation — un abonnement qui n’inclut rien est un abonnement à rien.',
@@ -328,6 +334,7 @@ return [
         'percent' => 'Pourcentage de remise',
         'fixed' => 'Montant fixe de remise',
         'discount_value' => 'Montant',
+        'discount_percentage' => 'Pourcentage',
         'priority_booking' => 'Réservation prioritaire',
         'priority_booking_hint' => 'Les membres sont signalés à l’accueil pour être placés en premier.',
 
@@ -412,6 +419,8 @@ return [
 
         'credits' => 'Crédits',
         'credits_hint' => 'Ce qu’il advient d’une prestation incluse que le client n’a pas utilisée.',
+        'credits_enabled' => 'Inclure des prestations dans les abonnements',
+        'credits_enabled_hint' => 'Les abonnements donnent droit à des prestations à consommer. Désactivé, l’abonnement se résume à sa remise et à ses avantages — rien à utiliser.',
         'allow_rollover' => 'Autoriser le report des crédits inutilisés',
         'allow_rollover_hint' => 'Les crédits inutilisés passent au cycle suivant. Désactivé, chaque cycle repart de zéro.',
         'maximum_rollover' => 'Report maximal de crédits',
@@ -437,10 +446,6 @@ return [
         'cancellation_effective_hint' => 'Quand une résiliation prend effet.',
         'months' => 'mois',
         'days' => 'jours',
-
-        'payments' => 'Paiements',
-        'payments_hint' => 'Les abonnements se règlent avec les moyens que vous acceptez déjà. Rien de distinct à configurer ici.',
-        'payments_link' => 'Ouvrir les paramètres de paiement',
 
         'rules' => 'Comment StyleDesk gère les abonnements',
         'rules_hint' => 'Ce que l’application décide, plutôt que ce que vous décidez.',

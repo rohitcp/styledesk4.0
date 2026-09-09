@@ -35,6 +35,7 @@ class MembershipSettings extends Model
             'allow_purchase_online' => 'boolean',
             'allow_staff_to_sell' => 'boolean',
             'allow_start_date_selection' => 'boolean',
+            'credits_enabled' => 'boolean',
             'reset_credits_on_cycle' => 'boolean',
             'allow_rollover' => 'boolean',
             'allow_credits_across_locations' => 'boolean',
@@ -80,6 +81,10 @@ class MembershipSettings extends Model
             'allow_staff_to_sell' => true,
             'allow_start_date_selection' => true,
             'default_activation' => $defaults['default_activation'],
+
+            /* On, because every membership that exists includes services.
+               Off is the discount-only membership: perks, no credits. */
+            'credits_enabled' => true,
 
             'reset_credits_on_cycle' => true,
             'allow_rollover' => false,
@@ -155,6 +160,18 @@ class MembershipSettings extends Model
     {
         return $this->is_enabled
             && ($this->allow_purchase_in_store || $this->allow_purchase_online);
+    }
+
+    /**
+     * Does a membership here include anything to draw down?
+     *
+     * The question above every other credit setting. Off, and what the client
+     * buys is the discount and the standing — a real product, and one every
+     * screen has to stop asking credit questions about.
+     */
+    public function grantsCredits(): bool
+    {
+        return (bool) $this->credits_enabled;
     }
 
     /**

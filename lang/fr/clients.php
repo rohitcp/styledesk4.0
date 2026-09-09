@@ -400,6 +400,7 @@ return [
             'tabs' => [
                 'rewards' => 'Récompenses',
                 'membership' => 'Abonnement',
+                'payments' => 'Paiements',
                 'leads' => 'Demandes',
                 'activity' => 'Activité',
                 'bookings' => 'Réservations',

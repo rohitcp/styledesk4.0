@@ -73,7 +73,58 @@ return [
         'unionpay' => 'UnionPay',
     ],
 
+    /* The Stripe events StyleDesk received, and what it did about them. */
+    /* What a business lets its payments do, and what each payment cost.
+       A capability that needs a processor says so rather than offering a
+       switch that would do nothing. */
+    'capabilities' => [
+        'title' => 'Was Zahlungen können',
+        'hint' => 'Schalten Sie aus, was dieses Unternehmen nicht anbietet. Was einen Dienstleister braucht, bleibt aus, bis einer verbunden ist.',
+        'groups' => [
+            'in_person' => 'Zahlungen vor Ort',
+            'online' => 'Online-Zahlungen',
+        ],
+        'items' => [
+            'card' => 'Kredit- und Debitkarte',
+            'manual_card_entry' => 'Manuelle Karteneingabe',
+            'tap_to_pay' => 'Tap to Pay',
+            'card_reader' => 'Kartenlesegerät',
+            'booking_deposit' => 'Anzahlung',
+            'full_payment' => 'Vollständige Zahlung',
+            'payment_link' => 'Zahlungslink',
+            'card_on_file' => 'Hinterlegte Karte',
+            'membership_payment' => 'Mitgliedschaftszahlung',
+            'online_booking' => 'Online-Buchungszahlung',
+            'invoice_payment' => 'Rechnungszahlung',
+            'gift_card' => 'Geschenkkartenkauf',
+        ],
+        'blocked' => [
+            'unbuilt' => 'Demnächst',
+            'no_processor' => 'Benötigt einen verbundenen Zahlungsdienstleister',
+        ],
+    ],
+
+    'fees' => [
+        'title' => 'Gebühren',
+        'processor' => 'Bearbeitungsgebühr',
+        'platform' => 'StyleDesk-Gebühr',
+        'net' => 'Netto',
+        'unknown' => 'Wird abgerechnet',
+    ],
+
+    'webhooks' => [
+        'unhandled' => 'StyleDesk verarbeitet diesen Ereignistyp nicht.',
+    ],
+
     'stripe' => [
+        'disputed' => 'Von der Kundin angefochten (:reason).',
+        'disconnect_title' => 'Stripe trennen?',
+        'disconnect_warning' => 'Das Trennen betrifft Online-Buchungen, Anzahlungen, Mitgliedschaftsverlängerungen, Zahlungslinks, hinterlegte Karten und offene Beträge. Bestehende Datensätze bleiben erhalten, aber es kann nichts Neues belastet werden, bis Stripe wieder verbunden ist.',
+        'sandbox' => 'Testmodus',
+        'live' => 'Live',
+        'sandbox_notice' => 'Der Testmodus ist aktiv. Hier erfasste Zahlungen sind Testbuchungen und bewegen kein echtes Geld.',
+        'provider_platform' => 'StyleDesk Stripe',
+        'provider_own' => 'Ihr eigenes Stripe-Konto',
         'not_settled' => 'Die Karte wurde nicht belastet. Die Zahlung wurde nicht abgeschlossen.',
         'connect' => 'Stripe verbinden',
         'continue' => 'Einrichtung fortsetzen',
@@ -108,6 +159,7 @@ return [
         'platform_unavailable' => 'Die Verbindung über StyleDesk ist in dieser Installation nicht verfügbar. Ihr eigenes Stripe-Konto können Sie unten trotzdem nutzen.',
         'statuses' => [
             'connected' => 'Verbunden',
+            'sandbox' => 'Testmodus',
             'needs_attention' => 'Prüfung nötig',
             'incomplete' => 'Einrichtung unvollständig',
         ],

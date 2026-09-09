@@ -182,19 +182,28 @@ class BookingQuoteController extends Controller
         [$defaultPercent, $defaultTipMinor] = $this->defaultTip($tipSettings, $discounted);
 
         if ($tipSettings->is_enabled) {
-            if (! $tipChosen) {
+            /* What was actually sent, first. A request naming a tip is
+               quoted the tip it named — the flag beside it says whether
+               anybody has been *asked*, which is a different question and
+               only decides what to do when nothing was named. Reading the
+               flag first meant a caller that sent 15% was quoted the
+               business default instead, silently. */
+            if (isset($data['tip_amount'])) {
+                $tipMinor = (int) round(((float) $data['tip_amount']) * 100);
+                $tipPercent = null;
+            } elseif ($tipPercent !== null) {
+                $tipMinor = Tips::percentOf($discounted, (int) $tipPercent);
+            } elseif (! $tipChosen) {
                 /* Nobody has been asked yet. The default is an answer the
                    business already gave, so it is applied rather than
                    suggested — the total under it is the one the desk reads
                    out. */
                 $tipPercent = $defaultPercent;
                 $tipMinor = $defaultTipMinor;
-            } elseif (isset($data['tip_amount'])) {
-                $tipMinor = (int) round(((float) $data['tip_amount']) * 100);
-                $tipPercent = null;
-            } elseif ($tipPercent !== null) {
-                $tipMinor = Tips::percentOf($discounted, (int) $tipPercent);
             }
+
+            /* Asked, and answered with nothing: that is No tip, and the
+               nought it starts on is the right answer. */
         }
 
         /* 5 & 6 — tax on the discounted work, and the total. The tip is not

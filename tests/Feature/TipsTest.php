@@ -467,43 +467,130 @@ class TipsTest extends TestCase
     }
 
     /**
-     * A new service opens on the business's own suggestion.
+     * A new service follows the business rather than copying it.
      *
-     * Copied onto the form rather than left blank: a salon that suggests 20%
-     * suggests it on the service it adds today too, and a card showing
-     * "follows the default" made every one of them a decision to look up.
+     * The percentage is the business's own answer, kept in one place: a salon
+     * that changes 18% to 20% has changed it everywhere, which a number
+     * copied onto each service would not have done. The card says what the
+     * default is, so following it is not a decision to look up.
      */
-    public function test_the_add_service_form_opens_on_the_business_tip_settings(): void
+    public function test_the_add_service_form_follows_the_business_tip_default(): void
     {
         $this->settings(['default_tip_type' => 'percent', 'default_tip_value' => 18]);
 
         $this->actingAs($this->owner)
             ->get(route('services.create'))
             ->assertOk()
-            ->assertSee('value="18"', false)
-            ->assertSee('name="tip_type" value="percent" class="sr-only" checked>', false);
+            ->assertSee('name="tip_type" value="" class="sr-only" checked>', false)
+            ->assertSee(__('tips.follows_default_with', ['amount' => '18%']))
+            ->assertSee(__('tips.follows_default_note', ['amount' => '18%']));
     }
 
     /**
-     * The quick picks are the business's own suggestions.
+     * Two answers, not three.
      *
-     * A shortcut into the box rather than the answer itself: the percentages
-     * come from what the till offers, and a flat sum — which has no
-     * business-wide list — gets three round numbers to save the typing.
+     * A service either follows the business or names a flat sum. A
+     * per-service percentage would be a second copy of one number, and the
+     * two would eventually disagree.
      */
-    public function test_the_tip_card_offers_the_business_percentages_as_quick_picks(): void
+    public function test_the_tip_type_offers_only_the_default_and_a_flat_sum(): void
+    {
+        $this->settings(['default_tip_type' => 'percent', 'default_tip_value' => 20]);
+
+        $page = $this->actingAs($this->owner)->get(route('services.create'))->assertOk();
+
+        $page->assertSee('name="tip_type" value=""', false)
+            ->assertSee('name="tip_type" value="fixed"', false)
+            ->assertDontSee('name="tip_type" value="percent"', false);
+
+        /* And the default names its own figure, rather than making the
+           reader go and look it up. */
+        $page->assertSee(__('tips.follows_default_with', ['amount' => '20%']));
+    }
+
+    /** And the server refuses one, however the request was made. */
+    public function test_a_per_service_percentage_is_refused(): void
+    {
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Balayage', 'duration_minutes' => 90,
+                'locations' => [$this->location->id],
+                'accepts_tips' => '1', 'tip_type' => 'percent', 'tip_value' => '18',
+            ])
+            ->assertSessionHasErrors('tip_type');
+    }
+
+    /**
+     * A value without a flat sum to be is not kept.
+     *
+     * The field posts whether or not it is showing, and a number left behind
+     * by a change of mind would outrank the default it claims to follow.
+     */
+    public function test_a_tip_value_is_dropped_unless_the_type_is_a_flat_sum(): void
+    {
+        $this->actingAs($this->owner)
+            ->post(route('services.store'), [
+                'name' => 'Blow dry', 'duration_minutes' => 30,
+                'locations' => [$this->location->id],
+                'accepts_tips' => '1', 'tip_type' => '', 'tip_value' => '18',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $service = Service::withoutGlobalScopes()->where('name', 'Blow dry')->firstOrFail();
+
+        $this->assertNull($service->tip_type);
+        $this->assertNull($service->tip_value);
+    }
+
+    /**
+     * "Follows the default" shows what the till will actually offer.
+     *
+     * The business's own row, with the default marked. Read-only — these are
+     * edited in App settings → Tips — but shown rather than described, so
+     * following the default is a thing somebody can see rather than a phrase
+     * they have to go and look up.
+     */
+    public function test_following_the_default_shows_the_till_percentages(): void
+    {
+        $this->settings(['percentages' => [15, 18, 20, 25], 'default_tip_value' => 20]);
+
+        $html = $this->actingAs($this->owner)
+            ->get(route('services.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString(__('tips.offered_at_till'), $html);
+
+        foreach ([15, 18, 20, 25] as $percent) {
+            $this->assertStringContainsString('>'.$percent.'%<', $html);
+        }
+
+        /* And the default among them is the one marked. */
+        $this->assertMatchesRegularExpression(
+            '/is-active[^>]*>\s*20%\s*</',
+            $html,
+            'the business default is not marked in the till row'
+        );
+    }
+
+    /**
+     * The quick picks are three round sums, and only sums.
+     *
+     * A shortcut into the box rather than the answer itself. The business
+     * percentages are not offered here: a service cannot be a percentage, so
+     * a row of them beside the amount would be the wrong set entirely.
+     */
+    public function test_the_tip_card_offers_flat_sums_as_quick_picks(): void
     {
         $this->settings(['percentages' => [15, 20, 25]]);
 
         $page = $this->actingAs($this->owner)->get(route('services.create'))->assertOk();
 
-        foreach ([15, 20, 25] as $percent) {
-            $page->assertSee('data-tip-preset="'.$percent.'"', false)->assertSee($percent.'%');
-        }
-
         foreach (TipSettings::QUICK_FIXED_AMOUNTS as $amount) {
             $page->assertSee('data-tip-preset="'.$amount.'"', false);
         }
+
+        $page->assertDontSee('data-tip-preset-for="percent"', false);
     }
 
     /**
@@ -518,13 +605,15 @@ class TipsTest extends TestCase
             ->post(route('services.store'), [
                 'name' => 'Balayage', 'duration_minutes' => 90,
                 'locations' => [$this->location->id],
-                'accepts_tips' => '1', 'tip_type' => 'percent', 'tip_value' => '18',
+                'accepts_tips' => '1', 'tip_type' => 'fixed', 'tip_value' => '18',
             ])
             ->assertRedirect();
 
         $service = Service::withoutGlobalScopes()->where('name', 'Balayage')->firstOrFail();
 
+        $this->assertSame('fixed', $service->tip_type);
         $this->assertSame(18, (int) $service->tip_value);
+        $this->assertSame('percent', $settings->fresh()->default_tip_type);
         $this->assertSame(20, (int) $settings->fresh()->default_tip_value);
     }
 
@@ -539,7 +628,7 @@ class TipsTest extends TestCase
     {
         $this->settings(['default_tip_value' => 20]);
 
-        $customised = $this->service('Balayage', 12000, ['tip_type' => 'percent', 'tip_value' => 18]);
+        $customised = $this->service('Balayage', 12000, ['tip_type' => 'fixed', 'tip_value' => 18]);
         $follows = $this->service('Blow dry', 4000);
 
         $this->settings(['default_tip_value' => 25]);

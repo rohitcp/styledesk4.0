@@ -27,6 +27,17 @@ class TipSettings extends Model
     public const TYPES = ['percent', 'fixed'];
 
     /**
+     * What a single service may say instead of following the business.
+     *
+     * Only a flat sum. The percentage is the business's own answer — set once
+     * in App settings → Tips, suggested at the till, and changeable on the
+     * booking itself — so a service repeating it would be a second copy of
+     * one number, and the two would eventually disagree. A service either
+     * follows that default or names a sum of its own.
+     */
+    public const SERVICE_TYPES = ['fixed'];
+
+    /**
      * What a client is offered when the business has not said otherwise.
      *
      * Four is about as many as anybody reads before choosing; the custom box

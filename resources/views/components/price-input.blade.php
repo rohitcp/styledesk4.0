@@ -25,16 +25,17 @@
     'hint' => null,
     'required' => false,
     /**
-     * A deposit per price rather than one per service.
+     * The service's one deposit rule, shown here rather than asked for here.
      *
-     * The deposit belongs to the price it is a deposit on: 20% of one price
-     * and 20% of another are different amounts, and a single service-wide
-     * setting cannot say "deposit on the premium price only".
+     * It is configured once, above, and every price inherits it: a
+     * percentage settles against whatever each price is, so twenty per cent
+     * never has to be typed twice. This component only reports what that
+     * comes to.
      *
-     * Keyed by currency: ['USD' => ['required' => true, 'type' => 'percent',
-     * 'value' => '20']].
+     * ['required' => true, 'type' => 'percent', 'percent' => '20',
+     *  'amounts' => ['USD' => '25.00']].
      */
-    'deposits' => null,
+    'deposit' => null,
     /**
      * The cash price, keyed by currency, where the screen has two.
      *
@@ -59,10 +60,43 @@
             $code => old('cash_price.'.$code, data_get($cashValues, $code)),
         ]);
 
-    $depositFor = fn (string $code, string $key, $fallback = null) => old(
-        'deposit.'.$code.'.'.$key,
-        data_get($deposits, $code.'.'.$key, $fallback),
-    );
+    $depositOn = (bool) data_get($deposit, 'required', false);
+    $depositType = (string) data_get($deposit, 'type', 'percent');
+
+    /* What the rule comes to on one price, in words. Worked out here for the
+       first paint and again in the browser as the price is typed, because a
+       percentage of a number nobody has entered yet is not a figure worth
+       printing. */
+    /* What the rule comes to on one price, in words: "20% · $12.00", or
+       just "$25.00" where it is a flat sum. Worked out here for the first
+       paint and again in the browser as the price is typed — a percentage of
+       a number nobody has entered yet is not a figure worth printing. */
+    $depositWords = function (string $code, $price) use ($depositOn, $depositType, $deposit) {
+        /* Nothing where there is no price: a currency this service is not
+           priced in stores no deposit either, and printing one would
+           advertise a figure the save is about to discard. */
+        if (! $depositOn || ! is_numeric($price) || (float) $price <= 0) {
+            return null;
+        }
+
+        $symbol = App\Support\Money::symbol($code);
+
+        if ($depositType === 'fixed') {
+            $amount = data_get($deposit, 'amounts.'.$code);
+
+            return is_numeric($amount) ? $symbol.number_format((float) $amount, 2) : null;
+        }
+
+        $percent = data_get($deposit, 'percent');
+
+        if (! is_numeric($percent)) {
+            return null;
+        }
+
+        $words = rtrim(rtrim(number_format((float) $percent, 2, '.', ''), '0'), '.').'%';
+
+        return $words.' · '.$symbol.number_format((float) $price * (float) $percent / 100, 2);
+    };
 @endphp
 
 <div {{ $attributes }} data-price-input>
@@ -72,16 +106,14 @@
         </span>
     @endif
 
-    {{-- One block per currency, each a row of three fields with its own
-         deposit switch beneath and a rule between blocks. One loop rather
-         than a single-currency branch and a multi-currency branch: the two
-         used to be separate markup and the deposit had to be written twice,
-         which is two places for a field to go missing from. --}}
+    {{-- One block per currency: the prices, what the service's deposit rule
+         comes to on them, and a rule between blocks. One loop rather than a
+         single-currency branch and a multi-currency branch — the two used to
+         be separate markup, which is two places for a field to go missing
+         from. --}}
     <div class="space-y-4">
         @foreach ($priceCurrencies as $code)
-            @php $depositOn = (bool) $depositFor($code, 'required', false); @endphp
-
-            <div data-deposit-row>
+            <div data-price-row data-currency="{{ $code }}">
                 {{-- Price, type and amount on one line. items-end so the
                      three sit on a common baseline whatever their labels do,
                      and wrap so a narrow window stacks them rather than
@@ -137,79 +169,21 @@
                         </div>
                     @endif
 
-                    {{-- Hidden until this price's own switch is on, so a
-                         service that takes no deposit is a row of one
-                         field. --}}
-                    <div class="flex flex-wrap items-end gap-3" data-deposit-fields @unless ($depositOn) hidden @endunless>
-                        {{-- The label is written here rather than passed to
-                             the combo: the combo draws a heavier one, and
-                             three fields on a row want three identical
-                             labels or none of them look aligned. --}}
-                        <div class="w-[150px]">
-                            <span class="block text-[12px] text-sub mb-1">{{ __('services.deposit_type') }}</span>
-
-                            <x-combo data-deposit-type
-                                     :name="'deposit['.$code.'][type]'"
-                                     :options="['fixed' => __('services.deposit_types.fixed'), 'percent' => __('services.deposit_types.percent')]"
-                                     :selected="$depositFor($code, 'type', 'percent')"
-                                     :ariaLabel="__('services.deposit_type')" />
-                        </div>
-
-                        {{-- The value field follows the type beside it: an
-                             amount is money and wears the currency symbol; a
-                             percentage is not, and wearing one would be a
-                             field that lies about what it holds. Both the
-                             label and the affordance change, because a reader
-                             who has just chosen "percentage" and sees a $ in
-                             the box will type dollars. --}}
-                        @php $depositType = $depositFor($code, 'type', 'percent'); @endphp
-
-                        <div data-deposit-value-field
-                             data-amount-label="{{ __('services.deposit_amount') }}"
-                             data-percent-label="{{ __('services.deposit_percent') }}">
-                            <label for="deposit_{{ $code }}" class="block text-[12px] text-sub mb-1">
-                                <span data-deposit-label>
-                                    {{ $depositType === 'fixed'
-                                        ? __('services.deposit_amount')
-                                        : __('services.deposit_percent') }}
-                                </span>
-                            </label>
-
-                            <div class="relative w-[130px]">
-                                <span data-deposit-prefix aria-hidden="true"
-                                      class="styledesk_input__prefix pointer-events-none text-sub"
-                                      @unless ($depositType === 'fixed') hidden @endunless>
-                                    {{ App\Support\Money::symbol($code) }}
-                                </span>
-
-                                <span data-deposit-suffix aria-hidden="true"
-                                      class="styledesk_input__suffix pointer-events-none text-sub"
-                                      @if ($depositType === 'fixed') hidden @endif>%</span>
-
-                                <input id="deposit_{{ $code }}" type="text" inputmode="decimal"
-                                       @class(['sd-input w-[130px]', 'styledesk_input--prefixed' => $depositType === 'fixed'])
-                                       data-deposit-value
-                                       name="deposit[{{ $code }}][value]"
-                                       value="{{ $depositFor($code, 'value') }}"
-                                       aria-label="{{ $depositType === 'fixed' ? __('services.deposit_amount') : __('services.deposit_percent') }}"
-                                       autocomplete="off">
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
-                {{-- The switch below the row it governs, and without a card
-                     around it: this already sits inside the Price card, and a
-                     box around one row inside another box reads as a panel
-                     that failed to render. --}}
-                <div class="mt-2.5">
-                    <x-toggle class="styledesk_toggle--bare"
-                              :name="'deposit['.$code.'][required]'" :label="__('services.deposit_required')"
-                              :checked="$depositOn" data-deposit-toggle />
-                </div>
+                {{-- What the service's deposit rule comes to on this price.
+                     Reported, not asked: it is set once above and every
+                     price inherits it, so a percentage that changes there
+                     changes here without anybody retyping it. Recomputed as
+                     the price is typed. --}}
+                @php $words = $depositWords($code, $priceValues[$code]); @endphp
+
+                <p class="mt-2 text-[12px] text-sub" data-deposit-preview
+                   data-symbol="{{ App\Support\Money::symbol($code) }}"
+                   data-pattern="{{ __('services.deposit_of', ['amount' => '__AMOUNT__']) }}"
+                   @unless ($words) hidden @endunless>{{ $words ? __('services.deposit_of', ['amount' => $words]) : '' }}</p>
 
                 @error($name.'.'.$code)<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
-                @error('deposit.'.$code.'.value')<p class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
             </div>
 
             {{-- Between blocks, never after the last: a rule under the final
@@ -225,6 +199,12 @@
              three numbers is exactly the person who might assume the other two
              will fill themselves in. --}}
         <p class="mt-3 text-[12px] text-sub">{{ __('currency.no_conversion') }}</p>
+    @endif
+
+    @if ($deposit !== null && data_get($deposit, 'required'))
+        {{-- Said once under the prices rather than beside each of them: the
+             point is that nobody has to fill a deposit in here. --}}
+        <p class="mt-3 text-[12px] text-faint">{{ __('services.deposit_inherits') }}</p>
     @endif
 
     @if ($hint)

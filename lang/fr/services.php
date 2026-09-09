@@ -66,6 +66,7 @@ return [
     'correct_fields' => 'Corrigez les champs signalés.',
 
     'section' => [
+        'deposit' => 'Acompte exigé',
         'about' => 'À propos de cette prestation',
         'price' => 'Prix',
         'who_where' => 'Qui et où',
@@ -127,6 +128,9 @@ return [
         'percent' => 'Pourcentage',
     ],
     'deposit_required_hint' => 'Le client règle une partie du prix pour bloquer le rendez-vous.',
+    'deposit_take' => 'Demander un acompte pour cette prestation',
+    'deposit_card_hint' => 'Saisi une seule fois ici, puis appliqué à tous les tarifs ci-dessous.',
+    'deposit_inherits' => 'Tous les tarifs appliquent l’acompte défini ci-dessus.',
 
     'search' => 'Rechercher une prestation…',
     'all_categories' => 'Toutes les catégories',

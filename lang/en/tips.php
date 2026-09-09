@@ -39,6 +39,9 @@ return [
     ],
     'default_tip' => 'Default tip',
     'default_tip_hint' => 'A percentage of the tipped part of the bill, or a flat sum.',
+    'tip_amount' => 'Tip amount',
+    'tip_amount_hint' => 'A flat sum, suggested at the till instead of the business percentage.',
+    'follows_default_note' => 'Suggests the business default of :amount at the till. Anybody can change it on the booking.',
 
     'percentages' => 'Offered at the till',
     'percentages_hint' => 'Up to six. The client also gets a box to type their own.',
@@ -64,6 +67,8 @@ return [
         'status' => 'Status',
     ],
     'follows_default' => 'Follows the default',
+    'follows_default_with' => 'Follows the default (:amount)',
+    'offered_at_till' => 'Offered at the till',
     'accepted' => 'Accepted',
     'not_accepted' => 'Not tipped',
     'no_services' => 'No active services to configure yet.',

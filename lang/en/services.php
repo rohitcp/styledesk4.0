@@ -66,6 +66,7 @@ return [
     'correct_fields' => 'Please correct the highlighted fields.',
 
     'section' => [
+        'deposit' => 'Deposit required',
         'about' => 'About this service',
         'price' => 'Price',
         'who_where' => 'Who and where',
@@ -127,6 +128,9 @@ return [
         'percent' => 'Percentage',
     ],
     'deposit_required_hint' => 'The client pays part of the price to hold the appointment.',
+    'deposit_take' => 'Take a deposit for this service',
+    'deposit_card_hint' => 'Entered once here, and used by every price below.',
+    'deposit_inherits' => 'Every price takes the deposit set above.',
 
     'search' => 'Search services…',
     'all_categories' => 'All categories',

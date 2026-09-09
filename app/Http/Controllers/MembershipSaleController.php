@@ -86,9 +86,16 @@ class MembershipSaleController extends Controller
         $this->guardStartDate($settings, $startsOn);
         $this->guardMethod($plan, $data['payment_method']);
 
-        /* A recurring plan renews unless somebody said otherwise; a package
-           never does, whatever arrived. */
-        $autoRenew = $plan->isRecurring() && (bool) ($data['auto_renew'] ?? true);
+        /* Renewing is an explicit answer, never an assumption.
+         *
+         * The screen ticks the box for a recurring plan — that is what the
+         * client is being sold — but the server does not fill it in for a
+         * request that did not say. A subscription that starts charging a
+         * card every month because a field was missing is the one mistake
+         * this direction of default cannot make.
+         *
+         * A package never renews, whatever arrived. */
+        $autoRenew = $plan->isRecurring() && $request->boolean('auto_renew');
         $card = $this->cardFor($data['card_id'] ?? null, $client);
 
         $this->guardCard($autoRenew, $card);

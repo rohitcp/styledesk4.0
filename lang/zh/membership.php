@@ -311,11 +311,17 @@ return [
         'saving_preview' => '客户可省：:amount',
 
         'services' => '权益与服务',
-        'services_hint_recurring' => '会员每个周期可获得的内容。每次扣款后次数会重新发放。',
+        'services_hint_recurring' => '每次成功扣款后，权益与次数会重新发放。',
         'services_hint_package' => '套餐总共包含的内容。用完即结束。',
         'add_service' => '+ 添加服务',
         'service' => '服务',
+        'service_search' => '搜索服务…',
         'quantity' => '数量',
+        'credits_column' => '次数',
+        'count_placeholder' => '例如 4',
+        'services_intro' => '会员可通过这份会员获得的内容。',
+        'credits_recurring' => '每次成功扣款后重新发放次数——在扣款失败、会员暂停或已取消期间不会发放。',
+        'credits_package' => '次数在购买套餐时一次性发放，不会补充。',
         'remove' => '移除',
         'duplicate_service' => '同一项服务只能列出一次，请修改数量而不是重复添加。',
         'no_services' => '至少添加一项服务——不包含任何内容的会员没有意义。',
@@ -327,6 +333,7 @@ return [
         'percent' => '按百分比折扣',
         'fixed' => '固定金额折扣',
         'discount_value' => '金额',
+        'discount_percentage' => '百分比',
         'priority_booking' => '优先预约',
         'priority_booking_hint' => '前台会标记会员，方便优先安排。',
 
@@ -411,6 +418,8 @@ return [
 
         'credits' => '次数',
         'credits_hint' => '客户没有使用的包含服务将如何处理。',
+        'credits_enabled' => '会员包含服务',
+        'credits_enabled_hint' => '会员将包含可使用的服务次数。关闭后，会员仅提供折扣和权益，没有可使用的次数。',
         'allow_rollover' => '允许未使用的次数结转',
         'allow_rollover_hint' => '未使用的次数带入下一周期。关闭后每个周期重新开始。',
         'maximum_rollover' => '最多可结转次数',
@@ -436,10 +445,6 @@ return [
         'cancellation_effective_hint' => '取消何时生效。',
         'months' => '个月',
         'days' => '天',
-
-        'payments' => '付款',
-        'payments_hint' => '会员使用你已接受的付款方式支付，这里没有额外需要配置的内容。',
-        'payments_link' => '打开付款设置',
 
         'rules' => 'StyleDesk 如何处理会员',
         'rules_hint' => '这些由应用决定，而不是由你设置。',

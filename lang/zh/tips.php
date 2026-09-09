@@ -37,6 +37,9 @@ return [
     ],
     'default_tip' => '默认小费',
     'default_tip_hint' => '账单中可给小费部分的百分比，或者一个固定金额。',
+    'tip_amount' => '小费金额',
+    'tip_amount_hint' => '固定金额，在收银时代替商家的百分比。',
+    'follows_default_note' => '收银时建议商家的默认值 :amount，在预约中可以随时更改。',
 
     'percentages' => '收银时提供的选项',
     'percentages_hint' => '最多六个。客户还会有一个可以自己填的输入框。',
@@ -62,6 +65,8 @@ return [
         'status' => '状态',
     ],
     'follows_default' => '沿用默认值',
+    'follows_default_with' => '跟随默认值（:amount）',
+    'offered_at_till' => '收银时提供',
     'accepted' => '接受',
     'not_accepted' => '不收小费',
     'no_services' => '还没有可配置的启用服务。',

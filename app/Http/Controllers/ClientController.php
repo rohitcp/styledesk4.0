@@ -10,6 +10,7 @@ use App\Models\BookingService;
 use App\Models\Client;
 use App\Models\ClientActivity;
 use App\Models\ClientNote;
+use App\Models\ClientPaymentMethod;
 use App\Models\ClientSettings;
 use App\Models\ClientTag;
 use App\Models\Location;
@@ -18,6 +19,7 @@ use App\Models\MembershipSettings;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
+use App\Payments\PaymentGatewayManager;
 use App\Support\ClientActivityLog;
 use App\Support\ClientBookingContext;
 use App\Support\ClientFilePresenter;
@@ -671,6 +673,21 @@ class ClientController extends Controller
             'memberships' => $canViewMemberships ? ClientMemberships::held($client) : collect(),
             'membershipCredits' => $canViewMemberships ? ClientMemberships::creditsFor($client) : collect(),
             'membershipHistory' => $canViewMemberships ? ClientMemberships::historyFor($client) : collect(),
+
+            /* The cards this client has on file. References only — brand,
+               last four, expiry — because that is all StyleDesk holds.
+               Empty where the business has no processor: there is nowhere to
+               keep a card, so there is nothing to manage. */
+            'canViewCards' => $canViewCards = app(PaymentGatewayManager::class)->vault($user->tenant) !== null
+                && $user->hasPermission('clients.view_contact', 'own'),
+            'canManageCards' => $user->hasPermission('clients.edit', 'own'),
+            'paymentMethods' => $canViewCards
+                ? ClientPaymentMethod::query()
+                    ->forClient($client->id)
+                    ->orderByDesc('is_default')
+                    ->orderByDesc('id')
+                    ->get()
+                : collect(),
             'clientServices' => $clientServices,
             /* Whether this reader may take an appointment. The Create
                Booking action is live for them and refused for everybody

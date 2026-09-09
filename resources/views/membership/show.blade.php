@@ -141,6 +141,11 @@
       <div class="mt-4 grid gap-4 lg:grid-cols-2">
 
         {{-- ------------------------------------------------- includes --}}
+        {{-- Only where the membership includes anything. A business whose
+             memberships are discount-only has nothing to list, and an empty
+             "What it includes" reads as data missing rather than as a
+             product that works that way. --}}
+        @if ($plan->planServices->isNotEmpty())
         <section class="sd-card p-5">
           <h2 class="text-[15px] font-semibold text-head">{{ __('membership.show.includes') }}</h2>
           <p class="text-[12px] text-faint mt-1">
@@ -156,6 +161,7 @@
             @endforeach
           </ul>
         </section>
+        @endif
 
         {{-- ------------------------------------------------- benefits --}}
         <section class="sd-card p-5">

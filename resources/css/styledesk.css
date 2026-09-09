@@ -1638,6 +1638,20 @@ textarea.sd-input {
     outline-offset: 1px;
 }
 
+/* The same chip, reporting rather than offering: the till's percentages
+   shown on the service form are the business's answer, edited in App
+   settings. A pointer and a hover state on something nothing happens to is
+   a promise the page cannot keep. */
+.styledesk_chipbtn--static {
+    display: inline-flex;
+    align-items: center;
+    cursor: default;
+}
+
+.styledesk_chipbtn--static:hover { background: #fff; }
+
+.styledesk_chipbtn--static.is-active:hover { background: var(--color-sel); }
+
 /* ------------------------------------------------------------------
    Workspace tabs (client profile)
    ------------------------------------------------------------------ */

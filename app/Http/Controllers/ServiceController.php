@@ -448,15 +448,27 @@ class ServiceController extends Controller
      */
     private function columns(array $data): array
     {
-        /* deposit_required is a summary of the prices, written by syncPrices
-           rather than posted: the form has a toggle per price and none for
-           the service. It is not in the rules either — a field the save
-           discards is a field the form should not be offering. */
+        /* deposit_required is posted now — one switch for the service —
+           but it is still written by syncPrices, from the prices it fans the
+           rule out to, so the summary can never disagree with them. The type
+           and the numbers are not columns on services at all: they live on
+           each price, which is what the booking screen reads. */
         /* images and default_image_id are not columns either: the gallery is
            rows in stored_files, and which one leads is written by
            ServiceImageSync once the service has an id to attach them to. */
+        /* A tip value only means anything as a flat sum. Anything else is
+           "follow the business", and a number left in the box beside it
+           would quietly outrank the default it claims to be following. */
+        if (($data['tip_type'] ?? null) !== 'fixed') {
+            $data['tip_type'] = null;
+            $data['tip_value'] = null;
+        }
+
         return collect($data)
-            ->except(['staff', 'locations', 'resources', 'price', 'cash_price', 'deposit', 'images', 'default_image_id'])
+            ->except([
+                'staff', 'locations', 'resources', 'price', 'cash_price', 'images', 'default_image_id',
+                'deposit_required', 'deposit_type', 'deposit_percent', 'deposit_amount',
+            ])
             ->all();
     }
 
@@ -480,9 +492,43 @@ class ServiceController extends Controller
             ->all());
 
         $service->load('prices');
-        $service->syncPrices($data['price'] ?? [], $data['deposit'] ?? [], $data['cash_price'] ?? []);
+        $service->syncPrices($data['price'] ?? [], $this->depositPerCurrency($data), $data['cash_price'] ?? []);
 
         $images->sync($service, $data['images'] ?? [], $data['default_image_id'] ?? null);
+    }
+
+    /**
+     * The service's one deposit rule, restated for every price it applies to.
+     *
+     * Asked once and stored on each price: a percentage has to settle against
+     * the price actually being charged, which is a per-price sum, and the
+     * booking screen reads it from there. Writing every row from the same
+     * answer is what stops two prices ever disagreeing about the policy.
+     *
+     * A percentage is one number whatever the currency. A fixed amount is
+     * money, so it is per currency — $25 is not also €25.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, array<string, mixed>>
+     */
+    private function depositPerCurrency(array $data): array
+    {
+        $required = (bool) ($data['deposit_required'] ?? false);
+
+        if (! $required) {
+            return [];
+        }
+
+        $type = $data['deposit_type'] ?? 'percent';
+        $amounts = (array) ($data['deposit_amount'] ?? []);
+
+        return collect($data['price'] ?? [])
+            ->mapWithKeys(fn ($price, string $code) => [$code => [
+                'required' => true,
+                'type' => $type,
+                'value' => $type === 'percent' ? ($data['deposit_percent'] ?? null) : ($amounts[$code] ?? null),
+            ]])
+            ->all();
     }
 
     /**
@@ -537,7 +583,9 @@ class ServiceController extends Controller
                value of its own — so a service that never disagreed moves
                when the business changes its mind. */
             'accepts_tips' => ['nullable', 'boolean'],
-            'tip_type' => ['nullable', Rule::in(TipSettings::TYPES)],
+            /* A service says "a flat sum" or says nothing. The percentage is
+               the business's own answer, kept in one place. */
+            'tip_type' => ['nullable', Rule::in(TipSettings::SERVICE_TYPES)],
             'tip_value' => ['nullable', 'integer', 'min:0', 'max:100'],
             'tip_required' => ['nullable', 'boolean'],
             'allow_no_tip' => ['nullable', 'boolean'],
@@ -564,37 +612,68 @@ class ServiceController extends Controller
             'cash_price' => ['array'],
             'cash_price.*' => ['nullable', 'numeric', 'min:0', 'max:999999'],
 
-            /* One deposit per price, keyed the same way. Checked as a whole
-               rather than field by field: whether a value is required depends
-               on that row's own toggle, which a per-field rule cannot see. */
-            'deposit' => ['array', function (string $attribute, mixed $value, callable $fail) {
-                foreach ((array) $value as $code => $deposit) {
-                    if (! (bool) ($deposit['required'] ?? false)) {
-                        continue;
-                    }
+            /* One deposit for the service, fanned out to its prices on save.
 
-                    $type = $deposit['type'] ?? null;
-                    $amount = $deposit['value'] ?? null;
+               Checked as a whole on the switch rather than field by field:
+               whether a type is needed, and which of the two value fields
+               has to hold something, depends on answers a per-field rule
+               cannot see. The switch is always posted, so this always runs. */
+            'deposit_required' => ['nullable', 'boolean', function (string $attribute, mixed $value, callable $fail) use ($request, $enabled) {
+                if (! (bool) $value) {
+                    return;
+                }
 
-                    if (! in_array($type, ['fixed', 'percent'], true)) {
-                        $fail(__('services.deposit_type_required'));
+                $type = $request->input('deposit_type');
 
-                        continue;
-                    }
+                if (! in_array($type, ['fixed', 'percent'], true)) {
+                    $fail(__('services.deposit_type_required'));
 
-                    if ($amount === null || $amount === '' || ! is_numeric($amount) || (float) $amount <= 0) {
+                    return;
+                }
+
+                if ($type === 'percent') {
+                    $percent = $request->input('deposit_percent');
+
+                    if ($percent === null || $percent === '' || ! is_numeric($percent) || (float) $percent <= 0) {
                         $fail(__('services.deposit_value_required'));
 
-                        continue;
+                        return;
                     }
 
                     /* A percentage over 100 is a deposit larger than the
                        price, which is a typo rather than a policy. */
-                    if ($type === 'percent' && (float) $amount > 100) {
+                    if ((float) $percent > 100) {
                         $fail(__('services.deposit_percent_range'));
+                    }
+
+                    return;
+                }
+
+                /* A flat sum is money, so it is asked for once per currency
+                   — and only for the currencies this service is actually
+                   priced in. A currency with no price has no deposit to
+                   take, and demanding one would block the save over a field
+                   the reader cannot see the point of. */
+                foreach ($enabled as $code) {
+                    $price = $request->input('price.'.$code);
+
+                    if ($price === null || $price === '') {
+                        continue;
+                    }
+
+                    $amount = $request->input('deposit_amount.'.$code);
+
+                    if ($amount === null || $amount === '' || ! is_numeric($amount) || (float) $amount <= 0) {
+                        $fail(__('services.deposit_value_required'));
+
+                        return;
                     }
                 }
             }],
+            'deposit_type' => ['nullable', Rule::in(['fixed', 'percent'])],
+            'deposit_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'deposit_amount' => ['array'],
+            'deposit_amount.*' => ['nullable', 'numeric', 'min:0', 'max:999999'],
 
             /**
              * Ids of pictures already uploaded, not files: the upload happens

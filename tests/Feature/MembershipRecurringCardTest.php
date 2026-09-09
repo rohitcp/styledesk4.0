@@ -198,7 +198,10 @@ class MembershipRecurringCardTest extends TestCase
         $this->assertSame(0, ClientMembership::withoutGlobalScopes()->count());
     }
 
-    public function test_a_recurring_plan_can_be_sold_as_a_one_off(): void
+    /* Unticking the box means StyleDesk does not charge the card — not that
+       the subscription stopped existing. The money is still owed, and the
+       desk still has a date to collect it on. */
+    public function test_a_recurring_membership_can_be_collected_by_hand(): void
     {
         $this->settings();
         $plan = $this->plan();
@@ -211,9 +214,9 @@ class MembershipRecurringCardTest extends TestCase
 
         $this->assertFalse((bool) $membership->auto_renew);
         $this->assertNull($membership->payment_method_id);
-        /* Nothing renews, so there is no next billing date — not "none yet",
-           a question that no longer applies. */
-        $this->assertNull($membership->next_billing_on);
+        /* Still due on the 9th. A business with no processor connected has a
+           subscription to collect, and a date it can chase. */
+        $this->assertSame('2026-10-09', $membership->next_billing_on->toDateString());
     }
 
     /* A package with auto-renew on is a subscription to something that has
@@ -236,6 +239,7 @@ class MembershipRecurringCardTest extends TestCase
 
         $this->assertFalse((bool) $membership->auto_renew);
         $this->assertNull($membership->payment_method_id);
+        /* A package has no cycle to bill for, ever. */
         $this->assertNull($membership->next_billing_on);
     }
 
@@ -323,6 +327,38 @@ class MembershipRecurringCardTest extends TestCase
         /* There is nowhere to charge them again, so offering the card would
            be offering a renewal that cannot run. */
         $this->assertSame([], $context['cards']);
+    }
+
+    /**
+     * What the Recurring Payment checkbox is drawn from.
+     *
+     * The screen shows it when the chosen plan has a billing frequency, so
+     * that is the field the props have to carry — a recurring plan that
+     * arrived without one would render as a package and quietly lose the
+     * subscription.
+     */
+    public function test_a_recurring_plan_reaches_the_screen_with_its_billing_frequency(): void
+    {
+        $this->settings();
+        $this->plan();
+        $this->plan(['type' => 'package', 'name' => 'Massage Package', 'billing_frequency' => null]);
+
+        $content = $this->actingAs($this->owner())
+            ->get(route('bookings.create'))
+            ->assertOk()
+            ->getContent();
+
+        preg_match('/data-props=\'(.*?)\'/s', $content, $matches);
+        $plans = collect(json_decode(html_entity_decode($matches[1] ?? '{}'), true)['membershipPlans'] ?? [])
+            ->keyBy('name');
+
+        $this->assertSame('monthly', $plans['Monthly Massage Membership']['billing_frequency']);
+        $this->assertSame(__('membership.billing_frequencies.monthly'), $plans['Monthly Massage Membership']['frequency_label']);
+
+        /* And a package carries none, which is what hides the checkbox: there
+           is nothing to renew once its services are used. */
+        $this->assertNull($plans['Massage Package']['billing_frequency']);
+        $this->assertNull($plans['Massage Package']['frequency_label']);
     }
 
     public function test_saving_a_card_needs_a_processor(): void

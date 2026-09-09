@@ -66,6 +66,7 @@ return [
     'correct_fields' => '请修正高亮显示的字段。',
 
     'section' => [
+        'deposit' => '需要定金',
         'about' => '关于这项服务',
         'price' => '价格',
         'who_where' => '谁做、在哪做',
@@ -127,6 +128,9 @@ return [
         'percent' => '百分比',
     ],
     'deposit_required_hint' => '客户先支付部分费用来保留这个预约。',
+    'deposit_take' => '这项服务收取定金',
+    'deposit_card_hint' => '在这里填写一次，下面所有价格都会使用。',
+    'deposit_inherits' => '所有价格都采用上方设置的定金。',
 
     'search' => '搜索服务…',
     'all_categories' => '全部分类',

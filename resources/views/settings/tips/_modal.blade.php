@@ -40,14 +40,14 @@
                             <label for="tipServiceType" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('tips.tip_type') }}</label>
                             <select id="tipServiceType" name="tip_type" class="sd-input" data-tip-type>
                                 <option value="">{{ __('tips.follows_default') }}</option>
-                                @foreach (\App\Models\TipSettings::TYPES as $type)
+                                @foreach (\App\Models\TipSettings::SERVICE_TYPES as $type)
                                     <option value="{{ $type }}">{{ __('tips.types.'.$type) }}</option>
                                 @endforeach
                             </select>
                         </div>
 
                         <div>
-                            <label for="tipServiceValue" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('tips.default_tip') }}</label>
+                            <label for="tipServiceValue" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('tips.tip_amount') }}</label>
                             {{-- Blank is allowed and means "follow the
                                  business", which is not the same as nought:
                                  one moves when the default does. --}}

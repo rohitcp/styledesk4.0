@@ -312,11 +312,17 @@ return [
         'saving_preview' => 'Ahorro del cliente: :amount',
 
         'services' => 'Ventajas y servicios',
-        'services_hint_recurring' => 'Lo que recibe el miembro en cada ciclo. Los créditos vuelven cada vez que se cobra.',
+        'services_hint_recurring' => 'Las ventajas y los créditos se emiten de nuevo tras cada cobro correcto.',
         'services_hint_package' => 'Lo que contiene el paquete en total. Cuando se usan, se acabó.',
         'add_service' => '+ Añadir servicio',
         'service' => 'Servicio',
+        'service_search' => 'Buscar servicios…',
         'quantity' => 'Cantidad',
+        'credits_column' => 'Créditos',
+        'count_placeholder' => 'p. ej. 4',
+        'services_intro' => 'Lo que obtiene el miembro con esta membresía.',
+        'credits_recurring' => 'Los créditos se emiten de nuevo tras cada cobro correcto, nunca mientras un pago haya fallado o la membresía esté en pausa o cancelada.',
+        'credits_package' => 'Los créditos se emiten una sola vez al comprar el paquete y no se reponen.',
         'remove' => 'Quitar',
         'duplicate_service' => 'Cada servicio solo puede aparecer una vez. Cambia su cantidad en lugar de añadirlo dos veces.',
         'no_services' => 'Añade al menos un servicio: una membresía que no incluye nada es una suscripción a nada.',
@@ -328,6 +334,7 @@ return [
         'percent' => 'Porcentaje de descuento',
         'fixed' => 'Importe fijo de descuento',
         'discount_value' => 'Importe',
+        'discount_percentage' => 'Porcentaje',
         'priority_booking' => 'Reserva prioritaria',
         'priority_booking_hint' => 'Los miembros se destacan en recepción para poder encajarlos primero.',
 
@@ -412,6 +419,8 @@ return [
 
         'credits' => 'Créditos',
         'credits_hint' => 'Qué pasa con un servicio incluido que el cliente no usó.',
+        'credits_enabled' => 'Incluir servicios en las membresías',
+        'credits_enabled_hint' => 'Las membresías otorgan servicios que el cliente puede consumir. Desactivado, la membresía son solo su descuento y sus ventajas: no hay nada que canjear.',
         'allow_rollover' => 'Permitir acumular los créditos no usados',
         'allow_rollover_hint' => 'Los créditos sin usar pasan al ciclo siguiente. Desactivado, cada ciclo empieza de cero.',
         'maximum_rollover' => 'Máximo de créditos acumulables',
@@ -437,10 +446,6 @@ return [
         'cancellation_effective_hint' => 'Cuándo surte efecto una cancelación.',
         'months' => 'meses',
         'days' => 'días',
-
-        'payments' => 'Pagos',
-        'payments_hint' => 'Las membresías se pagan con los métodos que ya aceptas. Aquí no hay nada aparte que configurar.',
-        'payments_link' => 'Abrir ajustes de pagos',
 
         'rules' => 'Cómo gestiona StyleDesk las membresías',
         'rules_hint' => 'Lo que decide la aplicación, no lo que decides tú.',

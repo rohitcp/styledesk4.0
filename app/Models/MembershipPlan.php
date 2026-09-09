@@ -80,7 +80,7 @@ class MembershipPlan extends Model
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class, 'membership_plan_services')
-            ->withPivot(['quantity', 'position'])
+            ->withPivot(['quantity', 'credits', 'position'])
             ->orderBy('membership_plan_services.position');
     }
 
@@ -222,7 +222,7 @@ class MembershipPlan extends Model
     public function creditGrants(): array
     {
         return $this->planServices
-            ->mapWithKeys(fn (MembershipPlanService $line) => [$line->service_id => (int) $line->quantity])
+            ->mapWithKeys(fn (MembershipPlanService $line) => [$line->service_id => $line->grantedCredits()])
             ->all();
     }
 

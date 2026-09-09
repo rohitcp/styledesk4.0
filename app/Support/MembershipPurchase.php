@@ -81,7 +81,15 @@ class MembershipPurchase
                    after it was sold: a membership bought on the 1st to begin
                    on the 15th renews on the 15th. A trial pushes it further
                    out, which is the whole of what a trial is. */
-                'next_billing_on' => $renews ? self::firstBillingDate($plan, $startsOn)?->toDateString() : null,
+                /* When the next payment falls due, whoever takes it.
+                 *
+                 * Recorded for every recurring membership, not only the ones
+                 * StyleDesk charges automatically: a business with no
+                 * processor connected still has a subscription to collect on,
+                 * and a date it can chase is the difference between that and
+                 * a membership everybody forgets. What `auto_renew` decides
+                 * is who takes the money, not whether it is owed. */
+                'next_billing_on' => self::firstBillingDate($plan, $startsOn)?->toDateString(),
 
                 /* The card renewals will reach for, and whether they happen
                    at all. Kept together because one without the other is a
@@ -128,6 +136,14 @@ class MembershipPurchase
         MembershipSettings $settings,
         Carbon $periodStart,
     ): void {
+        /* A business whose memberships do not include anything grants
+           nothing. What the client bought is the discount and the standing,
+           and writing credit rows for it would put massages on their profile
+           nobody sold them. */
+        if (! $settings->grantsCredits()) {
+            return;
+        }
+
         $rules = $plan->creditRules($settings);
         $recurring = $plan->isRecurring();
 
@@ -140,7 +156,9 @@ class MembershipPurchase
                 'tenant_id' => $membership->tenant_id,
                 'client_membership_id' => $membership->id,
                 'service_id' => $line->service_id,
-                'quantity_granted' => (int) $line->quantity,
+                /* Credits governs what can be redeemed; quantity is what the
+                   card describes. They agree in every ordinary membership. */
+                'quantity_granted' => $line->grantedCredits(),
                 'quantity_used' => 0,
                 'period_start' => $recurring ? $periodStart->toDateString() : null,
                 'period_end' => $periodEnd?->toDateString(),

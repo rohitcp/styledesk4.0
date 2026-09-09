@@ -40,6 +40,9 @@ return [
     ],
     'default_tip' => 'Standard-Trinkgeld',
     'default_tip_hint' => 'Ein Prozentsatz des trinkgeldfähigen Teils der Rechnung, oder ein fester Betrag.',
+    'tip_amount' => 'Trinkgeldbetrag',
+    'tip_amount_hint' => 'Ein fester Betrag, der an der Kasse statt des Prozentsatzes des Betriebs vorgeschlagen wird.',
+    'follows_default_note' => 'Schlägt an der Kasse den Standardwert des Betriebs von :amount vor. Er lässt sich bei der Buchung ändern.',
 
     'percentages' => 'An der Kasse angeboten',
     'percentages_hint' => 'Bis zu sechs. Die Kundschaft bekommt zusätzlich ein Feld für einen eigenen Betrag.',
@@ -65,6 +68,8 @@ return [
         'status' => 'Status',
     ],
     'follows_default' => 'Folgt der Voreinstellung',
+    'follows_default_with' => 'Folgt dem Standard (:amount)',
+    'offered_at_till' => 'An der Kasse angeboten',
     'accepted' => 'Angenommen',
     'not_accepted' => 'Kein Trinkgeld',
     'no_services' => 'Noch keine aktiven Leistungen zum Einrichten.',

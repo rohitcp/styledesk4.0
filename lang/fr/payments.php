@@ -73,7 +73,58 @@ return [
         'unionpay' => 'UnionPay',
     ],
 
+    /* The Stripe events StyleDesk received, and what it did about them. */
+    /* What a business lets its payments do, and what each payment cost.
+       A capability that needs a processor says so rather than offering a
+       switch that would do nothing. */
+    'capabilities' => [
+        'title' => 'Ce que les paiements peuvent faire',
+        'hint' => 'Désactivez ce que cet établissement ne propose pas. Une fonction nécessitant un prestataire reste inactive tant qu’aucun n’est connecté.',
+        'groups' => [
+            'in_person' => 'Paiements sur place',
+            'online' => 'Paiements en ligne',
+        ],
+        'items' => [
+            'card' => 'Carte de crédit et de débit',
+            'manual_card_entry' => 'Saisie manuelle de la carte',
+            'tap_to_pay' => 'Tap to Pay',
+            'card_reader' => 'Lecteur de carte',
+            'booking_deposit' => 'Acompte de réservation',
+            'full_payment' => 'Paiement intégral',
+            'payment_link' => 'Lien de paiement',
+            'card_on_file' => 'Carte enregistrée',
+            'membership_payment' => 'Paiement d’abonnement',
+            'online_booking' => 'Paiement de réservation en ligne',
+            'invoice_payment' => 'Paiement de facture',
+            'gift_card' => 'Achat de carte cadeau',
+        ],
+        'blocked' => [
+            'unbuilt' => 'Bientôt disponible',
+            'no_processor' => 'Nécessite un prestataire de paiement connecté',
+        ],
+    ],
+
+    'fees' => [
+        'title' => 'Frais',
+        'processor' => 'Frais de traitement',
+        'platform' => 'Frais StyleDesk',
+        'net' => 'Net',
+        'unknown' => 'En cours de règlement',
+    ],
+
+    'webhooks' => [
+        'unhandled' => 'StyleDesk ne traite pas ce type d’événement.',
+    ],
+
     'stripe' => [
+        'disputed' => 'Contesté par le client (:reason).',
+        'disconnect_title' => 'Déconnecter Stripe ?',
+        'disconnect_warning' => 'La déconnexion affecte les réservations en ligne, les acomptes, les renouvellements d’abonnement, les liens de paiement, les cartes enregistrées et les soldes dus. Les enregistrements sont conservés, mais plus rien ne pourra être débité tant que Stripe n’est pas reconnecté.',
+        'sandbox' => 'Bac à sable',
+        'live' => 'Réel',
+        'sandbox_notice' => 'Le mode bac à sable est activé. Les paiements effectués ici sont des transactions de test et ne déplacent pas d’argent réel.',
+        'provider_platform' => 'Stripe de StyleDesk',
+        'provider_own' => 'Votre propre compte Stripe',
         'not_settled' => 'La carte n’a pas été débitée. Le paiement n’a pas abouti.',
         'connect' => 'Connecter Stripe',
         'continue' => 'Poursuivre la configuration',
@@ -108,6 +159,7 @@ return [
         'platform_unavailable' => 'La connexion via StyleDesk n’est pas disponible sur cette installation. Vous pouvez tout de même utiliser votre propre compte Stripe ci-dessous.',
         'statuses' => [
             'connected' => 'Connecté',
+            'sandbox' => 'Bac à sable',
             'needs_attention' => 'À vérifier',
             'incomplete' => 'Configuration incomplète',
         ],

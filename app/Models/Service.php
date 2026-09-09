@@ -181,9 +181,11 @@ class Service extends Model
     /**
      * Replace the price set, and the deposit each price carries.
      *
-     * The deposit belongs to the price rather than to the service: 20% of one
-     * price and 20% of another are different amounts, and one service-wide
-     * setting cannot say "deposit on the premium price only".
+     * The deposit is asked for once, on the service, and the caller fans that
+     * one answer out to every price. It is *stored* per price because that is
+     * where it has to be read from: 20% of one price and 20% of another are
+     * different amounts, and the booking screen needs the figure for the
+     * price it is actually charging.
      *
      * @param  array<string, string|null>  $prices  currency => decimal amount
      * @param  array<string, array<string, mixed>>  $deposits  currency => deposit
@@ -225,9 +227,9 @@ class Service extends Model
             );
         }
 
-        /* The service-level flag is a summary of its prices rather than a
-           setting of its own: the listing shows one chip, and "this service
-           takes a deposit" is true when any of its prices does. */
+        /* Written from the prices rather than from the posted switch, so the
+           flag can never claim a deposit that no price actually carries. The
+           listing reads this column; the booking screen reads the rows. */
         $this->forceFill(['deposit_required' => $this->prices()->where('deposit_required', true)->exists()])->save();
     }
 

@@ -347,6 +347,7 @@ return [
             'tabs' => [
                 'rewards' => 'Recompensas',
                 'membership' => 'Membresía',
+                'payments' => 'Pagos',
                 'leads' => 'Iniciadas',
                 'activity' => 'Actividad',
                 'bookings' => 'Reservas',

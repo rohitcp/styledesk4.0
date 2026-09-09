@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Payments\PaymentGateway;
 use App\Payments\PaymentGatewayManager;
 use App\Payments\StripeGateway;
+use App\Support\PaymentCapabilities;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,6 +49,12 @@ class PaymentSettingsController extends Controller
             'accepted_methods' => ['nullable', 'array'],
             'accepted_methods.*' => [Rule::in($methods)],
 
+            /* Only a capability that exists and is built. Accepting
+               "tap_to_pay" would leave a business believing its readers work
+               and nothing would ever take a payment on one. */
+            'capabilities' => ['nullable', 'array'],
+            'capabilities.*' => [Rule::in(PaymentCapabilities::selectable())],
+
             'default_deposit_type' => ['nullable', Rule::in(['none', 'fixed', 'percent'])],
             'default_deposit_value' => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -61,6 +68,11 @@ class PaymentSettingsController extends Controller
                gateway can take". Storing [] would switch the till off, and
                nobody unticking every box means that. */
             'accepted_methods' => filled($data['accepted_methods'] ?? []) ? array_values($data['accepted_methods']) : null,
+            /* An empty list here IS an answer, unlike accepted_methods:
+               a business that switched every feature off means it, and there
+               is no gateway default to fall back to. Stored as [] rather than
+               null so "off" and "never asked" stay different facts. */
+            'payment_capabilities' => array_values($data['capabilities'] ?? []),
             'default_deposit_type' => $type === 'none' ? null : $type,
             'default_deposit_value' => $type === 'none' ? null : $this->depositValue($type, $data['default_deposit_value'] ?? null),
         ])->save();
@@ -131,6 +143,9 @@ class PaymentSettingsController extends Controller
                 ->all(),
             'methods' => config('payments.methods'),
             'accepted' => $tenant->accepted_methods ?? $active->methods(),
+            /* What this business's payments may do, with the reason beside
+               anything that cannot be switched on. */
+            'capabilities' => PaymentCapabilities::grouped($tenant),
             'takeable' => $active->methods(),
             /* The connected account, when there is one. Null covers both
                "never connected" and "this deployment has no Stripe", which

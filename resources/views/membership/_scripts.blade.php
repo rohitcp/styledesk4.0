@@ -3,6 +3,12 @@
        into a multi-line json directive, and the saving line needs the
        currency symbol and the sentence around the number. */
     $savingWords = __('membership.form.saving_preview', ['amount' => '__AMOUNT__']);
+
+    /* The discount box is labelled for whichever kind of discount is chosen. */
+    $discountWords = [
+        'percent' => __('membership.form.discount_percentage'),
+        'fixed' => __('membership.form.discount_value'),
+    ];
 @endphp
 
 <script>
@@ -64,7 +70,25 @@
         rows.appendChild(row);
         syncRemoveButtons();
 
+        /* A cloned row is plain markup: the combo has to be built on it the
+           way app.js builds the ones that were on the page at load. Guarded
+           because a page whose scripts failed still has a working native
+           select, which is the point of upgrading rather than replacing. */
         var select = row.querySelector('[data-service-select]');
+
+        if (select && window.SD && typeof window.SD.combo === 'function') {
+            var options = {};
+
+            try {
+                options = JSON.parse(select.dataset.comboOptions || '{}');
+            } catch (error) {
+                /* Malformed options are not a reason to leave the row
+                   without a dropdown. */
+            }
+
+            window.SD.combo(select, options);
+        }
+
         if (select) select.focus();
       });
     }
@@ -78,6 +102,40 @@
         if (row) row.remove();
 
         syncRemoveButtons();
+      });
+    }
+
+    /* Credits follows quantity until somebody says otherwise.
+
+       Four massages are four credits in nearly every package, so typing the
+       quantity fills the credits in — but only while the credits box has
+       not been touched by hand. Once it has, it is that person's number and
+       nothing overwrites it; emptying it hands the box back to the
+       quantity. Delegated, so rows added later behave the same. */
+    if (rows) {
+      rows.addEventListener('input', function (event) {
+        var field = event.target;
+        var row = field.closest ? field.closest('[data-service-row]') : null;
+        if (!row) return;
+
+        if (field.matches('[data-service-credits]')) {
+          /* A programmatic value assignment fires no input event, so
+             anything arriving here was typed. */
+          if (field.value === '') {
+            delete field.dataset.serviceCreditsEdited;
+          } else {
+            field.dataset.serviceCreditsEdited = '1';
+          }
+
+          return;
+        }
+
+        if (!field.matches('[data-service-quantity]')) return;
+
+        var credits = row.querySelector('[data-service-credits]');
+        if (credits && credits.dataset.serviceCreditsEdited === undefined) {
+          credits.value = field.value;
+        }
       });
     }
 
@@ -206,5 +264,44 @@
     if (price) price.addEventListener('input', showSaving);
     if (regular) regular.addEventListener('input', showSaving);
     showSaving();
+
+    /* ------------------------------------------------- discount, % or money */
+
+    /* A rate and a sum of money read the same in a bare number box, so the
+       box says which it is: the label, the affix and the step all follow the
+       discount type. The combo has no native select to listen to — it
+       announces its answer on the form as styledesk:selection. */
+    var discountValue = form.querySelector('[data-discount-value]');
+    var discountLabel = form.querySelector('[data-discount-label]');
+    var discountPrefix = form.querySelector('[data-discount-prefix]');
+    var discountSuffix = form.querySelector('[data-discount-suffix]');
+    var discountWords = @json($discountWords);
+
+    function showDiscountKind(type) {
+      if (!discountValue) return;
+
+      var money = type === 'fixed';
+
+      if (discountLabel) discountLabel.textContent = discountWords[money ? 'fixed' : 'percent'];
+      if (discountPrefix) discountPrefix.hidden = !money;
+      if (discountSuffix) discountSuffix.hidden = money;
+
+      /* Pennies with no ceiling, or whole points up to a hundred. */
+      discountValue.step = money ? '0.01' : '1';
+      if (money) {
+        discountValue.removeAttribute('max');
+      } else {
+        discountValue.max = '100';
+      }
+
+      discountValue.style.paddingLeft = money ? '1.75rem' : '';
+      discountValue.style.paddingRight = money ? '' : '2rem';
+    }
+
+    form.addEventListener('styledesk:selection', function (event) {
+      if (event.detail && event.detail.name === 'discount_type') {
+        showDiscountKind((event.detail.values || [])[0] || '');
+      }
+    });
   }());
 </script>
