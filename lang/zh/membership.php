@@ -250,6 +250,10 @@ return [
         'scheduled_title' => '会员已排期',
         'intro' => ':client 现在持有该会员。',
         'scheduled_intro' => ':client 将从 :date 起持有该会员，在此之前次数尚不存在。',
+        'reference' => '编号',
+        'summary' => '售出内容',
+        'payment' => '付款',
+        'location' => '地点',
         'client' => '客户',
         'membership' => '会员',
         'type' => '类型',
@@ -296,6 +300,7 @@ return [
         'image_hint' => 'JPG、PNG 或 WebP，最大 5 MB。会显示在预约界面的卡片上。',
         'internal_code' => '内部编号',
         'internal_code_hint' => '你自己的编号，可用字母、数字和连字符。',
+        'internal_code_new_hint' => '保存时由 StyleDesk 生成，之后无法更改。',
 
         'pricing' => '定价',
         'pricing_hint_recurring' => '客户每个周期支付多少，以及多久扣款一次。',

@@ -311,4 +311,41 @@ class BookingTipDefaultTest extends TestCase
            nothing was agreed, so the till never opens on No Tip either. */
         $this->assertSame(1800, $panel->json('booking.tips.default_minor'));
     }
+
+    /**
+     * The quote carries the till's own row, in the units the business uses.
+     *
+     * The screen draws its chips from this: a business tipping in flat sums
+     * gets $5/$10/$15/$20, and the percentages it is not offering are not
+     * among them.
+     */
+    public function test_the_quote_carries_the_till_row_for_flat_sums(): void
+    {
+        $this->tips(['default_tip_type' => 'fixed', 'default_tip_value' => 10, 'amounts' => [5, 10, 15, 20]]);
+
+        $quote = $this->quote();
+
+        $this->assertSame('fixed', $quote['tip_type']);
+        $this->assertSame([5, 10, 15, 20], $quote['tip_amounts']);
+        $this->assertSame(
+            [500, 1000, 1500, 2000],
+            array_column($quote['tip_amount_options'], 'minor')
+        );
+
+        /* And the configured default is the one already applied, so the chip
+           that matches it is the one the screen lights. */
+        $this->assertSame(1000, $quote['tip_minor']);
+        $this->assertSame(1000, $quote['default_tip_minor']);
+    }
+
+    /** A flat option larger than the work it is on is capped, not offered whole. */
+    public function test_a_till_amount_never_exceeds_the_tipped_part(): void
+    {
+        $this->tips(['default_tip_type' => 'fixed', 'default_tip_value' => 5, 'amounts' => [5, 500]]);
+
+        $options = $this->quote()['tip_amount_options'];
+
+        $this->assertSame(500, $options[0]['minor']);
+        $this->assertLessThanOrEqual($this->quote()['subtotal_minor'], $options[1]['minor']);
+    }
 }

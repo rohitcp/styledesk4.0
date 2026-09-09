@@ -296,6 +296,113 @@ class MembershipPlanTest extends TestCase
             ->assertSessionHasErrors('services');
     }
 
+    // ------------------------------------------------- the internal code
+
+    /**
+     * The code is StyleDesk's, not the reader's.
+     *
+     * A reference is only useful if it is unique and everybody spells it the
+     * same way, and neither survives being typed at the desk — "MS-15" and
+     * "ms15" are two answers to a question that has one.
+     */
+    public function test_a_membership_is_given_its_code_when_it_is_created(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload(['type' => 'package', 'billing_frequency' => null]))
+            ->assertRedirect();
+
+        $code = MembershipPlan::withoutGlobalScopes()->firstOrFail()->internal_code;
+
+        $this->assertMatchesRegularExpression('/^PKG-\d{8}-\d{4}$/', $code);
+    }
+
+    /** Recurring memberships and packages are counted apart. */
+    public function test_the_code_says_which_kind_it_is(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload(['name' => 'Monthly']))
+            ->assertRedirect();
+
+        $this->assertStringStartsWith(
+            'MEM-',
+            MembershipPlan::withoutGlobalScopes()->firstOrFail()->internal_code
+        );
+    }
+
+    /** Two on the same day are two different codes. */
+    public function test_every_membership_gets_its_own_code(): void
+    {
+        $this->membershipOn();
+
+        foreach (['First', 'Second', 'Third'] as $name) {
+            $this->actingAs($this->owner())
+                ->post(route('membership.store'), $this->payload(['name' => $name]))
+                ->assertRedirect();
+        }
+
+        $codes = MembershipPlan::withoutGlobalScopes()->pluck('internal_code');
+
+        $this->assertCount(3, $codes->unique());
+        $this->assertSame(['0001', '0002', '0003'], $codes->map(fn ($c) => substr($c, -4))->sort()->values()->all());
+    }
+
+    /**
+     * A code belongs to its row for good.
+     *
+     * A draft reopened, a plan edited, a plan taken off sale and put back —
+     * all keep the code they were given, because the whole point of a
+     * reference is that it goes on meaning the same row.
+     */
+    public function test_editing_never_changes_the_code(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.store'), $this->payload(['is_draft' => 1]))
+            ->assertRedirect();
+
+        $plan = MembershipPlan::withoutGlobalScopes()->firstOrFail();
+        $code = $plan->internal_code;
+
+        $this->assertNotNull($code);
+
+        $this->actingAs($this->owner())
+            ->patch(route('membership.update', $plan), $this->payload([
+                'name' => 'Renamed', 'internal_code' => 'HAND-TYPED',
+            ]))
+            ->assertRedirect();
+
+        /* Including one posted by hand: the field does not exist on the form,
+           so a request carrying it is one this save has no reason to trust. */
+        $this->assertSame($code, $plan->fresh()->internal_code);
+    }
+
+    /** The form shows it and refuses to be typed into. */
+    public function test_the_form_shows_the_code_read_only(): void
+    {
+        $this->membershipOn();
+
+        $html = $this->actingAs($this->owner())
+            ->get(route('membership.create', ['type' => 'package']))
+            ->assertOk()
+            ->getContent();
+
+        /* Shown, so somebody adding knows what it will be called. */
+        preg_match('/<input[^>]*data-internal-code[^>]*>/', $html, $field);
+
+        $this->assertNotEmpty($field, 'the internal code field is missing');
+        $this->assertMatchesRegularExpression('/value="PKG-\d{8}-\d{4}"/', $field[0]);
+        $this->assertStringContainsString('readonly', $field[0]);
+
+        /* And not posted at all: the server decides, so there is nothing on
+           the form for anybody to change. */
+        $this->assertStringNotContainsString('name="internal_code"', $html);
+    }
+
     // --------------------------------------------- editing what is on sale
 
     /**
@@ -1018,7 +1125,7 @@ class MembershipPlanTest extends TestCase
         $this->assertSame(1, MembershipPlan::withoutGlobalScopes()->count());
     }
 
-    public function test_a_copy_is_a_draft_with_no_code_of_its_own(): void
+    public function test_a_copy_is_a_draft_with_a_code_of_its_own(): void
     {
         $this->membershipOn();
         $plan = $this->plan(['internal_code' => 'MASSAGE-1']);
@@ -1030,7 +1137,10 @@ class MembershipPlanTest extends TestCase
         $copy = MembershipPlan::withoutGlobalScopes()->where('id', '!=', $plan->id)->firstOrFail();
 
         $this->assertTrue($copy->is_draft);
-        $this->assertNull($copy->internal_code);
+        /* Its own reference, not the original's and not none: a code names
+           one row, and every membership carries one. */
+        $this->assertNotNull($copy->internal_code);
+        $this->assertNotSame($plan->internal_code, $copy->internal_code);
         $this->assertSame(__('membership.copy_of', ['name' => $plan->name]), $copy->name);
         $this->assertCount(1, $copy->planServices);
     }

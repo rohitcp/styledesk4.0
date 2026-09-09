@@ -251,6 +251,10 @@ return [
         'scheduled_title' => 'Mitgliedschaft geplant',
         'intro' => ':client hat jetzt diese Mitgliedschaft.',
         'scheduled_intro' => ':client hat diese Mitgliedschaft ab dem :date. Die Guthaben existieren bis dahin nicht.',
+        'reference' => 'Referenz',
+        'summary' => 'Was verkauft wurde',
+        'payment' => 'Zahlung',
+        'location' => 'Standort',
         'client' => 'Kundin',
         'membership' => 'Mitgliedschaft',
         'type' => 'Art',
@@ -297,6 +301,7 @@ return [
         'image_hint' => 'JPG, PNG oder WebP, bis 5 MB. Erscheint auf der Karte im Buchungsbildschirm.',
         'internal_code' => 'Interner Code',
         'internal_code_hint' => 'Ihre eigene Referenz. Buchstaben, Ziffern und Bindestriche.',
+        'internal_code_new_hint' => 'Wird von StyleDesk beim Speichern vergeben und lässt sich danach nicht mehr ändern.',
 
         'pricing' => 'Preis',
         'pricing_hint_recurring' => 'Was die Kundin je Zyklus zahlt, und wie oft.',

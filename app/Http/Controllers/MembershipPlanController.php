@@ -12,6 +12,7 @@ use App\Models\MembershipSettings;
 use App\Models\Service;
 use App\Services\MembershipImageSync;
 use App\Support\Currencies;
+use App\Support\MembershipCode;
 use App\Support\Money;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -200,6 +201,10 @@ class MembershipPlanController extends Controller
         $plan = MembershipPlan::create($this->columns($data) + [
             'tenant_id' => $request->user()->tenant->getTenantKey(),
             'created_by' => $request->user()->id,
+            /* Given here, at the first save, and never again. A reference is
+               only useful if it is unique and everybody spells it the same
+               way, and neither survives being typed at the desk. */
+            'internal_code' => MembershipCode::next($request->user()->tenant, $data['type']),
         ]);
 
         $this->syncRelations($plan, $data);
@@ -257,10 +262,10 @@ class MembershipPlanController extends Controller
 
         $copy = $plan->replicate(['created_at', 'updated_at', 'deleted_at']);
         $copy->name = __('membership.copy_of', ['name' => $plan->name]);
-        /* A code names one thing per business, so the copy cannot keep it.
-           Blank rather than invented: nobody can guess what the business
-           would have called it. */
-        $copy->internal_code = null;
+        /* A code names one row, so the copy cannot keep it — and it is not
+           left blank either: every membership carries one, and a copy is a
+           membership. */
+        $copy->internal_code = MembershipCode::next($request->user()->tenant, $plan->type);
         /* Deliberately without the picture. A file belongs to one row, and
            two plans pointing at it would mean editing either one's picture
            silently changed the other's. */
@@ -321,10 +326,16 @@ class MembershipPlanController extends Controller
     /** @return array<string, mixed> */
     private function formData(?MembershipPlan $plan, string $type): array
     {
-        $plan?->load(['planServices.service', 'locations']);
+        $plan?->load(['planServices.service', 'locations', 'prices']);
 
         return [
             'plan' => $plan,
+            /* What the code will be, shown while adding. A preview rather
+               than a reservation: the number is settled at the save, so two
+               people adding at once cannot be handed the same one. */
+            'suggestedCode' => $plan === null
+                ? MembershipCode::next(request()->user()?->tenant, $type)
+                : $plan->internal_code,
             'type' => $type,
             'settings' => $this->settings(),
             'services' => Service::query()->where('is_active', true)->orderBy('name')->get(),
@@ -372,14 +383,6 @@ class MembershipPlanController extends Controller
                check that an id in a form needs is in MembershipImageSync;
                this only says the shape. */
             'image_file_id' => ['nullable', 'integer'],
-
-            'internal_code' => [
-                'nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9-]+$/',
-                Rule::unique('membership_plans', 'internal_code')
-                    ->where('tenant_id', $tenantKey)
-                    ->whereNull('deleted_at')
-                    ->ignore($plan?->id),
-            ],
 
             /* One price per currency the business sells in, keyed by the
                code — the shape service prices already use. Nothing converts:
@@ -510,9 +513,10 @@ class MembershipPlanController extends Controller
             'type' => $data['type'],
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
-            'internal_code' => ($data['internal_code'] ?? '') === ''
-                ? null
-                : mb_strtoupper(trim($data['internal_code'])),
+            /* Not here: the code is assigned once when the plan is created
+               and belongs to that row for good. Editing a membership must
+               not be able to change what it is referred to by — on a
+               receipt, in a report, or in somebody's notes. */
 
             'price_minor' => $minor('price') ?? 0,
 

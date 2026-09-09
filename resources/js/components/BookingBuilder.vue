@@ -481,8 +481,8 @@ function applyCustomTip() {
  * without this the Custom chip would light beside the $10 the reader just
  * pressed and the row would claim two answers.
  */
-const onATillAmount = computed(() => customTip.value !== ''
-    && (quote.value?.tip_amount_options ?? []).some((o) => String(o.value) === String(customTip.value)));
+const onATillAmount = computed(() => (quote.value?.tip_amount_options ?? [])
+    .some((o) => o.minor === quote.value?.tip_minor));
 
 /**
  * A flat sum the business offers at the till.
@@ -5205,9 +5205,15 @@ const summaryOf = (section) => {
                              units, and a chip in the wrong one is an offer
                              the totals cannot honour. -->
                         <template v-if="quote.tip_type === 'fixed'">
+                            <!-- Lit from the tip actually on the bill rather
+                                 than from what was pressed: the business's
+                                 default is applied before anybody is asked,
+                                 and a row of chips with none of them lit
+                                 beside a total that already includes $10 is
+                                 the summary disagreeing with itself. -->
                             <button v-for="option in quote.tip_amount_options" :key="option.value" type="button"
                                     class="styledesk_tipchip"
-                                    :class="{ 'styledesk_tipchip--on': tipPercent === null && customTip === String(option.value) }"
+                                    :class="{ 'styledesk_tipchip--on': tipPercent === null && quote.tip_minor === option.minor }"
                                     @click="chooseTipAmount(option.value)">
                                 <span class="font-semibold">{{ option.label }}</span>
                             </button>

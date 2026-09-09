@@ -196,16 +196,25 @@
               <input type="hidden" name="image_file_id" value="{{ $imageFileId }}" data-image-id>
             </div>
 
+            {{-- StyleDesk's own reference, shown rather than asked for.
+
+                 It is not posted at all: the server assigns it once, at the
+                 first save, and it belongs to that row for good. A field the
+                 save ignores is a field that should not accept typing, and a
+                 reference somebody can edit is one that stops matching the
+                 receipt it was printed on. --}}
             <div class="sm:w-[260px]">
               <label for="mCode" class="block text-[13px] font-medium text-ink mb-1.5">
                 {{ __('membership.form.internal_code') }}
-                <span class="text-faint font-normal">{{ __('common.optional') }}</span>
               </label>
-              <input id="mCode" name="internal_code" type="text" class="sd-input" maxlength="40"
-                     value="{{ $value('internal_code') }}">
-              <p class="text-[12px] text-faint mt-1.5">{{ __('membership.form.internal_code_hint') }}</p>
-              <p data-error-for="internal_code" role="alert" class="mt-1.5 text-[12px] text-danger"
-                 @unless ($errors->has('internal_code')) hidden @endunless>{{ $errors->first('internal_code') }}</p>
+              <input id="mCode" type="text" class="sd-input" readonly tabindex="-1"
+                     aria-describedby="mCodeHint" data-internal-code
+                     value="{{ $plan?->internal_code ?? $suggestedCode }}">
+              <p id="mCodeHint" class="text-[12px] text-faint mt-1.5">
+                {{ $plan === null
+                    ? __('membership.form.internal_code_new_hint')
+                    : __('membership.form.internal_code_hint') }}
+              </p>
             </div>
           </div>
         </section>

@@ -251,6 +251,10 @@ return [
         'scheduled_title' => 'Membresía programada',
         'intro' => ':client ya tiene esta membresía.',
         'scheduled_intro' => ':client tendrá esta membresía a partir del :date. Sus créditos no existen hasta entonces.',
+        'reference' => 'Referencia',
+        'summary' => 'Lo que se vendió',
+        'payment' => 'Pago',
+        'location' => 'Ubicación',
         'client' => 'Cliente',
         'membership' => 'Membresía',
         'type' => 'Tipo',
@@ -297,6 +301,7 @@ return [
         'image_hint' => 'JPG, PNG o WebP, hasta 5 MB. Se muestra en la tarjeta de la pantalla de reservas.',
         'internal_code' => 'Código interno',
         'internal_code_hint' => 'Tu propia referencia. Letras, dígitos y guiones.',
+        'internal_code_new_hint' => 'Generado por StyleDesk al guardar. Después no se puede cambiar.',
 
         'pricing' => 'Precio',
         'pricing_hint_recurring' => 'Lo que paga el cliente en cada ciclo, y con qué frecuencia.',

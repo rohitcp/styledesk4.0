@@ -165,6 +165,113 @@ class TipsTest extends TestCase
         $this->assertSame([10, 15], TipSettings::forTenant($this->tenant)->percentages);
     }
 
+    // -------------------------------------------- the till's own row
+
+    /**
+     * A business tipping in flat sums configures flat sums.
+     *
+     * The till row used to be percentages only, so a business set to amounts
+     * got a row of percentages it had never chosen — an offer its own
+     * settings say it does not make.
+     */
+    public function test_the_till_row_is_kept_in_whichever_units_the_business_tips_in(): void
+    {
+        $this->settings();
+
+        $this->actingAs($this->owner)
+            ->patch(route('settings.tips.update'), [
+                'is_enabled' => '1',
+                'default_tip_type' => 'fixed',
+                'default_tip_value' => 10,
+                'percentages' => ['15', '20'],
+                'amounts' => ['5', '10', '15', '20'],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $settings = TipSettings::forTenant($this->tenant);
+
+        $this->assertSame([5, 10, 15, 20], $settings->amounts);
+        $this->assertSame([5, 10, 15, 20], $settings->offeredTips());
+
+        /* And the percentages are kept, not cleared: switching back should
+           find the list where it was left rather than blank. */
+        $this->assertSame([15, 20], $settings->percentages);
+    }
+
+    /** Under percentages, the percentages are what the till offers. */
+    public function test_the_till_row_follows_the_type_back(): void
+    {
+        $settings = $this->settings([
+            'default_tip_type' => 'percent',
+            'percentages' => [15, 20],
+            'amounts' => [5, 10],
+        ]);
+
+        $this->assertSame([15, 20], $settings->offeredTips());
+        $this->assertFalse($settings->tipsInAmounts());
+
+        $settings->update(['default_tip_type' => 'fixed']);
+
+        $this->assertSame([5, 10], $settings->fresh()->offeredTips());
+    }
+
+    /** A flat sum has no hundred-per-cent ceiling to borrow. */
+    public function test_a_flat_default_may_exceed_a_hundred(): void
+    {
+        $this->settings();
+
+        $this->actingAs($this->owner)
+            ->patch(route('settings.tips.update'), [
+                'is_enabled' => '1',
+                'default_tip_type' => 'fixed',
+                'default_tip_value' => 250,
+                'amounts' => ['100', '250'],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(250, TipSettings::forTenant($this->tenant)->default_tip_value);
+    }
+
+    /** A percentage still stops at the whole bill. */
+    public function test_a_percentage_default_over_a_hundred_is_refused(): void
+    {
+        $this->settings();
+
+        $this->actingAs($this->owner)
+            ->patch(route('settings.tips.update'), [
+                'is_enabled' => '1',
+                'default_tip_type' => 'percent',
+                'default_tip_value' => 150,
+            ])
+            ->assertSessionHasErrors('default_tip_value');
+    }
+
+    /**
+     * Both rows are on the settings screen, and only one is shown.
+     *
+     * Both keep posting, so switching type and back does not cost the
+     * business the list it spent a minute choosing.
+     */
+    public function test_the_settings_screen_carries_both_rows(): void
+    {
+        $this->settings(['default_tip_type' => 'fixed']);
+
+        $html = $this->actingAs($this->owner)
+            ->get(route('settings.tips.index'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('name="percentages[]"', $html);
+        $this->assertStringContainsString('name="amounts[]"', $html);
+        $this->assertStringContainsString('data-tip-amount-row', $html);
+        $this->assertStringContainsString('data-tip-percent-row', $html);
+
+        /* The one the type does not call for starts hidden. */
+        $this->assertMatchesRegularExpression('/data-tip-percent-row[^>]*hidden/', $html);
+        $this->assertStringContainsString(__('tips.default_tip_amount'), $html);
+    }
+
     // ------------------------------------------------------- what is tipped
 
     /**

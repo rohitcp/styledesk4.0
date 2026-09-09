@@ -251,6 +251,10 @@ return [
         'scheduled_title' => 'Abonnement programmé',
         'intro' => ':client dispose désormais de cet abonnement.',
         'scheduled_intro' => ':client disposera de cet abonnement à partir du :date. Ses crédits n’existent pas avant.',
+        'reference' => 'Référence',
+        'summary' => 'Ce qui a été vendu',
+        'payment' => 'Paiement',
+        'location' => 'Établissement',
         'client' => 'Client',
         'membership' => 'Abonnement',
         'type' => 'Type',
@@ -297,6 +301,7 @@ return [
         'image_hint' => 'JPG, PNG ou WebP, jusqu’à 5 Mo. Affichée sur la carte dans l’écran de réservation.',
         'internal_code' => 'Code interne',
         'internal_code_hint' => 'Votre propre référence. Lettres, chiffres et tirets.',
+        'internal_code_new_hint' => 'Généré par StyleDesk à l’enregistrement. Il ne peut plus être modifié ensuite.',
 
         'pricing' => 'Tarification',
         'pricing_hint_recurring' => 'Ce que le client paie à chaque cycle, et à quelle fréquence.',
