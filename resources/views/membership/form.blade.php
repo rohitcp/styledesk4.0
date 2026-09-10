@@ -397,7 +397,11 @@
                           data-combo-options='@json(['searchPlaceholder' => __('membership.form.service_search')])'>
                     <option value="">—</option>
                     @foreach ($services as $service)
-                      <option value="{{ $service->id }}" @selected((string) ($line['service_id'] ?? '') === (string) $service->id)>{{ $service->name }}</option>
+                      {{-- What redeeming it costs, carried on the option so
+                           choosing a service can fill the credits beside it
+                           without asking the server. --}}
+                      <option value="{{ $service->id }}" data-credit-usage="{{ $service->creditUsage() }}"
+                              @selected((string) ($line['service_id'] ?? '') === (string) $service->id)>{{ $service->name }}</option>
                     @endforeach
                   </select>
                 </div>
@@ -449,7 +453,7 @@
                         data-combo-options='@json(['searchPlaceholder' => __('membership.form.service_search')])'>
                   <option value="">—</option>
                   @foreach ($services as $service)
-                    <option value="{{ $service->id }}">{{ $service->name }}</option>
+                    <option value="{{ $service->id }}" data-credit-usage="{{ $service->creditUsage() }}">{{ $service->name }}</option>
                   @endforeach
                 </select>
               </div>

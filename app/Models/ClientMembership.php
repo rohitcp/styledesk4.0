@@ -81,6 +81,18 @@ class ClientMembership extends Model
         return $this->hasMany(MembershipCredit::class);
     }
 
+    /**
+     * The card renewals reach for.
+     *
+     * Only meaningful on something that renews: a package has nothing to
+     * charge again, which is why the column is nullable rather than
+     * required.
+     */
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(ClientPaymentMethod::class, 'payment_method_id');
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(MembershipPayment::class);

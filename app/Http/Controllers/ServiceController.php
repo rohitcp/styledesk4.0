@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Location;
+use App\Models\MembershipSettings;
 use App\Models\Resource;
 use App\Models\Service;
 use App\Models\ServiceCategory;
@@ -92,10 +93,10 @@ class ServiceController extends Controller
                 'id' => $service->id,
                 'name' => $service->name,
                 'color' => $service->color,
-                /* The category beside the name rather than only in its own
-                   column, so the first column answers "which service" on its
-                   own once the table narrows and columns start leaving. */
-                'primary_badge' => $service->category?->name,
+                /* No badge beside the name: the name is what the column is
+                   for, and the category is a column of its own directly
+                   beside it. Two copies of one fact made the first column
+                   read as two things at once. */
                 'category' => $service->category?->name,
                 'duration' => $service->durationLabel(),
                 /* A column each, because they are two prices and a reader
@@ -328,6 +329,11 @@ class ServiceController extends Controller
                suggest, in a salon that has never tipped anybody, is a
                question with no answer. */
             'tips' => TipSettings::forTenant(request()->user()->tenant),
+            /* Whether to ask what this costs in credits. A business that
+               does not sell memberships has no credits to spend, and the
+               field would be a second price for a currency it does not
+               use. */
+            'membership' => MembershipSettings::forTenant(request()->user()->tenant),
         ];
     }
 
@@ -456,6 +462,10 @@ class ServiceController extends Controller
         /* images and default_image_id are not columns either: the gallery is
            rows in stored_files, and which one leads is written by
            ServiceImageSync once the service has an id to attach them to. */
+        /* Never nought and never absent: every service a membership covers
+           costs something to redeem, and the column's own default is one. */
+        $data['credit_usage'] = max(1, (int) ($data['credit_usage'] ?? 1));
+
         /* A tip value only means anything as a flat sum. Anything else is
            "follow the business", and a number left in the box beside it
            would quietly outrank the default it claims to be following. */
@@ -582,6 +592,9 @@ class ServiceController extends Controller
                be blank means "whatever the business says" rather than a
                value of its own — so a service that never disagreed moves
                when the business changes its mind. */
+            /* A second price, in credits. One at least: a service costing
+               nought credits is one a member could book for ever. */
+            'credit_usage' => ['nullable', 'integer', 'min:1', 'max:99'],
             'accepts_tips' => ['nullable', 'boolean'],
             /* A service says "a flat sum" or says nothing. The percentage is
                the business's own answer, kept in one place. */

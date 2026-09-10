@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\ClientMembership;
 use App\Models\MembershipCredit;
 use App\Models\MembershipCreditRedemption;
+use App\Models\Service;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +63,7 @@ class MembershipCredits
             ->get();
 
         $offers = [];
+        $costs = self::costsFor($serviceIds);
 
         foreach ($credits as $credit) {
             $serviceId = (int) $credit->service_id;
@@ -80,11 +82,111 @@ class MembershipCredits
                 'membership_id' => (int) $credit->client_membership_id,
                 'membership_name' => $credit->membership?->plan?->name ?? '',
                 'remaining' => $credit->remaining(),
+                /* What one booking of this costs. A service is not always
+                   one credit: the business sets that per service, and a
+                   screen that assumed one would promise a redemption the
+                   engine then refuses. */
+                'cost' => $costs[$serviceId] ?? 1,
                 'expires_on' => $credit->expires_on?->toDateString(),
             ];
         }
 
         return $offers;
+    }
+
+    /**
+     * Everything this client's memberships cover, membership by membership.
+     *
+     * The offers list answers "can this line be covered" for services already
+     * on a booking. This answers the question a receptionist asks before
+     * there is a booking at all: what has this client got, and what is left
+     * of it — which is what the service selector needs to show a membership
+     * section rather than a flat catalogue.
+     *
+     * Expired credits are left out. A benefit whose date has passed is not a
+     * benefit, and listing it would have the desk promising a massage the
+     * engine then refuses.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function benefitsFor(?Client $client): array
+    {
+        if ($client === null) {
+            return [];
+        }
+
+        $memberships = ClientMembership::query()
+            ->where('client_id', $client->id)
+            ->live()
+            ->with(['plan', 'credits.service'])
+            ->orderBy('starts_on')
+            ->get();
+
+        $costs = self::costsFor(
+            $memberships->flatMap(fn (ClientMembership $held) => $held->credits->pluck('service_id'))
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->all()
+        );
+
+        return $memberships
+            ->map(fn (ClientMembership $held) => self::benefitRow($held, $costs))
+            /* A membership whose every credit has expired has nothing to
+               offer, and a section with no rows in it is a heading somebody
+               has to interpret. */
+            ->filter(fn (array $row) => $row['services'] !== [])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * One membership, and what is left of each thing it covers.
+     *
+     * @param  array<int, int>  $costs
+     * @return array<string, mixed>
+     */
+    private static function benefitRow(ClientMembership $held, array $costs): array
+    {
+        $services = $held->credits
+            ->reject(fn (MembershipCredit $credit) => $credit->isExpired())
+            ->map(function (MembershipCredit $credit) use ($costs) {
+                $cost = $costs[(int) $credit->service_id] ?? 1;
+
+                return [
+                    'service_id' => (int) $credit->service_id,
+                    'name' => $credit->service?->name ?? '—',
+                    'included' => (int) $credit->quantity_granted,
+                    'used' => (int) $credit->quantity_used,
+                    'remaining' => $credit->remaining(),
+                    /* What one booking of it costs, and so whether what is
+                       left is enough to take another. */
+                    'cost' => $cost,
+                    'available' => $credit->remaining() >= $cost,
+                    'expires_on' => $credit->expires_on?->translatedFormat('j M Y'),
+                ];
+            })
+            ->values()
+            ->all();
+
+        /* The cycle this lot of credits belongs to. A recurring membership's
+           allowance is per cycle, and "1 left" means nothing without knowing
+           until when. */
+        $cycle = $held->credits->first(fn (MembershipCredit $credit) => $credit->period_start && $credit->period_end);
+
+        return [
+            'id' => $held->id,
+            'reference' => $held->reference,
+            'name' => $held->plan?->name ?? '—',
+            'type' => $held->type,
+            'type_label' => __('membership.types.'.$held->type),
+            'status_label' => $held->statusLabel(),
+            'status_class' => $held->statusClass(),
+            'cycle' => $cycle === null
+                ? null
+                : $cycle->period_start->translatedFormat('j M').' – '.$cycle->period_end->translatedFormat('j M Y'),
+            'renews_on' => $held->next_billing_on?->translatedFormat('j M Y'),
+            'services' => $services,
+        ];
     }
 
     /**
@@ -107,21 +209,26 @@ class MembershipCredits
 
         $offers = self::offersFor($client, $requested);
 
-        /* Deduplicated: two of the same service on one booking need two
-           credits, and this asks per service. The count is what limits it. */
+        /* Counted in credits rather than in lines. Two of the same service
+           on one booking need two redemptions, and a redemption is not
+           always one credit — a service the business priced at two costs two
+           every time it is taken. */
         $covered = [];
         $used = [];
 
         foreach ($requested as $serviceId) {
             $serviceId = (int) $serviceId;
             $available = $offers[$serviceId]['remaining'] ?? 0;
+            $cost = $offers[$serviceId]['cost'] ?? 1;
             $spent = $used[$serviceId] ?? 0;
 
-            if ($spent >= $available) {
+            /* Not enough left for a whole redemption. Half a massage is not
+               a thing to hand somebody, so the line is simply paid for. */
+            if ($spent + $cost > $available) {
                 continue;
             }
 
-            $used[$serviceId] = $spent + 1;
+            $used[$serviceId] = $spent + $cost;
             $covered[] = $serviceId;
         }
 
@@ -141,19 +248,27 @@ class MembershipCredits
     {
         $takenMinor = 0;
 
-        foreach ($serviceIds as $serviceId) {
-            $credit = self::nextSpendable($client, (int) $serviceId);
+        $costs = self::costsFor($serviceIds);
 
-            /* Gone between the quote and the save. The line is simply paid
-               for; refusing the booking over it would be the screen arguing
-               with a client who is standing at the desk. */
+        foreach ($serviceIds as $serviceId) {
+            $cost = $costs[(int) $serviceId] ?? 1;
+            $credit = self::nextSpendable($client, (int) $serviceId, $cost);
+
+            /* Gone between the quote and the save, or no longer enough left
+               for a whole redemption. The line is simply paid for; refusing
+               the booking over it would be the screen arguing with a client
+               who is standing at the desk. */
             if ($credit === null) {
                 continue;
             }
 
             $value = (int) ($valuesByService[$serviceId] ?? 0);
 
-            $credit->increment('quantity_used');
+            /* What the service costs, not one. Taken from a single credit
+               row rather than split across two: a redemption belongs to one
+               membership, and half of it charged to another is a record
+               nobody could explain. */
+            $credit->increment('quantity_used', $cost);
 
             MembershipCreditRedemption::create([
                 'tenant_id' => $booking->tenant_id,
@@ -161,7 +276,7 @@ class MembershipCredits
                 'client_membership_id' => $credit->client_membership_id,
                 'booking_id' => $booking->id,
                 'service_id' => (int) $serviceId,
-                'quantity' => 1,
+                'quantity' => $cost,
                 'value_minor' => $value,
                 'redeemed_by' => $by?->id,
             ]);
@@ -193,12 +308,19 @@ class MembershipCredits
                 ->get();
 
             foreach ($held as $redemption) {
-                /* Never below zero. A credit whose count somehow drifted is a
+                /* Exactly what was taken, which is written on the redemption
+                   rather than assumed to be one: a two-credit service gives
+                   two back, and a service repriced since is not the question
+                   — what was spent is.
+
+                   Never below zero. A credit whose count somehow drifted is a
                    bug to find, not a reason to hand out a negative. */
+                $taken = max(1, (int) $redemption->quantity);
+
                 MembershipCredit::query()
                     ->whereKey($redemption->membership_credit_id)
-                    ->where('quantity_used', '>', 0)
-                    ->decrement('quantity_used');
+                    ->where('quantity_used', '>=', $taken)
+                    ->decrement('quantity_used', $taken);
 
                 $redemption->forceFill(['released_at' => now()])->save();
             }
@@ -208,16 +330,45 @@ class MembershipCredits
     }
 
     /**
+     * What one booking of each service costs in credits.
+     *
+     * Read once for the whole set rather than once per line: a booking of
+     * four massages asks about one service, and four queries for one number
+     * is three too many. Not memoised beyond the call — a service repriced
+     * between two bookings must be read again.
+     *
+     * @param  list<int>  $serviceIds
+     * @return array<int, int>
+     */
+    private static function costsFor(array $serviceIds): array
+    {
+        if ($serviceIds === []) {
+            return [];
+        }
+
+        return Service::withoutGlobalScopes()
+            ->whereIn('id', array_unique(array_map('intval', $serviceIds)))
+            ->pluck('credit_usage', 'id')
+            ->map(fn ($usage) => max(1, (int) $usage))
+            ->all();
+    }
+
+    /**
      * The credit to spend next on this service.
      *
      * Read fresh rather than from the offer list: between the quote and the
      * save somebody else may have spent it, and this is the moment it has to
      * be true.
      */
-    private static function nextSpendable(Client $client, int $serviceId): ?MembershipCredit
+    private static function nextSpendable(Client $client, int $serviceId, int $cost = 1): ?MembershipCredit
     {
         return MembershipCredit::query()
             ->spendable()
+            /* Enough for the whole redemption on this one membership. A
+               two-credit service taken half from one membership and half
+               from another is a record nobody could explain, and a refund
+               nobody could work out. */
+            ->whereRaw('quantity_granted - quantity_used >= ?', [max(1, $cost)])
             ->where('service_id', $serviceId)
             ->whereIn('client_membership_id', ClientMembership::query()
                 ->where('client_id', $client->id)

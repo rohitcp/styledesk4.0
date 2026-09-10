@@ -37,6 +37,10 @@ export function initBookingSheet(sheet, labels = {}) {
     const step = sheet.querySelector('[data-sheet-step]');
     const primary = sheet.querySelector('[data-sheet-primary]');
     const download = sheet.querySelector('[data-sheet-download]');
+    /* Booking-specific footer markup. A record that names its own button is
+       not a booking, and "Cancel booking" beneath a membership is the wrong
+       sentence entirely. */
+    const secondary = sheet.querySelector('[data-sheet-secondary]');
 
     const facts = (section) => `
         <section class="styledesk_sheet__section">
@@ -140,8 +144,15 @@ export function initBookingSheet(sheet, labels = {}) {
 
         if (primary) {
             primary.href = record.urls.show ?? record.urls.complete;
-            primary.textContent = options.cta ?? (record.urls.show ? labels.view_full : labels.complete);
+            /* The record's own wording first: this panel shows a booking, a
+               lead, a client, a receipt and a membership, and only the record
+               knows which button belongs under it. */
+            primary.textContent = options.cta ?? record.cta ?? (record.urls.show ? labels.view_full : labels.complete);
             primary.hidden = !primary.href;
+        }
+
+        if (secondary) {
+            secondary.hidden = !!record.cta;
         }
 
         /* A second button only where there is something to keep. Printing the

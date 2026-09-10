@@ -57,6 +57,8 @@ const props = defineProps({
     membershipPlans: { type: Array, default: () => [] },
     /** Where a membership sale posts. Not where a booking posts. */
     membershipAction: { type: String, default: '' },
+    membershipCheckUrl: { type: String, default: '' },
+    membershipBenefitsUrl: { type: String, default: '' },
     /** The two selling terms the purchase screen has to obey. */
     membershipSettings: { type: Object, default: () => ({}) },
     /** Where a card would be kept, and what the browser needs to put one there. */
@@ -326,6 +328,12 @@ async function refreshQuote() {
         if (payload.coupon_error) {
             appliedCoupon.value = '';
         }
+
+        /* Anything the client has already paid for, covered. The offers
+           arrive with the quote, so this is the first moment it can be
+           known — and it requotes only when it actually changed something,
+           which is what stops it going round for ever. */
+        coverWhatMembershipsCover();
     } catch (error) {
         /* A failed quote leaves the last good one on screen rather than
            blanking the total somebody is reading. */
@@ -351,6 +359,32 @@ const creditOffers = computed(() => quote.value?.membership_offers ?? {});
 /** Whether any line on this booking could be paid for with a credit. */
 const hasCreditOffers = computed(() => chosen.value.some((service) => creditOffers.value[service.id]));
 
+/**
+ * "Apply membership credit" — or "Use membership · 2 credits" where a
+ * redemption costs more than one.
+ *
+ * The cost comes from the service rather than being assumed: a business that
+ * priced a deep tissue massage at two credits has said so, and a button that
+ * promised one would be promising a redemption the server then refuses.
+ */
+function creditApplyLabel(serviceId) {
+    const cost = creditOffer(serviceId)?.cost ?? 1;
+
+    return cost > 1
+        ? (props.labels.credits?.apply_many ?? '').replace(':count', cost)
+        : props.labels.credits?.apply;
+}
+
+/**
+ * How many credits this booking is spending.
+ *
+ * Counted in credits rather than in lines: a two-credit service applied once
+ * has spent two, and a summary that said "1" would disagree with the balance
+ * the client is handed afterwards.
+ */
+const creditsUsed = computed(() => creditsApplied.value
+    .reduce((sum, serviceId) => sum + (creditOffer(serviceId)?.cost ?? 1), 0));
+
 /** The credit offer for one service, or null. */
 function creditOffer(serviceId) {
     return creditOffers.value[serviceId] ?? null;
@@ -369,15 +403,7 @@ function creditsAppliedTo(serviceId) {
  * the first, and the second is paid for.
  */
 function canCover(serviceId) {
-    const offer = creditOffer(serviceId);
-
-    if (! offer) {
-        return false;
-    }
-
-    const booked = chosen.value.filter((service) => service.id === serviceId).length;
-
-    return creditsAppliedTo(serviceId) < Math.min(offer.remaining, booked);
+    return canCoverWith(serviceId, creditsApplied.value);
 }
 
 function applyCredit(serviceId) {
@@ -387,6 +413,56 @@ function applyCredit(serviceId) {
 
     creditsApplied.value = [...creditsApplied.value, serviceId];
     refreshQuote();
+}
+
+/**
+ * A service the client has already paid for is not charged again.
+ *
+ * The credit used to be offered and left for somebody to press, on the
+ * argument that spending one is the client's decision. It is not: the client
+ * made that decision when they bought the membership, and a desk that forgot
+ * to press the button charged them twice for the same massage. So a covered
+ * service arrives covered, and Remove is there for the case where the client
+ * would rather keep the credit for next time.
+ *
+ * Quiet where there is nothing to do — every line already covered, or no
+ * credit left — so it can be called after any change to the list.
+ */
+function coverWhatMembershipsCover() {
+    const next = [...creditsApplied.value];
+
+    chosen.value.forEach((service) => {
+        /* canCover() counts what is already applied against what is left, so
+           two of the same service take a second credit only where there is a
+           second credit to take. */
+        while (canCoverWith(service.id, next)) {
+            next.push(service.id);
+        }
+    });
+
+    if (next.length !== creditsApplied.value.length) {
+        creditsApplied.value = next;
+        refreshQuote();
+    }
+}
+
+/**
+ * Whether one more of this service could be covered, counting a list that is
+ * still being built rather than the one on the page.
+ */
+function canCoverWith(serviceId, applied) {
+    const offer = creditOffer(serviceId);
+
+    if (! offer) {
+        return false;
+    }
+
+    const cost = offer.cost ?? 1;
+    const spent = applied.filter((id) => id === serviceId).length * cost;
+    const booked = chosen.value.filter((service) => service.id === serviceId).length;
+    const alreadyOn = applied.filter((id) => id === serviceId).length;
+
+    return alreadyOn < booked && spent + cost <= offer.remaining;
 }
 
 function removeCredit(serviceId) {
@@ -483,6 +559,66 @@ function applyCustomTip() {
  */
 const onATillAmount = computed(() => (quote.value?.tip_amount_options ?? [])
     .some((o) => o.minor === quote.value?.tip_minor));
+
+/**
+ * Sell it, once anybody who needs to has seen what is already there.
+ *
+ * The dialog is a courtesy — the server refuses an unacknowledged second
+ * membership either way — so a check that fails to answer does not stop the
+ * sale. It hands it to the server, which asks the same question properly.
+ */
+async function sellMembership() {
+    if (membershipBlocker.value !== null || sending.value || checkingHeld.value) {
+        return;
+    }
+
+    if (acknowledgedExisting.value) {
+        return submitMembership();
+    }
+
+    checkingHeld.value = true;
+
+    try {
+        const url = new URL(props.membershipCheckUrl, window.location.origin);
+        url.searchParams.set('client_id', client.value?.id ?? '');
+        url.searchParams.set('membership_plan_id', membershipPlanId.value ?? '');
+
+        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+        const json = response.ok ? await response.json() : null;
+
+        if (json?.held?.length) {
+            heldMemberships.value = json.held;
+            heldSamePlan.value = !!json.same_plan;
+            checkingHeld.value = false;
+
+            return;
+        }
+    } catch (error) {
+        /* A network blink is not a reason to block a sale the server will
+           check again anyway. */
+    }
+
+    checkingHeld.value = false;
+    submitMembership();
+}
+
+/** Past the warning, or never warned: post it. */
+function submitMembership() {
+    sending.value = true;
+    membershipForm.value?.submit();
+}
+
+function continueWithSecondMembership() {
+    acknowledgedExisting.value = true;
+    heldMemberships.value = [];
+
+    nextTick(submitMembership);
+}
+
+function cancelSecondMembership() {
+    heldMemberships.value = [];
+    heldSamePlan.value = false;
+}
 
 /**
  * A flat sum the business offers at the till.
@@ -817,6 +953,22 @@ function chooseMembership(plan) {
 }
 
 /** What is missing before this membership can be sold, in the reader's words. */
+/* ------------------------------------------- what this client already holds
+
+   Never a refusal. A client may hold a monthly plan and a massage package,
+   and even two of the same package is somebody's call to make. What this
+   exists to stop is the silent one: a second subscription created because
+   nobody at the desk knew about the first, and a client who finds out at the
+   next billing run.
+
+   Asked at the moment of sale rather than when the client was chosen — a plan
+   can be swapped after that, and which plan it is decides the wording. */
+const heldMemberships = ref([]);
+const heldSamePlan = ref(false);
+const checkingHeld = ref(false);
+const membershipForm = ref(null);
+const acknowledgedExisting = ref(false);
+
 const membershipBlocker = computed(() => {
     if (client.value === null) {
         return props.labels.membership?.client_required;
@@ -1397,6 +1549,61 @@ const sheetPicked = ref([]);
 const sheetCategory = ref('');
 const serviceQuery = ref('');
 
+/* ------------------------------------------- what this client already holds
+
+   A membership is a reason to pick one service over another, so the selector
+   says so before the choice is made rather than after it. Asked when the
+   client changes rather than sent with the page: which client is on the
+   booking changes while the screen is open, and a list rendered once would
+   be somebody else's benefits. */
+const memberBenefits = ref([]);
+
+/** Every service any live membership covers, by id. */
+const benefitByService = computed(() => {
+    const map = {};
+
+    memberBenefits.value.forEach((membership) => {
+        membership.services.forEach((line) => {
+            /* The first membership that still has one wins, and a used-up
+               one is only kept where nothing better covers it — a service
+               shown as unavailable when another membership could pay for it
+               would be the screen refusing something it can do. */
+            if (!map[line.service_id] || (!map[line.service_id].available && line.available)) {
+                map[line.service_id] = { ...line, membership_name: membership.name, membership_id: membership.id };
+            }
+        });
+    });
+
+    return map;
+});
+
+/** Whether this client has anything worth a section of its own. */
+const hasMemberBenefits = computed(() => memberBenefits.value.length > 0);
+
+async function loadMemberBenefits() {
+    if (!client.value?.id || !props.membershipBenefitsUrl) {
+        memberBenefits.value = [];
+
+        return;
+    }
+
+    try {
+        const url = new URL(props.membershipBenefitsUrl, window.location.origin);
+        url.searchParams.set('client_id', client.value.id);
+
+        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+
+        memberBenefits.value = response.ok ? (await response.json()).memberships ?? [] : [];
+    } catch (error) {
+        /* A network blink is not a reason to block the selector: the
+           services are still there at their normal price, and the server
+           checks every credit again when the booking is taken. */
+        memberBenefits.value = [];
+    }
+}
+
+watch(() => client.value?.id, loadMemberBenefits, { immediate: true });
+
 /* The services this client is known to want, said by somebody at the desk.
    Shown first in the selector, because a repeat booking is the commonest
    thing a desk does and searching a hundred services for the same balayage
@@ -1427,6 +1634,15 @@ const sheetCategories = computed(() => {
     });
 
     return [
+        /* Before the catalogue, because it is the question a desk asks
+           first: is any of this already paid for. */
+        ...(hasMemberBenefits.value
+            ? [{
+                id: 'membership',
+                name: props.labels.credits?.benefits_section,
+                count: Object.keys(benefitByService.value).length,
+            }]
+            : []),
         { id: '', name: props.labels.service?.all_services, count: offeredHere.value.length },
         ...Object.entries(props.categories)
             .filter(([id]) => counts.has(String(id)))
@@ -1443,7 +1659,9 @@ const sheetServices = computed(() => {
     return offeredHere.value
         .filter((service) => term
             || ! sheetCategory.value
-            || String(service.category_id ?? '') === sheetCategory.value)
+            || (sheetCategory.value === 'membership'
+                ? !!benefitByService.value[service.id]
+                : String(service.category_id ?? '') === sheetCategory.value))
         .filter((service) => ! term || service.name.toLowerCase().includes(term));
 });
 
@@ -2857,7 +3075,7 @@ const summaryOf = (section) => {
          booking store does applies to it — and switching the action is what
          keeps the client column, the type switcher and the submit button one
          piece of markup instead of two screens. -->
-    <form :action="sellingMembership ? membershipAction : action" method="POST" class="contents" @submit="sending = true">
+    <form ref="membershipForm" :action="sellingMembership ? membershipAction : action" method="POST" class="contents" @submit="sending = true">
         <input type="hidden" name="_token" :value="csrf">
         <input type="hidden" name="client_id" :value="client?.id ?? ''">
 
@@ -2877,6 +3095,10 @@ const summaryOf = (section) => {
             <input type="hidden" name="payment_method" :value="membershipMethod">
             <input type="hidden" name="location_id" :value="locationId ?? ''">
             <input type="hidden" name="auto_renew" :value="autoRenew ? 1 : 0">
+            <!-- Somebody has seen what this client already holds and said
+                 sell it anyway. The server refuses a second membership
+                 without it, so this is the proof it was a decision. -->
+            <input type="hidden" name="acknowledge_existing" :value="acknowledgedExisting ? 1 : 0">
             <input type="hidden" name="card_id" :value="needsCard ? cardId : ''">
         </template>
         <!-- The branch this booking is being taken at, in the page header.
@@ -2901,6 +3123,86 @@ const summaryOf = (section) => {
              a time somebody is holding on the phone — and a real navigation
              would have to serialise and restore all of it to come back to the
              screen the reader left. -->
+        <!-- ==================================== what this client already holds
+
+             Shown before the sale, never after it, because the point is the
+             decision: sell a second one knowing about the first, or stop.
+             Nothing here changes what the client already has — that is a
+             membership-management job, not a sale. -->
+        <Teleport to="body">
+            <div v-if="heldMemberships.length" class="fixed inset-0 z-[80] bg-black/40 grid place-items-center p-4"
+                 role="dialog" aria-modal="true" aria-labelledby="heldTitle">
+                <div class="w-full max-w-[520px] bg-white rounded-xl shadow-lg max-h-[90vh] overflow-y-auto">
+                    <header class="px-5 pt-5">
+                        <h2 id="heldTitle" class="text-[16px] font-semibold text-head">
+                            {{ heldSamePlan ? labels.sale?.existing_same_title : labels.sale?.existing_title }}
+                        </h2>
+                        <p class="text-[13px] text-sub mt-1.5 leading-relaxed">
+                            {{ heldSamePlan ? labels.sale?.existing_same_intro : labels.sale?.existing_intro }}
+                        </p>
+                    </header>
+
+                    <!-- What they hold. A package and a subscription are worth
+                         different facts: what is left of a package decides
+                         whether another is wanted at all, and when a
+                         subscription bills next decides whether a second is
+                         affordable. -->
+                    <div class="px-5 mt-4 space-y-2.5">
+                        <div v-for="held in heldMemberships" :key="held.id"
+                             class="border border-line rounded-lg p-3.5"
+                             :class="held.same_plan ? 'border-brand bg-brand/[0.04]' : ''">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-[13.5px] font-semibold text-head">{{ held.name }}</p>
+                                    <p class="text-[12px] text-sub mt-0.5">{{ held.type_label }} · {{ held.price }}</p>
+                                </div>
+                                <span class="styledesk_badge shrink-0" :class="held.status_class">{{ held.status_label }}</span>
+                            </div>
+
+                            <dl class="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-sub">
+                                <div v-if="held.starts_on">
+                                    {{ (labels.sale?.existing_started ?? '').replace(':date', held.starts_on) }}
+                                </div>
+                                <div v-if="held.billing_label">{{ held.billing_label }}</div>
+                                <div v-if="held.next_billing_on">
+                                    {{ (labels.sale?.existing_next_billing ?? '').replace(':date', held.next_billing_on) }}
+                                </div>
+                                <div v-if="held.granted">
+                                    {{ (labels.sale?.existing_remaining ?? '')
+                                        .replace(':remaining', held.remaining)
+                                        .replace(':granted', held.granted) }}
+                                </div>
+                                <div v-if="held.expires_on">
+                                    {{ (labels.sale?.existing_expires ?? '').replace(':date', held.expires_on) }}
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <!-- And what is about to be sold, so the two are read
+                         together rather than remembered. -->
+                    <div class="px-5 mt-4">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-faint">
+                            {{ labels.sale?.existing_buying }}
+                        </p>
+                        <p class="text-[13.5px] font-semibold text-head mt-1">{{ chosenMembership?.name }}</p>
+                    </div>
+
+                    <footer class="px-5 py-4 mt-4 border-t border-line flex flex-wrap gap-2 justify-end">
+                        <button type="button" class="styledesk_action" @click="cancelSecondMembership">
+                            {{ labels.cancel }}
+                        </button>
+
+                        <button type="button"
+                                class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors"
+                                @click="continueWithSecondMembership">
+                            {{ labels.sale?.existing_continue }}
+                        </button>
+                    </footer>
+                </div>
+            </div>
+        </Teleport>
+
         <Teleport to="body">
             <div v-if="sheetOpen" class="fixed inset-0 z-[70] bg-hover flex flex-col"
                  role="dialog" aria-modal="true" :aria-label="labels.service?.select_title">
@@ -3027,6 +3329,63 @@ const summaryOf = (section) => {
                                 </div>
                             </div>
 
+                            <!-- What this client holds, membership by
+                                 membership, with what is left of each thing
+                                 it covers. Shown above the list rather than
+                                 instead of it: a benefit that has run out is
+                                 still a service somebody can book at its
+                                 normal price, and hiding it would make the
+                                 desk go looking. -->
+                            <div v-if="sheetCategory === 'membership' && !serviceQuery.trim()"
+                                 class="shrink-0 border-b border-line bg-brand/[0.03] px-3 py-3 space-y-3 max-h-[40%] overflow-y-auto styledesk_scroll">
+                                <div v-for="membership in memberBenefits" :key="membership.id">
+                                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                        <p class="text-[13px] font-semibold text-head">{{ membership.name }}</p>
+                                        <span class="styledesk_badge" :class="membership.status_class">{{ membership.status_label }}</span>
+                                        <span class="text-[11.5px] text-sub">{{ membership.type_label }}</span>
+                                    </div>
+
+                                    <!-- The cycle this allowance belongs to.
+                                         "1 left" means nothing without
+                                         knowing until when. -->
+                                    <p v-if="membership.cycle || membership.renews_on" class="text-[11.5px] text-sub mt-0.5">
+                                        <span v-if="membership.cycle">{{ membership.cycle }}</span>
+                                        <span v-if="membership.cycle && membership.renews_on"> · </span>
+                                        <span v-if="membership.renews_on">
+                                            {{ (labels.credits?.renews ?? '').replace(':date', membership.renews_on) }}
+                                        </span>
+                                    </p>
+
+                                    <table class="w-full mt-2 text-[12px]">
+                                        <thead>
+                                            <tr class="text-left text-faint">
+                                                <th class="font-medium pb-1">{{ labels.credits?.col_service }}</th>
+                                                <th class="font-medium pb-1 text-right w-[72px]">{{ labels.credits?.col_included }}</th>
+                                                <th class="font-medium pb-1 text-right w-[60px]">{{ labels.credits?.col_used }}</th>
+                                                <th class="font-medium pb-1 text-right w-[80px]">{{ labels.credits?.col_remaining }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="line in membership.services" :key="`${membership.id}-${line.service_id}`"
+                                                :class="line.available ? 'text-ink' : 'text-faint'">
+                                                <td class="py-0.5 pr-2 truncate">
+                                                    {{ line.name }}
+                                                    <span v-if="line.cost > 1" class="text-faint">
+                                                        · {{ (labels.credits?.each ?? '').replace(':count', line.cost) }}
+                                                    </span>
+                                                </td>
+                                                <td class="py-0.5 text-right tabular-nums">{{ line.included }}</td>
+                                                <td class="py-0.5 text-right tabular-nums">{{ line.used }}</td>
+                                                <td class="py-0.5 text-right tabular-nums font-semibold"
+                                                    :class="line.available ? 'text-brand' : 'text-faint'">
+                                                    {{ line.remaining }}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
                             <ul v-if="sheetServices.length"
                                 class="flex-1 min-h-0 overflow-y-auto styledesk_scroll divide-y divide-line">
                                 <li v-for="service in sheetServices" :key="service.id">
@@ -3058,6 +3417,26 @@ const summaryOf = (section) => {
                                                  service over another. -->
                                             <span v-if="service.resources?.length" class="block text-[12px] text-faint mt-0.5">
                                                 {{ (labels.service?.needs ?? 'Needs :names').replace(':names', service.resources.join(', ')) }}
+                                            </span>
+
+                                            <!-- Covered, or covered up to
+                                                 now. A benefit that has run
+                                                 out says so and why rather
+                                                 than disappearing: the
+                                                 service can still be booked
+                                                 at its normal price, and the
+                                                 desk has to be able to tell
+                                                 the client which it is. -->
+                                            <span v-if="benefitByService[service.id]" class="block text-[12px] mt-1"
+                                                  :class="benefitByService[service.id].available ? 'text-brand font-semibold' : 'text-faint'">
+                                                <template v-if="benefitByService[service.id].available">
+                                                    {{ (labels.credits?.covered_by ?? '')
+                                                        .replace(':name', benefitByService[service.id].membership_name)
+                                                        .replace(':count', benefitByService[service.id].remaining) }}
+                                                </template>
+                                                <template v-else>
+                                                    {{ labels.credits?.used_up }}
+                                                </template>
                                             </span>
                                         </span>
                                     </button>
@@ -5032,8 +5411,13 @@ const summaryOf = (section) => {
                          is a dead end the reader has to guess at. -->
                     <p v-if="membershipBlocker" class="text-[12px] text-sub mb-2">{{ membershipBlocker }}</p>
 
-                    <button type="submit" class="w-full h-10 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            :disabled="membershipBlocker !== null || sending">
+                    <!-- Not a plain submit: what this client already holds
+                         is asked first, and the sale goes through either
+                         once there is nothing to say or once somebody has
+                         said sell it anyway. -->
+                    <button type="button" class="w-full h-10 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            :disabled="membershipBlocker !== null || sending || checkingHeld"
+                            @click="sellMembership">
                         {{ labels.membership?.complete }}
                     </button>
                 </div>
@@ -5111,7 +5495,7 @@ const summaryOf = (section) => {
                             <div v-if="index < creditsAppliedTo(service.id)"
                                  class="mt-1 flex items-center gap-2 rounded-md bg-brand/5 border border-brand/30 px-2.5 py-1.5">
                                 <span class="min-w-0 flex-1 text-[11.5px] font-semibold text-brand truncate">
-                                    {{ labels.credits?.applied }}
+                                    {{ labels.credits?.covered }}
                                 </span>
                                 <button type="button" class="text-[11.5px] font-semibold text-link hover:underline shrink-0"
                                         @click="removeCredit(service.id)">{{ labels.credits?.remove }}</button>
@@ -5125,8 +5509,12 @@ const summaryOf = (section) => {
                                     ·
                                     {{ (labels.credits?.remaining ?? '').replace(':count', creditOffer(service.id)?.remaining ?? 0) }}
                                 </p>
+                                <!-- What it costs, said before it is spent. A
+                                     service is not always one credit, and a
+                                     desk that found out afterwards would have
+                                     told the client the wrong thing. -->
                                 <button type="button" class="mt-1.5 text-[11.5px] font-semibold text-link hover:underline"
-                                        @click="applyCredit(service.id)">{{ labels.credits?.apply }}</button>
+                                        @click="applyCredit(service.id)">{{ creditApplyLabel(service.id) }}</button>
                             </div>
                         </div>
                     </div>
@@ -5260,6 +5648,15 @@ const summaryOf = (section) => {
                         <div v-if="quote?.membership_credit_minor > 0" class="flex items-baseline justify-between gap-3">
                             <dt class="min-w-0 text-sub truncate">{{ labels.credits?.line }}</dt>
                             <dd class="text-head shrink-0">−{{ quote.membership_credit }}</dd>
+                        </div>
+
+                        <!-- What it cost in credits, beside what it took off
+                             the bill. Money and credits are two currencies,
+                             and a client asking "how many have I got left"
+                             is asking about the second one. -->
+                        <div v-if="creditsUsed > 0" class="flex items-baseline justify-between gap-3">
+                            <dt class="min-w-0 text-sub truncate">{{ labels.credits?.used_line }}</dt>
+                            <dd class="text-head shrink-0">{{ creditsUsed }}</dd>
                         </div>
 
                         <div v-if="quote?.discount_minor > 0" class="flex items-baseline justify-between gap-3">

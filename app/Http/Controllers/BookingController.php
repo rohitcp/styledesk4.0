@@ -307,6 +307,13 @@ class BookingController extends Controller
                Empty when the module is off, which is what closes the type. */
             'membershipPlans' => $this->membershipPlans($currency),
             'membershipAction' => route('membership.sales.store'),
+            /* Asked at the moment of sale: what this client already holds,
+               so a second membership is a decision rather than a surprise at
+               the next billing run. */
+            'membershipCheckUrl' => route('membership.sales.check'),
+            /* What the client on this booking already holds, for the service
+               selector's membership section. */
+            'membershipBenefitsUrl' => route('bookings.membership-benefits'),
             'membershipSettings' => $this->membershipSaleSettings(),
             /* Whether this business can keep a card at all. Everything the
                Card on File section offers depends on it, and a screen that
@@ -2780,6 +2787,29 @@ class BookingController extends Controller
      *
      * @return array<int, array<string, mixed>>
      */
+    /**
+     * What this client's memberships cover, for the service selector.
+     *
+     * Asked when a client is chosen rather than sent with the page: which
+     * client is on the booking changes while the screen is open, and a list
+     * rendered once would be somebody else's benefits.
+     */
+    public function membershipBenefits(Request $request): JsonResponse
+    {
+        $this->allow($request, 'appointments.create');
+
+        $data = $request->validate([
+            'client_id' => [
+                'required',
+                Rule::exists('clients', 'id')->where('tenant_id', $request->user()->tenant?->getTenantKey()),
+            ],
+        ]);
+
+        return response()->json([
+            'memberships' => MembershipCredits::benefitsFor(Client::query()->find($data['client_id'])),
+        ]);
+    }
+
     private function membershipPlans(string $currency): array
     {
         if (! MembershipSettings::forTenant(request()->user()?->tenant)->is_enabled) {

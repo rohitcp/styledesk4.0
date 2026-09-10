@@ -75,6 +75,12 @@ class MembershipPurchase
                 'tenant_id' => $client->tenant_id,
                 'client_id' => $client->id,
                 'membership_plan_id' => $plan->id,
+                /* The number this client's membership is known by — theirs,
+                   not the plan's. Two clients on the same plan hold two
+                   memberships, and a desk asking "which one" cannot be
+                   answered by a code they share. Given once, here, and never
+                   regenerated. */
+                'reference' => MembershipNumber::next($client->tenant),
                 'location_id' => $location?->id,
 
                 /* A membership dated forward is Scheduled, not Active: its

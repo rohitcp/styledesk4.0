@@ -16,6 +16,7 @@ use App\Models\ServicePrice;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
+use App\Models\TipSettings;
 use App\Models\User;
 use App\Support\MembershipCredits;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -188,6 +189,211 @@ class MembershipCreditRedemptionTest extends TestCase
         return MembershipCredit::withoutGlobalScopes()->firstOrFail();
     }
 
+    // -------------------------------------------- the selector's own section
+
+    /**
+     * What this client holds, before there is a booking to ask about.
+     *
+     * The offers list answers "can this line be covered" for services already
+     * chosen. The service selector asks the question a receptionist asks
+     * first: what has this client got, and what is left of it.
+     */
+    public function test_the_selector_is_told_what_the_client_holds(): void
+    {
+        $massage = $this->service('Massage');
+        $facial = $this->service('Facial', 9000);
+
+        $membership = $this->membershipFor($massage, quantity: 4);
+
+        MembershipCredit::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'client_membership_id' => $membership->id,
+            'service_id' => $facial->id,
+            'quantity_granted' => 1,
+            'quantity_used' => 1,
+        ]);
+
+        $benefits = $this->actingAs($this->owner())
+            ->getJson(route('bookings.membership-benefits', ['client_id' => $this->client()->id]))
+            ->assertOk()
+            ->json('memberships');
+
+        $this->assertCount(1, $benefits);
+
+        $lines = collect($benefits[0]['services'])->keyBy('name');
+
+        /* Included, used and remaining — the three numbers the section
+           shows, so a desk can say what is left without doing arithmetic. */
+        $this->assertSame(4, $lines['Massage']['included']);
+        $this->assertSame(0, $lines['Massage']['used']);
+        $this->assertSame(4, $lines['Massage']['remaining']);
+        $this->assertTrue($lines['Massage']['available']);
+
+        /* Spent, and shown as such rather than hidden: the service is still
+           bookable at its normal price, and the desk has to be able to say
+           which it is. */
+        $this->assertSame(1, $lines['Facial']['used']);
+        $this->assertSame(0, $lines['Facial']['remaining']);
+        $this->assertFalse($lines['Facial']['available']);
+    }
+
+    /** A benefit that costs two is unavailable on one credit, not half-available. */
+    public function test_a_benefit_below_its_own_cost_reads_as_unavailable(): void
+    {
+        $service = $this->service();
+        $service->forceFill(['credit_usage' => 2])->save();
+
+        $this->membershipFor($service, quantity: 1);
+
+        $line = $this->actingAs($this->owner())
+            ->getJson(route('bookings.membership-benefits', ['client_id' => $this->client()->id]))
+            ->assertOk()
+            ->json('memberships.0.services.0');
+
+        $this->assertSame(1, $line['remaining']);
+        $this->assertSame(2, $line['cost']);
+        $this->assertFalse($line['available']);
+    }
+
+    /** An expired benefit is not a benefit, so it is not listed. */
+    public function test_an_expired_benefit_is_left_out(): void
+    {
+        $service = $this->service();
+
+        $this->membershipFor($service, creditOverrides: ['expires_on' => '2026-09-01']);
+
+        Carbon::setTestNow('2026-09-15 10:00:00');
+
+        $this->assertSame(
+            [],
+            $this->actingAs($this->owner())
+                ->getJson(route('bookings.membership-benefits', ['client_id' => $this->client()->id]))
+                ->assertOk()
+                ->json('memberships')
+        );
+    }
+
+    /** A client holding nothing gets an empty section rather than an empty heading. */
+    public function test_a_client_with_no_membership_has_no_benefits(): void
+    {
+        $this->service();
+
+        $this->assertSame(
+            [],
+            $this->actingAs($this->owner())
+                ->getJson(route('bookings.membership-benefits', ['client_id' => $this->client()->id]))
+                ->assertOk()
+                ->json('memberships')
+        );
+    }
+
+    // ------------------------------------------------------- what it costs
+
+    /**
+     * A service is not always one credit.
+     *
+     * Credit usage is a second price in a second currency: the business sets
+     * what redeeming a service costs, and a deep tissue massage priced at two
+     * credits takes two every time it is taken.
+     */
+    public function test_a_service_costs_what_its_credit_usage_says(): void
+    {
+        $service = $this->service();
+        $service->forceFill(['credit_usage' => 2])->save();
+
+        $this->membershipFor($service, quantity: 4);
+
+        $quote = $this->actingAs($this->owner())
+            ->postJson(route('bookings.quote'), [
+                'services' => [$service->id],
+                'client_id' => $this->client()->id,
+                'membership_credits' => [$service->id],
+            ])
+            ->assertOk()
+            ->json();
+
+        /* Said before it is spent, so the desk tells the client the right
+           thing. */
+        $this->assertSame(2, $quote['membership_offers'][$service->id]['cost']);
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+            ]))
+            ->assertRedirect();
+
+        /* Four granted, two taken, two left. */
+        $credit = $this->credit();
+        $this->assertSame(2, (int) $credit->quantity_used);
+        $this->assertSame(2, $credit->remaining());
+
+        $this->assertSame(2, (int) MembershipCreditRedemption::withoutGlobalScopes()->firstOrFail()->quantity);
+    }
+
+    /**
+     * Not enough left for a whole redemption is not a partial one.
+     *
+     * Half a massage is not a thing to hand somebody, so the line is simply
+     * paid for and the credit stays where it is.
+     */
+    public function test_a_credit_balance_below_the_cost_covers_nothing(): void
+    {
+        $service = $this->service();
+        $service->forceFill(['credit_usage' => 2])->save();
+
+        /* One credit against a two-credit service. */
+        $this->membershipFor($service, quantity: 1);
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+            ]))
+            ->assertRedirect();
+
+        $this->assertSame(0, (int) $this->credit()->quantity_used);
+        $this->assertSame(0, MembershipCreditRedemption::withoutGlobalScopes()->count());
+    }
+
+    /** Giving it back gives back what was taken, not one. */
+    public function test_releasing_a_booking_returns_every_credit_it_took(): void
+    {
+        $service = $this->service();
+        $service->forceFill(['credit_usage' => 3])->save();
+
+        $this->membershipFor($service, quantity: 3);
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+            ]))
+            ->assertRedirect();
+
+        $this->assertSame(3, (int) $this->credit()->quantity_used);
+
+        $booking = Booking::withoutGlobalScopes()->latest('id')->firstOrFail();
+
+        MembershipCredits::release($booking);
+
+        $this->assertSame(0, (int) $this->credit()->fresh()->quantity_used);
+    }
+
+    /**
+     * Price and credit usage move independently.
+     *
+     * One is what the service costs in money, the other what it costs in
+     * credits, and a business that repriced a massage has said nothing about
+     * how many credits it takes.
+     */
+    public function test_repricing_a_service_does_not_change_what_it_costs_in_credits(): void
+    {
+        $service = $this->service();
+        $service->forceFill(['credit_usage' => 2])->save();
+
+        $service->syncPrices(['USD' => '250.00']);
+
+        $this->assertSame(2, $service->fresh()->creditUsage());
+    }
+
     // ------------------------------------------------------------- the quote
 
     public function test_the_quote_offers_a_credit_the_client_holds(): void
@@ -297,6 +503,43 @@ class MembershipCreditRedemptionTest extends TestCase
         $this->assertSame(18000, $quote['subtotal_minor']);
         $this->assertSame(8000, $quote['membership_credit_minor']);
         $this->assertSame(10000, $quote['total_minor']);
+    }
+
+    /* A tip is a share of the bill, and a covered service is not on the bill.
+       Tipping on work the membership already paid for would charge the client
+       for it twice over, in small change. */
+    public function test_the_tip_is_taken_on_what_is_left_to_pay(): void
+    {
+        $massage = $this->service();
+        $facial = $this->service('Facial', 10000);
+        $this->membershipFor($massage);
+
+        TipSettings::updateOrCreate(
+            ['tenant_id' => $this->tenant->getTenantKey()],
+            [
+                'is_enabled' => true,
+                'percentages' => [15, 18, 20, 25],
+                'default_tip_type' => 'percent',
+                'default_tip_value' => 20,
+                'require_selection' => false,
+                'allow_no_tip' => true,
+            ],
+        );
+
+        $quote = $this->actingAs($this->owner())
+            ->postJson(route('bookings.quote'), [
+                'services' => [$massage->id, $facial->id],
+                'client_id' => $this->client()->id,
+                'membership_credits' => [$massage->id],
+                'tip_percent' => 20,
+                'tip_chosen' => true,
+            ])
+            ->assertOk()
+            ->json();
+
+        /* Twenty per cent of the £100 facial, not of the £180 booking. */
+        $this->assertSame(2000, $quote['tip_minor']);
+        $this->assertSame(12000, $quote['total_minor']);
     }
 
     /* A percentage taken off work the client is not paying for is a discount

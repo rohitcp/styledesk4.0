@@ -30,6 +30,19 @@
           </select>
         </div>
 
+        {{-- What kind of thing was sold. A booking and a membership are both
+             transactions and both belong in the list; this is for a reader
+             reconciling one of them at a time. --}}
+        <div>
+          <label for="type" class="block text-[12px] font-medium text-ink mb-1.5">{{ __('sales.type') }}</label>
+          <select id="type" name="type" class="sd-input">
+            <option value="">{{ __('sales.types.all') }}</option>
+            @foreach (['service', 'membership'] as $kind)
+              <option value="{{ $kind }}" @selected($filters['type'] === $kind)>{{ __('sales.types.'.$kind) }}</option>
+            @endforeach
+          </select>
+        </div>
+
         {{-- Only where it means something. Two date boxes beside "Today" are
              two controls that do nothing. --}}
         <div data-custom-range @class(['flex items-end gap-2.5', 'hidden' => $period->preset !== 'custom'])>
@@ -99,6 +112,7 @@
           'service' => $filters['service'],
           'method' => $filters['method'],
           'status' => $filters['status'],
+          'type' => $filters['type'],
           'balance' => $filters['balance'] ? 1 : null,
       ]);
 
@@ -122,6 +136,10 @@
               ['field' => 'at', 'title' => __('sales.columns.at'), 'width' => 160, 'responsive' => 3],
               ['field' => 'booking', 'title' => __('sales.columns.booking'), 'width' => 150, 'responsive' => 5],
               ['field' => 'client', 'title' => __('sales.columns.client'), 'grow' => 1.2, 'min' => 140, 'responsive' => 1],
+              /* Which kind of sale this row is. Beside the client rather than
+                 at the end: it changes how every column to its right reads —
+                 a membership has no staff member and no appointment. */
+              ['field' => 'type', 'title' => __('sales.type'), 'width' => 120, 'responsive' => 6],
               ['field' => 'services', 'title' => __('sales.columns.services'), 'grow' => 1.4, 'min' => 150, 'responsive' => 8],
               ['field' => 'staff', 'title' => __('sales.columns.staff'), 'width' => 140, 'responsive' => 7],
               ['field' => 'location', 'title' => __('sales.columns.location'), 'width' => 130, 'responsive' => 9],

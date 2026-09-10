@@ -114,6 +114,8 @@
                module is off, which is what closes the type. */
             'membershipPlans' => $membershipPlans,
             'membershipAction' => $membershipAction,
+            'membershipCheckUrl' => $membershipCheckUrl,
+            'membershipBenefitsUrl' => $membershipBenefitsUrl,
             'membershipSettings' => $membershipSettings,
             /* Whether this business can keep a card at all, and where the
                browser sends the token it is handed. Everything Card on File
@@ -165,7 +167,14 @@
                 'comms', 'summary', 'blockers', 'confirm', 'draft', 'cancel', 'context',
                 'new_client', 'pay', 'methods', 'payment_statuses', 'confirmation', 'steps', 'lead',
                 'any_staff', 'autosave', 'resources',
-            ]) + ['summary' => __('bookings.summary') + ['minutes_short' => __('bookings.service.minutes')]],
+            ]) + [
+                'summary' => __('bookings.summary') + ['minutes_short' => __('bookings.service.minutes')],
+                /* The membership warning's own words. They live in the
+                   membership file because that is where every other thing
+                   said about a membership lives — the booking screen is only
+                   where they are read out. */
+                'sale' => __('membership.sale'),
+            ],
         ];
     @endphp
 

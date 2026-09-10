@@ -176,7 +176,10 @@
           $gridConfig = [
               'labels' => $gridLabels,
               'columns' => [
-                  ['field' => 'name', 'title' => $gridLabels['columns']['service'], 'type' => 'primary', 'grow' => 3, 'min' => 200, 'responsive' => 0],
+                  /* Wider now the category badge has gone from beside it:
+                     the column has one job, and a service name truncated to
+                     "Abdominal Massage — 3…" does not do it. */
+                  ['field' => 'name', 'title' => $gridLabels['columns']['service'], 'type' => 'primary', 'grow' => 3, 'min' => 260, 'responsive' => 0],
                   ['field' => 'category', 'title' => $gridLabels['columns']['category'], 'grow' => 1.5, 'min' => 130, 'responsive' => 5],
                   ['field' => 'duration', 'title' => $gridLabels['columns']['duration'], 'grow' => 1, 'min' => 100, 'responsive' => 2],
                   ['field' => 'price', 'title' => $gridLabels['columns']['price'], 'grow' => 1, 'min' => 100, 'responsive' => 2],

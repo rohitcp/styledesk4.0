@@ -245,6 +245,35 @@
         <x-price-input name="price" :label="__('services.price')" :values="$priceValues"
                        :cash-values="$cashPriceValues" :deposit="$depositConfig" />
     </div>
+
+    {{-- What it costs in credits, under what it costs in money.
+
+         A second price, in a second currency. They are not convertible and
+         neither follows the other: a business charging the same credit for a
+         ninety-minute massage as for a thirty-minute one is making a decision
+         about its memberships, and a field that moved with the price would
+         overwrite it.
+
+         Only where there are credits to spend. A business that does not sell
+         memberships has no use for the question. --}}
+    @if ($membership->grantsCredits())
+        <div class="mt-5 pt-5 border-t border-line">
+            <label for="serviceCreditUsage" class="block text-[13px] font-medium text-ink mb-1.5">
+                {{ __('services.credit_usage') }}
+            </label>
+
+            <div class="w-[160px]">
+                <input id="serviceCreditUsage" name="credit_usage" type="number" min="1" max="99" step="1"
+                       class="sd-input" data-rules="integer|min:1|max:99"
+                       value="{{ old('credit_usage', $service?->creditUsage() ?? 1) }}">
+            </div>
+
+            <p class="text-[12px] text-sub mt-1.5">{{ __('services.credit_usage_hint') }}</p>
+
+            <p data-error-for="serviceCreditUsage" role="alert" class="mt-1.5 text-[12px] text-danger"
+               @unless ($errors->has('credit_usage')) hidden @endunless>{{ $errors->first('credit_usage') }}</p>
+        </div>
+    @endif
 </section>
 
 <section class="bg-white border border-line rounded-card p-5">

@@ -7,7 +7,10 @@ use App\Http\Controllers\SalesController;
 use App\Models\Booking;
 use App\Models\BookingPayment;
 use App\Models\Client;
+use App\Models\ClientMembership;
 use App\Models\ClientTag;
+use App\Models\MembershipPayment;
+use App\Models\MembershipPlan;
 use App\Models\Role;
 use App\Models\Staff;
 use App\Models\Tenant;
@@ -86,6 +89,57 @@ class SalesTest extends TestCase
             'status' => 'paid',
             'amount_minor' => $minor,
             'currency_code' => 'USD',
+            'paid_at' => now(),
+        ]);
+    }
+
+    /**
+     * A membership sale: the plan, the client who bought it, and the money.
+     *
+     * Built directly rather than through the till — this is a test about the
+     * ledger, and a purchase would bring a payment method, a card and a
+     * settings row into it.
+     */
+    private function membershipSale(int $minor, array $attributes = [], string $type = 'package'): MembershipPayment
+    {
+        $client = Client::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'client_ref' => Client::nextRef($this->tenant->getTenantKey()),
+            'first_name' => 'Amara', 'last_name' => 'Diallo',
+        ]);
+
+        $plan = MembershipPlan::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'type' => $type,
+            'name' => 'Massage 4-Pack',
+            'internal_code' => 'PKG-20260909-0001',
+            'price_minor' => $minor,
+            'billing_frequency' => $type === 'recurring' ? 'monthly' : null,
+            'location_mode' => 'all',
+            'sell_in_store' => true,
+            'is_draft' => false,
+        ]);
+
+        $membership = ClientMembership::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'client_id' => $client->id,
+            'membership_plan_id' => $plan->id,
+            'status' => 'active',
+            'starts_on' => now()->toDateString(),
+            'type' => $type,
+            'price_minor' => $minor,
+            'currency_code' => 'USD',
+            'billing_frequency' => $type === 'recurring' ? 'monthly' : null,
+        ]);
+
+        return MembershipPayment::withoutGlobalScopes()->create($attributes + [
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'client_membership_id' => $membership->id,
+            'method' => 'card',
+            'status' => 'paid',
+            'amount_minor' => $minor,
+            'currency_code' => 'USD',
+            'purpose' => 'initial',
             'paid_at' => now(),
         ]);
     }
@@ -519,5 +573,219 @@ class SalesTest extends TestCase
             ->getJson(route('sales.data'))
             ->assertOk()
             ->assertJsonCount(0, 'data');
+    }
+    // -------------------------------------------------- memberships in Sales
+
+    /**
+     * A membership sale is a sale.
+     *
+     * The Sales page read only booking payments, so every membership sold
+     * was money the business had taken and the ledger did not mention.
+     */
+    public function test_a_membership_purchase_appears_in_sales(): void
+    {
+        $payment = $this->membershipSale(15000);
+
+        $row = collect($this->actingAs($this->owner)
+            ->getJson(route('sales.data', ['period' => 'this_month', 'size' => 50]))
+            ->assertOk()
+            ->json('data'))
+            ->firstWhere('reference', SalesController::membershipReference($payment));
+
+        $this->assertNotNull($row, 'the membership sale is missing from the ledger');
+        $this->assertSame(__('sales.row_types.membership'), $row['type']);
+        $this->assertSame('Amara Diallo', $row['client']);
+        $this->assertSame('Massage 4-Pack', $row['membership']);
+        $this->assertSame(__('membership.types.package'), $row['membership_type']);
+        $this->assertSame('PKG-20260909-0001', $row['membership_code']);
+        $this->assertSame('$150.00', $row['amount']);
+        $this->assertSame(__('bookings.methods.card.name'), $row['method']);
+
+        /* A membership takes no slot, so there is no appointment to open and
+           no staff member who performed it. */
+        $this->assertNull($row['booking']);
+        $this->assertSame('—', $row['staff']);
+    }
+
+    /** Its reference is told apart from a booking payment's. */
+    public function test_a_membership_transaction_has_its_own_reference(): void
+    {
+        $payment = $this->membershipSale(9900, type: 'recurring');
+
+        $this->assertMatchesRegularExpression(
+            '/^MTX-\d{8}-\d{6}$/',
+            SalesController::membershipReference($payment)
+        );
+    }
+
+    /**
+     * Each billing cycle is its own transaction.
+     *
+     * Two rows for one membership rather than one that grows: a business
+     * reconciling September wants what September took, and a running total
+     * cannot answer that.
+     */
+    public function test_every_billing_cycle_is_its_own_transaction(): void
+    {
+        $first = $this->membershipSale(9900, type: 'recurring');
+
+        /* The renewal, recorded the way the billing run will record it. */
+        $second = MembershipPayment::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'client_membership_id' => $first->client_membership_id,
+            'method' => 'card',
+            'status' => 'paid',
+            'amount_minor' => 9900,
+            'currency_code' => 'USD',
+            'purpose' => 'renewal',
+            'paid_at' => now(),
+        ]);
+
+        $references = collect($this->actingAs($this->owner)
+            ->getJson(route('sales.data', ['period' => 'this_month', 'size' => 50]))
+            ->json('data'))
+            ->pluck('reference');
+
+        $this->assertTrue($references->contains(SalesController::membershipReference($first)));
+        $this->assertTrue($references->contains(SalesController::membershipReference($second)));
+    }
+
+    /** Both kinds are in the list, and either can be asked for alone. */
+    public function test_transactions_can_be_filtered_by_type(): void
+    {
+        $this->payment($this->booking(6000, 6000), 6000);
+        $this->membershipSale(15000);
+
+        $types = fn (?string $type) => collect($this->actingAs($this->owner)
+            ->getJson(route('sales.data', array_filter([
+                'period' => 'this_month', 'size' => 50, 'type' => $type,
+            ])))
+            ->assertOk()
+            ->json('data'))->pluck('type')->unique()->values()->all();
+
+        $this->assertEqualsCanonicalizing(
+            [__('sales.row_types.service'), __('sales.row_types.membership')],
+            $types(null)
+        );
+        $this->assertSame([__('sales.row_types.membership')], $types('membership'));
+        $this->assertSame([__('sales.row_types.service')], $types('service'));
+    }
+
+    /** And found by the plan's name or its code. */
+    public function test_a_membership_sale_is_searchable(): void
+    {
+        $this->membershipSale(15000);
+
+        foreach (['Massage 4-Pack', 'PKG-20260909-0001', 'Amara'] as $term) {
+            $this->assertCount(
+                1,
+                $this->actingAs($this->owner)
+                    ->getJson(route('sales.data', ['period' => 'this_month', 'size' => 50, 'search' => $term]))
+                    ->assertOk()
+                    ->json('data'),
+                "searching for {$term} did not find the membership sale"
+            );
+        }
+    }
+
+    /** The figures count it too, or the page under-reports the month. */
+    public function test_membership_revenue_is_in_the_summary(): void
+    {
+        $this->payment($this->booking(6000, 6000), 6000);
+        $this->membershipSale(15000);
+
+        $summary = SalesSummary::for(SalesPeriod::fromRequest('this_month', null, null));
+
+        $this->assertSame(21000, $summary['total_sales']['value']);
+        $this->assertSame(21000, $summary['collected']['value']);
+        $this->assertSame(2, $summary['transactions']['count']);
+    }
+
+    /**
+     * A refund is a row of its own, and it comes off the total.
+     *
+     * The original payment happened; a history that rewrote it could not
+     * answer "what did we actually take in March".
+     */
+    public function test_a_membership_refund_shows_and_reduces_the_total(): void
+    {
+        $sale = $this->membershipSale(15000);
+
+        MembershipPayment::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'client_membership_id' => $sale->client_membership_id,
+            'method' => 'card',
+            'status' => 'refunded',
+            'amount_minor' => 15000,
+            'currency_code' => 'USD',
+            'purpose' => 'refund',
+            'paid_at' => now(),
+        ]);
+
+        $summary = SalesSummary::for(SalesPeriod::fromRequest('this_month', null, null));
+
+        $this->assertSame(15000, $summary['refunds']['value']);
+        /* Taken in and given back: nothing kept. */
+        $this->assertSame(0, $summary['total_sales']['value']);
+
+        /* Both rows are in the ledger, and both belong to the same
+           membership — which is how a booking refund is linked to its
+           payment too. */
+        $this->assertCount(2, $this->actingAs($this->owner)
+            ->getJson(route('sales.data', ['period' => 'this_month', 'size' => 50, 'type' => 'membership']))
+            ->json('data'));
+    }
+
+    /**
+     * Cancelling a membership does not erase what was paid for it.
+     *
+     * A membership that ended is a thing that happened, and the money it
+     * took is a row in the ledger for good.
+     */
+    public function test_cancelling_a_membership_leaves_its_transactions_alone(): void
+    {
+        $sale = $this->membershipSale(15000);
+
+        ClientMembership::withoutGlobalScopes()
+            ->find($sale->client_membership_id)
+            ->forceFill(['status' => 'cancelled', 'cancelled_at' => now()])
+            ->save();
+
+        $rows = $this->actingAs($this->owner)
+            ->getJson(route('sales.data', ['period' => 'this_month', 'size' => 50, 'type' => 'membership']))
+            ->assertOk()
+            ->json('data');
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('$150.00', $rows[0]['amount']);
+    }
+
+    /**
+     * Paging happens across both tables at once.
+     *
+     * Which rows are on page two is a question about the whole ledger, and a
+     * page that answered it from one table would drop the other's rows.
+     */
+    public function test_paging_covers_both_kinds_of_transaction(): void
+    {
+        $this->payment($this->booking(6000, 6000), 6000);
+        $this->payment($this->booking(7000, 7000), 7000);
+        $this->membershipSale(15000);
+
+        $page = fn (int $n) => $this->actingAs($this->owner)
+            ->getJson(route('sales.data', ['period' => 'this_month', 'size' => 2, 'page' => $n]))
+            ->assertOk()
+            ->json();
+
+        $first = $page(1);
+        $second = $page(2);
+
+        $this->assertSame(3, $first['total']);
+        $this->assertSame(2, $first['last_page']);
+        $this->assertCount(2, $first['data']);
+        $this->assertCount(1, $second['data']);
+
+        /* No row on both pages and none missing from either. */
+        $this->assertCount(3, collect($first['data'])->merge($second['data'])->pluck('reference')->unique());
     }
 }

@@ -52,6 +52,7 @@ class Service extends Model
             'processing_minutes' => 'integer',
             'cleanup_minutes' => 'integer',
             'buffer_minutes' => 'integer',
+            'credit_usage' => 'integer',
         ];
     }
 
@@ -449,6 +450,23 @@ class Service extends Model
      * minutes, because a number box can hold nothing else — so it prints this
      * same label under the field, and the two screens agree.
      */
+    /**
+     * What one booking of this costs in membership credits.
+     *
+     * A second price, in a second currency. Money and credits are not
+     * convertible — a business charging the same credit for a ninety-minute
+     * massage as for a thirty-minute one is making a decision about its
+     * memberships — so this is asked for rather than worked out from the
+     * price, and changing one never changes the other.
+     *
+     * Never less than one: a service costing nought credits is one a member
+     * could book for ever.
+     */
+    public function creditUsage(): int
+    {
+        return max(1, (int) ($this->credit_usage ?? 1));
+    }
+
     public function durationLabel(?int $minutes = null): string
     {
         $minutes ??= $this->duration_minutes;

@@ -174,6 +174,30 @@
           credits.value = field.value;
         }
       });
+
+      /* Choosing a service fills the credits from what that service costs to
+         redeem. The business set that number on the service itself, and
+         asking for it again here is asking the same question twice — but it
+         is only a starting point: a plan may grant more or fewer, and a
+         credits box somebody has typed in is left alone. */
+      rows.addEventListener('change', function (event) {
+        var select = event.target.closest('[data-service-select]');
+        if (!select) return;
+
+        var row = select.closest('[data-service-row]');
+        var credits = row?.querySelector('[data-service-credits]');
+        var quantity = row?.querySelector('[data-service-quantity]');
+
+        if (!credits || credits.dataset.serviceCreditsEdited !== undefined) return;
+
+        var usage = select.options[select.selectedIndex]?.dataset.creditUsage;
+
+        if (usage) {
+          /* Per booking, times how many the plan includes: two of a
+             two-credit massage is four credits, not two. */
+          credits.value = String(Number(usage) * Math.max(1, Number(quantity?.value) || 1));
+        }
+      });
     }
 
     syncRemoveButtons();

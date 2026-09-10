@@ -38,4 +38,29 @@ class MembershipPayment extends Model
     {
         return $this->belongsTo(User::class, 'recorded_by');
     }
+
+    /**
+     * How it was taken, in the words the booking screens use.
+     *
+     * One name per method wherever money is taken: a reader who has seen
+     * "Credit card" on a booking receipt should not meet "card" on a
+     * membership one.
+     */
+    public function methodLabel(): string
+    {
+        return __('bookings.methods.'.$this->method.'.name');
+    }
+
+    /**
+     * Whether this row is money going back rather than money coming in.
+     *
+     * A refund is a second row rather than an edit to the first — the
+     * original payment happened, and a history that rewrites it cannot
+     * answer "what did we actually take in March". The same convention
+     * BookingPayment follows.
+     */
+    public function isRefund(): bool
+    {
+        return $this->status === 'refunded';
+    }
 }

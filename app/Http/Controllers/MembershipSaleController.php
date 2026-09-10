@@ -11,9 +11,11 @@ use App\Models\Location;
 use App\Models\MembershipPlan;
 use App\Models\MembershipSettings;
 use App\Support\Currencies;
+use App\Support\MembershipConflicts;
 use App\Support\MembershipPurchase;
 use App\Support\Money;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -68,6 +70,11 @@ class MembershipSaleController extends Controller
                reaches StyleDesk, and this is a reference to a token the
                gateway is holding. */
             'auto_renew' => ['nullable', 'boolean'],
+            /* Somebody has seen what this client already holds and said sell
+               it anyway. Not a preference — the answer to a question the
+               screen asked, and the server's proof that a second membership
+               was a decision rather than an accident. */
+            'acknowledge_existing' => ['nullable', 'boolean'],
             'card_id' => [
                 'nullable',
                 Rule::exists('client_payment_methods', 'id')
@@ -85,6 +92,7 @@ class MembershipSaleController extends Controller
         $this->guardPlan($plan, $settings);
         $this->guardStartDate($settings, $startsOn);
         $this->guardMethod($plan, $data['payment_method']);
+        $this->guardExisting($client, $plan, $request->boolean('acknowledge_existing'));
 
         /* Renewing is an explicit answer, never an assumption.
          *
@@ -144,7 +152,74 @@ class MembershipSaleController extends Controller
         ]);
     }
 
+    /**
+     * What this client already holds, for the screen to warn about.
+     *
+     * Asked before the sale rather than answered after it: the desk needs to
+     * know while there is still a decision to make.
+     */
+    public function check(Request $request): JsonResponse
+    {
+        $this->allow($request, 'appointments.create');
+
+        $data = $request->validate([
+            'client_id' => [
+                'required',
+                Rule::exists('clients', 'id')->where('tenant_id', $request->user()->tenant?->getTenantKey()),
+            ],
+            'membership_plan_id' => [
+                'nullable',
+                Rule::exists('membership_plans', 'id')
+                    ->where('tenant_id', $request->user()->tenant?->getTenantKey()),
+            ],
+        ]);
+
+        $client = Client::query()->findOrFail($data['client_id']);
+
+        $plan = ($data['membership_plan_id'] ?? null) === null
+            ? null
+            : MembershipPlan::query()->find($data['membership_plan_id']);
+
+        $held = MembershipConflicts::forClient($client, $plan, Currencies::resolve());
+
+        return response()->json([
+            'held' => $held,
+            /* The one fact that changes the wording, lifted out so the screen
+               does not have to work it out from the list. */
+            'same_plan' => collect($held)->contains('same_plan', true),
+            'plan' => $plan?->name,
+        ]);
+    }
+
     /* ----------------------------------------------------------- guards */
+
+    /**
+     * A second membership is a decision, never an accident.
+     *
+     * Never a refusal — a client may hold a monthly plan and a massage
+     * package, and even two of the same package is somebody's call to make.
+     * What this stops is the silent one: a second subscription created
+     * because nobody at the desk knew about the first, and a client who finds
+     * out at the next billing run.
+     *
+     * Checked here as well as on the screen, because a dialog is a courtesy
+     * and this is the rule.
+     */
+    private function guardExisting(Client $client, MembershipPlan $plan, bool $acknowledged): void
+    {
+        if ($acknowledged || ! MembershipConflicts::exist($client)) {
+            return;
+        }
+
+        $held = MembershipConflicts::forClient($client, $plan);
+        $samePlan = collect($held)->contains('same_plan', true);
+
+        throw ValidationException::withMessages([
+            'membership_plan_id' => $samePlan
+                ? __('membership.sale.already_has_this', ['client' => $client->displayName()])
+                : __('membership.sale.already_has_one', ['client' => $client->displayName()]),
+        ]);
+    }
 
     /**
      * Whether this plan is one the desk may sell at all.

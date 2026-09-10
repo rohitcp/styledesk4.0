@@ -128,6 +128,8 @@ return [
         'percent' => 'Percentage',
     ],
     'deposit_required_hint' => 'The client pays part of the price to hold the appointment.',
+    'credit_usage' => 'Credit usage',
+    'credit_usage_hint' => 'How many membership credits one booking of this uses. Separate from the price — changing one never changes the other.',
     'deposit_take' => 'Take a deposit for this service',
     'deposit_card_hint' => 'Entered once here, and used by every price below.',
     'deposit_inherits' => 'Every price takes the deposit set above.',

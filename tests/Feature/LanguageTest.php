@@ -1263,8 +1263,11 @@ class LanguageTest extends TestCase
 
         /* The status is worded by the server, in the reader's language. */
         $this->assertSame('Activo', $row['status']);
+        /* And so is the role, which is StyleDesk's own word for what somebody
+           may do. */
+        $this->assertSame('Encargado', $row['role']);
         // What the business typed is untouched.
-        $this->assertSame('Salon Manager', $row['role']);
+        $this->assertSame('Salon Manager', $row['job_title']);
     }
 
     public function test_the_add_staff_form_is_translated(): void

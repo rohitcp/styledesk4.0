@@ -190,10 +190,19 @@ class ClientMembershipTest extends TestCase
             ->assertOk()
             ->assertSee(__('membership.member.active'))
             ->assertSee('Monthly Massage Membership')
-            ->assertSee('Swedish Massage')
-            ->assertSee(__('membership.member.credit_count', ['count' => 2]))
             ->assertSee(__('membership.member.history.payment'))
             ->assertSee(__('membership.member.history.started'));
+
+        /* What is left of it is in the membership's own Plan details panel
+           now, beside the membership it belongs to — the tab used to carry a
+           summary card of its own that could not say which membership a
+           credit came from. */
+        $this->actingAs($this->owner())
+            ->getJson(route('client-memberships.drawer', $membership))
+            ->assertOk()
+            ->assertJsonFragment(['Swedish Massage' => __('membership.member.drawer.credit_line', [
+                'included' => 2, 'used' => 0, 'remaining' => 2,
+            ])]);
     }
 
     public function test_a_client_with_no_membership_is_told_so(): void
@@ -410,5 +419,115 @@ class ClientMembershipTest extends TestCase
         $this->actingAs($this->owner())
             ->patch(route('client-memberships.cancel', $membership))
             ->assertNotFound();
+    }
+    // ------------------------------------------------------- the plan drawer
+
+    /**
+     * Plan details, in the drawer the bookings open in.
+     *
+     * The same panel and the same renderer: a receptionist checking what a
+     * client holds while somebody is on hold should not lose the profile
+     * they are standing on.
+     */
+    public function test_the_drawer_describes_a_recurring_membership_in_full(): void
+    {
+        $this->settings();
+        $membership = $this->membership([], credits: 4);
+
+        $membership->credits->first()->forceFill(['quantity_used' => 1])->save();
+
+        MembershipPayment::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'client_membership_id' => $membership->id,
+            'amount_minor' => 7900,
+            'currency_code' => 'USD',
+            'method' => 'card',
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $record = $this->actingAs($this->owner())
+            ->getJson(route('client-memberships.drawer', $membership))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame('Monthly Massage Membership', $record['name']);
+        $this->assertSame($membership->statusLabel(), $record['status']);
+
+        $sections = collect($record['sections'])->keyBy('title');
+
+        /* What it is and where it stands. */
+        $detail = $sections[__('membership.member.drawer.membership')]['rows'];
+        $this->assertSame(__('membership.types.recurring'), $detail[__('membership.member.drawer.type')]);
+        $this->assertSame(
+            __('membership.billing_frequencies.monthly'),
+            $detail[__('membership.member.drawer.billing')]
+        );
+        $this->assertSame('9 Oct 2026', $detail[__('membership.member.next_billing')]);
+
+        /* What it cost and what was taken. */
+        $money = $sections[__('membership.member.drawer.payment')]['rows'];
+        $this->assertSame('$79.00 · USD', $money[__('membership.member.drawer.price')]);
+        $this->assertSame('$79.00', $money[__('membership.member.drawer.paid')]);
+        $this->assertSame(
+            __('bookings.methods.card.name'),
+            $money[__('membership.member.drawer.method')]
+        );
+
+        /* Three numbers per service: "3 left" answers today's question, and
+           "4 included, 1 used" answers the one asked next. */
+        $included = $sections[__('membership.member.drawer.included')]['rows'];
+        $this->assertSame(
+            __('membership.member.drawer.credit_line', ['included' => 4, 'used' => 1, 'remaining' => 3]),
+            $included['Swedish Massage']
+        );
+
+        /* And no page navigation: the panel is the whole of it. */
+        $this->assertSame(route('membership.show', $membership->plan), $record['urls']['show']);
+        $this->assertSame(__('membership.member.drawer.view_plan'), $record['cta']);
+    }
+
+    /** A package answers with what is left of it and when it runs out. */
+    public function test_the_drawer_describes_a_package_with_what_is_left(): void
+    {
+        $this->settings();
+        $membership = $this->membership(['type' => 'package', 'billing_frequency' => null, 'next_billing_on' => null], credits: 4);
+
+        $membership->credits->first()->forceFill([
+            'quantity_used' => 2,
+            'expires_on' => '2026-12-31',
+        ])->save();
+
+        $sections = collect($this->actingAs($this->owner())
+            ->getJson(route('client-memberships.drawer', $membership))
+            ->assertOk()
+            ->json('sections'))->keyBy('title');
+
+        $included = $sections[__('membership.member.drawer.included')]['rows'];
+
+        $this->assertSame(
+            __('membership.member.drawer.credit_line', ['included' => 4, 'used' => 2, 'remaining' => 2]),
+            $included[__('membership.member.drawer.total')]
+        );
+
+        /* A package expires; it does not bill again, so it says the one and
+           not the other. */
+        $credits = $sections[__('membership.member.drawer.cycle_title')]['rows'];
+        $this->assertSame('31 Dec 2026', $credits[__('membership.member.drawer.expires')]);
+        $this->assertArrayNotHasKey(__('membership.member.drawer.renews'), $credits);
+    }
+
+    /** Each membership carries the menu that opens it. */
+    public function test_the_card_offers_plan_details_and_cancelling(): void
+    {
+        $this->settings();
+        $membership = $this->membership();
+
+        $this->actingAs($this->owner())
+            ->get(route('clients.show', $this->client()))
+            ->assertOk()
+            ->assertSee('data-drawer="'.route('client-memberships.drawer', $membership).'"', false)
+            ->assertSee(__('membership.member.drawer.plan_details'))
+            ->assertSee(__('membership.member.cancel'));
     }
 }

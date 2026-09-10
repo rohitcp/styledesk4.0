@@ -24,9 +24,22 @@
         @endif
       </nav>
 
-      <header class="mt-3">
-        <h1 class="text-[22px] sm:text-[24px] font-bold text-head tracking-tight">{{ __('shift_rules.title') }}</h1>
-        <p class="text-[13px] text-sub mt-1.5 leading-relaxed max-w-[640px]">{{ __('shift_rules.intro') }}</p>
+      <header class="mt-3 flex flex-wrap items-start gap-4">
+        <div class="min-w-0 flex-1">
+          <h1 class="text-[22px] sm:text-[24px] font-bold text-head tracking-tight">{{ __('shift_rules.title') }}</h1>
+          <p class="text-[13px] text-sub mt-1.5 leading-relaxed max-w-[640px]">{{ __('shift_rules.intro') }}</p>
+        </div>
+
+        {{-- Back, in the corner every other screen keeps it in. Where it goes
+             depends on where the reader is: out of the form to the rules, and
+             out of the rules to App settings. Adding and editing are states
+             of this page rather than pages of their own, so the button has to
+             know which state it is in. --}}
+        <a href="{{ $mode === 'list' ? route('settings.index') : route('settings.shift-rules.index') }}"
+           class="styledesk_action shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {{ $mode === 'list' ? __('navigation.app_settings') : __('shift_rules.back_to_list') }}
+        </a>
       </header>
 
       {{-- The feature switch, at the top and always visible: it is the answer
@@ -112,15 +125,13 @@
         {{-- Adding or editing, in place. The same form, the same validation
              and the same save as before — only the address it lives at has
              changed. --}}
-        <div class="mt-5 flex flex-wrap items-center gap-3">
-          <h2 class="text-[15px] font-semibold text-head min-w-0 flex-1">
+        {{-- The way back used to be here as well. Two buttons a few rows
+             apart, both saying Back to rules and both going to the same
+             place, is one decision drawn twice — the header keeps it. --}}
+        <div class="mt-5">
+          <h2 class="text-[15px] font-semibold text-head">
             {{ $mode === 'edit' ? __('shift_rules.edit_title') : __('shift_rules.add_title') }}
           </h2>
-
-          <a href="{{ route('settings.shift-rules.index') }}" class="styledesk_action shrink-0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            {{ __('shift_rules.back_to_list') }}
-          </a>
         </div>
 
         @if ($errors->any())

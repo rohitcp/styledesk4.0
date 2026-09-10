@@ -671,7 +671,10 @@ class ClientController extends Controller
                not see memberships should not be assembling a history for a
                tab that is never rendered. */
             'memberships' => $canViewMemberships ? ClientMemberships::held($client) : collect(),
-            'membershipCredits' => $canViewMemberships ? ClientMemberships::creditsFor($client) : collect(),
+            /* No credits summary: what is left of a membership is shown in
+               its own Plan details panel now, beside the membership it
+               belongs to. Assembling it here would be a query for a card
+               that no longer exists. */
             'membershipHistory' => $canViewMemberships ? ClientMemberships::historyFor($client) : collect(),
 
             /* The cards this client has on file. References only — brand,

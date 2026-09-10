@@ -894,4 +894,37 @@ class ShiftRulesTest extends TestCase
             ->assertOk()
             ->assertDontSee('value="DELETE"', false);
     }
+
+    /**
+     * A way out, in the corner every other screen keeps it in.
+     *
+     * Adding and editing are states of this page rather than pages of their
+     * own, so the button has to know which state it is in: out of the form to
+     * the rules, and out of the rules to App settings.
+     */
+    public function test_the_page_offers_a_way_back_from_wherever_the_reader_is(): void
+    {
+        $this->actingAs($this->owner());
+
+        $this->get(route('settings.shift-rules.index'))
+            ->assertOk()
+            ->assertSee('href="'.route('settings.index').'"', false)
+            ->assertSee(__('navigation.app_settings'));
+
+        $this->get(route('settings.shift-rules.index', ['add' => 1]))
+            ->assertOk()
+            ->assertSee('href="'.route('settings.shift-rules.index').'"', false)
+            ->assertSee(__('shift_rules.back_to_list'));
+    }
+
+    /** And only one of them: two buttons to the same place is one decision drawn twice. */
+    public function test_the_form_carries_a_single_way_back(): void
+    {
+        $html = $this->actingAs($this->owner())
+            ->get(route('settings.shift-rules.index', ['add' => 1]))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, __('shift_rules.back_to_list')));
+    }
 }

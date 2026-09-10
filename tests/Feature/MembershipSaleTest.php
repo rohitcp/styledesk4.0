@@ -145,6 +145,327 @@ class MembershipSaleTest extends TestCase
         return ClientMembership::withoutGlobalScopes()->with('credits')->firstOrFail();
     }
 
+    // ---------------------------------------------------- the members listing
+
+    /**
+     * The listing is searched and filtered like every other one.
+     *
+     * It was a plain table on the argument that this list is read rather
+     * than filtered — which stopped being true the moment there were members
+     * enough to look one up.
+     */
+    public function test_members_can_be_searched_and_filtered(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($this->plan()))
+            ->assertRedirect();
+
+        $membership = $this->sold();
+
+        $rows = fn (array $query) => $this->actingAs($this->owner())
+            ->getJson(route('membership.members.data', $query))
+            ->assertOk()
+            ->json('data');
+
+        /* By the number somebody is reading off a card. */
+        $this->assertCount(1, $rows(['search' => $membership->reference]));
+        $this->assertCount(1, $rows(['search' => 'Sarah']));
+        $this->assertCount(1, $rows(['search' => 'Monthly Massage']));
+        $this->assertCount(0, $rows(['search' => 'nobody at all']));
+
+        /* And by what it is and where it stands. */
+        $this->assertCount(1, $rows(['type' => 'recurring']));
+        $this->assertCount(0, $rows(['type' => 'package']));
+        $this->assertCount(1, $rows(['status' => 'active']));
+        $this->assertCount(0, $rows(['status' => 'ended']));
+    }
+
+    /** Each row offers the panel rather than a page to navigate to. */
+    public function test_a_member_row_offers_plan_details(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($this->plan()))
+            ->assertRedirect();
+
+        $membership = $this->sold();
+
+        $menu = collect($this->actingAs($this->owner())
+            ->getJson(route('membership.members.data'))
+            ->json('data.0.menu'));
+
+        $details = $menu->firstWhere('label', __('membership.member.drawer.plan_details'));
+
+        $this->assertNotNull($details);
+        $this->assertSame('membership:details', $details['event']);
+        $this->assertSame(
+            route('client-memberships.drawer', $membership),
+            $details['payload']['url']
+        );
+    }
+
+    // ------------------------------------------------ the membership number
+
+    /**
+     * Every membership sold gets a number of its own.
+     *
+     * Not the plan's code. That names the product the business sells; this
+     * names the thing one client bought — and two clients on the same plan
+     * hold two memberships that a shared code could not tell apart.
+     */
+    public function test_a_sale_gives_the_membership_its_own_number(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($this->plan()))
+            ->assertRedirect();
+
+        $membership = $this->sold();
+
+        $this->assertMatchesRegularExpression('/^MBR-\d{8}-\d{4}$/', $membership->reference);
+    }
+
+    /** Two sales of the same plan are two numbers. */
+    public function test_two_memberships_never_share_a_number(): void
+    {
+        $this->membershipOn();
+        $plan = $this->plan();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($plan))
+            ->assertRedirect();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($plan, ['acknowledge_existing' => 1]))
+            ->assertRedirect();
+
+        $references = ClientMembership::withoutGlobalScopes()->pluck('reference');
+
+        $this->assertCount(2, $references);
+        $this->assertCount(2, $references->unique());
+        $this->assertTrue($references->every(fn (?string $r) => $r !== null));
+    }
+
+    /**
+     * And it stays with the membership.
+     *
+     * It goes on the confirmation, into the ledger and onto whatever the
+     * client is handed, so a number that changed would name two things.
+     */
+    public function test_the_number_survives_being_cancelled(): void
+    {
+        $this->membershipOn(['allow_cancellation' => true]);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($this->plan()))
+            ->assertRedirect();
+
+        $membership = $this->sold();
+        $reference = $membership->reference;
+
+        $this->actingAs($this->owner())
+            ->patch(route('client-memberships.cancel', $membership))
+            ->assertRedirect();
+
+        $this->assertSame($reference, $membership->fresh()->reference);
+    }
+
+    /** The confirmation reads it out, where a booking reads out its own. */
+    public function test_the_confirmation_shows_the_membership_number(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($this->plan()))
+            ->assertRedirect();
+
+        $membership = $this->sold();
+
+        $this->actingAs($this->owner())
+            ->get(route('membership.sales.show', $membership))
+            ->assertOk()
+            ->assertSee($membership->reference)
+            ->assertSee(__('membership.sold.reference'));
+    }
+
+    // ------------------------------------------ what the client already holds
+
+    /**
+     * A second membership is a decision, never an accident.
+     *
+     * Never a refusal — a client may hold a monthly plan and a massage
+     * package, and even two of the same package is somebody's call. What this
+     * stops is the silent one: a second subscription created because nobody
+     * knew about the first, and a client who finds out at the next billing
+     * run.
+     */
+    public function test_selling_a_second_membership_needs_saying_so(): void
+    {
+        $this->membershipOn();
+        $plan = $this->plan();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($plan))
+            ->assertRedirect();
+
+        $this->assertSame(1, ClientMembership::withoutGlobalScopes()->count());
+
+        /* The same client again, with nothing said about the first. */
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($plan))
+            ->assertSessionHasErrors('membership_plan_id');
+
+        $this->assertSame(1, ClientMembership::withoutGlobalScopes()->count());
+    }
+
+    /** Said, and it goes through — with the first one untouched. */
+    public function test_acknowledging_it_sells_the_second_and_leaves_the_first_alone(): void
+    {
+        $this->membershipOn();
+        $plan = $this->plan();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($plan))
+            ->assertRedirect();
+
+        $first = $this->sold();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($plan, ['acknowledge_existing' => 1]))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(2, ClientMembership::withoutGlobalScopes()->count());
+
+        /* The warning flow changes nothing about what they already had. */
+        $first = $first->fresh();
+        $this->assertSame('active', $first->status);
+        $this->assertNull($first->cancelled_at);
+        $this->assertNull($first->ends_on);
+    }
+
+    /** A client holding nothing is sold to without a word. */
+    public function test_a_first_membership_needs_no_acknowledgement(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($this->plan()))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+    }
+
+    /**
+     * The screen asks before the sale, so there is a decision to make.
+     *
+     * A package is worth different facts from a subscription: what is left
+     * decides whether another is wanted at all.
+     */
+    public function test_the_check_reports_a_held_package_with_what_is_left_of_it(): void
+    {
+        $this->membershipOn();
+        $package = $this->plan(['type' => 'package', 'billing_frequency' => null], quantity: 4);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($package))
+            ->assertRedirect();
+
+        $held = $this->actingAs($this->owner())
+            ->getJson(route('membership.sales.check', [
+                'client_id' => $this->client()->id,
+                'membership_plan_id' => $package->id,
+            ]))
+            ->assertOk()
+            ->json();
+
+        $this->assertCount(1, $held['held']);
+        $this->assertTrue($held['same_plan']);
+        $this->assertTrue($held['held'][0]['same_plan']);
+        $this->assertSame(4, $held['held'][0]['remaining']);
+        $this->assertSame(4, $held['held'][0]['granted']);
+    }
+
+    /** And a subscription is worth knowing when it bills next. */
+    public function test_the_check_reports_a_held_subscription_with_its_billing(): void
+    {
+        $this->membershipOn();
+        $plan = $this->plan();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($plan))
+            ->assertRedirect();
+
+        $row = $this->actingAs($this->owner())
+            ->getJson(route('membership.sales.check', ['client_id' => $this->client()->id]))
+            ->assertOk()
+            ->json('held.0');
+
+        $this->assertSame('recurring', $row['type']);
+        $this->assertSame('monthly', $row['billing_frequency']);
+        $this->assertNotNull($row['next_billing_on']);
+        $this->assertSame(__('membership.member_statuses.active'), $row['status_label']);
+    }
+
+    /** A different plan is still worth warning about, but not as the same one. */
+    public function test_a_different_plan_is_reported_without_the_same_plan_flag(): void
+    {
+        $this->membershipOn();
+        $held = $this->plan();
+        $other = $this->plan(['name' => 'Massage Package', 'type' => 'package', 'billing_frequency' => null]);
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($held))
+            ->assertRedirect();
+
+        $json = $this->actingAs($this->owner())
+            ->getJson(route('membership.sales.check', [
+                'client_id' => $this->client()->id,
+                'membership_plan_id' => $other->id,
+            ]))
+            ->assertOk()
+            ->json();
+
+        $this->assertCount(1, $json['held']);
+        $this->assertFalse($json['same_plan']);
+    }
+
+    /** Nothing held, nothing to say. */
+    public function test_the_check_is_empty_for_a_client_with_no_membership(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->getJson(route('membership.sales.check', ['client_id' => $this->client()->id]))
+            ->assertOk()
+            ->assertJson(['held' => [], 'same_plan' => false]);
+    }
+
+    /** A membership that has ended is not something to warn about. */
+    public function test_an_ended_membership_is_not_reported(): void
+    {
+        $this->membershipOn();
+
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($this->plan()))
+            ->assertRedirect();
+
+        $this->sold()->forceFill(['status' => 'ended'])->save();
+
+        $this->actingAs($this->owner())
+            ->getJson(route('membership.sales.check', ['client_id' => $this->client()->id]))
+            ->assertOk()
+            ->assertJson(['held' => []]);
+
+        /* And the sale that follows needs no acknowledgement. */
+        $this->actingAs($this->owner())
+            ->post(route('membership.sales.store'), $this->payload($this->plan()))
+            ->assertSessionHasNoErrors();
+    }
+
     // --------------------------------------------------------- the purchase
 
     public function test_a_recurring_membership_is_sold_with_its_first_cycle_of_credits(): void
@@ -460,12 +781,27 @@ class MembershipSaleTest extends TestCase
 
         $this->actingAs($this->owner())->post(route('membership.sales.store'), $this->payload($plan));
 
+        /* The page is the frame — heading, toolbar and grid; the rows arrive
+           from the endpoint the grid reads. Both are asserted, because a
+           page that renders without its grid is a page with no listing. */
         $this->actingAs($this->owner())
             ->get(route('membership.members'))
             ->assertOk()
-            ->assertSee('Sarah Johnson')
-            ->assertSee($plan->name)
-            ->assertDontSee(__('membership.members.none'));
+            ->assertSee('data-grid', false)
+            ->assertSee('members/data', false)
+            ->assertSee(__('membership.members.columns.reference'));
+
+        $row = $this->actingAs($this->owner())
+            ->getJson(route('membership.members.data'))
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertSame('Sarah Johnson', $row['client']);
+        $this->assertSame($plan->name, $row['membership']);
+        /* And the number this membership is known by: two clients on the
+           same plan are two rows that the plan's name cannot tell apart. */
+        $this->assertSame($this->sold()->reference, $row['reference']);
+        $this->assertSame(__('membership.member_statuses.active'), $row['status']);
     }
 
     public function test_the_booking_screen_can_now_sell_a_membership(): void

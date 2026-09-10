@@ -254,8 +254,12 @@
           <a class="styledesk_sheet__cta" data-sheet-primary></a>
 
           {{-- Cancelling changes the diary and that flow does not exist yet.
-               Disabled with the reason rather than missing. --}}
-          <button type="button" class="styledesk_action justify-center" disabled>
+               Disabled with the reason rather than missing.
+
+               Booking-specific, so the renderer hides it for the records that
+               are not bookings — this same panel shows a membership, and
+               "Cancel booking" under one is the wrong sentence entirely. --}}
+          <button type="button" class="styledesk_action justify-center" disabled data-sheet-secondary>
             {{ __('bookings.detail.cancel_booking') }}
             <span class="styledesk_badge styledesk_badge--soon">{{ __('leads.drawer.soon') }}</span>
           </button>

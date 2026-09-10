@@ -1091,6 +1091,10 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
         ->prefix('clients/memberships/{membership}')
         ->name('client-memberships.')
         ->group(function () {
+            /* Read-only: the same drawer the bookings open in, so a
+               receptionist can check what a client holds without losing the
+               profile they are standing on. */
+            Route::get('drawer', 'drawer')->name('drawer');
             Route::patch('cancel', 'cancel')->name('cancel');
             Route::patch('pause', 'pause')->name('pause');
             Route::patch('resume', 'resume')->name('resume');
@@ -1101,6 +1105,9 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
         ->name('membership.sales.')
         ->group(function () {
             Route::post('/', 'store')->name('store');
+            /* Before the wildcard, or "check" would be read as a membership
+               id and answered with a 404. */
+            Route::get('check', 'check')->name('check');
             Route::get('{membership}', 'show')->name('show');
         });
 
@@ -1115,6 +1122,9 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::get('plans', 'plans')->defaults('type', 'recurring')->name('plans');
             Route::get('packages', 'plans')->defaults('type', 'package')->name('packages');
             Route::get('members', 'members')->name('members');
+            /* The rows that listing asks for, the way every other listing
+               asks for its own. */
+            Route::get('members/data', 'memberData')->name('members.data');
             Route::get('plans/data', 'data')->defaults('type', 'recurring')->name('plans.data');
             Route::get('packages/data', 'data')->defaults('type', 'package')->name('packages.data');
             Route::get('create', 'create')->name('create');
@@ -1411,6 +1421,10 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
                reader switches between card and cash, types a coupon or picks
                a tip — so throttled like availability rather than tightly. */
             Route::post('quote', BookingQuoteController::class)->middleware('throttle:120,1')->name('quote');
+            /* What the client on the booking already holds, for the service
+               selector's membership section. */
+            Route::get('membership-benefits', [BookingController::class, 'membershipBenefits'])
+                ->name('membership-benefits');
             Route::post('/', 'store')->name('store');
 
             /* One booking, and the two things done to it after it is taken:

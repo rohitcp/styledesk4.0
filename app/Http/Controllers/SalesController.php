@@ -7,10 +7,12 @@ namespace App\Http\Controllers;
 use App\Models\BookingPayment;
 use App\Models\Client;
 use App\Models\Location;
+use App\Models\MembershipPayment;
 use App\Models\Staff;
 use App\Support\ClientVisitSummary;
 use App\Support\Currencies;
 use App\Support\Money;
+use App\Support\SalesLedger;
 use App\Support\SalesPeriod;
 use App\Support\SalesSummary;
 use App\Support\TimeFormat;
@@ -60,17 +62,25 @@ class SalesController extends Controller
         $period = $this->period($request);
         $filters = $this->filters($request);
 
-        $payments = $this->query($period, $filters)->paginate(
+        /* One list from two tables. Money reaches this business as a payment
+           against a booking and as a payment against a membership, and a
+           Sales page that showed only the first was one that quietly
+           under-reported every membership sold. */
+        $page = SalesLedger::page(
+            $this->query($period, $filters),
+            $this->membershipQuery($period, $filters),
             perPage: min(100, max(1, (int) $request->query('size', 25))),
             page: max(1, (int) $request->query('page', 1)),
         );
 
         return response()->json([
-            'last_page' => $payments->lastPage(),
-            'last_row' => $payments->total(),
-            'total' => $payments->total(),
-            'data' => $payments->getCollection()
-                ->map(fn (BookingPayment $payment) => $this->row($payment))
+            'last_page' => $page['last_page'],
+            'last_row' => $page['total'],
+            'total' => $page['total'],
+            'data' => $page['items']
+                ->map(fn ($payment) => $payment instanceof MembershipPayment
+                    ? $this->membershipRow($payment)
+                    : $this->row($payment))
                 ->all(),
         ]);
     }
@@ -255,6 +265,10 @@ class SalesController extends Controller
                 'recordedBy:id,first_name,last_name,display_name',
             ])
             ->whereBetween('paid_at', [$period->from, $period->to])
+            /* Asked for memberships only: this half of the ledger answers
+               nothing, and a query that matched none is cheaper than one
+               whose rows are thrown away afterwards. */
+            ->when($filters['type'] === 'membership', fn (Builder $q) => $q->whereRaw('1 = 0'))
             ->when($filters['method'], fn (Builder $q, $m) => $q->where('method', $m))
             ->when($filters['status'], fn (Builder $q, $s) => $q->where('status', $s))
             /* Location, staff and service live on the booking, so they filter
@@ -309,6 +323,162 @@ class SalesController extends Controller
         });
     }
 
+    /**
+     * The membership half of the ledger.
+     *
+     * Filtered on the same terms where they mean anything and refused where
+     * they do not: a membership has no staff member and no service, so a
+     * reader filtering by either is asking a question this half cannot
+     * answer — and returning memberships anyway would be answering a
+     * different one.
+     *
+     * @param  array<string, mixed>  $filters
+     * @return Builder<MembershipPayment>
+     */
+    private function membershipQuery(SalesPeriod $period, array $filters): Builder
+    {
+        return MembershipPayment::query()
+            ->with([
+                'membership:id,reference,client_id,membership_plan_id,location_id,type,billing_frequency,currency_code,price_minor',
+                'membership.client:id,first_name,last_name,email,mobile,client_ref',
+                'membership.plan:id,name,internal_code,type',
+                'membership.location:id,name',
+                'recordedBy:id,first_name,last_name,display_name',
+            ])
+            ->whereBetween('paid_at', [$period->from, $period->to])
+            ->when($filters['type'] === 'service', fn (Builder $q) => $q->whereRaw('1 = 0'))
+            /* No staff and no service on a membership. A filter for either is
+               a filter this half of the ledger cannot satisfy. */
+            ->when(
+                $filters['staff'] || $filters['service'] !== '' || $filters['balance'],
+                fn (Builder $q) => $q->whereRaw('1 = 0'),
+            )
+            ->when($filters['method'], fn (Builder $q, $m) => $q->where('method', $m))
+            ->when($filters['status'], fn (Builder $q, $s) => $q->where('status', $s))
+            ->when($filters['location'], fn (Builder $q, $id) => $q->whereHas(
+                'membership',
+                fn (Builder $m) => $m->where('location_id', $id),
+            ))
+            ->when($filters['search'] !== '', fn (Builder $q) => $this->searchMemberships($q, $filters['search']))
+            ->orderByDesc('paid_at')
+            ->orderByDesc('id');
+    }
+
+    /**
+     * What a reader would type, looking for a membership sale.
+     *
+     * The plan's own code as well as the client's name: a membership is
+     * referred to internally by that code, and somebody reconciling a
+     * statement has it in front of them.
+     *
+     * @param  Builder<MembershipPayment>  $query
+     * @return Builder<MembershipPayment>
+     */
+    private function searchMemberships(Builder $query, string $term): Builder
+    {
+        $like = '%'.str_replace(['%', '_'], ['\%', '\_'], $term).'%';
+
+        return $query->where(function (Builder $q) use ($like, $term): void {
+            $q->where('reference', 'like', $like)
+                ->orWhereHas('membership', fn (Builder $m) => $m
+                    ->where('reference', 'like', $like)
+                    ->orWhereHas('plan', fn (Builder $p) => $p
+                        ->where('name', 'like', $like)
+                        ->orWhere('internal_code', 'like', $like))
+                    ->orWhereHas('client', fn (Builder $c) => $c
+                        ->where('first_name', 'like', $like)
+                        ->orWhere('last_name', 'like', $like)
+                        ->orWhere('email', 'like', $like)
+                        ->orWhere('mobile', 'like', $like)
+                        ->orWhereRaw("concat_ws(' ', first_name, last_name) like ?", [$like])));
+
+            if (($id = self::idFromReference($term)) !== null) {
+                $q->orWhere('id', $id);
+            }
+        });
+    }
+
+    /**
+     * One membership sale, in the shape the table reads.
+     *
+     * The same keys a booking payment answers with — the grid is one table
+     * and a row that filled half of them would be a row with holes in it.
+     * Where a membership genuinely has no answer, the column says so rather
+     * than borrowing a booking's.
+     *
+     * @return array<string, mixed>
+     */
+    private function membershipRow(MembershipPayment $payment): array
+    {
+        $membership = $payment->membership;
+        $plan = $membership?->plan;
+        $client = $membership?->client;
+
+        $currency = (string) ($payment->currency_code ?: $membership?->currency_code);
+        $money = fn (?int $minor) => Money::format(((int) $minor) / 100, $currency);
+
+        return [
+            'id' => $payment->id,
+            'reference' => self::membershipReference($payment),
+            'at' => TimeFormat::dateTime($payment->paid_at ?? $payment->created_at),
+            'type' => __('sales.row_types.membership'),
+            /* What was sold, where a booking names its services. */
+            'services' => $plan?->name ?? '—',
+            'membership' => $plan?->name,
+            'membership_type' => $membership === null ? null : __('membership.types.'.$membership->type),
+            /* Both numbers: the membership this client holds, and the plan
+               it was sold from. A reconciliation has one or the other in
+               front of it. */
+            'membership_number' => $membership?->reference,
+            'membership_code' => $plan?->internal_code,
+            /* A membership takes no slot, so there is no booking to open and
+               no staff member who performed it. */
+            'booking' => null,
+            'booking_url' => null,
+            'staff' => '—',
+            'client' => $client?->displayName() ?? __('sales.walk_in'),
+            'client_url' => $client ? route('clients.show', $client) : null,
+            'location' => $membership?->location?->name,
+            /* What the membership costs, and what this row moved. A renewal
+               is its own transaction, so "total" is the membership's price
+               rather than a running sum across cycles. */
+            'total' => $money($membership?->price_minor),
+            'amount' => $money($payment->amount_minor),
+            'paid' => $money($payment->amount_minor),
+            'balance' => $money(0),
+            'method' => $payment->methodLabel(),
+            'status' => __('bookings.payment_statuses.'.$payment->status.'.label'),
+            'status_class' => config('bookings.payment_statuses.'.$payment->status.'.class', 'styledesk_badge--soon'),
+            'processed_by' => $payment->recordedBy?->displayName(),
+            'menu' => array_values(array_filter([
+                $membership ? [
+                    'label' => __('sales.actions.view_membership'),
+                    'event' => 'sales:booking',
+                    'payload' => ['url' => route('client-memberships.drawer', $membership)],
+                ] : null,
+                $client ? [
+                    'label' => __('sales.actions.view_client'),
+                    'event' => 'sales:client',
+                    'payload' => ['url' => route('sales.client-drawer', $client)],
+                ] : null,
+                ['separator' => true],
+                $membership ? [
+                    'label' => __('sales.actions.open_membership'),
+                    'url' => route('membership.sales.show', $membership),
+                    'target' => '_blank',
+                ] : null,
+            ])),
+        ];
+    }
+
+    /** "MTX-20260902-000123" — a membership sale, told apart from a booking's. */
+    public static function membershipReference(MembershipPayment $payment): string
+    {
+        $date = ($payment->paid_at ?? $payment->created_at)?->format('Ymd') ?? '00000000';
+
+        return 'MTX-'.$date.'-'.str_pad((string) $payment->id, 6, '0', STR_PAD_LEFT);
+    }
+
     /** @return array<string, mixed> */
     private function row(BookingPayment $payment): array
     {
@@ -323,6 +493,7 @@ class SalesController extends Controller
             'id' => $payment->id,
             'reference' => self::reference($payment),
             'at' => TimeFormat::dateTime($payment->paid_at ?? $payment->created_at),
+            'type' => __('sales.row_types.service'),
             'booking' => $booking?->reference,
             'booking_url' => $booking ? route('bookings.show', $booking) : null,
             'client' => $booking?->client?->displayName() ?? __('sales.walk_in'),
@@ -340,6 +511,7 @@ class SalesController extends Controller
             'method' => $payment->methodLabel(),
             'status' => __('bookings.payment_statuses.'.$payment->status.'.label'),
             'status_class' => config('bookings.payment_statuses.'.$payment->status.'.class', 'styledesk_badge--soon'),
+            'processed_by' => $payment->recordedBy?->displayName(),
             'menu' => array_values(array_filter([
                 /* Announced rather than navigated to: the page opens the
                    booking in a drawer over the table, so the reader keeps
@@ -408,6 +580,12 @@ class SalesController extends Controller
             'service' => trim((string) $request->query('service', '')),
             'method' => $request->query('method') ?: null,
             'status' => $request->query('status') ?: null,
+            /* What kind of thing was sold. A booking and a membership are
+               both transactions and both belong here; the filter is for a
+               reader reconciling one of them at a time. */
+            'type' => in_array($request->query('type'), ['service', 'membership'], true)
+                ? $request->query('type')
+                : null,
             /* Set by the Outstanding Balance widget, which is a filter as much
                as a figure. */
             'balance' => $request->boolean('balance'),

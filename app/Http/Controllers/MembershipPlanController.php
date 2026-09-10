@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClientMembership;
 use App\Models\Location;
+use App\Models\MembershipCredit;
 use App\Models\MembershipPlan;
 use App\Models\MembershipPlanService;
 use App\Models\MembershipSettings;
@@ -94,20 +95,133 @@ class MembershipPlanController extends Controller
     {
         $this->allow($request, 'clients.view');
 
-        $memberships = ClientMembership::query()
-            ->with(['client', 'plan', 'credits.service'])
-            ->orderByRaw('next_billing_on is null, next_billing_on')
-            ->latest('id')
-            ->paginate(25)
-            ->withQueryString();
-
         return view('membership.members', [
             'tab' => 'members',
             'tabs' => self::TABS,
             'counts' => $this->counts(),
-            'memberships' => $memberships,
+            'filters' => $this->memberFilters($request),
+            'locations' => Location::query()->orderBy('name')->get(),
             'currency' => Currencies::resolve(),
         ]);
+    }
+
+    /**
+     * The members the listing grid asks for, as JSON.
+     *
+     * The same shape every other listing answers in, so the shared grid
+     * draws this table the way it draws the clients and the plans — one
+     * table in the app rather than one per screen that has to be kept
+     * looking like the others by hand.
+     */
+    public function memberData(Request $request): JsonResponse
+    {
+        $this->allow($request, 'clients.view');
+
+        $filters = $this->memberFilters($request);
+        $canManage = $request->user()?->hasPermission('membership.manage_members', 'own') ?? false;
+
+        $members = ClientMembership::query()
+            ->with(['client', 'plan', 'credits.service'])
+            ->when($filters['search'] !== '', fn (Builder $query) => $query->where(function (Builder $q) use ($filters) {
+                $like = '%'.str_replace(['%', '_'], ['\%', '\_'], $filters['search']).'%';
+
+                /* The membership's own number first: it is what somebody
+                   reading it off a card or a confirmation has. */
+                $q->where('reference', 'like', $like)
+                    ->orWhereHas('plan', fn (Builder $p) => $p
+                        ->where('name', 'like', $like)
+                        ->orWhere('internal_code', 'like', $like))
+                    ->orWhereHas('client', fn (Builder $c) => $c
+                        ->where('first_name', 'like', $like)
+                        ->orWhere('last_name', 'like', $like)
+                        ->orWhere('email', 'like', $like)
+                        ->orWhere('mobile', 'like', $like)
+                        ->orWhereRaw("concat_ws(' ', first_name, last_name) like ?", [$like]));
+            }))
+            ->when($filters['status'] !== '', fn (Builder $query) => $query->ofStatus($filters['status']))
+            ->when($filters['type'] !== '', fn (Builder $query) => $query->where('type', $filters['type']))
+            ->when($filters['location'] !== '', fn (Builder $query) => $query->where('location_id', (int) $filters['location']))
+            /* Who renews soonest, first. That is the question this list is
+               opened to answer: a renewal that fails is a member who quietly
+               stops being one, and a list sorted by name would bury them. */
+            ->orderByRaw('next_billing_on is null, next_billing_on')
+            ->latest('id')
+            ->paginate(
+                perPage: min(100, max(1, (int) $request->query('size', 25))),
+                page: max(1, (int) $request->query('page', 1)),
+            );
+
+        return response()->json([
+            'last_page' => $members->lastPage(),
+            'last_row' => $members->total(),
+            'total' => $members->total(),
+            'data' => $members->getCollection()
+                ->map(fn (ClientMembership $membership) => $this->memberRow($membership, $canManage))
+                ->all(),
+        ]);
+    }
+
+    /**
+     * One member, in the shape the grid reads.
+     *
+     * @return array<string, mixed>
+     */
+    private function memberRow(ClientMembership $membership, bool $canManage): array
+    {
+        /* What is actually left, across every credit on this membership.
+           Expired ones are not counted — a number that included them would
+           be a promise the desk cannot keep. */
+        $left = (int) $membership->credits->sum(
+            fn (MembershipCredit $credit) => $credit->isSpendable() ? $credit->remaining() : 0
+        );
+
+        return [
+            'id' => $membership->id,
+            'reference' => $membership->reference ?? '—',
+            'client' => $membership->client?->displayName() ?? '—',
+            'membership' => $membership->plan?->name ?? '—',
+            'type' => __('membership.types.'.$membership->type),
+            'price' => $membership->priceLabel(),
+            'started' => $membership->starts_on->translatedFormat('j M Y'),
+            'next_billing' => $membership->next_billing_on?->translatedFormat('j M Y')
+                ?? __('membership.members.no_billing'),
+            'credits' => $left > 0 ? (string) $left : __('membership.members.credits_none'),
+            'status' => $membership->statusLabel(),
+            'status_class' => $membership->statusClass(),
+            'url' => $membership->client ? route('clients.show', $membership->client) : null,
+            'menu' => array_values(array_filter([
+                /* The panel rather than a page: a desk checking three of
+                   these in a row should keep its filters and its place. */
+                [
+                    'label' => __('membership.member.drawer.plan_details'),
+                    'event' => 'membership:details',
+                    'payload' => ['url' => route('client-memberships.drawer', $membership)],
+                ],
+                $membership->client ? [
+                    'label' => __('membership.sold.view_client'),
+                    'url' => route('clients.show', $membership->client),
+                ] : null,
+                $membership->plan ? [
+                    'label' => __('membership.member.drawer.view_plan'),
+                    'url' => route('membership.show', $membership->plan),
+                ] : null,
+            ])),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function memberFilters(Request $request): array
+    {
+        return [
+            'search' => trim((string) $request->query('search', '')),
+            'status' => (string) $request->query('status', ''),
+            'type' => in_array($request->query('type'), MembershipPlan::TYPES, true)
+                ? (string) $request->query('type')
+                : '',
+            'location' => (string) $request->query('location', ''),
+        ];
     }
 
     /** The rows the listing grid asks for, as JSON. */

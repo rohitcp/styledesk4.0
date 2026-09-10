@@ -156,6 +156,10 @@ class ServicesTest extends TestCase
             ->json('data.0');
 
         $this->assertSame('Balayage', $row['name']);
+        /* The name and nothing else in the first column: the category has a
+           column of its own directly beside it, and a badge repeating it
+           made the first column read as two things at once. */
+        $this->assertArrayNotHasKey('primary_badge', $row);
         $this->assertSame('Colour', $row['category']);
         $this->assertSame('1 hr 30 min', $row['duration']);
         $this->assertStringContainsString('120.00', $row['price']);

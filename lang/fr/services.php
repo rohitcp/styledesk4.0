@@ -128,6 +128,8 @@ return [
         'percent' => 'Pourcentage',
     ],
     'deposit_required_hint' => 'Le client règle une partie du prix pour bloquer le rendez-vous.',
+    'credit_usage' => 'Crédits utilisés',
+    'credit_usage_hint' => 'Combien de crédits d’abonnement consomme une réservation de cette prestation. Indépendant du prix : modifier l’un ne modifie jamais l’autre.',
     'deposit_take' => 'Demander un acompte pour cette prestation',
     'deposit_card_hint' => 'Saisi une seule fois ici, puis appliqué à tous les tarifs ci-dessous.',
     'deposit_inherits' => 'Tous les tarifs appliquent l’acompte défini ci-dessus.',

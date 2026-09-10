@@ -128,6 +128,8 @@ return [
         'percent' => 'Prozentsatz',
     ],
     'deposit_required_hint' => 'Die Kundin oder der Kunde zahlt einen Teil des Preises, um den Termin zu halten.',
+    'credit_usage' => 'Guthabenverbrauch',
+    'credit_usage_hint' => 'Wie viele Mitgliedschaftsguthaben eine Buchung davon verbraucht. Unabhängig vom Preis — das eine zu ändern ändert nie das andere.',
     'deposit_take' => 'Für diese Leistung eine Anzahlung verlangen',
     'deposit_card_hint' => 'Wird hier einmal eingegeben und für alle Preise unten verwendet.',
     'deposit_inherits' => 'Alle Preise verwenden die oben festgelegte Anzahlung.',

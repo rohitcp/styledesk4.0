@@ -55,14 +55,16 @@
             </div>
           </div>
 
-          {{-- The reference, where the booking document puts its own: the
-               thing somebody reads out on the phone. --}}
-          @if ($membership->plan->internal_code)
+          {{-- The membership's own number, where the booking document puts
+               its reference: the thing somebody reads out on the phone. The
+               plan's code names the product; this names what this client
+               bought, which is what a confirmation is about. --}}
+          @if ($membership->reference)
             <div class="mt-5">
               <p class="text-[11px] font-semibold uppercase tracking-wide text-faint">
                 {{ __('membership.sold.reference') }}
               </p>
-              <p class="text-[20px] sm:text-[22px] font-bold font-mono text-head mt-0.5">{{ $membership->plan->internal_code }}</p>
+              <p class="text-[20px] sm:text-[22px] font-bold font-mono text-head mt-0.5">{{ $membership->reference }}</p>
             </div>
           @endif
         </header>
@@ -89,6 +91,16 @@
               <dt class="text-sub">{{ __('membership.sold.type') }}</dt>
               <dd class="font-semibold text-head sm:text-right">{{ __('membership.types.'.$membership->type) }}</dd>
             </div>
+
+            {{-- The plan's own code, which names the product rather than
+                 this purchase of it. Both are worth having: one identifies
+                 what was sold, the other identifies the sale. --}}
+            @if ($membership->plan->internal_code)
+              <div class="sm:flex sm:items-baseline sm:justify-between sm:gap-6">
+                <dt class="text-sub">{{ __('membership.form.internal_code') }}</dt>
+                <dd class="font-semibold text-head sm:text-right font-mono">{{ $membership->plan->internal_code }}</dd>
+              </div>
+            @endif
 
             <div class="sm:flex sm:items-baseline sm:justify-between sm:gap-6">
               <dt class="text-sub">{{ __('membership.sold.status') }}</dt>

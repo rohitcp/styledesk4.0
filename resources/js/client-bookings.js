@@ -169,5 +169,25 @@ export function initClientBookings() {
         /* The next-appointment card in the third column opens the same
            panel: one booking, one drawer, wherever it was clicked from. */
         document.querySelector('[data-drawer].styledesk_nextbooking')?.addEventListener('click', openFrom);
+
+        /* And Plan details on a membership. The same panel and the same
+           renderer: a membership answers in named sections the way a lead
+           does, so nothing here has to know which of them it is showing. */
+        document.querySelector('[data-panel="membership"]')?.addEventListener('click', openFrom);
     }
+
+    /* The membership menu presses the form that does the act.
+
+       The forms stay in the page rather than moving into script: each keeps
+       its own confirmation and its own CSRF, and a menu that failed to wire
+       itself up leaves working buttons behind rather than nothing. */
+    document.querySelector('[data-panel="membership"]')?.addEventListener('click', (event) => {
+        const choice = event.target.closest('[data-membership-act]');
+
+        if (!choice) {
+            return;
+        }
+
+        document.querySelector(`[data-membership-form="${choice.dataset.membershipAct}"]`)?.click();
+    });
 }

@@ -111,5 +111,23 @@ return [
         'open_booking' => 'Ouvrir la page de réservation',
         'view_client' => 'Voir le client',
         'view_receipt' => 'Voir le reçu',
+        'view_membership' => 'Voir l’abonnement',
+        'open_membership' => 'Ouvrir la page de l’abonnement',
     ],
+    /* What kind of thing was sold. Both are transactions; the
+       filter is for a reader reconciling one at a time. */
+    'type' => 'Type',
+    /* Plural in the filter, singular in the cell: one row is one
+           transaction, and "Memberships" printed against it reads as a
+           count. */
+    'row_types' => [
+        'service' => 'Prestation',
+        'membership' => 'Abonnement',
+    ],
+    'types' => [
+        'all' => 'Tous les types',
+        'service' => 'Prestations',
+        'membership' => 'Abonnements',
+    ],
+
 ];

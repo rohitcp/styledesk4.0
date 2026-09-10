@@ -128,6 +128,8 @@ return [
         'percent' => '百分比',
     ],
     'deposit_required_hint' => '客户先支付部分费用来保留这个预约。',
+    'credit_usage' => '消耗额度',
+    'credit_usage_hint' => '预约这项服务会消耗多少会员额度。与价格互不相干，改一个不会改另一个。',
     'deposit_take' => '这项服务收取定金',
     'deposit_card_hint' => '在这里填写一次，下面所有价格都会使用。',
     'deposit_inherits' => '所有价格都采用上方设置的定金。',

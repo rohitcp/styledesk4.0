@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Models\Booking;
 use App\Models\BookingPayment;
+use App\Models\MembershipPayment;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -29,10 +30,15 @@ class SalesSummary
     {
         $sold = self::bookings($period, $filters);
         $moved = self::payments($period, $filters);
+        /* Memberships are sold too. A figure that counted only bookings was
+           one that under-reported the month by every membership taken in
+           it. */
+        $memberships = self::membershipPayments($period, $filters);
 
-        $previous = self::soldTotal(self::bookings($period->previous(), $filters));
+        $previous = self::soldTotal(self::bookings($period->previous(), $filters))
+            + self::membershipTotal(self::membershipPayments($period->previous(), $filters));
 
-        $total = self::soldTotal($sold);
+        $total = self::soldTotal($sold) + self::membershipTotal($memberships);
 
         return [
             'total_sales' => [
@@ -43,7 +49,8 @@ class SalesSummary
                 'change' => $previous > 0 ? round((($total - $previous) / $previous) * 100, 1) : null,
             ],
 
-            'collected' => ['value' => (int) (clone $moved)->where('status', 'paid')->sum('amount_minor')],
+            'collected' => ['value' => (int) (clone $moved)->where('status', 'paid')->sum('amount_minor')
+                + (int) (clone $memberships)->where('status', 'paid')->sum('amount_minor')],
 
             /* What is still owed on the appointments in this period. Derived
                from the bookings rather than from the payments, because a
@@ -51,11 +58,13 @@ class SalesSummary
                would otherwise be invisible. */
             'outstanding' => ['value' => self::outstanding($sold)],
 
-            'refunds' => ['value' => (int) (clone $moved)->where('status', 'refunded')->sum('amount_minor')],
+            'refunds' => ['value' => (int) (clone $moved)->where('status', 'refunded')->sum('amount_minor')
+                + (int) (clone $memberships)->where('status', 'refunded')->sum('amount_minor')],
 
             'tips' => ['value' => (int) (clone $moved)->where('status', 'paid')->sum('tip_minor')],
 
-            'transactions' => ['value' => 0, 'count' => (int) (clone $moved)->count()],
+            'transactions' => ['value' => 0, 'count' => (int) (clone $moved)->count()
+                + (int) (clone $memberships)->count()],
         ];
     }
 
@@ -64,6 +73,11 @@ class SalesSummary
     {
         return Booking::query()
             ->whereBetween('date', [$period->from->toDateString(), $period->to->toDateString()])
+            /* The widgets follow the table. A reader who has narrowed the
+               list to memberships is asking what the memberships came to,
+               and a figure counting everything beside a table showing two
+               rows is a figure they cannot use. */
+            ->when(($filters['type'] ?? null) === 'membership', fn (Builder $q) => $q->whereRaw('1 = 0'))
             ->when($filters['location'] ?? null, fn (Builder $q, $id) => $q->where('location_id', $id))
             ->when($filters['staff'] ?? null, fn (Builder $q, $id) => $q->where('staff_id', $id));
     }
@@ -73,6 +87,7 @@ class SalesSummary
     {
         return BookingPayment::query()
             ->whereBetween('paid_at', [$period->from, $period->to])
+            ->when(($filters['type'] ?? null) === 'membership', fn (Builder $q) => $q->whereRaw('1 = 0'))
             ->when(
                 ($filters['location'] ?? null) || ($filters['staff'] ?? null),
                 fn (Builder $q) => $q->whereHas('booking', fn (Builder $b) => $b
@@ -81,9 +96,40 @@ class SalesSummary
             );
     }
 
+    /**
+     * Membership money that moved in the period.
+     *
+     * Filtered on location only. A membership has no staff member and no
+     * service, so a summary narrowed to either is a summary about
+     * appointments and memberships have no part in it.
+     */
+    private static function membershipPayments(SalesPeriod $period, array $filters): Builder
+    {
+        return MembershipPayment::query()
+            ->whereBetween('paid_at', [$period->from, $period->to])
+            ->when(($filters['type'] ?? null) === 'service', fn (Builder $q) => $q->whereRaw('1 = 0'))
+            ->when(($filters['staff'] ?? null) !== null, fn (Builder $q) => $q->whereRaw('1 = 0'))
+            ->when(
+                ($filters['location'] ?? null),
+                fn (Builder $q, $id) => $q->whereHas('membership', fn (Builder $m) => $m->where('location_id', $id)),
+            );
+    }
+
     private static function soldTotal(Builder $bookings): int
     {
         return (int) (clone $bookings)->sum('total_minor');
+    }
+
+    /**
+     * What memberships brought in, refunds taken off.
+     *
+     * A refund is a row of its own rather than an edit to the original, so a
+     * plain sum would count money that came back as money that came in.
+     */
+    private static function membershipTotal(Builder $payments): int
+    {
+        return (int) (clone $payments)->where('status', 'paid')->sum('amount_minor')
+            - (int) (clone $payments)->where('status', 'refunded')->sum('amount_minor');
     }
 
     /**

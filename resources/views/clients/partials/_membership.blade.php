@@ -3,9 +3,10 @@
     has happened to it.
 
     Read as one question a receptionist asks with a client in front of them —
-    "what have you got, and can you use it today" — which is why the credits
-    sit above the history rather than after it. The history is the record;
-    the credits are the answer.
+    "what have you got" — so what they hold now comes first and the history
+    follows it. What is left of each membership is in its own Plan details
+    panel, where it sits beside the membership it belongs to rather than in a
+    card of its own that could not say which.
 
     Nothing here is editable. Ending or holding a membership is its own
     authority and its own act, so those are buttons that post, not fields.
@@ -26,35 +27,6 @@
         </div>
     @else
 
-    {{-- ------------------------------------------------ what they can spend --}}
-    <section class="sd-card p-5">
-        <h3 class="text-[15px] font-semibold text-head">{{ __('membership.member.credits') }}</h3>
-
-        @if ($membershipCredits->isEmpty())
-            <p class="text-[13px] text-sub mt-2">{{ __('membership.member.credits_none') }}</p>
-        @else
-            <ul class="mt-3 grid gap-2 sm:grid-cols-2">
-                @foreach ($membershipCredits as $credit)
-                    <li class="rounded-lg border border-brand/30 bg-brand/5 px-3.5 py-3">
-                        <p class="text-[13.5px] font-semibold text-head">{{ $credit['service'] }}</p>
-                        <p class="text-[13px] text-brand font-semibold mt-0.5">
-                            {{ __('membership.member.credit_count', ['count' => $credit['remaining']]) }}
-                        </p>
-                        {{-- Only where there is a deadline. "Expires never" is
-                             a line nobody needs to read. --}}
-                        @if ($credit['expires_on'])
-                            <p class="text-[11.5px] text-sub mt-0.5">
-                                {{ __('membership.member.credit_expires', [
-                                    'date' => \Illuminate\Support\Carbon::parse($credit['expires_on'])->translatedFormat('j M Y'),
-                                ]) }}
-                            </p>
-                        @endif
-                    </li>
-                @endforeach
-            </ul>
-        @endif
-    </section>
-
     {{-- ------------------------------------------------- what they hold now --}}
     @if ($live->isNotEmpty())
         <h3 class="text-[13px] font-semibold text-head mt-5">{{ __('membership.member.active') }}</h3>
@@ -72,8 +44,65 @@
                                 <span class="styledesk_badge {{ $membership->statusClass() }}">{{ $membership->statusLabel() }}</span>
                             </div>
 
-                            <p class="text-[13px] text-sub mt-1">{{ $membership->priceLabel() }}</p>
+                            <p class="text-[13px] text-sub mt-1">
+                                {{ $membership->priceLabel() }}
+                                {{-- The number this membership is known by,
+                                     beside what it costs: it is what the desk
+                                     reads out when the client rings. --}}
+                                @if ($membership->reference)
+                                    <span class="text-faint">·</span>
+                                    <span class="font-mono text-[12px]">{{ $membership->reference }}</span>
+                                @endif
+                            </p>
                         </div>
+
+                        {{-- One menu rather than a row of buttons: Plan
+                             details is the thing a receptionist reaches for
+                             with a client in front of them, and the acts that
+                             change the membership sit behind the same control
+                             where they cannot be pressed by accident. --}}
+                        <span class="styledesk_rowmenu shrink-0" data-rowmenu>
+                            <button type="button" class="styledesk_action styledesk_action--icon" data-rowmenu-button
+                                    aria-haspopup="true" aria-expanded="false"
+                                    aria-label="{{ __('membership.member.drawer.actions') }}">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>
+                                </svg>
+                            </button>
+
+                            <span class="styledesk_rowmenu__pop" data-rowmenu-pop hidden role="menu">
+                                {{-- Opens the drawer the bookings open in, so
+                                     the profile stays where it is. --}}
+                                <button type="button" class="styledesk_rowmenu__item w-full" role="menuitem"
+                                        data-drawer="{{ route('client-memberships.drawer', $membership) }}">
+                                    <x-icon name="id-card" size="14" />
+                                    {{ __('membership.member.drawer.plan_details') }}
+                                </button>
+
+                                @if ($canManage)
+                                    @if ($membership->isPaused())
+                                        <button type="button" class="styledesk_rowmenu__item w-full" role="menuitem"
+                                                data-membership-act="{{ $membership->id }}-resume">
+                                            {{ __('membership.member.resume') }}
+                                        </button>
+                                    @elseif ($membershipSettings->allow_pause)
+                                        <button type="button" class="styledesk_rowmenu__item w-full" role="menuitem"
+                                                data-membership-act="{{ $membership->id }}-pause">
+                                            {{ __('membership.member.pause') }}
+                                        </button>
+                                    @endif
+
+                                    @if ($membershipSettings->allow_cancellation && ! $membership->isCancelled() && ! $membership->isPaused())
+                                        <span class="styledesk_rowmenu__rule" role="separator"></span>
+
+                                        <button type="button" class="styledesk_rowmenu__item styledesk_rowmenu__item--danger w-full"
+                                                role="menuitem" data-membership-act="{{ $membership->id }}-cancel">
+                                            {{ __('membership.member.cancel') }}
+                                        </button>
+                                    @endif
+                                @endif
+                            </span>
+                        </span>
                     </div>
 
                     <dl class="mt-4 grid gap-x-8 gap-y-2 sm:grid-cols-2 text-[13px]">
@@ -108,22 +137,30 @@
                     @endif
 
                     @if ($canManage)
-                        <div class="mt-4 flex flex-wrap gap-2">
+                        {{-- The acts themselves, driven from the menu above.
+                             Kept as posting forms rather than moved into
+                             JavaScript: each still carries its own
+                             confirmation, and each still works if the menu
+                             never wires itself up. Hidden, because the menu
+                             is where a reader chooses one. --}}
+                        <div class="hidden" data-membership-forms>
                             @if ($membership->isPaused())
                                 <form method="POST" action="{{ route('client-memberships.resume', $membership) }}">
                                     @csrf
                                     @method('PATCH')
-                                    <button type="submit" class="styledesk_action">{{ __('membership.member.resume') }}</button>
+                                    <button type="submit" data-membership-form="{{ $membership->id }}-resume">
+                                        {{ __('membership.member.resume') }}
+                                    </button>
                                 </form>
                             @else
-                                {{-- Only where the business allows it. A button
-                                     the server refuses is a button that wasted
-                                     the conversation at the desk. --}}
+                                {{-- Only where the business allows it. An
+                                     action the server refuses is one that
+                                     wasted the conversation at the desk. --}}
                                 @if ($membershipSettings->allow_pause)
                                     <form method="POST" action="{{ route('client-memberships.pause', $membership) }}">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="styledesk_action"
+                                        <button type="submit" data-membership-form="{{ $membership->id }}-pause"
                                                 data-confirm-title="{{ __('membership.member.pause') }}"
                                                 data-confirm="{{ __('membership.member.pause_confirm') }}"
                                                 data-confirm-label="{{ __('membership.member.pause') }}">
@@ -136,10 +173,18 @@
                                     <form method="POST" action="{{ route('client-memberships.cancel', $membership) }}">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="styledesk_action styledesk_action--danger"
+                                        {{-- What cancelling actually does, in
+                                             the question itself: whether it
+                                             stops the billing now or at the
+                                             end of the cycle is the whole of
+                                             what the client is asking. --}}
+                                        <button type="submit" data-membership-form="{{ $membership->id }}-cancel"
                                                 data-confirm-title="{{ __('membership.member.cancel') }}"
-                                                data-confirm="{{ __('membership.member.cancel_confirm') }}"
-                                                data-confirm-label="{{ __('membership.member.cancel') }}">
+                                                data-confirm="{{ __('membership.member.cancel_confirm') }} {{ __('membership.member.notice_note', [
+                                                    'date' => $membership->cancellationTakesEffect($membershipSettings)->translatedFormat('j M Y'),
+                                                ]) }}"
+                                                data-confirm-label="{{ __('membership.member.cancel') }}"
+                                                data-confirm-tone="danger">
                                             {{ __('membership.member.cancel') }}
                                         </button>
                                     </form>

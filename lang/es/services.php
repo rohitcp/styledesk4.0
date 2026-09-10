@@ -126,6 +126,8 @@ return [
         'percent' => 'Porcentaje',
     ],
     'deposit_required_hint' => 'El cliente paga parte del precio para retener la cita.',
+    'credit_usage' => 'Uso de créditos',
+    'credit_usage_hint' => 'Cuántos créditos de membresía consume una reserva de este servicio. Es independiente del precio: cambiar uno nunca cambia el otro.',
     'deposit_take' => 'Cobrar un depósito por este servicio',
     'deposit_card_hint' => 'Se introduce una sola vez aquí y se aplica a todos los precios de abajo.',
     'deposit_inherits' => 'Todos los precios aplican el depósito indicado arriba.',
