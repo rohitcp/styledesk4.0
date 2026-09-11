@@ -161,6 +161,25 @@ return [
         'used_up' => 'Cupo agotado. Se puede reservar al precio normal.',
         'each' => ':count créditos cada uno',
         'renews' => 'Se renueva el :date',
+        'balance_line' => 'Saldo del servicio',
+        'deposit_covered' => 'No se necesita depósito',
+        'deposit_covered_hint' => 'La membresía cubre todos los servicios de esta reserva, así que no hay nada que cobrar por adelantado. La propina se cobra igualmente por completo.',
+        'expires' => 'Vence el :date',
+        'membership_id' => 'ID de membresía',
+        'period' => 'Periodo de beneficios',
+        'plan_details' => 'Detalles del plan',
+        'col_reserved' => 'Reservado',
+        'col_status' => 'Estado',
+        'status_available' => 'Disponible',
+        'status_reserved' => 'Reservado',
+        'status_used' => 'Usado',
+        'reserved_for' => 'Reservado para el :date',
+        'reserved_title' => 'Ventaja de membresía ya reservada',
+        'reserved_body' => 'Esta ventaja de membresía está reservada para la cita del :date. Para usarla aquí, cancela o modifica primero esa reserva.',
+        'reserved_view' => 'Ver reserva del :date',
+        'reserved_cancel' => 'Cancelar reserva del :date',
+        'reserved_pay' => 'Pagar con normalidad',
+        'reserved_close' => 'Cerrar',
     ],
 
     'cards' => [
@@ -394,6 +413,8 @@ return [
         'subtotal' => 'Subtotal',
         'discount' => 'Descuento',
         'coupon' => 'Cupón',
+        'tip_due' => 'Propina acordada',
+        'amount_due' => 'Importe a pagar',
         'tip_paid' => 'Propina ya pagada',
         'due_now' => 'Saldo pendiente',
         'additional_tip' => 'Propina adicional',
@@ -709,6 +730,7 @@ return [
         'cvv' => 'CVV',
         'zip' => 'Código postal de facturación',
         'card_safe' => 'Los datos de la tarjeta van directos al proveedor de pago. StyleDesk nunca los guarda.',
+        'nothing_to_take' => 'Introduce un importe o una propina: un pago de nada no es un pago.',
         'no_card_provider' => 'No hay proveedor de tarjetas conectado, así que StyleDesk no puede cobrarla. Cóbrala en el datáfono y regístrala abajo.',
         'terminal' => 'Cobrado en el datáfono',
         'not_ready' => 'Aún sin configurar. Añade la cuenta en los ajustes del negocio.',
@@ -743,6 +765,13 @@ return [
         'partially-refunded' => ['label' => 'Reembolsado en parte'],
     ],
 
+    /* The confirmation as a text message. One segment where it can be:
+       a text is charged by the 160 characters, and a template that
+       quietly became three is a bill nobody agreed to. */
+    'sms' => [
+        'confirmation' => ':business vía StyleDesk: Hola :name, tu cita está confirmada para el :date a las :time con :staff. Responde YES para confirmar, CANCEL para solicitar un cambio, STOP para darte de baja. Ref :reference',
+    ],
+
     'confirmation' => [
         'title' => 'Reserva confirmada',
         'made' => 'La cita está en la agenda.',
@@ -757,7 +786,8 @@ return [
         'sending' => 'Enviando…',
         'sent' => 'Confirmación enviada a :to.',
         'no_email' => 'Este cliente no tiene correo en su ficha.',
-        'no_sms' => 'Los SMS aún no están conectados. Envíala por correo o añade una cuenta de SMS.',
+        'no_mobile' => 'Esta reserva no tiene número de móvil. Añádelo al cliente o envíalo por correo.',
+        'no_sms_consent' => 'Este cliente ha desactivado los mensajes de texto. Envíalo por correo.',
         'link_failed' => 'La reserva está hecha, pero no se pudo enviar el enlace de pago. Llama al cliente.',
         'due_notice' => 'Pendiente de pago :amount',
         'amount_due' => 'Importe pendiente',

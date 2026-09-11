@@ -58,6 +58,11 @@ return [
             'email.manage_settings' => 'all',
             'email.connect_gmail' => 'all',
             'email.disconnect_gmail' => 'all',
+            /* SMS. Same reading as email: an administrator sets up what the
+               business says and what it spends saying it. */
+            'sms.view_log' => 'all',
+            'sms.send' => 'all',
+            'sms.manage_settings' => 'all',
             'dashboard.view' => 'all',
             'dashboard.view_revenue' => 'all',
             'dashboard.view_bookings' => 'all',

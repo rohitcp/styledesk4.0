@@ -176,6 +176,25 @@ return [
         'used_up' => 'Allowance used. Bookable at the normal price.',
         'each' => ':count credits each',
         'renews' => 'Renews :date',
+        'balance_line' => 'Service balance',
+        'deposit_covered' => 'No deposit needed',
+        'deposit_covered_hint' => 'The membership covers every service on this booking, so there is nothing to take up front. A tip is still collected in full.',
+        'expires' => 'Expires :date',
+        'membership_id' => 'Membership ID',
+        'period' => 'Benefit period',
+        'plan_details' => 'Plan details',
+        'col_reserved' => 'Reserved',
+        'col_status' => 'Status',
+        'status_available' => 'Available',
+        'status_reserved' => 'Reserved',
+        'status_used' => 'Used',
+        'reserved_for' => 'Reserved for :date',
+        'reserved_title' => 'Membership benefit already reserved',
+        'reserved_body' => 'This membership benefit is reserved for the :date appointment. To use it here, cancel or change that booking first.',
+        'reserved_view' => 'View :date booking',
+        'reserved_cancel' => 'Cancel :date booking',
+        'reserved_pay' => 'Pay normally',
+        'reserved_close' => 'Close',
     ],
 
     /* Recurring membership billing and the card it runs on. StyleDesk holds
@@ -423,6 +442,8 @@ return [
         'subtotal' => 'Subtotal',
         'discount' => 'Discount',
         'coupon' => 'Coupon',
+        'tip_due' => 'Tip agreed',
+        'amount_due' => 'Amount due',
         'tip_paid' => 'Tip already paid',
         'due_now' => 'Balance due',
         'additional_tip' => 'Additional tip',
@@ -798,6 +819,7 @@ return [
         'cvv' => 'CVV',
         'zip' => 'Billing ZIP code',
         'card_safe' => 'Card details go straight to the payment provider. StyleDesk never stores them.',
+        'nothing_to_take' => 'Enter an amount or a tip — a payment of nothing is not a payment.',
         'no_card_provider' => 'No card provider is connected, so StyleDesk cannot take the card itself. Take it on the terminal and record it below.',
         'terminal' => 'Taken on the terminal',
         'not_ready' => 'Not set up yet. Add the account in Business settings.',
@@ -832,6 +854,13 @@ return [
         'partially-refunded' => ['label' => 'Partially refunded'],
     ],
 
+    /* The confirmation as a text message. One segment where it can be:
+       a text is charged by the 160 characters, and a template that
+       quietly became three is a bill nobody agreed to. */
+    'sms' => [
+        'confirmation' => ':business via StyleDesk: Hi :name, your appointment is confirmed for :date at :time with :staff. Reply YES to confirm, CANCEL to request a change, STOP to opt out. Ref :reference',
+    ],
+
     'confirmation' => [
         'title' => 'Booking confirmed',
         'made' => 'The appointment is in the diary.',
@@ -846,7 +875,8 @@ return [
         'sending' => 'Sending…',
         'sent' => 'Confirmation sent to :to.',
         'no_email' => 'This client has no email address on file.',
-        'no_sms' => 'Text messages are not connected yet. Send it by email, or add an SMS account first.',
+        'no_mobile' => 'There is no mobile number on this booking. Add one to the client, or send it by email.',
+        'no_sms_consent' => 'This client has turned text messages off. Send it by email instead.',
         'link_failed' => 'The booking is made, but the payment link could not be emailed. Ring the client instead.',
         'due_notice' => 'Payment due :amount',
         'amount_due' => 'Amount due',

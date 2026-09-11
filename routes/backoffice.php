@@ -8,6 +8,7 @@ use App\Http\Controllers\Backoffice\LoginController;
 use App\Http\Controllers\Backoffice\ModuleController;
 use App\Http\Controllers\Backoffice\PasswordResetController;
 use App\Http\Controllers\Backoffice\ProfileController;
+use App\Http\Controllers\Backoffice\SmsController;
 use App\Http\Controllers\Backoffice\VerificationController;
 use Illuminate\Support\Facades\Route;
 
@@ -119,6 +120,28 @@ Route::middleware('backoffice.auth')->group(function (): void {
 
     Route::get('billing', [ModuleController::class, 'billing'])
         ->middleware('backoffice.can:billing.view')->name('billing.index');
+
+    /*
+    | The platform's carrier account: which company carries every business's
+    | messages, and the keys to reach them.
+    |
+    | Reading it is `sms.view`; holding the key that spends money on every
+    | business's behalf is `sms.manage`, which is why the two are separate.
+    */
+    Route::get('sms', [SmsController::class, 'index'])
+        ->middleware('backoffice.can:sms.view')->name('sms.index');
+
+    Route::patch('sms', [SmsController::class, 'update'])
+        ->middleware('backoffice.can:sms.manage')->name('sms.update');
+
+    /* A cheap read against the carrier: no message, no cost. */
+    Route::post('sms/test-connection', [SmsController::class, 'testConnection'])
+        ->middleware('backoffice.can:sms.manage')->name('sms.test-connection');
+
+    /* A real message, which costs money and reaches a phone — so it is
+       throttled, and gated on the permission that may spend. */
+    Route::post('sms/test-message', [SmsController::class, 'sendTest'])
+        ->middleware(['backoffice.can:sms.manage', 'throttle:5,1'])->name('sms.test-message');
 
     Route::get('settings', [ModuleController::class, 'settings'])
         ->middleware('backoffice.can:settings.view')->name('settings.index');

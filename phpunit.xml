@@ -40,6 +40,18 @@
         <!-- The seeder reads this. A blank one locally is a valid choice and
              must not make the suite assert against an admin with no address. -->
         <env name="BACKOFFICE_SUPER_OWNER_EMAIL" value="super-owner@styledesk.test"/>
+        <!-- No carrier, ever. Without this the suite inherits real
+             credentials from .env, binds the live provider and posts to the
+             carrier — which costs money and texts whatever number a fixture
+             happens to contain. Tests that mean to exercise the provider
+             construct it themselves behind Http::fake(). -->
+        <env name="CLICKSEND_USERNAME" value=""/>
+        <env name="CLICKSEND_API_KEY" value=""/>
+        <env name="CLICKSEND_FROM_NUMBER" value=""/>
+        <env name="TELNYX_API_KEY" value=""/>
+        <env name="TELNYX_FROM_NUMBER" value=""/>
+        <env name="SMS_ALLOW_LIVE_IN_LOCAL" value="false"/>
+        <env name="SMS_CATCHER_ENABLED" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

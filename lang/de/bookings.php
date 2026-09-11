@@ -162,6 +162,25 @@ return [
         'used_up' => 'Kontingent aufgebraucht. Zum normalen Preis buchbar.',
         'each' => 'je :count Guthaben',
         'renews' => 'Erneuert sich am :date',
+        'balance_line' => 'Offener Leistungsbetrag',
+        'deposit_covered' => 'Keine Anzahlung nötig',
+        'deposit_covered_hint' => 'Die Mitgliedschaft deckt alle Leistungen dieser Buchung ab, es gibt also nichts im Voraus einzuziehen. Ein Trinkgeld wird weiterhin vollständig eingezogen.',
+        'expires' => 'Läuft am :date ab',
+        'membership_id' => 'Mitgliedsnummer',
+        'period' => 'Leistungszeitraum',
+        'plan_details' => 'Tarifdetails',
+        'col_reserved' => 'Reserviert',
+        'col_status' => 'Status',
+        'status_available' => 'Verfügbar',
+        'status_reserved' => 'Reserviert',
+        'status_used' => 'Genutzt',
+        'reserved_for' => 'Reserviert für :date',
+        'reserved_title' => 'Mitgliedervorteil bereits reserviert',
+        'reserved_body' => 'Dieser Mitgliedervorteil ist für den Termin am :date reserviert. Um ihn hier zu nutzen, storniere oder ändere zuerst jene Buchung.',
+        'reserved_view' => 'Buchung vom :date ansehen',
+        'reserved_cancel' => 'Buchung vom :date stornieren',
+        'reserved_pay' => 'Normal bezahlen',
+        'reserved_close' => 'Schließen',
     ],
 
     'cards' => [
@@ -407,6 +426,8 @@ return [
         'subtotal' => 'Zwischensumme',
         'discount' => 'Rabatt',
         'coupon' => 'Gutscheincode',
+        'tip_due' => 'Vereinbartes Trinkgeld',
+        'amount_due' => 'Fälliger Betrag',
         'tip_paid' => 'Bereits gezahltes Trinkgeld',
         'due_now' => 'Offener Betrag',
         'additional_tip' => 'Zusätzliches Trinkgeld',
@@ -784,6 +805,7 @@ return [
         'cvv' => 'Prüfziffer',
         'zip' => 'Postleitzahl der Rechnungsadresse',
         'card_safe' => 'Kartendaten gehen direkt an den Zahlungsdienstleister. StyleDesk speichert sie nie.',
+        'nothing_to_take' => 'Gib einen Betrag oder ein Trinkgeld ein — eine Zahlung über nichts ist keine Zahlung.',
         'no_card_provider' => 'Es ist kein Kartendienstleister verbunden, StyleDesk kann die Karte also nicht selbst belasten. Nehmen Sie sie am Terminal und erfassen Sie sie unten.',
         'terminal' => 'Am Terminal genommen',
         'not_ready' => 'Noch nicht eingerichtet. Fügen Sie das Konto in den Betriebseinstellungen hinzu.',
@@ -818,6 +840,13 @@ return [
         'partially-refunded' => ['label' => 'Teilweise erstattet'],
     ],
 
+    /* The confirmation as a text message. One segment where it can be:
+       a text is charged by the 160 characters, and a template that
+       quietly became three is a bill nobody agreed to. */
+    'sms' => [
+        'confirmation' => ':business über StyleDesk: Hallo :name, dein Termin ist bestätigt für :date um :time bei :staff. Antworte YES zum Bestätigen, CANCEL für eine Änderung, STOP zum Abmelden. Ref :reference',
+    ],
+
     'confirmation' => [
         'title' => 'Buchung bestätigt',
         'made' => 'Der Termin steht im Kalender.',
@@ -832,7 +861,8 @@ return [
         'sending' => 'Wird gesendet…',
         'sent' => 'Bestätigung an :to gesendet.',
         'no_email' => 'Für diese Person ist keine E-Mail-Adresse hinterlegt.',
-        'no_sms' => 'SMS sind noch nicht angebunden. Senden Sie per E-Mail, oder richten Sie zuerst ein SMS-Konto ein.',
+        'no_mobile' => 'Zu dieser Buchung ist keine Mobilnummer hinterlegt. Trage eine beim Kunden ein oder sende per E-Mail.',
+        'no_sms_consent' => 'Dieser Kunde hat SMS deaktiviert. Sende es stattdessen per E-Mail.',
         'link_failed' => 'Die Buchung steht, aber der Zahlungslink konnte nicht per E-Mail gesendet werden. Rufen Sie stattdessen an.',
         'due_notice' => 'Fällige Zahlung :amount',
         'amount_due' => 'Fälliger Betrag',

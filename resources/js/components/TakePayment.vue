@@ -32,7 +32,12 @@ const booking = ref({ ...props.booking });
 const open = ref(false);
 const panel = ref(null);
 
-const settled = computed(() => booking.value.due_minor <= 0);
+/* Nothing left to collect — which is not the same as nothing left owing on
+   the work. A booking a membership covers in full has a nought balance and
+   an agreed tip nobody has taken, and a card reading "Paid in full" over it
+   would strand that money with no way to reach it. */
+const settled = computed(() => booking.value.due_minor <= 0
+    && (booking.value.tip_due_minor ?? 0) <= 0);
 
 /* What the panel below is currently asking for, mirrored up here so the
    breakdown and the button never disagree. The panel owns the inputs; this
@@ -91,7 +96,7 @@ function onPaid(updated) {
     /* Settled in full closes the panel: there is nothing left to ask for,
        and a form offering to take zero is a form that invites a mistake.
        Part paid stays open with the rest still owing. */
-    if (updated.due_minor <= 0) {
+    if (updated.due_minor <= 0 && (updated.tip_due_minor ?? 0) <= 0) {
         open.value = false;
     }
 }
@@ -289,7 +294,12 @@ onBeforeUnmount(() => document.removeEventListener('keydown', closeOnEscape));
                     <div class="flex-1 min-h-0 overflow-y-auto styledesk_scroll">
                         <div class="px-4 pt-4">
                             <p class="text-[12px] text-sub">{{ labels.pay?.collect_now }}</p>
-                            <p class="text-[26px] font-bold text-head leading-tight">{{ booking.collect ?? booking.due }}</p>
+                            <!-- What is actually about to be taken, tip and
+                                 all. The balance alone reads $0.00 on a
+                                 booking a membership covers, over a panel
+                                 that is collecting the gratuity — the two
+                                 figures on one screen have to agree. -->
+                            <p class="text-[26px] font-bold text-head leading-tight">{{ money(collectTodayMinor) }}</p>
 
                             <!-- The other half of the same sentence: $64.80
                                  now, $194.40 on the day. A deposit shown

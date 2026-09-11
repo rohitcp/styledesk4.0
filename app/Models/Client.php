@@ -53,6 +53,8 @@ class Client extends Model
             'next_booking_at' => 'datetime',
             'comm_email' => 'boolean',
             'comm_sms' => 'boolean',
+            'sms_consent_at' => 'datetime',
+            'sms_opted_out_at' => 'datetime',
             'comm_phone' => 'boolean',
             'marketing_email' => 'boolean',
             'marketing_sms' => 'boolean',

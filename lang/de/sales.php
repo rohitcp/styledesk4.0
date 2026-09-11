@@ -69,6 +69,7 @@ return [
         'reference' => 'Vorgang',
         'at' => 'Datum und Uhrzeit',
         'booking' => 'Buchung',
+        'record' => 'Buchung / Mitgliedschaft',
         'client' => 'Kundin/Kunde',
         'services' => 'Leistung',
         'staff' => 'Fachkraft',

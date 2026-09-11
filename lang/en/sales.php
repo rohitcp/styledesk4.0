@@ -68,6 +68,7 @@ return [
         'reference' => 'Transaction',
         'at' => 'Date & time',
         'booking' => 'Booking',
+        'record' => 'Booking / Membership',
         'client' => 'Client',
         'services' => 'Service',
         'staff' => 'Staff',

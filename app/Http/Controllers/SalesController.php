@@ -432,9 +432,11 @@ class SalesController extends Controller
             'membership_number' => $membership?->reference,
             'membership_code' => $plan?->internal_code,
             /* A membership takes no slot, so there is no booking to open and
-               no staff member who performed it. */
-            'booking' => null,
-            'booking_url' => null,
+               no staff member who performed it. The column a booking fills
+               with its reference is not left blank, though: the membership's
+               own number is the thing a reader reconciles this row against. */
+            'booking' => $membership?->reference,
+            'booking_url' => $membership ? route('membership.sales.show', $membership) : null,
             'staff' => '—',
             'client' => $client?->displayName() ?? __('sales.walk_in'),
             'client_url' => $client ? route('clients.show', $client) : null,

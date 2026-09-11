@@ -118,7 +118,14 @@ class MembershipCredits
         $memberships = ClientMembership::query()
             ->where('client_id', $client->id)
             ->live()
-            ->with(['plan', 'credits.service'])
+            /* The redemptions as well as the counters. "How many are gone" is
+               what the counter answers; "is one of them spoken for by
+               Thursday's appointment" is not, and that is the difference
+               between a benefit that is used and one that is merely
+               reserved. */
+            ->with(['plan', 'credits.service', 'credits.redemptions' => fn ($query) => $query
+                ->held()
+                ->with('booking:id,reference,date,starts_at,status')])
             ->orderBy('starts_on')
             ->get();
 
@@ -151,17 +158,42 @@ class MembershipCredits
             ->reject(fn (MembershipCredit $credit) => $credit->isExpired())
             ->map(function (MembershipCredit $credit) use ($costs) {
                 $cost = $costs[(int) $credit->service_id] ?? 1;
+                $available = $credit->remaining() >= $cost;
+
+                /* Included = available + reserved + used. The counter on the
+                   credit is available's other half — it counts everything
+                   spoken for — so the split between the two comes from the
+                   redemptions rather than from a third column that could
+                   drift away from them. */
+                $reservations = $credit->redemptions->reject(fn (MembershipCreditRedemption $redemption) => $redemption->isConsumed());
+                $reserved = (int) $reservations->sum('quantity');
+                $used = max(0, (int) $credit->quantity_used - $reserved);
 
                 return [
                     'service_id' => (int) $credit->service_id,
                     'name' => $credit->service?->name ?? '—',
                     'included' => (int) $credit->quantity_granted,
-                    'used' => (int) $credit->quantity_used,
+                    'used' => $used,
+                    'reserved' => $reserved,
                     'remaining' => $credit->remaining(),
                     /* What one booking of it costs, and so whether what is
                        left is enough to take another. */
                     'cost' => $cost,
-                    'available' => $credit->remaining() >= $cost,
+                    'available' => $available,
+                    /* Which of the three the reader is looking at. Reserved
+                       beats used where both are true: what a desk needs to
+                       know about a benefit it cannot spend today is that it
+                       is coming back, and when. */
+                    'status' => match (true) {
+                        $available => 'available',
+                        $reserved > 0 => 'reserved',
+                        default => 'used',
+                    },
+                    /* The appointments holding it. Without these, a benefit
+                       that has run out and one that is spoken for by
+                       Thursday read exactly alike, and the desk has to go
+                       looking for the difference. */
+                    'reservations' => self::reservationRows($reservations),
                     'expires_on' => $credit->expires_on?->translatedFormat('j M Y'),
                 ];
             })
@@ -185,8 +217,71 @@ class MembershipCredits
                 ? null
                 : $cycle->period_start->translatedFormat('j M').' – '.$cycle->period_end->translatedFormat('j M Y'),
             'renews_on' => $held->next_billing_on?->translatedFormat('j M Y'),
+            /* The membership's own screen, opened in a new tab rather than
+               over the booking: a desk checking what a plan includes has a
+               half-taken appointment behind it that it cannot afford to
+               lose. */
+            'plan_url' => route('membership.sales.show', $held),
             'services' => $services,
         ];
+    }
+
+    /**
+     * The appointments a benefit is being held for.
+     *
+     * Named and dated, with a way to reach each one. A desk told only that a
+     * benefit is spoken for has to go and find out by whom; told which
+     * appointment, it can decide in front of the client whether to move that
+     * one or simply charge for this one.
+     *
+     * @param  Collection<int, MembershipCreditRedemption>  $reservations
+     * @return list<array<string, mixed>>
+     */
+    private static function reservationRows(Collection $reservations): array
+    {
+        return $reservations
+            ->filter(fn (MembershipCreditRedemption $redemption) => $redemption->booking !== null)
+            ->sortBy(fn (MembershipCreditRedemption $redemption) => $redemption->booking->date?->toDateString())
+            ->map(function (MembershipCreditRedemption $redemption) {
+                $booking = $redemption->booking;
+
+                return [
+                    'booking_id' => (int) $booking->id,
+                    'reference' => $booking->reference,
+                    'date' => $booking->date?->translatedFormat('j M Y'),
+                    'at' => TimeFormat::time($booking->starts_at),
+                    'quantity' => max(1, (int) $redemption->quantity),
+                    'url' => route('bookings.show', $booking),
+                    /* Straight to the dialogue the booking's own header
+                       offers, rather than a second cancellation path here:
+                       cancelling asks for a reason and is gated on a
+                       permission, and both of those live there. A reader
+                       without that permission simply lands on the booking. */
+                    'cancel_url' => route('bookings.show', $booking).'?action=cancelled',
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The client walked in, so the benefit is theirs.
+     *
+     * Reserving a credit holds it down; this is what spends it. Called at
+     * check-in, which is the point the business has decided the benefit was
+     * delivered — before that the appointment could still be called off, and
+     * a benefit marked used for a visit that never happened is one the client
+     * would be right to argue about.
+     *
+     * Idempotent: only redemptions not yet consumed are stamped, so a desk
+     * that presses Check In twice does not move the date.
+     */
+    public static function consume(Booking $booking): int
+    {
+        return MembershipCreditRedemption::query()
+            ->reserved()
+            ->where('booking_id', $booking->id)
+            ->update(['consumed_at' => now()]);
     }
 
     /**

@@ -101,6 +101,16 @@ class BookingStatusController extends Controller
 
         ClientActivityLog::bookingCheckedIn($booking, $data['note'] ?? null, $request->user()->id);
 
+        /* The benefit the booking reserved is now the client's. Booking one
+           holds a credit down so it cannot be spent twice; walking in is what
+           spends it — before this moment the appointment could still be
+           called off, and a benefit marked used for a visit that never
+           happened is one the client would be right to argue about.
+
+           Only ever reached by the update that actually claimed the row, and
+           idempotent besides. */
+        MembershipCredits::consume($booking);
+
         return back()->with('toast', [
             'type' => 'success',
             'message' => __('bookings.status.done.check-in'),

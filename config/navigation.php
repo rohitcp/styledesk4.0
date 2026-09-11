@@ -30,7 +30,7 @@ return [
 
     'primary' => [
         ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'grid-2', 'route' => 'dashboard'],
-        ['key' => 'calendar', 'label' => 'Calendar', 'icon' => 'calendar', 'pending' => 'calendar.html'],
+        ['key' => 'calendar', 'label' => 'Calendar', 'icon' => 'calendar', 'route' => 'calendar.index'],
 
         /*
         | Bookings — the diary. Two things anyone opens this menu for: the

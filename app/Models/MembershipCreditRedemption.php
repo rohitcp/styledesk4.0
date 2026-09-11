@@ -33,6 +33,7 @@ class MembershipCreditRedemption extends Model
             'quantity' => 'integer',
             'value_minor' => 'integer',
             'released_at' => 'datetime',
+            'consumed_at' => 'datetime',
         ];
     }
 
@@ -61,9 +62,27 @@ class MembershipCreditRedemption extends Model
         return $this->released_at !== null;
     }
 
+    /**
+     * Has the client actually taken it?
+     *
+     * A redemption is created when the appointment is booked, which holds the
+     * credit down but does not spend it: the massage is still to come. It is
+     * spent when they walk in — see MembershipCredits::consume().
+     */
+    public function isConsumed(): bool
+    {
+        return $this->consumed_at !== null;
+    }
+
     /** The ones still holding a credit down. */
     public function scopeHeld(Builder $query): Builder
     {
         return $query->whereNull('released_at');
+    }
+
+    /** Held against an appointment that has not happened yet. */
+    public function scopeReserved(Builder $query): Builder
+    {
+        return $query->held()->whereNull('consumed_at');
     }
 }

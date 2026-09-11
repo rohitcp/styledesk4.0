@@ -34,6 +34,7 @@ class Booking extends Model
     {
         return [
             'date' => 'date',
+            'client_confirmed_at' => 'datetime',
             'is_walk_in' => 'boolean',
             'confirmed_at' => 'datetime',
             'waived_at' => 'datetime',
@@ -107,6 +108,31 @@ class Booking extends Model
     }
 
     /**
+     * The tip that was agreed and has not been taken yet.
+     *
+     * A tip is not part of `total_minor` — it is not the salon's revenue and
+     * it lands on a payment rather than on the bill. But it was agreed when
+     * the booking was taken, and until somebody collects it there is money
+     * outstanding that the balance alone does not show. On a booking a
+     * membership covers in full that gratuity is the entire amount due, and a
+     * screen reading "Paid in full" over it would strand it.
+     */
+    public function tipDueMinor(): int
+    {
+        $taken = (int) $this->payments
+            ->whereIn('status', ['paid', 'refunded'])
+            ->sum('tip_minor');
+
+        return max(0, (int) $this->tip_minor - $taken);
+    }
+
+    /** The balance and the agreed tip together: what the till should collect. */
+    public function amountDueMinor(): int
+    {
+        return $this->dueMinor() + $this->tipDueMinor();
+    }
+
+    /**
      * Work out where the bill stands and write it down.
      *
      * Stored as well as derived because every listing filters on it, and a
@@ -118,6 +144,13 @@ class Booking extends Model
         $total = (int) $this->total_minor;
 
         $status = match (true) {
+            /* Nothing owed and nothing outstanding. A booking a membership
+               covers in full has a nought bill, so no money will ever be
+               taken against it — but the gratuity agreed with it still can
+               be, and until it is there is something to collect. Judged on
+               what is left rather than on what has been paid, or a bill of
+               nought would read "unpaid" for ever. */
+            $total <= 0 && $this->amountDueMinor() <= 0 => 'paid',
             $paid <= 0 => $this->payments->contains(fn (BookingPayment $payment) => $payment->status === 'pending')
                 ? 'pending'
                 : 'unpaid',
@@ -313,6 +346,24 @@ class Booking extends Model
     public function isSettled(): bool
     {
         return in_array($this->status, ['cancelled', 'declined', 'no-show', 'completed'], true);
+    }
+
+    /**
+     * Whether the client has said yes.
+     *
+     * A different question from `status`, which is what the salon has decided
+     * about the appointment. A booking can be confirmed by the desk and
+     * unanswered by the person coming — which is exactly the list worth
+     * ringing.
+     */
+    public function clientConfirmationLabel(): string
+    {
+        return __('sms.confirmation.'.$this->client_confirmation);
+    }
+
+    public function clientConfirmationClass(): string
+    {
+        return config('sms.confirmation.'.$this->client_confirmation.'.class', 'styledesk_badge--soon');
     }
 
     public function statusLabel(): string

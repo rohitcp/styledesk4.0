@@ -158,6 +158,25 @@ return [
         'used_up' => '额度已用完，可按原价预约。',
         'each' => '每次 :count 个额度',
         'renews' => ':date 更新',
+        'balance_line' => '服务应付余额',
+        'deposit_covered' => '无需订金',
+        'deposit_covered_hint' => '会员权益已覆盖本次预约的全部服务，无需预先收款。小费仍按全额收取。',
+        'expires' => ':date 到期',
+        'membership_id' => '会员编号',
+        'period' => '权益周期',
+        'plan_details' => '方案详情',
+        'col_reserved' => '已预留',
+        'col_status' => '状态',
+        'status_available' => '可用',
+        'status_reserved' => '已预留',
+        'status_used' => '已使用',
+        'reserved_for' => '已预留给 :date 的预约',
+        'reserved_title' => '会员权益已被预留',
+        'reserved_body' => '该会员权益已预留给 :date 的预约。若要在此使用，请先取消或修改那笔预约。',
+        'reserved_view' => '查看 :date 的预约',
+        'reserved_cancel' => '取消 :date 的预约',
+        'reserved_pay' => '按原价支付',
+        'reserved_close' => '关闭',
     ],
 
     'cards' => [
@@ -399,6 +418,8 @@ return [
         'subtotal' => '小计',
         'discount' => '折扣',
         'coupon' => '优惠券',
+        'tip_due' => '约定小费',
+        'amount_due' => '应付金额',
         'tip_paid' => '已付小费',
         'due_now' => '应付余额',
         'additional_tip' => '追加小费',
@@ -763,6 +784,7 @@ return [
         'cvv' => 'CVV',
         'zip' => '账单邮编',
         'card_safe' => '卡片信息直接发给支付服务商。StyleDesk 从不保存它们。',
+        'nothing_to_take' => '请输入金额或小费——金额为零的收款不成立。',
         'no_card_provider' => '没有连接任何刷卡服务商，因此 StyleDesk 无法自己收卡。请用刷卡机收，然后在下面登记。',
         'terminal' => '通过刷卡机收取',
         'not_ready' => '尚未设置。请在商户设置里添加账号。',
@@ -797,6 +819,13 @@ return [
         'partially-refunded' => ['label' => '部分退款'],
     ],
 
+    /* The confirmation as a text message. One segment where it can be:
+       a text is charged by the 160 characters, and a template that
+       quietly became three is a bill nobody agreed to. */
+    'sms' => [
+        'confirmation' => ':business（经 StyleDesk）：:name 您好，您的预约已确认：:date :time，服务人员 :staff。回复 YES 确认，回复 CANCEL 申请变更，回复 STOP 退订。编号 :reference',
+    ],
+
     'confirmation' => [
         'title' => '预约已确认',
         'made' => '这次预约已排进日程表。',
@@ -811,7 +840,8 @@ return [
         'sending' => '正在发送…',
         'sent' => '确认信息已发送至 :to。',
         'no_email' => '这位客户档案里没有电子邮箱。',
-        'no_sms' => '短信功能尚未接入。请改用邮件发送，或先添加一个短信账号。',
+        'no_mobile' => '该预约没有手机号码。请为客户添加，或改用邮件发送。',
+        'no_sms_consent' => '该客户已关闭短信。请改用邮件发送。',
         'link_failed' => '预约已成立，但付款链接没能发出邮件。请改为致电客户。',
         'due_notice' => '应付款项 :amount',
         'amount_due' => '应付金额',

@@ -12,6 +12,8 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingLeadController;
 use App\Http\Controllers\BookingQuoteController;
 use App\Http\Controllers\BookingStatusController;
+use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\ClickSendWebhookController;
 use App\Http\Controllers\ClientBookingPreferenceController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientEmailController;
@@ -56,6 +58,7 @@ use App\Http\Controllers\Settings\ReviewSettingsController;
 use App\Http\Controllers\Settings\RolePermissionController;
 use App\Http\Controllers\Settings\ServiceCategoryController as SettingsServiceCategoryController;
 use App\Http\Controllers\Settings\ShiftRuleController;
+use App\Http\Controllers\Settings\SmsSettingsController;
 use App\Http\Controllers\Settings\StaffController;
 use App\Http\Controllers\Settings\StripeConnectController;
 use App\Http\Controllers\Settings\TipController;
@@ -65,6 +68,7 @@ use App\Http\Controllers\StaffUtilizationController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\TeamInviteSignupController;
+use App\Http\Controllers\TelnyxWebhookController;
 use App\Http\Controllers\VerificationEmailController;
 use App\Http\Controllers\VerifyEmailLinkController;
 use App\Http\Middleware\RequireAccessCode;
@@ -499,6 +503,27 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
             ->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::patch('/', 'update')->name('update');
+            });
+
+        /*
+        | What this business texts its clients, and what it will spend doing
+        | it. Inside the settings group like reviews, and gated a second time
+        | on sms.manage_settings — somebody who may configure the salon is not
+        | automatically somebody who decides what it says to a client's phone.
+        */
+        Route::controller(SmsSettingsController::class)
+            ->prefix('sms')
+            ->name('sms.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::patch('/', 'update')->name('update');
+
+                /* One message, to prove the wiring. Throttled because every
+                   press of it spends money — a stuck finger or a reloaded
+                   form must not become fifty texts. */
+                Route::post('test', 'test')
+                    ->middleware('throttle:5,1')
+                    ->name('test');
             });
 
         /*
@@ -1138,6 +1163,26 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
         });
 
     /*
+    | Calendar — the diary drawn against the clock.
+    |
+    | The bookings listing answers "what has been taken"; this answers the
+    | question asked over the counter. One day at a time and nothing else: a
+    | calendar that loaded a month to draw a day would be slowest on exactly
+    | the businesses that live in it.
+    */
+    Route::controller(CalendarController::class)
+        ->prefix('calendar')
+        ->name('calendar.')
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+
+            /* The day itself. Behind the same permission as the page: an
+               endpoint that hands out a day's appointments is the page,
+               whatever shape it returns them in. */
+            Route::get('data', 'data')->name('data');
+        });
+
+    /*
     | Sales — what was sold, what was collected, what is still owed.
     |
     | One row per payment rather than per booking: a bill settled half in cash
@@ -1766,3 +1811,33 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
 Route::post('webhooks/stripe', StripeWebhookController::class)
     ->withoutMiddleware([PreventRequestForgery::class])
     ->name('webhooks.stripe');
+
+/*
+| ClickSend's, for the same reasons.
+|
+| Delivery receipts and clients' replies. A message is only `delivered`
+| because one of these said so — the send API accepting it is not the carrier
+| having placed it on a phone — and a client's STOP arrives here too.
+|
+| The secret is in the address because ClickSend does not sign its webhooks.
+| Anything without it is answered 404: an endpoint that admits it exists is an
+| endpoint worth guessing at.
+*/
+/*
+| Telnyx's, for the same reasons.
+|
+| Signed rather than secret-in-the-URL: Telnyx signs every webhook with an
+| ed25519 key, which is the stronger of the two arrangements and the reason
+| this route needs no secret in its address.
+*/
+Route::post('webhooks/telnyx/messaging', TelnyxWebhookController::class)
+    ->withoutMiddleware([PreventRequestForgery::class])
+    ->name('webhooks.telnyx.messaging');
+
+Route::post('webhooks/clicksend/{secret}/sms', [ClickSendWebhookController::class, 'inbound'])
+    ->withoutMiddleware([PreventRequestForgery::class])
+    ->name('webhooks.clicksend.inbound');
+
+Route::post('webhooks/clicksend/{secret}/delivery', [ClickSendWebhookController::class, 'delivery'])
+    ->withoutMiddleware([PreventRequestForgery::class])
+    ->name('webhooks.clicksend.delivery');

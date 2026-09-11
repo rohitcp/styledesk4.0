@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendSms;
 use App\Mail\BookingConfirmationMail;
 use App\Models\Booking;
 use App\Models\BookingLead;
@@ -18,6 +19,7 @@ use App\Models\User;
 use App\Support\BookingTotals;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -913,9 +915,10 @@ class BookingTest extends TestCase
             ])->assertCreated()->json('booking.breakdown')
         )->keyBy('key');
 
-        /* Every line is present whether or not it carries a figure. */
+        /* Every line is present whether or not it carries a figure —
+           the membership credit among them, which on most bills is nought. */
         $this->assertSame(
-            ['subtotal', 'discount', 'tax', 'total', 'paid', 'due'],
+            ['subtotal', 'discount', 'membership_credit', 'tax', 'total', 'paid', 'due'],
             $breakdown->keys()->all()
         );
 
@@ -1074,8 +1077,14 @@ class BookingTest extends TestCase
         ])->assertStatus(422);
     }
 
-    /** The client's copy, and the channel that is not connected yet. */
-    public function test_the_confirmation_is_emailed_and_sms_says_why_it_cannot_be(): void
+    /**
+     * The client's copy, by email.
+     *
+     * The text-message half of this used to assert a refusal, because there
+     * was nothing to send one with. There is now — see the three tests above
+     * — so what is left here is the email channel on its own.
+     */
+    public function test_the_confirmation_is_emailed(): void
     {
         Mail::fake();
 
@@ -1088,11 +1097,6 @@ class BookingTest extends TestCase
             ->assertJsonPath('sent_to', 'mia@acme.test');
 
         Mail::assertSent(BookingConfirmationMail::class);
-
-        $this->actingAs($owner)
-            ->postJson(route('bookings.confirmation', $booking), ['channel' => 'sms'])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('channel');
     }
 
     /** The two pages a confirmed booking is read on. */
@@ -1196,6 +1200,82 @@ class BookingTest extends TestCase
         foreach ($rooms->reject(fn (Resource $room) => $room->is($given)) as $other) {
             $this->assertStringNotContainsString($other->name, (string) $row);
         }
+    }
+
+    // ------------------------------------------------ the confirmation text
+
+    /**
+     * The confirmation, by text.
+     *
+     * Queued rather than sent from the request: the desk must not wait on a
+     * carrier's API while somebody is standing at it. What this guards is
+     * that the right message is queued, for the number on file, carrying the
+     * event key that stops a retried job texting the client twice.
+     */
+    public function test_a_confirmation_is_queued_as_a_text(): void
+    {
+        Queue::fake();
+
+        $owner = $this->owner();
+        $booking = $this->takenBooking($owner);
+
+        $this->actingAs($owner)
+            ->postJson(route('bookings.confirmation', $booking), ['channel' => 'sms'])
+            ->assertOk()
+            ->assertJsonPath('sent_to', '+1 305 555 0100');
+
+        Queue::assertPushed(SendSms::class, function (SendSms $job) use ($booking) {
+            $sent = (fn () => [$this->to, $this->body, $this->type, $this->attributes])
+                ->call($job);
+
+            $this->assertSame('+1 305 555 0100', $sent[0]);
+            $this->assertStringContainsString($booking->reference, $sent[1]);
+            $this->assertSame('booking_confirmation', $sent[2]);
+            $this->assertSame('booking:'.$booking->id.':confirmation:1', $sent[3]['event_key']);
+
+            return true;
+        });
+    }
+
+    /**
+     * No number is a refusal, not a shrug.
+     *
+     * A button that reports success over a message nobody sent has the desk
+     * telling a client to expect something that never arrives.
+     */
+    public function test_a_text_confirmation_needs_a_number(): void
+    {
+        Queue::fake();
+
+        $owner = $this->owner();
+        $booking = $this->takenBooking($owner);
+
+        $booking->client->forceFill(['mobile' => null])->save();
+
+        $this->actingAs($owner)
+            ->postJson(route('bookings.confirmation', $booking), ['channel' => 'sms'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('channel');
+
+        Queue::assertNotPushed(SendSms::class);
+    }
+
+    /** A client who turned texts off has turned them off. */
+    public function test_a_client_who_declined_texts_is_not_sent_one(): void
+    {
+        Queue::fake();
+
+        $owner = $this->owner();
+        $booking = $this->takenBooking($owner);
+
+        $booking->client->forceFill(['comm_sms' => false])->save();
+
+        $this->actingAs($owner)
+            ->postJson(route('bookings.confirmation', $booking), ['channel' => 'sms'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('channel');
+
+        Queue::assertNotPushed(SendSms::class);
     }
 
     private function takenBooking(User $owner): Booking

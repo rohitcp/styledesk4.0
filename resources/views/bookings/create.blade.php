@@ -103,6 +103,9 @@
             /* Whoever this booking is being taken for, where the screen was
                opened from their profile. */
             'client' => $client,
+            /* Where the calendar was clicked: the branch, the day and the
+               hour a slot already decided. Null on an ordinary new booking. */
+            'opening' => $opening,
             'walkIn' => $walkIn,
             /* What this screen may be used to sell, and whether each type
                can actually be chosen yet. Worked out on the server because

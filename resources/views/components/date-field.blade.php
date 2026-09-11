@@ -44,55 +44,20 @@
     /** The ISO value, whatever it arrived as: old input, a Carbon date, a string. */
     $dateValue = $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : (string) ($value ?? '');
 
-    $dateOptions = array_filter([
+    /* What the picker needs to be told, built once for every screen that
+       shows one — see App\Support\DatePickerOptions. */
+    $dateOptions = \App\Support\DatePickerOptions::build([
         'min' => $min,
         'max' => $max,
-        'minYear' => $minYear === null ? null : (int) $minYear,
-        'maxYear' => $maxYear === null ? null : (int) $maxYear,
+        'minYear' => $minYear,
+        'maxYear' => $maxYear,
         'openTo' => $openTo,
-        'dialogLabel' => $dialogLabel ?? __('common.choose_a_date'),
         'clearable' => $clearable,
-    ], fn ($option) => $option !== null);
+        'dialogLabel' => $dialogLabel,
+    ]);
 
-    /**
-     * false has to survive array_filter, which drops it along with null.
-     * Set afterwards so `clearable="false"` actually reaches the picker
-     * rather than silently leaving the Clear button in place.
-     */
-    $dateOptions['clearable'] = (bool) $clearable;
+    $datePlaceholder = \App\Support\DatePickerOptions::placeholder($dateOptions);
 
-    /**
-     * Month and weekday names in the reader's language, from Carbon rather
-     * than a translation file — it already carries them for every locale the
-     * app offers, and a second hand-written list is a second thing to drift.
-     */
-    $dateLocale = app()->getLocale();
-
-    $dateOptions['labels'] = [
-        'months' => collect(range(1, 12))
-            ->map(fn (int $month) => \Illuminate\Support\Str::ucfirst(
-                \Carbon\Carbon::create(2000, $month, 1)->locale($dateLocale)->isoFormat('MMMM')
-            ))->all(),
-        // Sunday first, matching the grid the picker draws.
-        'dow' => collect(range(0, 6))
-            ->map(fn (int $day) => \Illuminate\Support\Str::ucfirst(
-                \Carbon\Carbon::create(2024, 1, 7)->addDays($day)->locale($dateLocale)->isoFormat('dd')
-            ))->all(),
-        'clear' => __('common.clear'),
-        'today' => __('common.today'),
-        'month' => __('common.month'),
-        'year' => __('common.year'),
-        'previousMonth' => __('common.previous_month'),
-        'nextMonth' => __('common.next_month'),
-    ];
-
-    /**
-     * Day-first everywhere except the United States, which is the one place
-     * 03/04 means March. Read off the locale rather than asked for at each
-     * call site, so no screen has to decide.
-     */
-    $dateOptions['order'] = str_starts_with($dateLocale, 'en') && ! str_contains($dateLocale, 'GB') ? 'mdy' : 'dmy';
-    $datePlaceholder = $dateOptions['order'] === 'mdy' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
 @endphp
 
 <div {{ $attributes }}>

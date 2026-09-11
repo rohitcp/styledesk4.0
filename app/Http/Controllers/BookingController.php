@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendSms;
 use App\Mail\BookingConfirmationMail;
 use App\Mail\BookingPaymentLinkMail;
+use App\Messaging\SmsConsent;
+use App\Messaging\SmsTemplates;
 use App\Models\Booking;
 use App\Models\BookingLead;
 use App\Models\BookingPaymentLink;
@@ -289,6 +292,14 @@ class BookingController extends Controller
                 'client_note' => $lead->client_note,
                 'current_step' => $lead->current_step,
             ],
+            /* Where the calendar was clicked.
+             *
+             * A slot on the day view already decides three of the answers —
+             * the branch, the day and the hour — and the desk should not have
+             * to give them again because they arrived from a different
+             * screen. Kept apart from `lead`: this is a way in, not a call
+             * somebody is picking back up, and nothing has been saved. */
+            'opening' => $this->opening($request),
             'walkIn' => $request->boolean('walk-in'),
             /* What this screen can be used to sell.
              *
@@ -1171,8 +1182,17 @@ class BookingController extends Controller
         $totals = BookingTotals::of($prices, $currency, $discountMinor + $creditMinor);
 
         /* What was agreed as a tip. Not money yet — that lands on a payment
-           — but the answer the till should open with. */
-        [$tipPercent, $tipMinor] = $this->tipFor($data, $totals->totalMinor);
+           — but the answer the till should open with.
+         *
+         * Worked out on the bill before the credits rather than after it. A
+         * credit is the client spending something they already bought, not
+         * the work costing less: the therapist gave the same massage whether
+         * it was paid for in March or at the desk today, and coverage that
+         * quietly took the gratuity with it would be the membership tipping
+         * on the client's behalf. A coupon is different and does reduce it —
+         * that really is the work costing less. */
+        $tipBase = BookingTotals::of($prices, $currency, $discountMinor);
+        [$tipPercent, $tipMinor] = $this->tipFor($data, $tipBase->totalMinor);
 
         /* A deposit larger than the bill is money the desk would have to give
            back before the appointment has even been worked. Refused here as
@@ -1196,8 +1216,12 @@ class BookingController extends Controller
            browser is where it is convenient and the server is where it has
            to be true. Paying the whole bill satisfies it; paying nothing
            does not. */
+        /* Only the lines being charged for. A service a membership has
+           already paid for cannot also be asked for money up front — there is
+           nothing left of it to secure, and demanding a deposit against it
+           would be charging for the same massage twice. */
         $requiredDepositMinor = min(
-            (int) $services->sum(fn (Service $service) => $service->requiredDepositMinorFor($currency, $pricedFor)),
+            (int) $payableServices->sum(fn (Service $service) => $service->requiredDepositMinorFor($currency, $pricedFor)),
             $totals->totalMinor,
         );
 
@@ -1949,7 +1973,12 @@ class BookingController extends Controller
 
         $data = $request->validate([
             'method' => ['required', Rule::in(array_keys(config('bookings.methods')))],
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            /* Nought is allowed, but only alongside a tip. A booking a
+               membership covers in full owes nothing for the work and may
+               still owe the gratuity agreed when it was taken, and a floor of
+               a penny would leave that money with no way to reach the till.
+               A payment of nothing at all is still refused below. */
+            'amount' => ['required', 'numeric', 'min:0'],
             'received' => ['nullable', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:120'],
             'note' => ['nullable', 'string', 'max:255'],
@@ -1974,6 +2003,15 @@ class BookingController extends Controller
         $amount = (int) round(((float) $data['amount']) * 100);
         $received = isset($data['received']) ? (int) round(((float) $data['received']) * 100) : null;
         $tip = isset($data['tip']) ? (int) round(((float) $data['tip']) * 100) : 0;
+
+        /* Nothing moved. A row saying no money changed hands is not a
+           payment, and a till that accepted one would put it in the
+           transaction list for somebody to reconcile against nothing. */
+        if ($amount <= 0 && $tip <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => __('bookings.pay.nothing_to_take'),
+            ]);
+        }
 
         $tipPanel = Tips::panel($booking, TipSettings::forTenant($booking->tenant));
 
@@ -2058,9 +2096,9 @@ class BookingController extends Controller
     /**
      * Send the client their confirmation.
      *
-     * Email only for now: text messages need a sending account this business
-     * has not connected, and a button that silently does nothing is worse
-     * than one that says why it cannot.
+     * Two channels, one act. Which one is a question about the client — what
+     * they gave us and what they agreed to hear from us on — rather than
+     * about the button that was pressed.
      */
     public function sendConfirmation(Request $request, Booking $booking): JsonResponse
     {
@@ -2071,9 +2109,7 @@ class BookingController extends Controller
         ]);
 
         if ($data['channel'] === 'sms') {
-            throw ValidationException::withMessages([
-                'channel' => __('bookings.confirmation.no_sms'),
-            ]);
+            return $this->textConfirmation($booking);
         }
 
         $to = $booking->client?->email ?: $booking->guest_email;
@@ -2091,6 +2127,68 @@ class BookingController extends Controller
             $booking->load(['client', 'staff', 'location', 'services', 'payments']),
             tenant()?->name ?? config('app.name'),
         ));
+
+        return response()->json(['sent_to' => $to]);
+    }
+
+    /**
+     * The same confirmation, by text.
+     *
+     * Refused rather than dropped where there is no number or no consent: a
+     * button that reports success over a message nobody sent is the one that
+     * has the desk telling a client to expect something that never arrives.
+     *
+     * Where it goes is the environment's business, not this method's — in
+     * development the SMS catcher takes it and shows it at /dev/sms; see
+     * App\Notifications\Channels\SmsChannel.
+     */
+    private function textConfirmation(Booking $booking): JsonResponse
+    {
+        $to = $booking->client?->mobile ?: $booking->guest_phone;
+
+        if (! $to) {
+            throw ValidationException::withMessages([
+                'channel' => __('bookings.confirmation.no_mobile'),
+            ]);
+        }
+
+        /* What they agreed to. Checked here so the desk is told why nothing
+           will be sent — the messaging service refuses it again on the way
+           out, which is what protects the messages nobody presses a button
+           for. */
+        if (! SmsConsent::allows($booking->client, 'booking_confirmation')) {
+            throw ValidationException::withMessages([
+                'channel' => __('bookings.confirmation.no_sms_consent'),
+            ]);
+        }
+
+        $booking->load(['client', 'staff', 'location', 'services']);
+
+        /* Queued, not sent from here: the desk must not wait on a carrier's
+           API, and a message that fails deserves another attempt rather than
+           a red box on the confirmation screen.
+
+           The event key is what stops a retried job — or two people pressing
+           the button — texting the client twice. */
+        SendSms::dispatch(
+            (string) $booking->tenant_id,
+            $to,
+            SmsTemplates::render('booking_confirmation', $booking),
+            'booking_confirmation',
+            [
+                'client_id' => $booking->client_id,
+                'booking_id' => $booking->id,
+                'event_key' => 'booking:'.$booking->id.':confirmation:1',
+            ],
+        );
+
+        /* Now waiting on the client. This is what a reply is matched
+           against — a booking that asked a question outranks one that did
+           not — and it is the list a receptionist rings when nobody has
+           answered by the morning. */
+        if ($booking->client_confirmation === 'not_requested') {
+            $booking->forceFill(['client_confirmation' => 'pending'])->save();
+        }
 
         return response()->json(['sent_to' => $to]);
     }
@@ -2142,6 +2240,12 @@ class BookingController extends Controller
             'due' => $totals->money($booking->dueMinor()),
             'due_minor' => $booking->dueMinor(),
             'due_amount' => number_format($booking->dueMinor() / 100, 2, '.', ''),
+            /* The gratuity agreed when the booking was taken and not yet
+               taken at the till. On a booking a membership covers in full it
+               is the whole amount due, and without it the card would read
+               "Paid in full" over money nobody has collected. */
+            'tip_due_minor' => $booking->tipDueMinor(),
+            'amount_due_minor' => $booking->amountDueMinor(),
             /* What may be tipped on, and what to offer. Absent where the
                business does not take tips or where nothing on the bill is
                tipped — a section that appears empty is worse than one that
@@ -2918,6 +3022,30 @@ class BookingController extends Controller
             'allow_start_date' => (bool) $settings->allow_start_date_selection,
             'default_activation' => $settings->default_activation,
         ];
+    }
+
+    /**
+     * What a click on the calendar already answered.
+     *
+     * Read defensively — these arrive in a query string a person can edit —
+     * and anything unreadable is simply left for the desk to fill in, which
+     * is the state the screen opens in anyway.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function opening(Request $request): ?array
+    {
+        $date = (string) $request->query('date', '');
+        $startsAt = (string) $request->query('starts_at', '');
+
+        $opening = array_filter([
+            'date' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1 ? $date : null,
+            'starts_at' => preg_match('/^\d{2}:\d{2}$/', $startsAt) === 1 ? $startsAt : null,
+            'staff_id' => $request->integer('staff_id') ?: null,
+            'location_id' => $request->integer('location_id') ?: null,
+        ]);
+
+        return $opening === [] ? null : $opening;
     }
 
     private function allow(Request $request, string $permission): void

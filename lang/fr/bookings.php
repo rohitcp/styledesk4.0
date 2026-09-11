@@ -162,6 +162,25 @@ return [
         'used_up' => 'Quota épuisé. Réservable au tarif normal.',
         'each' => ':count crédits chacun',
         'renews' => 'Renouvellement le :date',
+        'balance_line' => 'Solde de la prestation',
+        'deposit_covered' => 'Aucun acompte nécessaire',
+        'deposit_covered_hint' => 'L’abonnement couvre toutes les prestations de cette réservation : il n’y a rien à encaisser d’avance. Le pourboire reste encaissé en totalité.',
+        'expires' => 'Expire le :date',
+        'membership_id' => 'ID d’abonnement',
+        'period' => 'Période d’avantages',
+        'plan_details' => 'Détails de la formule',
+        'col_reserved' => 'Réservé',
+        'col_status' => 'Statut',
+        'status_available' => 'Disponible',
+        'status_reserved' => 'Réservé',
+        'status_used' => 'Utilisé',
+        'reserved_for' => 'Réservé pour le :date',
+        'reserved_title' => 'Avantage d’abonnement déjà réservé',
+        'reserved_body' => 'Cet avantage d’abonnement est réservé pour le rendez-vous du :date. Pour l’utiliser ici, annulez ou modifiez d’abord cette réservation.',
+        'reserved_view' => 'Voir la réservation du :date',
+        'reserved_cancel' => 'Annuler la réservation du :date',
+        'reserved_pay' => 'Payer normalement',
+        'reserved_close' => 'Fermer',
     ],
 
     'cards' => [
@@ -407,6 +426,8 @@ return [
         'subtotal' => 'Sous-total',
         'discount' => 'Remise',
         'coupon' => 'Bon de réduction',
+        'tip_due' => 'Pourboire convenu',
+        'amount_due' => 'Montant dû',
         'tip_paid' => 'Pourboire déjà versé',
         'due_now' => 'Solde dû',
         'additional_tip' => 'Pourboire supplémentaire',
@@ -783,6 +804,7 @@ return [
         'cvv' => 'CVV',
         'zip' => 'Code postal de facturation',
         'card_safe' => 'Les données de carte vont directement au prestataire de paiement. StyleDesk ne les conserve jamais.',
+        'nothing_to_take' => 'Saisissez un montant ou un pourboire : un paiement de rien n’est pas un paiement.',
         'no_card_provider' => 'Aucun prestataire de carte n’est connecté, StyleDesk ne peut donc pas encaisser la carte lui-même. Prenez-la sur le terminal et enregistrez-la ci-dessous.',
         'terminal' => 'Pris sur le terminal',
         'not_ready' => 'Pas encore configuré. Ajoutez le compte dans les réglages de l’établissement.',
@@ -817,6 +839,13 @@ return [
         'partially-refunded' => ['label' => 'Partiellement remboursée'],
     ],
 
+    /* The confirmation as a text message. One segment where it can be:
+       a text is charged by the 160 characters, and a template that
+       quietly became three is a bill nobody agreed to. */
+    'sms' => [
+        'confirmation' => ':business via StyleDesk : Bonjour :name, votre rendez-vous est confirmé le :date à :time avec :staff. Répondez YES pour confirmer, CANCEL pour demander un changement, STOP pour vous désinscrire. Réf :reference',
+    ],
+
     'confirmation' => [
         'title' => 'Réservation confirmée',
         'made' => 'Le rendez-vous est dans l’agenda.',
@@ -831,7 +860,8 @@ return [
         'sending' => 'Envoi…',
         'sent' => 'Confirmation envoyée à :to.',
         'no_email' => 'Ce client n’a pas d’adresse e-mail au dossier.',
-        'no_sms' => 'Les SMS ne sont pas encore connectés. Envoyez par e-mail, ou ajoutez d’abord un compte SMS.',
+        'no_mobile' => 'Cette réservation n’a pas de numéro de mobile. Ajoutez-en un au client, ou envoyez par e-mail.',
+        'no_sms_consent' => 'Ce client a désactivé les SMS. Envoyez-le par e-mail à la place.',
         'link_failed' => 'La réservation est prise, mais le lien de paiement n’a pas pu être envoyé par e-mail. Appelez plutôt le client.',
         'due_notice' => 'Paiement dû :amount',
         'amount_due' => 'Montant dû',

@@ -47,6 +47,8 @@ const props = defineProps({
     leadsUrl: { type: String, default: '' },
     /** The lead this screen was opened from, when it was opened from one. */
     lead: { type: Object, default: null },
+    /** Where the calendar was clicked: branch, day and hour, already decided. */
+    opening: { type: Object, default: null },
     /** The client it is being taken for, where the screen knows already. */
     client: { type: Object, default: null },
     /** Walk-in mode, when the screen was opened from the walk-in entry. */
@@ -1604,6 +1606,66 @@ async function loadMemberBenefits() {
 
 watch(() => client.value?.id, loadMemberBenefits, { immediate: true });
 
+/** Available, reserved or used, in the reader's words. */
+function benefitStatusLabel(line) {
+    return props.labels.credits?.['status_' + (line.status ?? 'available')] ?? '';
+}
+
+function benefitStatusClass(line) {
+    if (line.status === 'reserved') {
+        return 'styledesk_badge--info';
+    }
+
+    return line.status === 'used' ? 'styledesk_badge--soon' : 'styledesk_badge--active';
+}
+
+/* ------------------------------------------ a benefit spoken for elsewhere
+
+   A benefit with nothing left and one reserved against a future appointment
+   is not the same as one the client has had, and the difference is the whole
+   conversation at the desk: the first can be got back by moving that
+   appointment, the second cannot. Said once, when the service lands on the
+   booking, rather than as a permanent notice — the desk is allowed to decide
+   to charge for it and get on. */
+const reservedNotice = ref(null);
+const reservedSeen = ref([]);
+
+/** The first appointment holding the benefit, which is the one to name. */
+const reservedBooking = computed(() => reservedNotice.value?.reservations?.[0] ?? null);
+
+function reservedText(key) {
+    return (props.labels.credits?.[key] ?? '').replace(':date', reservedBooking.value?.date ?? '');
+}
+
+function closeReservedNotice() {
+    reservedNotice.value = null;
+}
+
+/* Watched rather than raised from the picker: a service can arrive on the
+   booking from the sheet, from "book the same again" or from a draft being
+   reopened, and the answer is the same however it got here. */
+watch([chosen, benefitByService], () => {
+    if (reservedNotice.value) {
+        return;
+    }
+
+    const hit = chosen.value.find((service) => {
+        const benefit = benefitByService.value[service.id];
+
+        return benefit
+            && benefit.status === 'reserved'
+            && benefit.reservations?.length
+            && ! reservedSeen.value.includes(service.id);
+    });
+
+    if (! hit) {
+        return;
+    }
+
+    reservedSeen.value = [...reservedSeen.value, hit.id];
+    reservedNotice.value = { ...benefitByService.value[hit.id], service_name: hit.name };
+});
+
 /* The services this client is known to want, said by somebody at the desk.
    Shown first in the selector, because a repeat booking is the commonest
    thing a desk does and searching a hundred services for the same balayage
@@ -1992,12 +2054,47 @@ function resumeLead(from) {
 onMounted(() => document.addEventListener('click', closePicker));
 onBeforeUnmount(() => document.removeEventListener('click', closePicker));
 
+/**
+ * Open on what a click already answered.
+ *
+ * Three of the questions this screen asks were settled by clicking a slot on
+ * the calendar — the branch, the day and the hour — and asking them again is
+ * the work the click was meant to save. Only the answers, though: no card is
+ * ticked off, because nobody has chosen a client or a service yet and a
+ * half-ticked screen would hide the first question still open.
+ */
+function openFromCalendar(from) {
+    if (from.location_id) {
+        locationId.value = from.location_id;
+    }
+
+    if (from.date) {
+        date.value = from.date;
+        dateMode.value = from.date === props.today ? 'today' : 'custom';
+    }
+
+    if (from.staff_id) {
+        staffId.value = from.staff_id;
+    }
+
+    if (from.starts_at) {
+        start.value = from.starts_at;
+    }
+}
+
 if (props.lead) {
     resumeLead(props.lead);
 } else if (props.client) {
     /* Opened from somebody's profile: they are already chosen, and their
        history is already on its way. */
     chooseClient(props.client);
+}
+
+/* After the lead, never instead of it: a lead carries a time somebody agreed
+   on the phone, and a slot clicked on the way back to it must not overwrite
+   that. Applied on an ordinary new booking, which is where it comes from. */
+if (props.opening && ! props.lead) {
+    openFromCalendar(props.opening);
 }
 
 const endsAt = computed(() => {
@@ -2531,10 +2628,37 @@ const depositTooMuch = computed(() => payType.value === 'deposit'
    three services where two take a deposit owes both — and worked out from the
    rule rather than from a figure copied at the moment of choosing, so removing
    a service or switching to the cash price moves it on its own. */
-const depositRules = computed(() => chosen.value.map((service) => service.deposit).filter(Boolean));
+/*
+ * The lines a deposit could be asked against.
+ *
+ * A membership has already paid for the ones it covers, so there is nothing
+ * left of them to secure — asking for money up front against a covered
+ * massage would be charging for it twice. Counted line by line, because two
+ * of one service with one credit left has one covered line and one that is
+ * not.
+ */
+const payableServices = computed(() => {
+    const cover = {};
+
+    creditsApplied.value.forEach((serviceId) => {
+        cover[serviceId] = (cover[serviceId] ?? 0) + 1;
+    });
+
+    return chosen.value.filter((service) => {
+        if ((cover[service.id] ?? 0) < 1) {
+            return true;
+        }
+
+        cover[service.id]--;
+
+        return false;
+    });
+});
+
+const depositRules = computed(() => payableServices.value.map((service) => service.deposit).filter(Boolean));
 
 const requiredDepositMinor = computed(() => Math.min(
-    chosen.value.reduce((sum, service) => {
+    payableServices.value.reduce((sum, service) => {
         const rule = service.deposit;
 
         if (!rule) {
@@ -2545,10 +2669,22 @@ const requiredDepositMinor = computed(() => Math.min(
             ? Math.round(serviceMinor(service) * rule.percent / 100)
             : rule.minor);
     }, 0),
-    payableMinor.value,
+    /* Never more than the service charge that is actually left. The tip is
+       not part of what a deposit secures — see depositBaseMinor. */
+    depositBaseMinor.value,
 ));
 
 const depositIsRequired = computed(() => requiredDepositMinor.value > 0);
+
+/*
+ * Nothing left to take up front.
+ *
+ * A booking whose every service the membership covers has no balance to
+ * secure, so "Take a deposit" is an act with no amount behind it. The option
+ * is refused rather than left to produce a nought — a control that accepts a
+ * figure it cannot collect is one the desk finds out about at the till.
+ */
+const depositUnavailable = computed(() => chosen.value.length > 0 && depositBaseMinor.value <= 0);
 
 /*
  * The percentage to say it in, where there is one to say.
@@ -2560,7 +2696,7 @@ const depositIsRequired = computed(() => requiredDepositMinor.value > 0);
 const requiredDepositPercent = computed(() => {
     const rules = depositRules.value;
 
-    if (!rules.length || rules.length !== chosen.value.length) {
+    if (!rules.length || rules.length !== payableServices.value.length) {
         return null;
     }
 
@@ -2615,8 +2751,24 @@ function choosePayType(option) {
         return;
     }
 
+    if (option === 'deposit' && depositUnavailable.value) {
+        return;
+    }
+
     payType.value = option;
 }
+
+/* A booking that becomes fully covered while "Take a deposit" is chosen has
+   to let go of it, or the screen sits on an option it will not accept. Paying
+   in full is the honest replacement: the tip is what is left, and it is due
+   the same as any other bill. */
+watch(depositUnavailable, (unavailable) => {
+    if (unavailable && payType.value === 'deposit') {
+        payType.value = 'full';
+        depositPercent.value = null;
+        deposit.value = '';
+    }
+});
 
 function setDepositPercent(percent) {
     depositPercent.value = percent;
@@ -3337,52 +3489,119 @@ const summaryOf = (section) => {
                                  normal price, and hiding it would make the
                                  desk go looking. -->
                             <div v-if="sheetCategory === 'membership' && !serviceQuery.trim()"
-                                 class="shrink-0 border-b border-line bg-brand/[0.03] px-3 py-3 space-y-3 max-h-[40%] overflow-y-auto styledesk_scroll">
-                                <div v-for="membership in memberBenefits" :key="membership.id">
-                                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                                        <p class="text-[13px] font-semibold text-head">{{ membership.name }}</p>
-                                        <span class="styledesk_badge" :class="membership.status_class">{{ membership.status_label }}</span>
-                                        <span class="text-[11.5px] text-sub">{{ membership.type_label }}</span>
+                                 class="shrink-0 border-b border-line bg-hover/60 px-3 py-3 space-y-3 max-h-[46%] overflow-y-auto styledesk_scroll">
+                                <div v-for="membership in memberBenefits" :key="membership.id"
+                                     class="rounded-xl border border-line bg-white overflow-hidden">
+                                    <!-- Which membership, and how much life is
+                                         left in it. The identifying facts sit
+                                         together at the top: a client holding
+                                         two of the same plan cannot be told
+                                         apart by its name, and "1 left" means
+                                         nothing without knowing until when. -->
+                                    <div class="flex items-start justify-between gap-3 px-3 py-2.5 border-b border-line">
+                                        <div class="min-w-0">
+                                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                <p class="text-[13.5px] font-semibold text-head truncate">{{ membership.name }}</p>
+                                                <span class="styledesk_badge" :class="membership.status_class">{{ membership.status_label }}</span>
+                                            </div>
+
+                                            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11.5px] text-sub">
+                                                <span>{{ membership.type_label }}</span>
+
+                                                <span v-if="membership.reference" class="text-faint">·</span>
+                                                <span v-if="membership.reference">
+                                                    {{ labels.credits?.membership_id }}:
+                                                    <span class="tabular-nums text-ink">{{ membership.reference }}</span>
+                                                </span>
+
+                                                <span v-if="membership.cycle" class="text-faint">·</span>
+                                                <span v-if="membership.cycle">
+                                                    {{ labels.credits?.period }}:
+                                                    <span class="text-ink">{{ membership.cycle }}</span>
+                                                </span>
+
+                                                <span v-if="membership.renews_on" class="text-faint">·</span>
+                                                <span v-if="membership.renews_on">
+                                                    {{ (labels.credits?.renews ?? '').replace(':date', membership.renews_on) }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- A new tab, not this one: a desk
+                                             checking what a plan includes has
+                                             a half-taken booking behind it. -->
+                                        <a v-if="membership.plan_url" :href="membership.plan_url" target="_blank" rel="noopener"
+                                           class="shrink-0 text-[11.5px] font-semibold text-link whitespace-nowrap">
+                                            {{ labels.credits?.plan_details }} ›
+                                        </a>
                                     </div>
 
-                                    <!-- The cycle this allowance belongs to.
-                                         "1 left" means nothing without
-                                         knowing until when. -->
-                                    <p v-if="membership.cycle || membership.renews_on" class="text-[11.5px] text-sub mt-0.5">
-                                        <span v-if="membership.cycle">{{ membership.cycle }}</span>
-                                        <span v-if="membership.cycle && membership.renews_on"> · </span>
-                                        <span v-if="membership.renews_on">
-                                            {{ (labels.credits?.renews ?? '').replace(':date', membership.renews_on) }}
-                                        </span>
-                                    </p>
-
-                                    <table class="w-full mt-2 text-[12px]">
-                                        <thead>
-                                            <tr class="text-left text-faint">
-                                                <th class="font-medium pb-1">{{ labels.credits?.col_service }}</th>
-                                                <th class="font-medium pb-1 text-right w-[72px]">{{ labels.credits?.col_included }}</th>
-                                                <th class="font-medium pb-1 text-right w-[60px]">{{ labels.credits?.col_used }}</th>
-                                                <th class="font-medium pb-1 text-right w-[80px]">{{ labels.credits?.col_remaining }}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr v-for="line in membership.services" :key="`${membership.id}-${line.service_id}`"
-                                                :class="line.available ? 'text-ink' : 'text-faint'">
-                                                <td class="py-0.5 pr-2 truncate">
+                                    <!-- One card per benefit rather than a row
+                                         in a table. What a receptionist needs
+                                         from this is one service at a time —
+                                         is there one left, and if not why —
+                                         and four numbers read across a narrow
+                                         table answer that slowly. -->
+                                    <div class="grid gap-2 p-2.5 sm:grid-cols-2 xl:grid-cols-3">
+                                        <div v-for="line in membership.services" :key="`${membership.id}-${line.service_id}`"
+                                             class="rounded-lg border p-2.5 flex flex-col"
+                                             :class="line.available ? 'border-brand/30 bg-brand/[0.04]' : 'border-line bg-hover/50'">
+                                            <div class="flex items-start justify-between gap-2">
+                                                <p class="text-[12.5px] font-semibold leading-snug"
+                                                   :class="line.available ? 'text-head' : 'text-sub'">
                                                     {{ line.name }}
-                                                    <span v-if="line.cost > 1" class="text-faint">
-                                                        · {{ (labels.credits?.each ?? '').replace(':count', line.cost) }}
-                                                    </span>
-                                                </td>
-                                                <td class="py-0.5 text-right tabular-nums">{{ line.included }}</td>
-                                                <td class="py-0.5 text-right tabular-nums">{{ line.used }}</td>
-                                                <td class="py-0.5 text-right tabular-nums font-semibold"
-                                                    :class="line.available ? 'text-brand' : 'text-faint'">
-                                                    {{ line.remaining }}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                                </p>
+
+                                                <span class="styledesk_badge shrink-0" :class="benefitStatusClass(line)">
+                                                    {{ benefitStatusLabel(line) }}
+                                                </span>
+                                            </div>
+
+                                            <p v-if="line.cost > 1" class="text-[11px] text-faint mt-0.5">
+                                                {{ (labels.credits?.each ?? '').replace(':count', line.cost) }}
+                                            </p>
+
+                                            <!-- Included = available +
+                                                 reserved + used, which is why
+                                                 all four are shown and not
+                                                 only the one that is left. -->
+                                            <dl class="grid grid-cols-4 gap-1 mt-auto pt-2 text-center">
+                                                <div>
+                                                    <dt class="text-[10px] uppercase tracking-wide text-faint">{{ labels.credits?.col_included }}</dt>
+                                                    <dd class="text-[13px] font-semibold text-ink tabular-nums">{{ line.included }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-[10px] uppercase tracking-wide text-faint">{{ labels.credits?.col_reserved }}</dt>
+                                                    <dd class="text-[13px] font-semibold tabular-nums"
+                                                        :class="line.reserved > 0 ? 'text-ink' : 'text-faint'">{{ line.reserved }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-[10px] uppercase tracking-wide text-faint">{{ labels.credits?.col_used }}</dt>
+                                                    <dd class="text-[13px] font-semibold tabular-nums"
+                                                        :class="line.used > 0 ? 'text-ink' : 'text-faint'">{{ line.used }}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt class="text-[10px] uppercase tracking-wide text-faint">{{ labels.credits?.col_remaining }}</dt>
+                                                    <dd class="text-[13px] font-bold tabular-nums"
+                                                        :class="line.available ? 'text-brand' : 'text-faint'">{{ line.remaining }}</dd>
+                                                </div>
+                                            </dl>
+
+                                            <!-- Why it cannot be spent today.
+                                                 A benefit spoken for by
+                                                 Thursday and one the client
+                                                 has had read alike without
+                                                 this. -->
+                                            <p v-if="line.status === 'reserved' && line.reservations?.length"
+                                               class="text-[11px] text-sub mt-2 pt-2 border-t border-line">
+                                                {{ (labels.credits?.reserved_for ?? '').replace(':date', line.reservations[0].date) }}
+                                            </p>
+
+                                            <p v-else-if="line.expires_on" class="text-[11px] text-faint mt-2 pt-2 border-t border-line">
+                                                {{ (labels.credits?.expires ?? '').replace(':date', line.expires_on) }}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -3434,6 +3653,11 @@ const summaryOf = (section) => {
                                                         .replace(':name', benefitByService[service.id].membership_name)
                                                         .replace(':count', benefitByService[service.id].remaining) }}
                                                 </template>
+                                                <template v-else-if="benefitByService[service.id].status === 'reserved'">
+                                                    {{ (labels.credits?.reserved_for ?? '')
+                                                        .replace(':date', benefitByService[service.id].reservations?.[0]?.date ?? '') }}
+                                                </template>
+
                                                 <template v-else>
                                                     {{ labels.credits?.used_up }}
                                                 </template>
@@ -4746,6 +4970,17 @@ const summaryOf = (section) => {
                         <p class="text-[12px] text-sub mt-0.5">{{ labels.payment?.deposit_required_hint }}</p>
                     </div>
 
+                    <!-- Said before the options, for the same reason the
+                         deposit notice above is: the reader is about to find
+                         "Take a deposit" greyed out, and a control that
+                         refuses without saying why is the one people ring
+                         support about. -->
+                    <div v-else-if="depositUnavailable"
+                         class="mt-[5px] rounded-lg border border-line bg-hover/60 px-4 py-3">
+                        <p class="text-[13px] font-semibold text-head">{{ labels.credits?.deposit_covered }}</p>
+                        <p class="text-[12px] text-sub mt-0.5">{{ labels.credits?.deposit_covered_hint }}</p>
+                    </div>
+
                     <fieldset class="mt-[5px]">
                         <legend class="block text-[13px] font-medium text-ink mb-2">{{ labels.payment?.type }}</legend>
                         <!-- Three answers, because they are three different
@@ -4755,7 +4990,7 @@ const summaryOf = (section) => {
                             <button v-for="option in ['none', 'deposit', 'full']" :key="option"
                                     type="button" class="styledesk_optioncard" :class="{ 'is-on': payType === option }"
                                     :aria-pressed="payType === option"
-                                    :disabled="option === 'none' && depositIsRequired"
+                                    :disabled="(option === 'none' && depositIsRequired) || (option === 'deposit' && depositUnavailable)"
                                     @click="choosePayType(option)">
                                 <span class="block text-[13px] font-semibold text-head">{{ labels.payment?.[option] }}</span>
                                 <span class="block text-[12px] text-sub">{{ labels.payment?.[`${option}_hint`] }}</span>
@@ -5160,6 +5395,71 @@ const summaryOf = (section) => {
 
                     <button v-else type="button" class="styledesk_action" @click="askToDiscard">
                         {{ labels.duplicate?.cancel }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- The benefit is there, but Thursday has it.
+             Named and dated, with the two ways out: move that appointment, or
+             charge for this one. Neither is chosen here — the desk decides in
+             front of the client. -->
+        <div v-if="reservedNotice" class="styledesk_modal" role="dialog" aria-modal="true"
+             aria-labelledby="reservedTitle">
+            <div class="styledesk_modal__scrim" @click="closeReservedNotice"></div>
+
+            <div class="styledesk_modal__panel">
+                <div class="styledesk_modal__head">
+                    <h2 id="reservedTitle" class="text-[15px] font-semibold text-head">
+                        {{ labels.credits?.reserved_title }}
+                    </h2>
+
+                    <button type="button" class="styledesk_modal__close" :aria-label="labels.credits?.reserved_close"
+                            @click="closeReservedNotice">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="styledesk_modal__body">
+                    <p class="text-[13px] font-semibold text-head">{{ reservedNotice.service_name }}</p>
+
+                    <p class="text-[13px] text-ink leading-relaxed mt-1">{{ reservedText('reserved_body') }}</p>
+
+                    <ul class="space-y-2 mt-4">
+                        <li v-for="held in reservedNotice.reservations" :key="held.booking_id"
+                            class="rounded-lg border border-line px-3 py-2.5">
+                            <p class="text-[13px] font-semibold text-head">{{ held.date }}</p>
+                            <p class="text-[13px] text-ink">{{ held.at }}</p>
+                            <p class="text-[12px] text-sub mt-0.5 tabular-nums">{{ held.reference }}</p>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="styledesk_modalfoot">
+                    <button type="button"
+                            class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors"
+                            @click="closeReservedNotice">
+                        {{ labels.credits?.reserved_pay }}
+                    </button>
+
+                    <!-- Both open the other booking in a new tab. Cancelling
+                         asks for a reason and is gated on a permission, and
+                         both of those live on that screen rather than being
+                         built a second time here. -->
+                    <a v-if="reservedBooking" :href="reservedBooking.url" target="_blank" rel="noopener"
+                       class="styledesk_action">
+                        {{ reservedText('reserved_view') }}
+                    </a>
+
+                    <a v-if="reservedBooking" :href="reservedBooking.cancel_url" target="_blank" rel="noopener"
+                       class="styledesk_action">
+                        {{ reservedText('reserved_cancel') }}
+                    </a>
+
+                    <button type="button" class="styledesk_action" @click="closeReservedNotice">
+                        {{ labels.credits?.reserved_close }}
                     </button>
                 </div>
             </div>
@@ -5664,6 +5964,19 @@ const summaryOf = (section) => {
                                 {{ labels.pay?.discount }}<template v-if="quote.coupon"> — {{ quote.coupon.code }}</template>
                             </dt>
                             <dd class="text-head shrink-0">−{{ quote.discount }}</dd>
+                        </div>
+
+                        <!-- What is left of the service charge once the
+                             credits have paid their share. Stated rather than
+                             left to be worked out: on a covered booking the
+                             tip is the whole bill, and a summary that jumped
+                             from a subtotal to a total would leave the desk
+                             guessing whether it was. Only where a credit is
+                             in play — on an ordinary booking it is the
+                             subtotal again, said twice. -->
+                        <div v-if="quote?.membership_credit_minor > 0" class="flex items-baseline justify-between gap-3">
+                            <dt class="min-w-0 text-sub truncate">{{ labels.credits?.balance_line }}</dt>
+                            <dd class="text-head shrink-0">{{ quote.service_balance }}</dd>
                         </div>
 
                         <!-- One figure, wherever it was last changed. While

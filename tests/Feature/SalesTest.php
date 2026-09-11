@@ -601,9 +601,12 @@ class SalesTest extends TestCase
         $this->assertSame('$150.00', $row['amount']);
         $this->assertSame(__('bookings.methods.card.name'), $row['method']);
 
-        /* A membership takes no slot, so there is no appointment to open and
-           no staff member who performed it. */
-        $this->assertNull($row['booking']);
+        /* A membership takes no slot, so there is no staff member who
+           performed it. The reference column is not blank, though: where a
+           booking prints its own number, a membership prints the one it was
+           given at the sale. */
+        $this->assertSame($payment->membership->reference, $row['booking']);
+        $this->assertNotNull($row['booking']);
         $this->assertSame('—', $row['staff']);
     }
 

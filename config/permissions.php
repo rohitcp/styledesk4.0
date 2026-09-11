@@ -224,6 +224,20 @@ return [
             ],
         ],
 
+        'sms' => [
+            'label' => 'SMS',
+            'icon' => 'comment-sms',
+            'permissions' => [
+                'sms.view_log' => ['label' => 'View SMS log', 'scopes' => ['own', 'location', 'all']],
+                'sms.send' => ['label' => 'Send client SMS'],
+                /* Configuring what a business texts its clients is its own
+                   authority: somebody who may set up the salon is not
+                   automatically somebody who decides what it says to a
+                   client's phone, or what it spends doing so. */
+                'sms.manage_settings' => ['label' => 'Manage SMS settings'],
+            ],
+        ],
+
         'services' => [
             'label' => 'Services',
             'icon' => 'tag',

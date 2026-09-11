@@ -4,11 +4,15 @@ namespace App\Providers;
 
 use App\Contracts\TenantStorageContract;
 use App\Http\Middleware\EnforceSessionTimeout;
+use App\Messaging\SmsProvider;
+use App\Messaging\SmsProviders;
+use App\Notifications\Channels\SmsChannel;
 use App\Services\Storage\TenantStorageService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\ServiceProvider;
 use Stripe\StripeClient;
 
@@ -30,6 +34,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        /**
+         * Which carrier is under StyleDesk SMS.
+         *
+         * Named once, in one class, because it is the decision that spends
+         * money — and because it carries a rule no caller may override:
+         * development never reaches a real carrier. See
+         * App\Messaging\SmsProviders.
+         */
+        $this->app->bind(SmsProvider::class, fn () => SmsProviders::resolve());
+
         /**
          * One Stripe client, built from the platform's own secret.
          *
@@ -54,6 +68,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        /**
+         * Where a text message goes.
+         *
+         * Registered so the booking code can send on the `sms` channel in
+         * every environment and let the environment decide what happens. In
+         * development the SMS catcher intercepts the notification on its way
+         * out and this is never reached; anywhere it is off, SmsChannel says
+         * plainly that no provider is connected rather than leaving Laravel
+         * to report an unsupported driver.
+         */
+        Notification::extend('sms', fn () => new SmsChannel);
+
         /**
          * Stamp the last login, for the staff directory's "Last login" column.
          *

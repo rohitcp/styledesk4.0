@@ -33,6 +33,7 @@ import { initBoardFilters, initMonthModal, initScheduleBoard } from './schedule-
 import { initClientBookings } from './client-bookings';
 import { initLeadSheet } from './lead-sheet';
 import { initMembershipDrawer } from './membership-drawer';
+import { initCalendarDrawer } from './calendar-drawer';
 import { initSalesDrawer } from './sales-drawer';
 import { initStaffDetail } from './staff-detail';
 import { initStaffShiftRule } from './staff-shift-rule';
@@ -187,6 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initLeadSheet(JSON.parse(document.querySelector('[data-lead-sheet]')?.dataset.labels ?? '{}'));
     initClientBookings();
     initSalesDrawer();
+    initCalendarDrawer();
     initMembershipDrawer();
     initSubmitOnce();
     initVerificationCode();

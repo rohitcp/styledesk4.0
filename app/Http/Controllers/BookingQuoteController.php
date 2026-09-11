@@ -159,7 +159,20 @@ class BookingQuoteController extends Controller
             }
         }
 
-        $discounted = max(0, $subtotal - $creditMinor - $discount);
+        /* What a tip is a share of, and what is actually left to pay. They
+         * are not the same number on a booking a membership covers.
+         *
+         * A credit is the client spending something they already bought, not
+         * the work costing less: the therapist gave the same massage whether
+         * it was paid for in March or at the desk today. So the tip is worked
+         * out on the service charge — a coupon does reduce that, a credit
+         * does not — and coverage takes what is owed down to nothing without
+         * quietly taking the gratuity with it.
+         *
+         * `$tippable` is that charge; `$discounted` is the balance after the
+         * credits, which is what the client is billed for. */
+        $tippable = max(0, $subtotal - $discount);
+        $discounted = max(0, $tippable - $creditMinor);
 
         /* 4 — the tip.
          *
@@ -179,7 +192,7 @@ class BookingQuoteController extends Controller
         $tipPercent = $data['tip_percent'] ?? null;
         $tipChosen = (bool) ($data['tip_chosen'] ?? false);
 
-        [$defaultPercent, $defaultTipMinor] = $this->defaultTip($tipSettings, $discounted);
+        [$defaultPercent, $defaultTipMinor] = $this->defaultTip($tipSettings, $tippable);
 
         if ($tipSettings->is_enabled) {
             /* What was actually sent, first. A request naming a tip is
@@ -192,7 +205,7 @@ class BookingQuoteController extends Controller
                 $tipMinor = (int) round(((float) $data['tip_amount']) * 100);
                 $tipPercent = null;
             } elseif ($tipPercent !== null) {
-                $tipMinor = Tips::percentOf($discounted, (int) $tipPercent);
+                $tipMinor = Tips::percentOf($tippable, (int) $tipPercent);
             } elseif (! $tipChosen) {
                 /* Nobody has been asked yet. The default is an answer the
                    business already gave, so it is applied rather than
@@ -235,6 +248,13 @@ class BookingQuoteController extends Controller
             'membership_covered' => $covered,
             'membership_credit_minor' => $creditMinor,
             'membership_credit' => $totals->money($creditMinor),
+            /* What is left of the service charge once the credits have paid
+               their share. Nought on a fully covered booking, and stated
+               rather than inferred: a summary that jumps from a subtotal to a
+               total with a tip in between leaves the desk working out for
+               itself whether the tip is the whole bill. */
+            'service_balance_minor' => $discounted,
+            'service_balance' => $totals->money($discounted),
             'tip_minor' => $tipMinor,
             'tip' => $totals->money($tipMinor),
             'tip_percent' => $tipPercent,
@@ -254,8 +274,8 @@ class BookingQuoteController extends Controller
                     'value' => $amount,
                     /* Never more than the work it is on: a flat tip larger
                        than the bill is somebody's typo, not a decision. */
-                    'minor' => min($amount * 100, $discounted),
-                    'label' => $totals->money(min($amount * 100, $discounted)),
+                    'minor' => min($amount * 100, $tippable),
+                    'label' => $totals->money(min($amount * 100, $tippable)),
                 ])
                 ->values()
                 ->all(),

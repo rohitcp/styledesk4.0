@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
@@ -42,6 +43,18 @@ class MembershipCredit extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    /**
+     * Every time this credit paid for something.
+     *
+     * The counter says how many are gone; these say where they went, and so
+     * whether one is reserved against an appointment still to come or has
+     * already been taken.
+     */
+    public function redemptions(): HasMany
+    {
+        return $this->hasMany(MembershipCreditRedemption::class, 'membership_credit_id');
     }
 
     /** How many are still there to spend. */

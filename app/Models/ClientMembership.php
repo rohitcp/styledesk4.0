@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Support\Currencies;
+use App\Support\MembershipNumber;
 use App\Support\Money;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -52,6 +53,25 @@ class ClientMembership extends Model
             'joining_fee_minor' => 'integer',
             'setup_fee_minor' => 'integer',
         ];
+    }
+
+    /**
+     * Every membership gets its number, whoever created it.
+     *
+     * The sale asks for one itself, so this is not the ordinary path — it is
+     * the guarantee that there is no unnumbered path. A membership without a
+     * number reads as a blank cell in the Sales ledger, and a blank cell is
+     * indistinguishable from a row that lost its record.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $membership): void {
+            if (blank($membership->reference)) {
+                $membership->reference = MembershipNumber::next(
+                    $membership->tenant ?? Tenant::find($membership->tenant_id)
+                );
+            }
+        });
     }
 
     /* ------------------------------------------------------- relations -- */

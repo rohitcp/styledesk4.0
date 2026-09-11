@@ -66,6 +66,7 @@ return [
         'reference' => '交易',
         'at' => '日期与时间',
         'booking' => '预约',
+        'record' => '预约 / 会员',
         'client' => '客户',
         'services' => '服务',
         'staff' => '员工',

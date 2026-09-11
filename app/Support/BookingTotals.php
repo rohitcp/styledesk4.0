@@ -176,6 +176,8 @@ class BookingTotals
         $discount = (int) $booking->discount_minor;
         $paid = $booking->paidMinor();
         $tipPaid = (int) $booking->payments->sum('tip_minor');
+        $credit = (int) $booking->membership_credit_minor;
+        $tipDue = $booking->tipDueMinor();
 
         $lines = [[
             'key' => 'subtotal',
@@ -191,6 +193,16 @@ class BookingTotals
                 : __('bookings.summary.discount'),
             'value' => $discount > 0 ? '−'.$this->money($discount) : $this->money(0),
             'negative' => $discount > 0,
+        ], [
+            /* Its own line and never folded into the discount. A coupon is
+               the business giving money away and a credit is the client
+               spending something they already bought; a summary that jumped
+               from a subtotal to a nought total with nothing in between is
+               one the desk cannot explain to the person in front of it. */
+            'key' => 'membership_credit',
+            'label' => __('bookings.credits.line'),
+            'value' => $credit > 0 ? '−'.$this->money($credit) : $this->money(0),
+            'negative' => $credit > 0,
         ], [
             'key' => 'tax',
             'label' => $this->taxIncludedLabel(),
@@ -226,6 +238,28 @@ class BookingTotals
             'value' => $this->money($booking->dueMinor()),
             'strong' => true,
         ];
+
+        /* The gratuity agreed when the booking was taken, and what the till
+           should therefore collect. Added rather than folded into the
+           balance: what is owed for the work and what was agreed as a tip
+           are two different debts, and a business chasing one is not chasing
+           the other. Shown only while there is one outstanding — on a bill
+           whose tip has been taken these two lines would repeat the balance
+           twice over. */
+        if ($tipDue > 0) {
+            $lines[] = [
+                'key' => 'tip_due',
+                'label' => __('bookings.summary.tip_due'),
+                'value' => '+'.$this->money($tipDue),
+            ];
+
+            $lines[] = [
+                'key' => 'amount_due',
+                'label' => __('bookings.summary.amount_due'),
+                'value' => $this->money($booking->amountDueMinor()),
+                'strong' => true,
+            ];
+        }
 
         return $lines;
     }

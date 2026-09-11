@@ -57,6 +57,21 @@
       }
     });
 
+    /* Arrived here to do one particular thing.
+
+       The booking screen links here with ?action=cancelled when a membership
+       benefit is reserved against this appointment and the desk chose to call
+       it off. The button is clicked rather than the modal opened directly, so
+       an action this reader may not take simply is not there and nothing
+       happens — the permission is enforced in one place, where it is drawn. */
+    (function () {
+      var wanted = new URLSearchParams(window.location.search).get('action');
+      if (!wanted) return;
+
+      var button = document.querySelector('[data-status-action="' + CSS.escape(wanted) + '"]');
+      if (button) button.click();
+    }());
+
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
 

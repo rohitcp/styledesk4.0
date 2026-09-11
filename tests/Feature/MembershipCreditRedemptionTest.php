@@ -169,6 +169,22 @@ class MembershipCreditRedemptionTest extends TestCase
         return $membership->fresh('credits');
     }
 
+    /** Tips on, with a percentage row and a default. */
+    private function tips(): TipSettings
+    {
+        return TipSettings::updateOrCreate(
+            ['tenant_id' => $this->tenant->getTenantKey()],
+            [
+                'is_enabled' => true,
+                'percentages' => [15, 18, 20, 25],
+                'default_tip_type' => 'percent',
+                'default_tip_value' => 20,
+                'require_selection' => false,
+                'allow_no_tip' => true,
+            ],
+        );
+    }
+
     /** Everything a booking posts. */
     private function bookingPayload(array $serviceIds, array $overrides = []): array
     {
@@ -505,26 +521,22 @@ class MembershipCreditRedemptionTest extends TestCase
         $this->assertSame(10000, $quote['total_minor']);
     }
 
-    /* A tip is a share of the bill, and a covered service is not on the bill.
-       Tipping on work the membership already paid for would charge the client
-       for it twice over, in small change. */
-    public function test_the_tip_is_taken_on_what_is_left_to_pay(): void
+    /**
+     * A tip is a share of the work, not of the balance.
+     *
+     * A credit is the client spending something they already bought, not the
+     * massage costing less: the therapist gave the same hour whether it was
+     * paid for in March or at the desk today. Coverage that quietly took the
+     * gratuity with it would be the membership tipping on the client's
+     * behalf.
+     */
+    public function test_the_tip_is_taken_on_the_service_charge_not_the_balance(): void
     {
         $massage = $this->service();
         $facial = $this->service('Facial', 10000);
         $this->membershipFor($massage);
 
-        TipSettings::updateOrCreate(
-            ['tenant_id' => $this->tenant->getTenantKey()],
-            [
-                'is_enabled' => true,
-                'percentages' => [15, 18, 20, 25],
-                'default_tip_type' => 'percent',
-                'default_tip_value' => 20,
-                'require_selection' => false,
-                'allow_no_tip' => true,
-            ],
-        );
+        $this->tips();
 
         $quote = $this->actingAs($this->owner())
             ->postJson(route('bookings.quote'), [
@@ -537,9 +549,184 @@ class MembershipCreditRedemptionTest extends TestCase
             ->assertOk()
             ->json();
 
-        /* Twenty per cent of the £100 facial, not of the £180 booking. */
-        $this->assertSame(2000, $quote['tip_minor']);
-        $this->assertSame(12000, $quote['total_minor']);
+        /* Twenty per cent of the whole £180 of work, not of the £100 left
+           to pay for it. */
+        $this->assertSame(3600, $quote['tip_minor']);
+        $this->assertSame(10000, $quote['service_balance_minor']);
+        $this->assertSame(13600, $quote['total_minor']);
+    }
+
+    /**
+     * Nothing owed for the work, and the tip is the whole bill.
+     *
+     * The case the rule exists for: a fully covered booking whose only
+     * charge is the gratuity.
+     */
+    public function test_a_fully_covered_booking_still_charges_the_tip(): void
+    {
+        $service = $this->service();
+        $this->membershipFor($service);
+
+        $this->tips();
+
+        $quote = $this->actingAs($this->owner())
+            ->postJson(route('bookings.quote'), [
+                'services' => [$service->id],
+                'client_id' => $this->client()->id,
+                'membership_credits' => [$service->id],
+                'tip_percent' => 15,
+                'tip_chosen' => true,
+            ])
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(8000, $quote['subtotal_minor']);
+        $this->assertSame(8000, $quote['membership_credit_minor']);
+        $this->assertSame(0, $quote['service_balance_minor']);
+        $this->assertSame(1200, $quote['tip_minor']);
+        $this->assertSame(1200, $quote['total_minor']);
+    }
+
+    /**
+     * A coupon is different: that really is the work costing less.
+     *
+     * Ten per cent off leaves a smaller job to tip on; a credit does not.
+     */
+    public function test_a_coupon_does_reduce_what_the_tip_is_taken_on(): void
+    {
+        $service = $this->service();
+
+        $this->tips();
+
+        $this->actingAs($this->owner())->post(route('promotions.store'), [
+            'name' => 'Ten off', 'type' => 'coupon', 'code' => 'TEN',
+            'discount_type' => 'percent', 'discount_value' => 10,
+            'applies_to' => 'all_services', 'location_mode' => 'all',
+            'eligibility' => 'all', 'starts_on' => self::TODAY,
+            'no_expiry' => 1,
+        ]);
+
+        $quote = $this->actingAs($this->owner())
+            ->postJson(route('bookings.quote'), [
+                'services' => [$service->id],
+                'client_id' => $this->client()->id,
+                'coupon' => 'TEN',
+                'tip_percent' => 20,
+                'tip_chosen' => true,
+            ])
+            ->assertOk()
+            ->json();
+
+        /* Twenty per cent of £72, not of £80. */
+        $this->assertSame(1440, $quote['tip_minor']);
+    }
+
+    /**
+     * The gratuity on a covered booking is the whole amount due.
+     *
+     * The bill is nought, so nothing about the balance says money is
+     * outstanding — but the tip agreed when the booking was taken has not
+     * been collected, and a till that called this settled would strand it.
+     */
+    public function test_the_agreed_tip_is_what_is_left_to_collect(): void
+    {
+        $service = $this->service();
+        $this->membershipFor($service);
+        $this->tips();
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+                'tip_percent' => 20,
+            ]));
+
+        $booking = Booking::withoutGlobalScopes()->firstOrFail();
+
+        $this->assertSame(0, $booking->total_minor);
+        $this->assertSame(1600, $booking->tip_minor);
+        $this->assertSame(0, $booking->dueMinor());
+        $this->assertSame(1600, $booking->tipDueMinor());
+        $this->assertSame(1600, $booking->amountDueMinor());
+    }
+
+    /**
+     * And it can actually be taken.
+     *
+     * Nought for the work and the tip beside it: the amount floor has to let
+     * that through, or the money has no way to reach the till.
+     */
+    public function test_a_tip_can_be_collected_when_the_bill_is_nothing(): void
+    {
+        $service = $this->service();
+        $this->membershipFor($service);
+        $this->tips();
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+                'tip_percent' => 20,
+            ]));
+
+        $booking = Booking::withoutGlobalScopes()->firstOrFail();
+
+        $this->actingAs($this->owner())
+            ->postJson(route('bookings.pay', $booking), [
+                'method' => 'cash', 'amount' => '0.00', 'tip' => '16.00',
+            ])
+            ->assertCreated();
+
+        $booking = $booking->fresh('payments');
+
+        $this->assertSame(1600, (int) $booking->payments->sum('tip_minor'));
+        $this->assertSame(0, $booking->tipDueMinor());
+        $this->assertSame('paid', $booking->payment_status);
+    }
+
+    /** A payment of nothing at all is still not a payment. */
+    public function test_a_payment_of_nothing_is_refused(): void
+    {
+        $service = $this->service();
+        $this->membershipFor($service);
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+            ]));
+
+        $booking = Booking::withoutGlobalScopes()->firstOrFail();
+
+        $this->actingAs($this->owner())
+            ->postJson(route('bookings.pay', $booking), [
+                'method' => 'cash', 'amount' => '0.00', 'tip' => '0.00',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('amount');
+    }
+
+    /** A covered service cannot also be asked for money up front. */
+    public function test_a_covered_service_asks_for_no_deposit(): void
+    {
+        $service = $this->service();
+
+        /* The rule lives on the price row: a deposit is a share of what is
+           being charged, and that differs by currency. */
+        ServicePrice::withoutGlobalScopes()
+            ->where('service_id', $service->id)
+            ->update(['deposit_required' => true, 'deposit_type' => 'percent', 'deposit_value' => 50]);
+
+        $this->membershipFor($service->fresh('prices'));
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+                'payment_type' => 'none',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $booking = Booking::withoutGlobalScopes()->firstOrFail();
+
+        $this->assertSame(0, $booking->total_minor);
+        $this->assertSame(0, (int) $booking->deposit_minor);
     }
 
     /* A percentage taken off work the client is not paying for is a discount
@@ -644,6 +831,124 @@ class MembershipCreditRedemptionTest extends TestCase
            cannot book. */
         $this->assertSame(0, $this->credit()->quantity_used);
         $this->assertSame(0, MembershipCreditRedemption::withoutGlobalScopes()->count());
+    }
+
+    // ---------------------------------------------- reserved, then taken
+
+    /**
+     * A booking holds the benefit; it does not spend it.
+     *
+     * The client has not had their massage until they walk in, and a screen
+     * that called a future appointment "used" would be telling them they
+     * had. The balance is the same either way — the credit cannot be spent
+     * twice — but which of the two it is decides what the desk can offer.
+     */
+    public function test_a_future_appointment_reserves_the_benefit_rather_than_using_it(): void
+    {
+        $service = $this->service();
+        $this->membershipFor($service);
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+            ]));
+
+        $line = MembershipCredits::benefitsFor($this->client())[0]['services'][0];
+
+        $this->assertSame(1, $line['included']);
+        $this->assertSame(1, $line['reserved']);
+        $this->assertSame(0, $line['used']);
+        $this->assertSame(0, $line['remaining']);
+        $this->assertSame('reserved', $line['status']);
+
+        /* And which appointment has it, so the desk can say so rather than
+           go looking. */
+        $booking = Booking::withoutGlobalScopes()->firstOrFail();
+        $this->assertSame($booking->reference, $line['reservations'][0]['reference']);
+    }
+
+    /** Walking in is what spends it. */
+    public function test_checking_in_marks_the_reserved_benefit_used(): void
+    {
+        $service = $this->service();
+        $this->membershipFor($service);
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+                'date' => self::TODAY,
+            ]));
+
+        $booking = Booking::withoutGlobalScopes()->firstOrFail();
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.check-in', $booking))
+            ->assertSessionHasNoErrors();
+
+        $line = MembershipCredits::benefitsFor($this->client())[0]['services'][0];
+
+        $this->assertSame(0, $line['reserved']);
+        $this->assertSame(1, $line['used']);
+        $this->assertSame('used', $line['status']);
+        $this->assertSame([], $line['reservations']);
+
+        /* The balance did not move: it was already spoken for. */
+        $this->assertSame(1, $this->credit()->quantity_used);
+    }
+
+    /** Two receptionists, one arrival. */
+    public function test_checking_in_twice_does_not_move_the_date(): void
+    {
+        $service = $this->service();
+        $this->membershipFor($service);
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+            ]));
+
+        $booking = Booking::withoutGlobalScopes()->firstOrFail();
+
+        $this->assertSame(1, MembershipCredits::consume($booking));
+
+        $taken = MembershipCreditRedemption::withoutGlobalScopes()->firstOrFail()->consumed_at;
+
+        $this->assertSame(0, MembershipCredits::consume($booking));
+        $this->assertEquals(
+            $taken,
+            MembershipCreditRedemption::withoutGlobalScopes()->firstOrFail()->consumed_at
+        );
+    }
+
+    /**
+     * One benefit cannot be reserved for two appointments.
+     *
+     * The second booking is not refused — the appointment is the thing that
+     * matters — but it is charged for, and the benefit stays with the visit
+     * that claimed it first.
+     */
+    public function test_a_benefit_reserved_for_one_appointment_cannot_be_reserved_for_another(): void
+    {
+        $service = $this->service();
+        $this->membershipFor($service);
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+            ]));
+
+        $this->actingAs($this->owner())
+            ->post(route('bookings.store'), $this->bookingPayload([$service->id], [
+                'membership_credits' => [$service->id],
+                'date' => '2026-09-16',
+            ]));
+
+        $second = Booking::withoutGlobalScopes()->orderByDesc('id')->firstOrFail();
+
+        $this->assertSame(0, $second->membership_credit_minor);
+        $this->assertSame(8000, $second->total_minor);
+        $this->assertSame(1, $this->credit()->quantity_used);
+        $this->assertSame(1, MembershipCreditRedemption::withoutGlobalScopes()->held()->count());
     }
 
     // ---------------------------------------------------------- giving back

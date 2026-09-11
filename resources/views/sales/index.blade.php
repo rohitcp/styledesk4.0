@@ -134,7 +134,7 @@
           'columns' => [
               ['field' => 'reference', 'title' => __('sales.columns.reference'), 'type' => 'primary', 'grow' => 1.6, 'min' => 190, 'responsive' => 0],
               ['field' => 'at', 'title' => __('sales.columns.at'), 'width' => 160, 'responsive' => 3],
-              ['field' => 'booking', 'title' => __('sales.columns.booking'), 'width' => 150, 'responsive' => 5],
+              ['field' => 'booking', 'title' => __('sales.columns.record'), 'width' => 170, 'responsive' => 5],
               ['field' => 'client', 'title' => __('sales.columns.client'), 'grow' => 1.2, 'min' => 140, 'responsive' => 1],
               /* Which kind of sale this row is. Beside the client rather than
                  at the end: it changes how every column to its right reads —

@@ -25,6 +25,10 @@ return [
         'plans' => ['plans.view', 'plans.manage'],
         'billing' => ['billing.view', 'billing.manage'],
         'settings' => ['settings.view', 'settings.manage'],
+        /* The platform's carrier account. Reading which provider is on is
+           one thing; holding the key that spends money on every business's
+           behalf is another, so they are two permissions. */
+        'sms' => ['sms.view', 'sms.manage'],
         'admins' => ['admins.view', 'admins.manage'],
         'audit' => ['audit.view'],
     ],
@@ -59,6 +63,9 @@ return [
                 'plans.view', 'plans.manage',
                 'billing.view', 'billing.manage',
                 'settings.view', 'settings.manage',
+                /* The platform's carrier account, keys included: an Admin
+                   runs the platform, and SMS is part of running it. */
+                'sms.view', 'sms.manage',
                 /* May see who the administrators are, and may not change
                    them: managing colleagues is the Super Owner's. */
                 'admins.view',
@@ -75,7 +82,8 @@ return [
         ],
 
         'read-only' => [
-            'permissions' => ['dashboard.view', 'clients.view', 'plans.view', 'billing.view', 'audit.view'],
+            /* Reading which carrier is on, without the keys to change it. */
+            'permissions' => ['dashboard.view', 'clients.view', 'plans.view', 'billing.view', 'audit.view', 'sms.view'],
         ],
     ],
 
@@ -194,6 +202,7 @@ return [
         ['key' => 'clients', 'route' => 'backoffice.clients.index', 'permission' => 'clients.view', 'icon' => 'building'],
         ['key' => 'plans', 'route' => 'backoffice.plans.index', 'permission' => 'plans.view', 'icon' => 'layers'],
         ['key' => 'billing', 'route' => 'backoffice.billing.index', 'permission' => 'billing.view', 'icon' => 'card'],
+        ['key' => 'sms', 'route' => 'backoffice.sms.index', 'permission' => 'sms.view', 'icon' => 'message'],
         ['key' => 'settings', 'route' => 'backoffice.settings.index', 'permission' => 'settings.view', 'icon' => 'cog'],
     ],
 ];
