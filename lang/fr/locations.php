@@ -104,6 +104,7 @@ return [
         'code' => 'DT01',
         'type' => 'Non renseigné',
         'country' => 'Choisissez un pays',
+        'state' => 'Choisissez un état ou une région',
         'timezone' => 'Choisissez un fuseau horaire',
         'manager' => 'Non assigné',
     ],

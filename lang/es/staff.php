@@ -130,7 +130,9 @@ return [
 
         'role' => 'Rol',
         'role_placeholder' => 'Elige un rol',
+        'location_placeholder' => 'Elige una ubicación',
         'role_hint' => 'Solo puedes asignar roles dentro de tu propio nivel de acceso.',
+        'role_locked_hint' => 'Este rol no se puede cambiar aquí. La propiedad se traspasa mediante la transferencia de propiedad.',
         'location' => 'Ubicación principal',
         'employment_type' => 'Tipo de contrato',
         'provider_type' => 'Tipo de prestador',
@@ -164,6 +166,7 @@ return [
         'email_invalid' => 'Introduce una dirección de correo válida.',
         'email_taken' => 'Alguien de tu equipo ya usa esta dirección de correo.',
         'role_required' => 'Elige un rol para esta persona.',
+        'location_required' => 'Elige la ubicación donde trabaja esta persona.',
         'role_invalid' => 'Solo puedes asignar roles dentro de tu propio nivel de acceso.',
         'location_invalid' => 'Elige una de tus propias ubicaciones.',
         'service_invalid' => 'Elige uno de tus propios servicios.',

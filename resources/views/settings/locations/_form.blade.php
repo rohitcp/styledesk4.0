@@ -45,6 +45,21 @@
     $defaultTimezone = $formTenant?->timezone
         ?? $formTenant?->locations()->orderByDesc('is_primary')->value('timezone')
         ?? config('locations.country_timezones.'.$defaultCountry);
+
+    /**
+     * The business's own website, offered to a new branch.
+     *
+     * Captured on the first onboarding step and almost always the right
+     * answer: most branches share one site, and the ones that do not are the
+     * case worth typing. A suggestion only — it is an ordinary editable
+     * field, and clearing it saves it cleared.
+     *
+     * Only on Add. On Edit the stored value is the answer, including when
+     * that answer is "none": re-suggesting the business site to a branch
+     * somebody had deliberately cleared would undo the clearing every time
+     * the form was opened.
+     */
+    $defaultWebsite = $location ? null : $formTenant?->website;
 @endphp
 
 {{-- ------------------------------------------ 1. location information --}}
@@ -162,14 +177,41 @@
          @unless ($errors->has('city')) hidden @endunless>{{ $errors->first('city') }}</p>
     </div>
 
-    <div>
-      <label for="state" class="block text-[13px] font-medium text-ink mb-1.5">
-        {{ __('locations.fields.state') }} <span class="text-danger">*</span>
-      </label>
-      <input id="state" name="state" type="text" class="sd-input" data-capitalize required
-             value="{{ $locationValue('state') }}" data-rules="required|max:120">
-      <p data-error-for="state" role="alert" class="mt-1.5 text-[12px] text-danger"
-         @unless ($errors->has('state')) hidden @endunless>{{ $errors->first('state') }}</p>
+    {{-- The region list follows the country chosen below, and countries differ
+         on whether they have one. A country with regions gets the searchable
+         list; one without gets a free-text box, which is the honest control
+         for a place with no meaningful subdivision — Singapore, Hong Kong.
+
+         Both are rendered and one is disabled rather than swapped in and out.
+         A disabled control does not post, so exactly one state value ever
+         reaches the server, and the list is never torn down and rebuilt. --}}
+    @php
+      $stateValue = $locationValue('state');
+      $stateCountry = $locationValue('country', $defaultCountry);
+      $countryRegions = $regions[$stateCountry] ?? [];
+    @endphp
+
+    <div data-state-field>
+      <div data-state-combo @unless ($countryRegions) hidden @endunless>
+        <x-combo name="state" label="{{ __('locations.fields.state') }}" required
+                 :options="$countryRegions"
+                 :selected="$countryRegions ? $stateValue : null"
+                 placeholder="{{ __('locations.placeholders.state') }}" rules="required" />
+      </div>
+
+      <div data-state-text @if ($countryRegions) hidden @endif>
+        <label for="state" class="block text-[13px] font-medium text-ink mb-1.5">
+          {{ __('locations.fields.state') }} <span class="text-danger">*</span>
+        </label>
+        {{-- Plain `state`, not `state_text`: live validation paints into
+             [data-error-for="<the field's id>"], and the combo's own input is
+             `state-value`, so the two cannot collide. --}}
+        <input id="state" name="state" type="text" class="sd-input" data-capitalize
+               value="{{ $countryRegions ? '' : $stateValue }}"
+               data-rules="required|max:120" @disabled((bool) $countryRegions)>
+        <p data-error-for="state" role="alert" class="mt-1.5 text-[12px] text-danger"
+           @unless ($errors->has('state')) hidden @endunless>{{ $errors->first('state') }}</p>
+      </div>
     </div>
 
     <div>
@@ -344,7 +386,7 @@
            shape the server enforces. --}}
       <input id="website" name="website" type="url" class="sd-input" placeholder="https://example.com"
              data-rules="url|max:255" inputmode="url" spellcheck="false" autocapitalize="none"
-             value="{{ $locationValue('website') }}">
+             value="{{ $locationValue('website', $defaultWebsite) }}">
       <p data-error-for="website" role="alert" class="mt-1.5 text-[12px] text-danger"
          @unless ($errors->has('website')) hidden @endunless>{{ $errors->first('website') }}</p>
     </div>

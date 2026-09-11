@@ -103,6 +103,7 @@ return [
         'code' => 'DT01',
         'type' => 'Not specified',
         'country' => 'Choose a country',
+        'state' => 'Choose a state or region',
         'timezone' => 'Choose a time zone',
         'manager' => 'Not assigned',
     ],

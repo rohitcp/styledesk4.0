@@ -136,7 +136,9 @@ return [
 
         'role' => '角色',
         'role_placeholder' => '选择一个角色',
+        'location_placeholder' => '选择一个地点',
         'role_hint' => '你只能指派自己权限范围内的角色。',
+        'role_locked_hint' => '此角色无法在此更改。所有权需通过所有权转让流程移交。',
         'location' => '主要门店',
         'employment_type' => '用工形式',
         'provider_type' => '人员类型',
@@ -170,6 +172,7 @@ return [
         'email_invalid' => '请输入有效的电子邮箱地址。',
         'email_taken' => '你团队中已有人使用该邮箱地址。',
         'role_required' => '请为这个人选择一个角色。',
+        'location_required' => '请选择这个人工作的地点。',
         'role_invalid' => '你只能指派自己权限范围内的角色。',
         'location_invalid' => '请选择属于你自己的门店。',
         'service_invalid' => '请选择属于你自己的服务。',

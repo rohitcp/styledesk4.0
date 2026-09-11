@@ -20,6 +20,24 @@
      */
     $staffValue = fn (string $field, $fallback = null) => old($field, $staff?->{$field} ?? $fallback);
 
+    /**
+     * Whether this person's role can be changed here at all.
+     *
+     * The list offers only roles the reader may hand out, and an Owner is
+     * never one of them — ownership moves through the transfer workflow, not
+     * by picking it from a dropdown. So an owner's own record had a control
+     * whose current value was not among its options, which rendered as the
+     * raw id: "16" where "Owner" belonged.
+     *
+     * Shown as a read-only field instead. The same is true of anyone whose
+     * role outranks the reader's, which is the general form of the same
+     * problem, and read-only is the honest answer to both: this is the role,
+     * and it is not yours to change from here.
+     */
+    $staffRole = $staff?->roleRecord;
+    $roleLocked = $staffRole !== null
+        && ! App\Support\RoleGuard::canAssignRole(auth()->user(), $staffRole);
+
     // Multi-value fields, which old() returns as arrays of strings and the
     // record returns as arrays of ints. Normalised once so the checked()
     // checks below can compare without caring which they got.
@@ -311,12 +329,33 @@
           </p>
 
           <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
-            {{-- Only roles this user may hand out are listed, per §32. --}}
-            <x-combo name="role_id" label="{{ __('staff.fields.role') }}" required :options="$roles->mapWithKeys(fn ($r) => [$r->id => $r->label()])"
-                     :selected="$staffValue('role_id')" placeholder="{{ __('staff.fields.role_placeholder') }}"
-                     hint="{{ __('staff.fields.role_hint') }}" />
-            <x-combo name="location_id" label="{{ __('staff.fields.location') }}" :options="$locations->pluck('name', 'id')"
-                     :selected="$staffValue('location_id')" placeholder="{{ __('staff.all_locations') }}" />
+            {{-- Only roles this user may hand out are listed, per §32 — and
+                 where the current one is not among them, nothing is offered
+                 at all. --}}
+            @if ($roleLocked)
+              <div>
+                <span class="block text-[13px] font-medium text-ink mb-1.5">{{ __('staff.fields.role') }}</span>
+                <div class="sd-input styledesk_readonlyfield text-sub">
+                  <span>{{ $staffRole->label() }}</span>
+                </div>
+                {{-- Nothing is posted. The server keeps the stored role for a
+                     record whose role is locked, so a field that cannot be
+                     changed also cannot be submitted. --}}
+                <p class="mt-1.5 text-[12px] text-sub">{{ __('staff.fields.role_locked_hint') }}</p>
+              </div>
+            @else
+              <x-combo name="role_id" label="{{ __('staff.fields.role') }}" required :options="$roles->mapWithKeys(fn ($r) => [$r->id => $r->label()])"
+                       :selected="$staffValue('role_id')" placeholder="{{ __('staff.fields.role_placeholder') }}"
+                       hint="{{ __('staff.fields.role_hint') }}" />
+            @endif
+            {{-- One branch, chosen. "All locations" was offered as the empty
+                 answer, and nothing in the product means it: a person works
+                 somewhere. Left blank it also made them appear on every
+                 location's calendar, which is not a choice anybody made. --}}
+            <x-combo name="location_id" label="{{ __('staff.fields.location') }}" required
+                     :options="$locations->pluck('name', 'id')"
+                     :selected="$staffValue('location_id', $locations->count() === 1 ? $locations->first()->id : null)"
+                     placeholder="{{ __('staff.fields.location_placeholder') }}" rules="required" />
             <x-combo name="employment_type" label="{{ __('staff.fields.employment_type') }}" :options="App\Support\StaffOptions::employmentTypes()"
                      :selected="$staffValue('employment_type')" placeholder="{{ __('staff.not_specified') }}" />
             <x-combo name="provider_type" label="{{ __('staff.fields.provider_type') }}" :options="App\Support\StaffOptions::providerTypes()"

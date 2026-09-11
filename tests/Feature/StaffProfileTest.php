@@ -388,7 +388,7 @@ class StaffProfileTest extends TestCase
                 'email' => 'amara@acme.test',
                 'job_title' => 'head of colour',
                 'role_id' => $this->roleId('service-provider'),
-                'account_status' => 'active',
+                'location_id' => $this->location->id, 'account_status' => 'active',
             ])
             ->assertRedirect(route('settings.staff.show', $amara));
 
@@ -408,7 +408,8 @@ class StaffProfileTest extends TestCase
 
         $this->actingAs($owner)->patch('http://styledesk.test/settings/staff/'.$amara->id, [
             'first_name' => 'Amara', 'last_name' => 'Osei', 'email' => 'amara@acme.test',
-            'role_id' => $this->roleId('front-desk'), 'account_status' => 'active',
+            'role_id' => $this->roleId('front-desk'),
+                'location_id' => $this->location->id, 'account_status' => 'active',
         ]);
 
         $entry = AuditLog::withoutGlobalScopes()->where('action', 'staff.role_changed')->firstOrFail();
@@ -420,19 +421,124 @@ class StaffProfileTest extends TestCase
     /**
      * §32's narrowest escalation path: open your own record, pick a bigger
      * role. Refused whatever else the person is allowed to do.
+     *
+     * An administrator, not the owner: an owner's role is locked outright —
+     * the field is not on the screen and a posted one is ignored rather than
+     * refused, which the owner tests above cover. An administrator may hand
+     * out their own role, so for them the field is genuinely editable and
+     * this rule is the only thing standing in the way.
      */
     public function test_nobody_changes_their_own_role(): void
+    {
+        $this->owner();
+
+        $adminUser = User::create([
+            'first_name' => 'Ada', 'last_name' => 'Admin',
+            'email' => 'admin@acme.test', 'password' => 'Str0ng!Pass',
+        ]);
+        $adminUser->markEmailAsVerified();
+        $adminUser->forceFill(['tenant_id' => $this->tenant->getTenantKey()])->save();
+
+        $ownStaff = $this->member('administrator', [
+            'first_name' => 'Ada', 'last_name' => 'Admin',
+            'email' => 'admin@acme.test', 'user_id' => $adminUser->id,
+        ]);
+
+        $this->actingAs($adminUser->fresh())
+            ->patchJson('http://styledesk.test/settings/staff/'.$ownStaff->id, [
+                'first_name' => 'Ada', 'last_name' => 'Admin', 'email' => 'admin@acme.test',
+                'role_id' => $this->roleId('front-desk'),
+                'location_id' => $this->location->id, 'account_status' => 'active',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('role_id');
+
+        $this->assertSame('administrator', $ownStaff->fresh()->role);
+    }
+
+    // --------------------------------------------------- an owner's role
+
+    /**
+     * An owner's role reads as "Owner", not as its id.
+     *
+     * The list offers only roles the reader may hand out and Owner is never
+     * one of them, so the control's value was not among its options and fell
+     * back to the raw code — "16" where the role name belonged.
+     */
+    public function test_an_owners_role_is_shown_by_name_not_by_id(): void
+    {
+        $owner = $this->owner();
+        $ownStaff = Staff::withoutGlobalScopes()->where('user_id', $owner->id)->firstOrFail();
+
+        $page = $this->actingAs($owner)
+            ->get('http://styledesk.test/settings/staff/'.$ownStaff->id.'/edit')
+            ->assertOk();
+
+        $page->assertSee('Owner');
+        $page->assertDontSee('>'.$ownStaff->role_id.'<', false);
+    }
+
+    /**
+     * And it is read-only: no control, nothing posted.
+     */
+    public function test_an_owners_role_is_read_only(): void
     {
         $owner = $this->owner();
         $ownStaff = Staff::withoutGlobalScopes()->where('user_id', $owner->id)->firstOrFail();
 
         $this->actingAs($owner)
-            ->patchJson('http://styledesk.test/settings/staff/'.$ownStaff->id, [
-                'first_name' => 'Nadia', 'last_name' => 'Khan', 'email' => 'owner@styledesk.test',
-                'role_id' => $this->roleId('front-desk'), 'account_status' => 'active',
+            ->get('http://styledesk.test/settings/staff/'.$ownStaff->id.'/edit')
+            ->assertOk()
+            ->assertDontSee('name="role_id"', false);
+    }
+
+    /**
+     * An owner's record can be saved at all.
+     *
+     * It could not: the form posted the owner's own role id into a field the
+     * server then refused as unassignable, so every edit to an owner's
+     * profile — a phone number, a job title — failed on a role nobody was
+     * changing.
+     */
+    public function test_an_owners_profile_can_be_saved(): void
+    {
+        $owner = $this->owner();
+        $ownStaff = Staff::withoutGlobalScopes()->where('user_id', $owner->id)->firstOrFail();
+
+        $this->actingAs($owner)
+            ->patch('http://styledesk.test/settings/staff/'.$ownStaff->id, [
+                'first_name' => 'Nadia', 'last_name' => 'Khan',
+                'email' => 'owner@styledesk.test',
+                'job_title' => 'Founder',
+                'location_id' => $this->location->id, 'account_status' => 'active',
             ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('role_id');
+            ->assertSessionHasNoErrors();
+
+        $ownStaff->refresh();
+
+        $this->assertSame('Founder', $ownStaff->job_title);
+        $this->assertSame('owner', $ownStaff->role);
+    }
+
+    /**
+     * A posted role_id is ignored on a locked record, not obeyed.
+     *
+     * The field is not on the screen, so anything arriving under its name was
+     * put there by hand.
+     */
+    public function test_a_posted_role_is_ignored_on_an_owners_record(): void
+    {
+        $owner = $this->owner();
+        $ownStaff = Staff::withoutGlobalScopes()->where('user_id', $owner->id)->firstOrFail();
+
+        $this->actingAs($owner)
+            ->patch('http://styledesk.test/settings/staff/'.$ownStaff->id, [
+                'first_name' => 'Nadia', 'last_name' => 'Khan',
+                'email' => 'owner@styledesk.test',
+                'role_id' => $this->roleId('front-desk'),
+                'location_id' => $this->location->id, 'account_status' => 'active',
+            ])
+            ->assertSessionHasNoErrors();
 
         $this->assertSame('owner', $ownStaff->fresh()->role);
     }
@@ -446,7 +552,8 @@ class StaffProfileTest extends TestCase
         $this->actingAs($owner)
             ->patch('http://styledesk.test/settings/staff/'.$amara->id, [
                 'first_name' => 'Amara', 'last_name' => 'Osei', 'email' => 'amara@acme.test',
-                'role_id' => $this->roleId('manager'), 'account_status' => 'active',
+                'role_id' => $this->roleId('manager'),
+                'location_id' => $this->location->id, 'account_status' => 'active',
             ])
             ->assertRedirect(route('settings.staff.show', $amara));
     }
@@ -488,7 +595,8 @@ class StaffProfileTest extends TestCase
         // Even posted directly, the field is not part of an update.
         $this->actingAs($owner)->patch('http://styledesk.test/settings/staff/'.$amara->id, [
             'first_name' => 'Amara', 'last_name' => 'Osei', 'email' => 'amara@acme.test',
-            'role_id' => $this->roleId('manager'), 'account_status' => 'active',
+            'role_id' => $this->roleId('manager'),
+                'location_id' => $this->location->id, 'account_status' => 'active',
             'login_enabled' => '1', 'send_invitation' => '1',
         ])->assertRedirect(route('settings.staff.show', $amara));
 

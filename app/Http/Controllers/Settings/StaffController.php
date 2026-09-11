@@ -1584,7 +1584,11 @@ class StaffController extends Controller
 
         $role = Role::query()->find($data['role_id']);
 
-        if ($role === null || ! RoleGuard::canAssignRole($request->user(), $role)) {
+        /* A locked role is the stored one — validated() has already forced it
+           — so the assignability test is skipped rather than failed. Asking
+           "may this person grant Owner?" about a role nobody is granting
+           refuses the edit for the wrong reason. */
+        if ($role === null || (! $this->roleIsLocked($request, $staff) && ! RoleGuard::canAssignRole($request->user(), $role))) {
             throw ValidationException::withMessages(['role_id' => __('staff.validation.role_not_yours')]);
         }
 
@@ -1734,6 +1738,17 @@ class StaffController extends Controller
      */
     private function validated(Request $request, ?Staff $staff = null): array
     {
+        /**
+         * A role the reader cannot hand out is not theirs to change here.
+         *
+         * An Owner is never assignable — ownership moves through the transfer
+         * workflow — so an owner's record carried a required field that could
+         * only ever be answered with a value the server then refused, which
+         * made the record unsavable. The form draws it read-only and posts
+         * nothing; this keeps what is stored.
+         */
+        $roleLocked = $this->roleIsLocked($request, $staff);
+
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'middle_name' => ['nullable', 'string', 'max:100'],
@@ -1792,9 +1807,15 @@ class StaffController extends Controller
             'emergency_contact_phone_country' => ['nullable', 'string', 'size:2'],
             'emergency_contact_relationship' => ['nullable', 'string', 'max:60'],
 
-            'role_id' => ['required', Rule::exists('roles', 'id')->where('tenant_id', $request->user()->tenant_id)],
+            'role_id' => [
+                $roleLocked ? 'nullable' : 'required',
+                Rule::exists('roles', 'id')->where('tenant_id', $request->user()->tenant_id),
+            ],
+            /* A branch, not an absence. There is no "all locations" staff
+               member: the empty answer used to put someone on every
+               location's calendar, which is a reach nobody chose. */
             'location_id' => [
-                'nullable',
+                'required',
                 Rule::exists('locations', 'id')->where('tenant_id', $request->user()->tenant_id),
             ],
             'employment_type' => ['nullable', Rule::in(array_keys(config('staff.employment_types')))],
@@ -1840,15 +1861,40 @@ class StaffController extends Controller
             'email.unique' => __('staff.validation.email_taken'),
             'work_email.email' => __('staff.validation.email_invalid'),
             'role_id.required' => __('staff.validation.role_required'),
+            'location_id.required' => __('staff.validation.location_required'),
             'avatar.max' => __('staff.validation.avatar_max'),
         ]);
 
         $data['login_enabled'] = $request->boolean('login_enabled');
         $data['send_invitation'] = $request->boolean('send_invitation');
 
+        /* The stored role wins outright, whatever was posted. Ignoring the
+           field rather than refusing it keeps a crafted role_id from doing
+           anything at all — the one answer that is safe by construction. */
+        if ($roleLocked) {
+            $data['role_id'] = $staff->role_id;
+        }
+
         $this->guardShiftRuleIsAvailable($data, $staff);
 
         return $data;
+    }
+
+    /**
+     * Whether this record's role is beyond the reader's gift.
+     *
+     * True for an owner's record, and for anyone whose role the reader could
+     * not have granted in the first place — the same test the role list is
+     * built from, so what the form offers and what the server accepts cannot
+     * disagree.
+     */
+    private function roleIsLocked(Request $request, ?Staff $staff): bool
+    {
+        /* roleRecord(), not `role`: the latter is the key as a string, and
+           the guard needs the record it names. */
+        $role = $staff?->roleRecord;
+
+        return $role !== null && ! RoleGuard::canAssignRole($request->user(), $role);
     }
 
     /**

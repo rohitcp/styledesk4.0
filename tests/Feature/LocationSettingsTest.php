@@ -71,7 +71,7 @@ class LocationSettingsTest extends TestCase
             'name' => 'Riverside',
             'address_line1' => '1 River Street',
             'city' => 'Austin',
-            'state' => 'Texas',
+            'state' => 'TX',
             'postal_code' => '78701',
             'country' => 'US',
             'timezone' => 'America/Chicago',
@@ -93,7 +93,7 @@ class LocationSettingsTest extends TestCase
             'status' => 'active',
             'address_line1' => '88 Congress Avenue',
             'city' => 'Austin',
-            'state' => 'Texas',
+            'state' => 'TX',
             'postal_code' => '78701',
             'country' => 'US',
             'timezone' => 'America/Chicago',
@@ -414,6 +414,135 @@ class LocationSettingsTest extends TestCase
             ->assertSessionHasErrors($field);
 
         $this->assertDatabaseCount('locations', 0);
+    }
+
+    // ------------------------------------------------------ state / region
+
+    /**
+     * The state field offers the chosen country's regions, searchably.
+     *
+     * The list is the same one onboarding writes from, so a branch added here
+     * and a branch added there store the same kind of value — a code, not
+     * whatever spelling of "New Jersey" somebody typed.
+     */
+    public function test_the_state_field_offers_the_countrys_regions(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.create'))
+            ->assertOk()
+            ->assertSee('data-state-combo', false)
+            /* The searchable island, not a bare select. */
+            ->assertSee('data-vue-component="MultiSelect"', false)
+            ->assertSee('New Jersey')
+            ->assertSee('Texas');
+    }
+
+    /**
+     * Every country's regions reach the browser, not just the chosen one's.
+     *
+     * The country is editable on this form, so the list has to be rebuildable
+     * without another request — otherwise choosing Canada would leave US
+     * states on offer.
+     */
+    public function test_the_form_carries_the_regions_of_other_countries(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.create'))
+            ->assertOk()
+            ->assertSee('Ontario')
+            ->assertSee('Queensland');
+    }
+
+    public function test_a_region_the_country_does_not_have_is_refused(): void
+    {
+        $this->actingAs($this->member('owner'))
+            /* A real code, of the wrong country: Ontario is not a US state,
+               and the dropdown never offered it here. */
+            ->post(route('settings.locations.store'), $this->validPayload(['state' => 'ON']))
+            ->assertSessionHasErrors('state');
+
+        $this->assertDatabaseCount('locations', 0);
+    }
+
+    public function test_a_typed_region_name_is_refused_where_a_list_exists(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->post(route('settings.locations.store'), $this->validPayload(['state' => 'Texas']))
+            ->assertSessionHasErrors('state');
+
+        $this->assertDatabaseCount('locations', 0);
+    }
+
+    /**
+     * A country with no regions of its own keeps a free-text box.
+     *
+     * Singapore has no meaningful subdivision, and a half-remembered list
+     * would be worse than the honest field.
+     */
+    public function test_a_country_without_regions_accepts_free_text(): void
+    {
+        $this->actingAs($this->member('owner'))
+            ->post(route('settings.locations.store'), $this->validPayload([
+                'country' => 'SG',
+                'state' => 'Central Region',
+                'timezone' => 'Asia/Singapore',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('locations', ['state' => 'Central Region']);
+    }
+
+    // ------------------------------------------------------------ website
+
+    /**
+     * A new branch starts with the business's own website filled in.
+     *
+     * Captured on the first onboarding step. Most branches share one site, so
+     * the suggestion saves the typing on the common case.
+     */
+    public function test_add_suggests_the_businesss_website(): void
+    {
+        $this->tenant->forceFill(['website' => 'https://nadia.example.com'])->save();
+
+        $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.create'))
+            ->assertOk()
+            ->assertSee('value="https://nadia.example.com"', false);
+    }
+
+    /**
+     * A suggestion, not a rule: saving something else saves something else.
+     */
+    public function test_the_suggested_website_can_be_replaced(): void
+    {
+        $this->tenant->forceFill(['website' => 'https://nadia.example.com'])->save();
+
+        $this->actingAs($this->member('owner'))
+            ->post(route('settings.locations.store'), $this->validPayload([
+                'website' => 'https://riverside.example.com',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('locations', ['website' => 'https://riverside.example.com']);
+    }
+
+    /**
+     * Edit shows what is stored, including when nothing is.
+     *
+     * A branch whose website somebody deliberately cleared must not have the
+     * business's one put back every time the form is opened — that would undo
+     * the clearing, silently, on the next save.
+     */
+    public function test_edit_does_not_refill_a_cleared_website(): void
+    {
+        $this->tenant->forceFill(['website' => 'https://nadia.example.com'])->save();
+
+        $location = $this->location(['website' => null]);
+
+        $this->actingAs($this->member('owner'))
+            ->get(route('settings.locations.edit', $location))
+            ->assertOk()
+            ->assertDontSee('value="https://nadia.example.com"', false);
     }
 
     public function test_a_location_code_cannot_be_reused_within_the_business(): void

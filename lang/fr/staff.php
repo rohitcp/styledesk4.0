@@ -138,7 +138,9 @@ return [
 
         'role' => 'Rôle',
         'role_placeholder' => 'Choisissez un rôle',
+        'location_placeholder' => 'Choisissez un établissement',
         'role_hint' => 'Vous ne pouvez attribuer que des rôles compris dans votre propre accès.',
+        'role_locked_hint' => 'Ce rôle ne peut pas être modifié ici. La propriété se transmet par le transfert de propriété.',
         'location' => 'Établissement principal',
         'employment_type' => 'Type de contrat',
         'provider_type' => 'Type de praticien',
@@ -172,6 +174,7 @@ return [
         'email_invalid' => 'Saisissez une adresse e-mail valide.',
         'email_taken' => 'Quelqu’un de votre équipe utilise déjà cette adresse e-mail.',
         'role_required' => 'Choisissez un rôle pour cette personne.',
+        'location_required' => 'Choisissez l’établissement où travaille cette personne.',
         'role_invalid' => 'Vous ne pouvez attribuer que des rôles compris dans votre propre accès.',
         'location_invalid' => 'Choisissez l’un de vos propres établissements.',
         'service_invalid' => 'Choisissez l’une de vos propres prestations.',

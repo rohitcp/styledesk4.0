@@ -97,6 +97,7 @@ class StaffCreateTest extends TestCase
             'last_name' => 'wu',
             'email' => 'kit@acme.test',
             'role_id' => $this->roleId('service-provider'),
+            'location_id' => $this->location->id,
             'account_status' => 'active',
         ], $overrides);
     }
@@ -426,6 +427,47 @@ class StaffCreateTest extends TestCase
         // Owner is never an option: ownership moves by transfer, not by
         // picking it from a list.
         $this->assertStringNotContainsString('>Owner<', $response->getContent());
+    }
+
+    // ----------------------------------------------------------- location
+
+    /**
+     * A branch is chosen, not left blank.
+     *
+     * The field offered "All locations" as its empty answer and nothing in
+     * the product means it — a person works somewhere. Left blank they also
+     * turned up on every location's calendar, per Calendar::staffFor().
+     */
+    public function test_a_staff_member_must_be_given_a_location(): void
+    {
+        $this->actingAs($this->owner())
+            ->postJson('http://styledesk.test/settings/staff', $this->payload(['location_id' => null]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('location_id');
+
+        $this->assertSame(0, Staff::withoutGlobalScopes()->where('email', 'kit@acme.test')->count());
+    }
+
+    public function test_the_form_no_longer_offers_all_locations(): void
+    {
+        $this->actingAs($this->owner())
+            ->get('http://styledesk.test/settings/staff/create')
+            ->assertOk()
+            ->assertDontSee('All locations');
+    }
+
+    /**
+     * With one branch there is nothing to choose, so it is chosen already.
+     *
+     * Most businesses have exactly one, and making them open a list of one
+     * to pick the only answer is a required field for its own sake.
+     */
+    public function test_a_single_location_is_selected_by_default(): void
+    {
+        $this->actingAs($this->owner())
+            ->get('http://styledesk.test/settings/staff/create')
+            ->assertOk()
+            ->assertSee('&quot;modelValue&quot;:[&quot;'.$this->location->id.'&quot;]', false);
     }
 
     /**

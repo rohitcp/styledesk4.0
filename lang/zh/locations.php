@@ -102,6 +102,7 @@ return [
         'code' => 'DT01',
         'type' => '未填写',
         'country' => '选择一个国家／地区',
+        'state' => '选择州或地区',
         'timezone' => '选择一个时区',
         'manager' => '未指定',
     ],

@@ -1046,7 +1046,7 @@ class LanguageTest extends TestCase
             ->post(route('settings.locations.store'), [
                 'name' => 'Riverside', 'status' => 'active',
                 'address_line1' => '1 River Street', 'city' => 'Austin',
-                'state' => 'Texas', 'postal_code' => '78701',
+                'state' => 'TX', 'postal_code' => '78701',
                 'country' => 'US', 'timezone' => 'America/Chicago',
                 'phone' => '+1 512 555 0100', 'email' => 'riverside@nadia.test',
             ])

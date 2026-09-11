@@ -139,7 +139,9 @@ return [
 
         'role' => 'Rolle',
         'role_placeholder' => 'Rolle wählen',
+        'location_placeholder' => 'Standort wählen',
         'role_hint' => 'Sie können nur Rollen innerhalb Ihres eigenen Zugriffs vergeben.',
+        'role_locked_hint' => 'Diese Rolle kann hier nicht geändert werden. Die Inhaberschaft wird über die Eigentumsübertragung übergeben.',
         'location' => 'Hauptstandort',
         'employment_type' => 'Anstellungsart',
         'provider_type' => 'Art der Tätigkeit',
@@ -173,6 +175,7 @@ return [
         'email_invalid' => 'Geben Sie eine gültige E-Mail-Adresse ein.',
         'email_taken' => 'Jemand in Ihrem Team verwendet diese E-Mail-Adresse bereits.',
         'role_required' => 'Wählen Sie eine Rolle für diese Person.',
+        'location_required' => 'Wählen Sie den Standort, an dem diese Person arbeitet.',
         'role_invalid' => 'Sie können nur Rollen innerhalb Ihres eigenen Zugriffs vergeben.',
         'location_invalid' => 'Wählen Sie einen Ihrer eigenen Standorte.',
         'service_invalid' => 'Wählen Sie eine Ihrer eigenen Leistungen.',

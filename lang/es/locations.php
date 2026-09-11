@@ -97,6 +97,7 @@ return [
         'code' => 'DT01',
         'type' => 'Sin especificar',
         'country' => 'Elige un país',
+        'state' => 'Elige un estado o región',
         'timezone' => 'Elige una zona horaria',
         'manager' => 'Sin asignar',
     ],

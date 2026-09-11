@@ -68,8 +68,21 @@ const query = ref('');
 const root = ref(null);
 const searchBox = ref(null);
 
+/**
+ * Options replaced from outside, for a list that follows another control.
+ *
+ * The state list follows the country, and the country is editable on the same
+ * form — so the options this control was mounted with stop being the right
+ * ones the moment that changes. Null means "nobody has replaced them", which
+ * is not the same as an empty object: a country with no regions of its own
+ * genuinely has none to offer.
+ */
+const replacedOptions = ref(null);
+
+const activeOptions = computed(() => replacedOptions.value ?? props.options);
+
 const entries = computed(() =>
-    Object.entries(props.options)
+    Object.entries(activeOptions.value)
         .filter(([code]) => !props.exclude.includes(code))
         .map(([code, name]) => ({ code, name }))
 );
@@ -85,7 +98,7 @@ const matches = computed(() => {
 const primary = computed(() => selected.value[0] ?? null);
 
 function nameOf(code) {
-    return props.options[code] ?? code;
+    return activeOptions.value[code] ?? code;
 }
 
 function isSelected(code) {
@@ -316,6 +329,32 @@ function onExternalSet(event) {
     }
 }
 
+/* This control's list rebuilt by whatever it depends on — the regions of a
+   newly chosen country. Replaced through the control rather than around it,
+   so its button, its search and what it posts cannot disagree. */
+function onExternalOptions(event) {
+    const { name, options } = event.detail ?? {};
+
+    if (name !== props.name) {
+        return;
+    }
+
+    replacedOptions.value = options ?? {};
+
+    /* A choice the new list does not contain has stopped being a choice.
+       Kept, it would post a region of the country the form has just moved
+       away from — a Texas address in Ontario, and valid-looking.
+
+       Only when something actually drops. Assigning regardless counts as a
+       change, and the first of these arrives as the page loads — which turned
+       an untouched required field red before the reader had done anything. */
+    const kept = selected.value.filter((code) => code in replacedOptions.value);
+
+    if (kept.length !== selected.value.length) {
+        selected.value = kept;
+    }
+}
+
 function onExternalClear() {
     if (selected.value.length) {
         selected.value = [];
@@ -334,6 +373,7 @@ onMounted(() => {
     document.addEventListener('styledesk:filter-remove', onExternalRemove);
     document.addEventListener('styledesk:filter-clear', onExternalClear);
     document.addEventListener('styledesk:filter-set', onExternalSet);
+    document.addEventListener('styledesk:combo-options', onExternalOptions);
     document.addEventListener('styledesk:combo-open', onOtherOpen);
     window.addEventListener('scroll', onViewportChange, true);
     window.addEventListener('resize', onViewportChange);
@@ -359,6 +399,7 @@ onBeforeUnmount(() => {
     document.removeEventListener('styledesk:filter-remove', onExternalRemove);
     document.removeEventListener('styledesk:filter-clear', onExternalClear);
     document.removeEventListener('styledesk:filter-set', onExternalSet);
+    document.removeEventListener('styledesk:combo-options', onExternalOptions);
     document.removeEventListener('styledesk:combo-open', onOtherOpen);
     window.removeEventListener('scroll', onViewportChange, true);
     window.removeEventListener('resize', onViewportChange);

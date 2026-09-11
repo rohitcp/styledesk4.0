@@ -138,7 +138,9 @@ return [
 
         'role' => 'Role',
         'role_placeholder' => 'Choose a role',
+        'location_placeholder' => 'Choose a location',
         'role_hint' => 'You can only assign roles within your own access.',
+        'role_locked_hint' => 'This role cannot be changed here. Ownership moves through the ownership transfer.',
         'location' => 'Primary location',
         'employment_type' => 'Employment type',
         'provider_type' => 'Provider type',
@@ -172,6 +174,7 @@ return [
         'email_invalid' => 'Enter a valid email address.',
         'email_taken' => 'Someone on your team already uses that email address.',
         'role_required' => 'Choose a role for this person.',
+        'location_required' => 'Choose the location this person works at.',
         'role_invalid' => 'You can only assign roles within your own access.',
         'location_invalid' => 'Choose one of your own locations.',
         'service_invalid' => 'Choose one of your own services.',

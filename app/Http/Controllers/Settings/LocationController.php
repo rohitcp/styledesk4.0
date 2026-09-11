@@ -248,7 +248,22 @@ class LocationController extends Controller
             'address_line2' => ['nullable', 'string', 'max:255'],
             'suite' => ['nullable', 'string', 'max:60'],
             'city' => ['required', 'string', 'max:120'],
-            'state' => ['required', 'string', 'max:120'],
+            /**
+             * A real region code where the country has a list, free text
+             * where it does not.
+             *
+             * The form offers a searchable list for the first kind and a box
+             * for the second, and the rule follows the same split — otherwise
+             * the dropdown would be advisory, and a posted value the list
+             * never offered would be stored as though someone had chosen it.
+             */
+            'state' => [
+                'required', 'string', 'max:120',
+                Rule::when(
+                    (bool) config('locations.regions.'.$request->input('country')),
+                    [Rule::in(array_keys(config('locations.regions.'.$request->input('country'), [])))],
+                ),
+            ],
             'postal_code' => ['required', 'string', 'max:20'],
             'country' => ['required', Rule::in(array_keys(config('locations.countries')))],
             'timezone' => ['required', 'timezone'],
@@ -530,6 +545,10 @@ class LocationController extends Controller
             'staffOptions' => $this->assignableStaff($tenant->getTenantKey(), $location),
             'types' => LocationOptions::types(),
             'countries' => LocationOptions::countries(),
+            /* Every country's regions, not just the chosen one's: the country
+               is editable on this form, so the list the state field offers has
+               to be rebuildable in the browser without another request. */
+            'regions' => config('locations.regions'),
             'timezones' => config('locations.timezones'),
             'weekdays' => LocationOptions::weekdays(),
             'hoursByDay' => $location ? $this->hoursByDay($location) : $this->defaultHours(),
