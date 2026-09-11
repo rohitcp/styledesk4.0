@@ -95,6 +95,27 @@ class BackofficeAuthTest extends TestCase
     }
 
     /**
+     * The code screen renders nothing but the code screen.
+     *
+     * It once printed the tail of a broken `@section` directive — `$email])">`
+     * — above the field. Harmless to the login, but the first thing an
+     * administrator sees of the platform console, and it read as a crash.
+     */
+    public function test_the_code_screen_leaks_no_template_fragment(): void
+    {
+        Mail::fake();
+        $admin = $this->admin();
+
+        $this->post(route('backoffice.verify.send'), ['email' => $admin->email]);
+
+        $this->get(route('backoffice.verify.code'))
+            ->assertOk()
+            ->assertSee(__('backoffice.auth.code_label'))
+            ->assertDontSee('$email', false)
+            ->assertDontSee('])">', false);
+    }
+
+    /**
      * An address nobody has behaves exactly like one somebody does.
      *
      * Same redirect, same wording, and a row written either way — but no mail,

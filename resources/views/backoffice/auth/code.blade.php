@@ -13,8 +13,6 @@
 @endsection
 
 @section('content')
- $email])">
-
     <form method="POST" action="{{ route('backoffice.verify.check') }}" class="space-y-4">
         @csrf
 
