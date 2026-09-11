@@ -464,10 +464,21 @@ class StaffCreateTest extends TestCase
      */
     public function test_a_single_location_is_selected_by_default(): void
     {
-        $this->actingAs($this->owner())
+        $html = $this->actingAs($this->owner())
             ->get('http://styledesk.test/settings/staff/create')
             ->assertOk()
-            ->assertSee('&quot;modelValue&quot;:[&quot;'.$this->location->id.'&quot;]', false);
+            ->getContent();
+
+        /* Read out of the island's own props rather than matched as a string:
+           the directive escapes quotes, and asserting against that encoding
+           would break on a Blade change that has nothing to do with this. */
+        preg_match_all("/data-props='([^']*)'/", $html, $found);
+
+        $location = collect($found[1])
+            ->map(fn (string $json) => json_decode(html_entity_decode($json), true))
+            ->firstWhere('name', 'location_id');
+
+        $this->assertSame([(string) $this->location->id], $location['modelValue']);
     }
 
     /**

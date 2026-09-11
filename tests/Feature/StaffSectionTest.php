@@ -78,6 +78,7 @@ class StaffSectionTest extends TestCase
             'last_name' => 'wu',
             'email' => 'kit@acme.test',
             'role_id' => $this->roleId('service-provider'),
+            'location_id' => $this->location->id,
             'account_status' => 'active',
             'login_enabled' => '0',
         ], $overrides);
@@ -609,6 +610,7 @@ class StaffSectionTest extends TestCase
                 'last_name' => $member->last_name,
                 'email' => $member->email,
                 'role_id' => $this->roleId('service-provider'),
+                'location_id' => $this->location->id,
                 'account_status' => 'active',
                 'shift_rule_id' => $rule->id,
             ])

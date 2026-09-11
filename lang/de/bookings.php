@@ -225,7 +225,7 @@ return [
         'guest_name' => 'Name',
         'guest_phone' => 'Mobil',
         'guest_email' => 'E-Mail',
-        'guest_hint' => 'Laufkundschaft wird ohne Datensatz gebucht. Legen Sie stattdessen einen an, wenn die Person wiederkommt.',
+        'guest_hint' => 'Eine Mobilnummer oder E-Mail nimmt die Person in die Kundenliste auf oder verknüpft diese Buchung mit ihrem vorhandenen Datensatz. Der Name allein genügt nicht.',
         'guest_save' => 'Angaben speichern',
         'guest_checking' => 'Wird geprüft…',
         'guest_saved' => 'Gespeichert',
@@ -760,7 +760,7 @@ return [
         'taken_by' => 'Angenommen von :name am :when',
         'someone' => 'jemand aus dem Team',
         'updated' => 'zuletzt aktualisiert :when',
-        'walk_in' => 'Laufkundschaft, gebucht ohne Datensatz.',
+        'walk_in' => 'An der Tür angenommen.',
         /* Ausdrücklich gesagt, weil Profil und diese Seite auseinandergehen,
            während sich die Person ändert — und genau darum geht es. */
         'snapshot' => 'Stand :when, als diese Buchung angenommen wurde.',

@@ -219,6 +219,10 @@ return [
      * Das Kundenmodul: Liste, Leerzustand, Formular und Profil. Seine
      * Einstellungen sind die Schlüssel weiter oben.
      */
+    'walk_in' => [
+        'unnamed' => 'Laufkundschaft',
+    ],
+
     'module' => [
         'title' => 'Kunden',
         'intro' => 'Verwalten Sie Kundenprofile, Präferenzen, Kontaktdaten, Notizen und Buchungshistorie.',

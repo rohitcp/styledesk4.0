@@ -221,7 +221,7 @@ return [
         'guest_name' => '姓名',
         'guest_phone' => '手机',
         'guest_email' => '邮箱',
-        'guest_hint' => '到店客人不建客户记录就能下单。如果对方还会再来，请改为添加客户。',
+        'guest_hint' => '留下手机号或邮箱即可加入客户列表，或与其已有的客户记录关联。仅有姓名则不会。',
         'guest_save' => '保存到店客人信息',
         'guest_checking' => '正在检查…',
         'guest_saved' => '已保存',
@@ -740,7 +740,7 @@ return [
         'taken_by' => '由 :name 于 :when 收取',
         'someone' => '一位团队成员',
         'updated' => '最近更新于 :when',
-        'walk_in' => '一位到店客人，没有建客户记录就下了单。',
+        'walk_in' => '在店内当场接待。',
         /* 明说出来，因为随着客户资料变化，档案和这个页面会不一致——而这正是它的意义。 */
         'snapshot' => '这是接下这个预约时（:when）的信息。',
     ],

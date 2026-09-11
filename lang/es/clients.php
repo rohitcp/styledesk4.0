@@ -198,6 +198,10 @@ return [
         'tag_exists' => 'Ya tienes una etiqueta con ese nombre.',
     ],
 
+    'walk_in' => [
+        'unnamed' => 'Sin cita',
+    ],
+
     'module' => [
         'title' => 'Clientes',
         'intro' => 'Gestiona las fichas de clientes, sus preferencias, sus datos de contacto, sus notas y su historial de reservas.',

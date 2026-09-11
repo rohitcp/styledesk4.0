@@ -225,7 +225,7 @@ return [
         'guest_name' => 'Nom',
         'guest_phone' => 'Mobile',
         'guest_email' => 'E-mail',
-        'guest_hint' => 'Un sans rendez-vous se réserve sans fiche client. Ajoutez plutôt le client s’il revient.',
+        'guest_hint' => 'Un mobile ou un e-mail l’ajoute à la liste des clients, ou rattache cette réservation à sa fiche existante. Le nom seul ne suffit pas.',
         'guest_save' => 'Enregistrer les informations',
         'guest_checking' => 'Vérification…',
         'guest_saved' => 'Enregistré',
@@ -759,7 +759,7 @@ return [
         'taken_by' => 'Encaissé par :name le :when',
         'someone' => 'un membre de l’équipe',
         'updated' => 'dernière mise à jour :when',
-        'walk_in' => 'Un passage sans rendez-vous, réservé sans fiche client.',
+        'walk_in' => 'Reçu sur place.',
         /* Dit explicitement, parce que la fiche et cette page divergeront à
            mesure que le client change — et c'est bien l'intérêt. */
         'snapshot' => 'Tel qu’au :when, lorsque cette réservation a été prise.',

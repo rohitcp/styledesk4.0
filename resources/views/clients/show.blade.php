@@ -108,6 +108,15 @@
             {{ __('clients.module.workspace.client_since', ['date' => $client->created_at->isoFormat('MMM Y')]) }}
           </span>
 
+          {{-- Where the record came from, for the records that know.
+               Null on everything added before it was written down, and shown
+               as nothing rather than as a guess. --}}
+          @if ($client->source && ($sourceLabel = App\Support\ClientOptions::creationSources()[$client->source] ?? null))
+            <span class="styledesk_metachip styledesk_metachip--since">
+              {{ $sourceLabel }}
+            </span>
+          @endif
+
           @if ($client->date_of_birth)
             <span class="styledesk_metachip styledesk_metachip--dob">
               {{ __('clients.module.workspace.dob', ['date' => $client->date_of_birth->isoFormat('D MMM Y')]) }}

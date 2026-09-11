@@ -219,6 +219,10 @@ return [
      * Le module Clients : la liste, l'état vide, le formulaire et la fiche.
      * Ses réglages sont les clés ci-dessus.
      */
+    'walk_in' => [
+        'unnamed' => 'Sans rendez-vous',
+    ],
+
     'module' => [
         'title' => 'Clients',
         'intro' => 'Gérez les fiches clients, les préférences, les coordonnées, les notes et l’historique des réservations.',

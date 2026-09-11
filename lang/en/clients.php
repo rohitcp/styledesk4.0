@@ -218,6 +218,10 @@ return [
      * The Clients module: the listing, the empty state, the form and the
      * profile. Its settings are the keys above.
      */
+    'walk_in' => [
+        'unnamed' => 'Walk-in',
+    ],
+
     'module' => [
         'title' => 'Clients',
         'intro' => 'Manage client profiles, preferences, contact details, notes, and booking history.',

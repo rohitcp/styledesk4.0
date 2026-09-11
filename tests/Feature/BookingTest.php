@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\BookingLead;
 use App\Models\BookingReview;
 use App\Models\Client;
+use App\Models\ClientSettings;
 use App\Models\Location;
 use App\Models\Resource;
 use App\Models\ResourceCategory;
@@ -174,17 +175,66 @@ class BookingTest extends TestCase
     }
 
     /**
-     * A walk-in is a booking with a name and no record behind it. Forcing one
-     * to exist would fill the client list with people who came in once.
+     * A walk-in who leaves a way to reach them goes on file.
+     *
+     * This reverses the rule this test used to hold — "a walk-in is a booking
+     * with a name and no record behind it" — because the cost ran the other
+     * way. The details were typed at the desk and went nowhere, so the same
+     * person walking in twice was two strangers and nothing they were told
+     * could be followed up.
+     *
+     * The booking stays a walk-in. How it was taken is a fact about the
+     * moment it was taken, and is not rewritten by what it led to.
      */
-    public function test_a_walk_in_is_booked_without_a_client_record(): void
+    public function test_a_walk_in_with_contact_details_becomes_a_client(): void
+    {
+        $owner = $this->owner();
+        $service = $this->service('Beard trim', 20, 2000);
+
+        $this->actingAs($owner)->post(route('bookings.store'), [
+            'guest_name' => 'Tom Fletcher',
+            'guest_phone' => '+1 305 555 0199',
+            'date' => '2026-09-10',
+            'starts_at' => '09:30',
+            'services' => [$service->id],
+        ])->assertRedirect();
+
+        $booking = Booking::withoutGlobalScopes()->first();
+        $client = Client::withoutGlobalScopes()->sole();
+
+        $this->assertSame($client->id, $booking->client_id);
+        $this->assertTrue($booking->is_walk_in);
+        /* The details as typed stay on the booking too, so the record and
+           what was said at the desk can be read against each other. */
+        $this->assertSame('Tom Fletcher', $booking->guest_name);
+
+        $this->assertSame('Tom', $client->first_name);
+        $this->assertSame('Fletcher', $client->last_name);
+        $this->assertSame('walk_in', $client->source);
+        $this->assertSame('2026-09-10', $client->first_visit_at->toDateString());
+
+        /* Through the contact rows, not straight into the cache columns:
+           a number written only to the column shows in the listing and
+           nowhere on the client's own profile. */
+        $this->assertSame('+1 305 555 0199', $client->phones()->sole()->number);
+        $this->assertTrue((bool) $client->phones()->sole()->is_primary);
+        $this->assertSame('+1 305 555 0199', $client->mobile);
+    }
+
+    /**
+     * A name on its own is not identity.
+     *
+     * It cannot be matched on — every duplicate rule is built from a number
+     * or an address — so a record made from one could never be found again by
+     * the person who needed it, and the list fills with unreachable Toms.
+     */
+    public function test_a_walk_in_with_no_way_to_reach_them_stays_off_the_book(): void
     {
         $owner = $this->owner();
         $service = $this->service('Beard trim', 20, 2000);
 
         $this->actingAs($owner)->post(route('bookings.store'), [
             'guest_name' => 'Tom at the door',
-            'guest_phone' => '+1 305 555 0199',
             'date' => '2026-09-10',
             'starts_at' => '09:30',
             'services' => [$service->id],
@@ -196,6 +246,153 @@ class BookingTest extends TestCase
         $this->assertTrue($booking->is_walk_in);
         $this->assertSame('Tom at the door', $booking->clientName());
         $this->assertSame(0, Client::withoutGlobalScopes()->count());
+    }
+
+    /**
+     * A regular whose name the receptionist typed rather than searched for.
+     *
+     * The booking joins the record they already have. Nothing about that
+     * record is edited — matching warns everywhere else in this application
+     * and a wrongly merged history is not something a receptionist can
+     * unpick, so finding somebody means attaching the booking and stopping.
+     */
+    public function test_a_walk_in_matching_an_existing_client_is_attached_to_them(): void
+    {
+        $owner = $this->owner();
+        $service = $this->service('Beard trim', 20, 2000);
+        $mia = $this->client();
+
+        $this->actingAs($owner)->post(route('bookings.store'), [
+            'guest_name' => 'Mia B',
+            'guest_phone' => '+1 305 555 0100',
+            'date' => '2026-09-10',
+            'starts_at' => '09:30',
+            'services' => [$service->id],
+        ])->assertRedirect();
+
+        $this->assertSame(1, Client::withoutGlobalScopes()->count());
+        $this->assertSame($mia->id, Booking::withoutGlobalScopes()->first()->client_id);
+
+        $mia->refresh();
+        $this->assertSame('Baker', $mia->last_name);
+        $this->assertNull($mia->source);
+    }
+
+    public function test_a_walk_in_matching_on_email_is_attached_to_them(): void
+    {
+        $owner = $this->owner();
+        $service = $this->service('Beard trim', 20, 2000);
+        $mia = $this->client();
+
+        $this->actingAs($owner)->post(route('bookings.store'), [
+            'guest_name' => 'Mia',
+            'guest_email' => 'MIA@acme.test',
+            'date' => '2026-09-10',
+            'starts_at' => '09:30',
+            'services' => [$service->id],
+        ])->assertRedirect();
+
+        $this->assertSame(1, Client::withoutGlobalScopes()->count());
+        $this->assertSame($mia->id, Booking::withoutGlobalScopes()->first()->client_id);
+    }
+
+    /**
+     * The walk-in's branch and stylist become what is known about them.
+     */
+    public function test_a_walk_in_client_keeps_the_branch_and_stylist_they_were_seen_at(): void
+    {
+        $owner = $this->owner();
+        $service = $this->service('Beard trim', 20, 2000);
+        $staff = $this->staff();
+
+        $this->actingAs($owner)->post(route('bookings.store'), [
+            'guest_name' => 'Tom Fletcher',
+            'guest_phone' => '+1 305 555 0199',
+            'staff_id' => $staff->id,
+            'location_id' => $this->location->id,
+            'date' => '2026-09-10',
+            'starts_at' => '09:30',
+            'services' => [$service->id],
+        ])->assertRedirect();
+
+        $client = Client::withoutGlobalScopes()->sole();
+
+        $this->assertSame($this->location->id, $client->preferred_location_id);
+        $this->assertSame($staff->id, $client->preferred_staff_id);
+    }
+
+    /**
+     * The profile says where the record came from.
+     */
+    public function test_a_walk_in_clients_profile_names_its_source(): void
+    {
+        $owner = $this->owner();
+        $service = $this->service('Beard trim', 20, 2000);
+
+        $this->actingAs($owner)->post(route('bookings.store'), [
+            'guest_name' => 'Tom Fletcher',
+            'guest_phone' => '+1 305 555 0199',
+            'date' => '2026-09-10',
+            'starts_at' => '09:30',
+            'services' => [$service->id],
+        ])->assertRedirect();
+
+        $client = Client::withoutGlobalScopes()->sole();
+
+        $this->actingAs($owner)
+            ->get(route('clients.show', $client))
+            ->assertOk()
+            ->assertSee('Walk-in booking');
+    }
+
+    /**
+     * A draft puts nobody on file.
+     *
+     * The same rule membership credits follow: a draft is a booking somebody
+     * is still typing, and half of them are abandoned. A client created for
+     * one is a stranger in the client list that nothing will ever clean up.
+     */
+    public function test_a_draft_walk_in_creates_nobody(): void
+    {
+        $owner = $this->owner();
+        $service = $this->service('Beard trim', 20, 2000);
+
+        $this->actingAs($owner)->post(route('bookings.store'), [
+            'guest_name' => 'Tom Fletcher',
+            'guest_phone' => '+1 305 555 0199',
+            'date' => '2026-09-10',
+            'starts_at' => '09:30',
+            'services' => [$service->id],
+            'draft' => true,
+        ])->assertRedirect();
+
+        $this->assertSame(0, Client::withoutGlobalScopes()->count());
+        $this->assertNull(Booking::withoutGlobalScopes()->first()->client_id);
+    }
+
+    /**
+     * A business that has switched the front door off keeps it off.
+     */
+    public function test_a_walk_in_creates_nobody_when_the_business_has_turned_that_source_off(): void
+    {
+        $owner = $this->owner();
+        $service = $this->service('Beard trim', 20, 2000);
+
+        ClientSettings::updateOrCreate(
+            ['tenant_id' => $this->tenant->getTenantKey()],
+            ['creation_sources' => ['client_list', 'booking']],
+        );
+
+        $this->actingAs($owner)->post(route('bookings.store'), [
+            'guest_name' => 'Tom Fletcher',
+            'guest_phone' => '+1 305 555 0199',
+            'date' => '2026-09-10',
+            'starts_at' => '09:30',
+            'services' => [$service->id],
+        ])->assertRedirect();
+
+        $this->assertSame(0, Client::withoutGlobalScopes()->count());
+        $this->assertNull(Booking::withoutGlobalScopes()->first()->client_id);
     }
 
     /** Somebody has to be named: a client on file, or a walk-in's name. */

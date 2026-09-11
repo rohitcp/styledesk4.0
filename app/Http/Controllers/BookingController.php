@@ -45,6 +45,7 @@ use App\Support\Promotions;
 use App\Support\ResourceAllocator;
 use App\Support\TimeFormat;
 use App\Support\Tips;
+use App\Support\WalkInClients;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -1266,7 +1267,30 @@ class BookingController extends Controller
             }
         }
 
-        $booking = DB::transaction(function () use ($data, $lead, $services, $minutes, $starts, $currency, $totals, $request, $depositMinor, $collectionMethod, $pricedFor, $promotion, $tipPercent, $tipMinor, $discountMinor, $creditMinor, $creditClient, $coveredServiceIds, $creditValues) {
+        /* How this booking was taken, settled before anybody is put on file.
+           A walk-in whose details turn into a client record is still a
+           walk-in — reading it back off client_id afterwards would rewrite
+           how it happened because of what it led to. */
+        $isWalkIn = empty($data['client_id']);
+
+        $booking = DB::transaction(function () use ($data, $lead, $services, $minutes, $starts, $currency, $totals, $request, $depositMinor, $collectionMethod, $pricedFor, $promotion, $tipPercent, $tipMinor, $discountMinor, $creditMinor, $creditClient, $coveredServiceIds, $creditValues, $isWalkIn) {
+            /* The walk-in who is, or becomes, somebody on file. Inside the
+               transaction: a client created for a booking that then fails to
+               save is a stranger in the client list. */
+            if ($isWalkIn && ! ($data['draft'] ?? false)) {
+                $data['client_id'] = WalkInClients::resolve(
+                    $request->user()->tenant,
+                    [
+                        'name' => $data['guest_name'] ?? null,
+                        'phone' => $data['guest_phone'] ?? null,
+                        'email' => $data['guest_email'] ?? null,
+                    ],
+                    isset($data['location_id']) ? (int) $data['location_id'] : null,
+                    isset($data['staff_id']) ? (int) $data['staff_id'] : null,
+                    $data['date'],
+                )?->id;
+            }
+
             $attributes = [
                 'client_id' => $data['client_id'] ?? null,
                 'guest_name' => $data['guest_name'] ?? null,
@@ -1293,7 +1317,7 @@ class BookingController extends Controller
                 'minutes' => $minutes,
                 'status' => ($data['draft'] ?? false) ? 'draft' : 'confirmed',
                 'source' => $data['source'] ?? 'front-desk',
-                'is_walk_in' => empty($data['client_id']),
+                'is_walk_in' => $isWalkIn,
                 'subtotal_minor' => $totals->subtotalMinor,
                 /* The coupon's share of the reduction, not the credits'.
                    A column holding both would make "what did we discount"
@@ -1491,7 +1515,11 @@ class BookingController extends Controller
                 'ends_at' => $starts->addMinutes($minutes)->format('H:i'),
                 'minutes' => $minutes,
                 'source' => $data['source'] ?? $booking->source,
-                'is_walk_in' => empty($data['client_id']),
+                /* Left as it was. How a booking was taken is a fact about the
+                   moment it was taken; recomputing it from client_id would
+                   turn a walk-in into a booked appointment the first time
+                   anybody opened it, because the walk-in is now on file. */
+                'is_walk_in' => $booking->is_walk_in,
                 'subtotal_minor' => $totals->subtotalMinor,
                 'discount_minor' => $totals->discountMinor,
                 'tax_minor' => $totals->taxMinor,

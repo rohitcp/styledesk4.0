@@ -50,6 +50,7 @@ class Client extends Model
             'date_of_birth' => 'date',
             'consent_recorded_at' => 'datetime',
             'last_visit_at' => 'datetime',
+            'first_visit_at' => 'datetime',
             'next_booking_at' => 'datetime',
             'comm_email' => 'boolean',
             'comm_sms' => 'boolean',

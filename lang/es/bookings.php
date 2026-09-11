@@ -224,7 +224,7 @@ return [
         'guest_name' => 'Nombre',
         'guest_phone' => 'Móvil',
         'guest_email' => 'Correo',
-        'guest_hint' => 'Una reserva sin cita no crea ficha de cliente. Si va a volver, añade al cliente.',
+        'guest_hint' => 'Un móvil o un correo lo añade a la lista de clientes, o vincula esta reserva con su ficha existente. El nombre por sí solo no.',
         'guest_save' => 'Guardar los datos',
         'guest_checking' => 'Comprobando…',
         'guest_saved' => 'Guardado',
@@ -687,7 +687,7 @@ return [
         'taken_by' => 'Creada por :name el :when',
         'someone' => 'alguien del equipo',
         'updated' => 'última actualización :when',
-        'walk_in' => 'Cliente sin cita, reservado sin ficha.',
+        'walk_in' => 'Atendido en el momento.',
         'snapshot' => 'Así estaba el :when, cuando se creó esta reserva.',
     ],
 

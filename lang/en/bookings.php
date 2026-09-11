@@ -241,7 +241,7 @@ return [
         'guest_name' => 'Name',
         'guest_phone' => 'Mobile',
         'guest_email' => 'Email',
-        'guest_hint' => 'A walk-in is booked without a client record. Add the client instead if they are coming back.',
+        'guest_hint' => 'A mobile or email puts them on the client list, or attaches this booking to the record they already have. A name alone does not.',
         'guest_save' => 'Save walk-in details',
         'guest_checking' => 'Checking…',
         'guest_saved' => 'Saved',
@@ -774,7 +774,7 @@ return [
         'taken_by' => 'Taken by :name on :when',
         'someone' => 'a team member',
         'updated' => 'last updated :when',
-        'walk_in' => 'A walk-in, booked without a client record.',
+        'walk_in' => 'Taken at the door.',
         /* Said out loud, because the profile and this page will disagree as
            the client changes — and that is the point of it. */
         'snapshot' => 'As at :when, when this booking was taken.',
