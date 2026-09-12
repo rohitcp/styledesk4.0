@@ -231,6 +231,12 @@ return [
         'guest_saved' => 'Enregistré',
         'guest_known' => 'C’est peut-être déjà un client.',
         'guest_known_hint' => 'Utilisez sa fiche et la réservation conserve son historique. Continuez en sans rendez-vous si c’est quelqu’un d’autre.',
+        'guest_phone_invalid' => 'Enter a valid mobile number.',
+        'guest_email_invalid' => 'Enter a valid email address.',
+        'guest_created' => 'Added to your client list.',
+        'guest_linked' => 'Attached to their existing client record.',
+        'guest_conflict' => 'These details belong to two different clients.',
+        'guest_conflict_hint' => 'The email is on one record and the number on another, so nothing has been attached. Choose which is right, or carry on as a walk-in and sort it out later.',
     ],
 
     'service' => [
@@ -280,6 +286,8 @@ return [
         'closed_date' => 'Aucun créneau — cet établissement est fermé ce jour-là.',
         'too_long' => 'Ces prestations n’entrent pas dans les horaires d’ouverture de cet établissement ce jour-là.',
         'nothing_free' => 'Rien n’est libre ce jour-là — les créneaux sont pris, ou personne n’est de service.',
+        'day_over' => 'No times left today — every remaining slot has already passed. Try tomorrow.',
+        'already_passed' => 'This appointment time has already passed. Please select a future time.',
         'loading_times' => 'Recherche des disponibilités…',
         'staff' => 'Membre de l’équipe',
         'any' => 'N’importe qui de disponible',

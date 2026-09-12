@@ -140,6 +140,8 @@ return [
         'step' => ':step abgeschlossen',
         'cancelled' => 'Storniert — :reason',
         'converted' => 'In eine Buchung umgewandelt',
+        'client-created' => 'Client record created from walk-in details',
+        'client-matched' => 'Matched to an existing client record',
         'contacted' => 'Kundschaft kontaktiert',
     ],
 

@@ -228,7 +228,7 @@
 
         <section class="bg-white border border-line rounded-card p-5 sm:p-6">
             <p class="text-[13px] font-medium text-ink">Business logo <span class="font-normal text-faint">Optional</span></p>
-            <p class="text-[12px] text-faint mt-0.5">JPG, PNG or WEBP, up to 2&nbsp;MB. You can add this later.</p>
+            <p class="text-[12px] text-faint mt-0.5">JPG, PNG, SVG or WEBP, up to 2&nbsp;MB. You can add this later.</p>
 
             <div class="flex flex-wrap items-center gap-4 mt-4">
                 <span id="logo-frame" class="h-16 w-16 rounded-card border border-line bg-hover grid place-items-center text-faint shrink-0 overflow-hidden">
@@ -241,7 +241,7 @@
                 </span>
 
                 <div>
-                    <input id="logo" name="logo" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
+                    <input id="logo" name="logo" type="file" accept="image/jpeg,image/png,image/svg+xml,image/webp" class="sr-only">
                     <div class="flex items-center gap-2">
                         <label for="logo" class="styledesk_action">Upload logo</label>
                         <button type="button" id="logo-remove" hidden

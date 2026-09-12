@@ -59,7 +59,7 @@ class BookingAvailability
            this app stores per business, so the honest answer is the whole
            working range rather than a guess dressed as availability. */
         if ($location === null) {
-            return self::answer(self::wholeDay($minutes), false, null, $minutes);
+            return self::answer(self::dropPast(self::wholeDay($minutes), $location, $date), false, null, $minutes);
         }
 
         if (self::isClosedByClosure($location, $day)) {
@@ -78,6 +78,16 @@ class BookingAvailability
             /* Open, but not for long enough to fit this appointment — which
                is a different fact from being closed, and the screen says so. */
             return self::answer([], false, 'too_long', $minutes);
+        }
+
+        /* This morning, on a day that is already this evening. Asked before
+           the three questions that cost a query each: on a day half gone it
+           empties half the list for nothing, and at closing time it empties
+           all of it. */
+        $slots = self::dropPast($slots, $location, $date);
+
+        if ($slots === []) {
+            return self::answer([], false, 'day_over', $minutes);
         }
 
         $slots = self::keepWhileStaffIsOnShift($slots, $minutes, $staffId, $date);
@@ -132,6 +142,36 @@ class BookingAvailability
     private static function wholeDay(int $minutes): array
     {
         return self::slotsWithin(collect([['opens' => 6 * 60, 'closes' => 21 * 60]]), $minutes);
+    }
+
+    /**
+     * Today's slots that have not already happened.
+     *
+     * A time that has passed is not availability, it is history: offering
+     * 9am at 9pm is a booking somebody makes by accident and nobody notices
+     * until the client does not arrive for it. Only ever narrows today —
+     * every other date comes back untouched, including one wholly in the
+     * past, because recording yesterday's walk-in is a thing a salon
+     * legitimately does.
+     *
+     * Measured on the branch's own clock. A desk in Austin booking the
+     * London branch is asking what time it is in London.
+     *
+     * @param  array<int, string>  $slots
+     * @return array<int, string>
+     */
+    private static function dropPast(array $slots, ?Location $location, string $date): array
+    {
+        $earliest = BusinessClock::earliestMinuteToday($location, $date);
+
+        if ($earliest === null) {
+            return $slots;
+        }
+
+        return array_values(array_filter(
+            $slots,
+            fn (string $slot) => (self::toMinutes($slot) ?? 0) >= $earliest,
+        ));
     }
 
     /** A whole-day closure, a holiday, or a day the branch has shut. */

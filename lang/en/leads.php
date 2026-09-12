@@ -139,6 +139,8 @@ return [
         'step' => ':step completed',
         'cancelled' => 'Cancelled — :reason',
         'converted' => 'Converted into a booking',
+        'client-created' => 'Client record created from walk-in details',
+        'client-matched' => 'Matched to an existing client record',
         'contacted' => 'Client contacted',
     ],
 

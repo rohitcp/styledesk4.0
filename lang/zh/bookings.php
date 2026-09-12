@@ -227,6 +227,12 @@ return [
         'guest_saved' => '已保存',
         'guest_known' => '这可能已经是一位客户了。',
         'guest_known_hint' => '改用他们的记录，预约就能接上他们的历史。如果是另一个人，就继续按到店客人处理。',
+        'guest_phone_invalid' => 'Enter a valid mobile number.',
+        'guest_email_invalid' => 'Enter a valid email address.',
+        'guest_created' => 'Added to your client list.',
+        'guest_linked' => 'Attached to their existing client record.',
+        'guest_conflict' => 'These details belong to two different clients.',
+        'guest_conflict_hint' => 'The email is on one record and the number on another, so nothing has been attached. Choose which is right, or carry on as a walk-in and sort it out later.',
     ],
 
     'service' => [
@@ -274,6 +280,8 @@ return [
         'closed_date' => '没有可预约的时间——这家门店当天不营业。',
         'too_long' => '这些服务放不进这家门店当天的营业时间里。',
         'nothing_free' => '这一天没有空档——时间已被占满，或者没有人当班。',
+        'day_over' => 'No times left today — every remaining slot has already passed. Try tomorrow.',
+        'already_passed' => 'This appointment time has already passed. Please select a future time.',
         'loading_times' => '正在查看有哪些空档…',
         'staff' => '团队成员',
         'any' => '任意有空的人',

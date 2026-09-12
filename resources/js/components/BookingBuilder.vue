@@ -28,6 +28,8 @@ const props = defineProps({
     createClientUrl: { type: String, required: true },
     /** Where a walk-in's number and address are checked against the book. */
     matchClientUrl: { type: String, default: '' },
+    /** Where Save walk-in details writes. Nothing else on that card writes. */
+    saveWalkInUrl: { type: String, default: '' },
     /** Where the screen saves itself as it is filled in, as a booking lead. */
     autosaveUrl: { type: String, default: '' },
     /** Whether this reader may let a booking off its payment. */
@@ -1345,6 +1347,79 @@ const guestMatches = ref([]);
 const guestSaved = ref(false);
 const guestChecking = ref(false);
 
+/* What the server said about the number and the address, kept per field. The
+   server is the one that decides — the check below is the same rule said
+   early, not a second opinion — so anything it refuses replaces what the
+   browser thought. */
+const guestErrors = ref({ phone: '', email: '' });
+
+/* Save walk-in details, in flight. Its own flag rather than the match
+   check's: one reads and the other writes, and a double-press while the
+   write is in the air is a second client record. */
+const guestSaving = ref(false);
+
+/* What became of the walk-in on the client list: put on file, recognised, or
+   matching two different people. Null until the details are worth an answer. */
+const walkInClient = ref(null);
+
+/* The same shapes the server holds these to, said as they are typed.
+   Deliberately loose — whether a number is whole depends on the country, and
+   that is the server's call — this only catches what is obviously not one
+   yet, so the receptionist is not told off mid-word.
+
+   The pair of them mirror App\Support\EmailAddress and
+   App\Support\PhoneNumber. */
+function emailLooksWrong(value) {
+    const email = (value ?? '').trim();
+
+    return email !== '' && ! /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+}
+
+function phoneLooksWrong(value) {
+    const raw = (value ?? '').trim();
+
+    if (raw === '') {
+        return false;
+    }
+
+    /* Letters are never a number typed badly, and seven digits is the
+       shortest real number there is. */
+    return /\p{L}/u.test(raw) || (raw.replace(/\D+/g, '').length < 7);
+}
+
+/* Which of the three the reader has finished with. The browser's own warning
+   waits for it: a half-typed address is not a mistake, it is somebody partway
+   through one, and marking it wrong on every keystroke is a field that shouts
+   at the person filling it in. */
+const guestTouched = ref({ phone: false, email: false });
+
+function touchGuest(field) {
+    guestTouched.value[field] = true;
+}
+
+/* Shown under the field: whatever the server refused when Save walk-in
+   details was pressed, or the browser's own warning once the reader has
+   moved on from the field. */
+const guestPhoneError = computed(() => {
+    if (guestErrors.value.phone) {
+        return guestErrors.value.phone;
+    }
+
+    return guestTouched.value.phone && phoneLooksWrong(guest.value.phone)
+        ? (props.labels.client?.guest_phone_invalid ?? '')
+        : '';
+});
+
+const guestEmailError = computed(() => {
+    if (guestErrors.value.email) {
+        return guestErrors.value.email;
+    }
+
+    return guestTouched.value.email && emailLooksWrong(guest.value.email)
+        ? (props.labels.client?.guest_email_invalid ?? '')
+        : '';
+});
+
 let guestTimer = null;
 
 /* What the check runs against. A name alone is not enough to claim two people
@@ -1381,6 +1456,11 @@ async function findExistingClient() {
    moment it is whole, and not once per keystroke. */
 watch(guestContact, () => {
     guestSaved.value = false;
+    /* Edited again, so what the server last decided about these details is
+       about a different pair of them. The touch flags stay: somebody who has
+       already left a field once is not partway through it any more. */
+    guestErrors.value = { phone: '', email: '' };
+    walkInClient.value = null;
     clearTimeout(guestTimer);
     guestTimer = setTimeout(findExistingClient, 500);
 });
@@ -1401,23 +1481,68 @@ onBeforeUnmount(() => clearTimeout(guestTimer));
  * looking for, and what was missing here.
  */
 async function saveGuest() {
-    if (! guest.value.name.trim()) {
+    if (! guest.value.name.trim() || guestSaving.value) {
         return;
     }
 
-    await findExistingClient();
+    guestSaving.value = true;
+    guestErrors.value = { phone: '', email: '' };
 
-    /* Straight in rather than on the debounce: the reader asked for it. */
-    clearTimeout(autosaveTimer);
-    await autosave();
+    try {
+        await findExistingClient();
 
-    guestSaved.value = true;
+        /* Straight in rather than on the debounce: the reader asked for it.
+           First, because the walk-in is attached to the lead and there has to
+           be a lead to attach them to. */
+        clearTimeout(autosaveTimer);
+        await autosave();
+
+        if (! lead.value?.id || ! props.saveWalkInUrl) {
+            guestSaved.value = true;
+
+            return;
+        }
+
+        const { ok, json } = await send(props.saveWalkInUrl, {
+            lead_id: lead.value.id,
+            guest_name: guest.value.name.trim() || null,
+            guest_phone: guest.value.phone.trim() || null,
+            guest_email: guest.value.email.trim() || null,
+        });
+
+        if (! ok) {
+            /* The one moment these are held to their real shape. Shown
+               against the field, because "which of these three is wrong" is
+               the whole question. */
+            guestErrors.value = {
+                phone: json?.errors?.guest_phone?.[0] ?? '',
+                email: json?.errors?.guest_email?.[0] ?? '',
+            };
+
+            return;
+        }
+
+        walkInClient.value = json.walk_in_client ?? null;
+
+        /* A conflict is not a save. Two records match and neither has been
+           attached, so the details are not "in" until somebody chooses. */
+        guestSaved.value = ! walkInClient.value?.conflict;
+    } catch (error) {
+        /* Offline, or the tab slept mid-request. The lead still holds what
+           was typed; only the client record did not happen. */
+        guestSaved.value = false;
+    } finally {
+        guestSaving.value = false;
+    }
 }
 
 /** Use the record instead of the walk-in. Their history is the whole point. */
 function useExistingClient(match) {
     guestMatches.value = [];
     guestSaved.value = false;
+    walkInClient.value = null;
+    guestErrors.value = { phone: '', email: '' };
+    guestTouched.value = { phone: false, email: false };
     guest.value = { name: '', phone: '', email: '' };
     chooseClient(match);
 }
@@ -4222,15 +4347,56 @@ const summaryOf = (section) => {
                             <label for="guestPhone" class="block text-[13px] font-medium text-ink mb-1.5">
                                 {{ labels.client?.guest_phone }}
                             </label>
-                            <input id="guestPhone" v-model="guest.phone" type="tel" class="sd-input" autocomplete="off">
+                            <input id="guestPhone" v-model="guest.phone" type="tel" class="sd-input"
+                                   autocomplete="off" inputmode="tel"
+                                   @blur="touchGuest('phone')"
+                                   :class="guestPhoneError ? 'is-invalid' : ''"
+                                   :aria-invalid="guestPhoneError ? 'true' : null"
+                                   aria-describedby="guestPhone-error">
+                            <p v-if="guestPhoneError" id="guestPhone-error" role="alert"
+                               class="mt-1.5 text-[12px] text-danger">{{ guestPhoneError }}</p>
                         </div>
 
                         <div>
                             <label for="guestEmail" class="block text-[13px] font-medium text-ink mb-1.5">
                                 {{ labels.client?.guest_email }}
                             </label>
-                            <input id="guestEmail" v-model="guest.email" type="email" class="sd-input" autocomplete="off">
+                            <input id="guestEmail" v-model="guest.email" type="email" class="sd-input"
+                                   autocomplete="off"
+                                   @blur="touchGuest('email')"
+                                   :class="guestEmailError ? 'is-invalid' : ''"
+                                   :aria-invalid="guestEmailError ? 'true' : null"
+                                   aria-describedby="guestEmail-error">
+                            <p v-if="guestEmailError" id="guestEmail-error" role="alert"
+                               class="mt-1.5 text-[12px] text-danger">{{ guestEmailError }}</p>
                         </div>
+
+                        <!-- The address is one person and the number is
+                             another. Nothing has been attached and nothing
+                             merged: a wrongly joined history cannot be
+                             unpicked, so the two records are put in front of
+                             the receptionist and the choice is theirs. -->
+                        <div v-if="walkInClient?.conflict" class="sd-alert sd-alert--warn" role="alert">
+                            <p class="font-semibold">{{ labels.client?.guest_conflict }}</p>
+
+                            <ul class="mt-1.5 space-y-1">
+                                <li v-for="match in walkInClient.matches" :key="match.id">
+                                    <button type="button" class="font-semibold underline"
+                                            @click="useExistingClient(match)">{{ match.name }}</button>
+                                    <span class="text-[12px]"> · {{ match.ref }} · {{ match.mobile || match.email }}</span>
+                                </li>
+                            </ul>
+
+                            <p class="text-[12px] mt-1.5">{{ labels.client?.guest_conflict_hint }}</p>
+                        </div>
+
+                        <!-- On file already, which is what the desk wants to
+                             know before it moves on: the walk-in is in the
+                             client list now, not once the booking is taken. -->
+                        <p v-else-if="walkInClient?.client" class="text-[12px] font-semibold text-brand">
+                            {{ walkInClient.created ? labels.client?.guest_created : labels.client?.guest_linked }}
+                            <span class="font-normal text-faint">· {{ walkInClient.client.ref }}</span>
+                        </p>
 
                         <!-- Already on the book. A warning, never a block:
                              two people share a phone, and a wrongly merged
@@ -4256,15 +4422,15 @@ const summaryOf = (section) => {
 
                         <div class="flex flex-wrap items-center gap-3 pt-0.5">
                             <button type="button" class="styledesk_action"
-                                    :disabled="!guest.name.trim() || guestChecking"
+                                    :disabled="!guest.name.trim() || guestChecking || guestSaving"
                                     @click="saveGuest">
-                                {{ guestChecking ? labels.client?.guest_checking : labels.client?.guest_save }}
+                                {{ (guestChecking || guestSaving) ? labels.client?.guest_checking : labels.client?.guest_save }}
                             </button>
 
                             <!-- Says the details are in, which is the whole
                                  job of the button beside it. Cleared the
                                  moment any of the three is edited again. -->
-                            <span v-if="guestSaved && !guestChecking" class="text-[12px] font-semibold text-brand">
+                            <span v-if="guestSaved && !guestChecking && !guestSaving" class="text-[12px] font-semibold text-brand">
                                 {{ labels.client?.guest_saved }}
                             </span>
                         </div>

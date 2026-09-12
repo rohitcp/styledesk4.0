@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Support\ClientOptions;
+use App\Support\PhoneNumber;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -388,6 +389,16 @@ class Client extends Model
             ->map(fn (array $row) => [
                 'number' => trim((string) ($row['number'] ?? '')),
                 'country' => $row['country'] ?? null,
+                /* The same number in the one form numbers are compared in.
+                   Written here rather than by a caller, so every way a number
+                   reaches a client record — the form, the booking screen, the
+                   walk-in desk — leaves the same canonical value behind it.
+                   Null where it could not be read as a number; the matcher
+                   falls back to comparing digits for those. */
+                'number_e164' => PhoneNumber::normalise(
+                    (string) ($row['number'] ?? ''),
+                    $row['country'] ?? null,
+                ),
                 'type' => in_array($row['type'] ?? null, array_keys(config('clients.phone_types')), true)
                     ? $row['type']
                     : 'mobile',
@@ -397,7 +408,7 @@ class Client extends Model
             // The same number twice is a mistake, and the database refuses it
             // anyway; dropping it here means a duplicated paste saves rather
             // than throwing a constraint error at someone.
-            ->unique(fn (array $row) => self::compareNumber($row['number']))
+            ->unique(fn (array $row) => $row['number_e164'] ?? self::compareNumber($row['number']))
             ->values();
 
         $this->writeContacts('phones', $clean, 'number', 'mobile');
@@ -535,9 +546,17 @@ class Client extends Model
             ->unique()
             ->values();
 
-        $mobiles = collect($data['phones'] ?? [])
-            ->map(fn ($row) => self::compareNumber(is_array($row) ? ($row['number'] ?? '') : $row))
-            ->push(self::compareNumber((string) ($data['mobile'] ?? '')))
+        $typed = collect($data['phones'] ?? [])
+            ->map(fn ($row) => is_array($row) ? ($row['number'] ?? '') : $row)
+            ->push((string) ($data['mobile'] ?? ''))
+            ->filter(fn ($number) => trim((string) $number) !== '')
+            ->values();
+
+        $mobiles = $typed->map(fn ($number) => self::compareNumber((string) $number))->filter()->unique()->values();
+
+        /** @var Collection<int, string> $canonical */
+        $canonical = $typed
+            ->map(fn ($number) => PhoneNumber::normalise((string) $number, $data['phone_country'] ?? null))
             ->filter()
             ->unique()
             ->values();
@@ -545,7 +564,7 @@ class Client extends Model
         $query = self::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->when($ignoreId, fn (Builder $q) => $q->whereKeyNot($ignoreId))
-            ->where(function (Builder $q) use ($rules, $emails, $mobiles, $data) {
+            ->where(function (Builder $q) use ($rules, $emails, $mobiles, $canonical, $data) {
                 // Starts impossible, so a rule set that matches nothing
                 // returns nothing rather than returning everyone.
                 $q->whereRaw('1 = 0');
@@ -558,6 +577,16 @@ class Client extends Model
                 }
 
                 if (in_array('mobile', $rules, true)) {
+                    /* The canonical form first, which is an exact, indexed
+                       comparison and the only one that calls "+1 973 555
+                       1234" and "(973) 555-1234" the same number. The digits
+                       comparison stays behind it for rows written before
+                       there was a canonical form, and for numbers too odd to
+                       normalise. */
+                    foreach ($canonical as $e164) {
+                        $q->orWhereHas('phones', fn (Builder $p) => $p->where('number_e164', $e164));
+                    }
+
                     foreach ($mobiles as $mobile) {
                         $q->orWhereRaw(self::digitsOnly('mobile').' like ?', ['%'.$mobile])
                             ->orWhereHas('phones', fn (Builder $p) => $p->whereRaw(self::digitsOnly('number').' like ?', ['%'.$mobile]));
@@ -568,7 +597,11 @@ class Client extends Model
                     $q->orWhere(fn (Builder $inner) => $inner
                         ->whereRaw('lower(first_name) = ?', [Str::lower(trim((string) $data['first_name']))])
                         ->whereRaw('lower(coalesce(last_name, "")) = ?', [Str::lower(trim((string) ($data['last_name'] ?? '')))])
-                        ->where(function (Builder $numbers) use ($mobiles) {
+                        ->where(function (Builder $numbers) use ($mobiles, $canonical) {
+                            foreach ($canonical as $e164) {
+                                $numbers->orWhereHas('phones', fn (Builder $p) => $p->where('number_e164', $e164));
+                            }
+
                             foreach ($mobiles as $mobile) {
                                 $numbers->orWhereRaw(self::digitsOnly('mobile').' like ?', ['%'.$mobile])
                                     ->orWhereHas('phones', fn (Builder $p) => $p->whereRaw(self::digitsOnly('number').' like ?', ['%'.$mobile]));

@@ -247,6 +247,12 @@ return [
         'guest_saved' => 'Saved',
         'guest_known' => 'This may already be a client.',
         'guest_known_hint' => 'Use their record instead and the booking keeps their history. Carry on as a walk-in if it is somebody else.',
+        'guest_phone_invalid' => 'Enter a valid mobile number.',
+        'guest_email_invalid' => 'Enter a valid email address.',
+        'guest_created' => 'Added to your client list.',
+        'guest_linked' => 'Attached to their existing client record.',
+        'guest_conflict' => 'These details belong to two different clients.',
+        'guest_conflict_hint' => 'The email is on one record and the number on another, so nothing has been attached. Choose which is right, or carry on as a walk-in and sort it out later.',
     ],
 
     'service' => [
@@ -296,6 +302,8 @@ return [
         'closed_date' => 'No booking times available — this location is closed on this date.',
         'too_long' => 'These services do not fit inside this location’s opening hours on this date.',
         'nothing_free' => 'Nothing is free on this date — the times are taken, or nobody is on shift for them.',
+        'day_over' => 'No times left today — every remaining slot has already passed. Try tomorrow.',
+        'already_passed' => 'This appointment time has already passed. Please select a future time.',
         'loading_times' => 'Checking what is free…',
         'staff' => 'Team member',
         'any' => 'Any available',

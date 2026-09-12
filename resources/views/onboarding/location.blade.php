@@ -100,13 +100,35 @@
             </div>
         </div>
 
+        @php $phoneCountry = old('phone_country', $location?->phone_country ?: $countryCode); @endphp
+
         <div>
             <label for="phone" class="block text-[13px] font-medium text-ink mb-1.5">Location phone <span class="text-faint font-normal">(optional)</span></label>
-            {{-- Digits and the punctuation a phone number is written with;
-                 letters are refused as they are typed rather than at submit. --}}
-            <input id="phone" name="phone" type="tel" class="sd-input" autocomplete="tel"
-                   inputmode="tel" data-digits-only
-                   value="{{ old('phone', $location?->phone) }}">
+
+            {{-- The dialling code beside the number, not typed into it: the
+                 same control as the business step and Location Settings.
+                 phone.js formats as you type and writes the country into the
+                 hidden input, which is what phone_country has always wanted.
+                 Defaulted to the country chosen on the business step rather
+                 than to US, since that is where the location is. --}}
+            <div class="relative" data-phone data-phone-country="{{ $phoneCountry }}">
+                <div class="sd-phone">
+                    <button type="button" class="sd-phone__country" data-phone-toggle
+                            aria-haspopup="listbox" aria-expanded="false" aria-label="Location phone">
+                        <span class="sd-phone__flag" data-phone-flag>&#127482;&#127480;</span>
+                        <span class="font-medium" data-phone-code>+1</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <input id="phone" name="phone" type="tel" class="sd-phone__field"
+                           data-phone-input autocomplete="tel-national"
+                           value="{{ old('phone', $location?->phone) }}"
+                           aria-describedby="phone-error">
+                </div>
+                <div class="sd-pop" data-phone-pop hidden></div>
+                <input type="hidden" name="phone_country" data-phone-country-value value="{{ $phoneCountry }}">
+            </div>
+
+            @error('phone')<p id="phone-error" role="alert" class="mt-1.5 text-[12px] text-danger">{{ $message }}</p>@enderror
         </div>
 
         <div>

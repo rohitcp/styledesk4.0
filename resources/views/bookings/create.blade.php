@@ -93,6 +93,10 @@
                not asked in the query string: a number and an address in a URL
                is personal data written into every access log on the way. */
             'matchClientUrl' => route('bookings.clients.match'),
+            /* Save walk-in details. The only thing on that card that writes
+               to the client list — the match check above reads and nothing
+               else. */
+            'saveWalkInUrl' => route('bookings.walk-in.client'),
             /* Where the screen saves itself as it is filled in. It writes a
                booking lead, so a call that drops leaves a draft with a
                reference behind it under Bookings → Leads. */

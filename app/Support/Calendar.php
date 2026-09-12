@@ -649,7 +649,7 @@ class Calendar
      */
     private static function clockFor(?Location $location): Carbon
     {
-        return Carbon::now($location?->timezone ?: config('app.timezone'));
+        return BusinessClock::now($location);
     }
 
     /** Is the door shut altogether? */

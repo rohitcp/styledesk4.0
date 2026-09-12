@@ -1462,6 +1462,13 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
                as a receptionist works, which is many saves per booking and
                exactly the behaviour it is for. */
             Route::post('draft', 'autosave')->middleware('throttle:120,1')->name('draft');
+            /* Save walk-in details: the one act on that card that writes to
+               the client list. Separate from the auto-save above on purpose —
+               that one fires while somebody is still typing, and a client
+               created on it is one created halfway through a phone number.
+               Not throttled like the others: it is a button somebody presses,
+               not something that happens on a debounce. */
+            Route::post('walk-in-client', 'saveWalkInClient')->name('walk-in.client');
             /* What the booking comes to, before it exists. Asked as the
                reader switches between card and cash, types a coupon or picks
                a tip — so throttled like availability rather than tightly. */

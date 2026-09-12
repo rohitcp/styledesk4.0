@@ -13,6 +13,7 @@ use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Services\ServiceImageSync;
+use App\Support\Branding;
 use App\Support\InputCase;
 use App\Support\LocationOptions;
 use App\Support\Subdomain;
@@ -21,7 +22,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -152,12 +152,19 @@ class OnboardingController extends Controller
              * differently the moment either was touched.
              */
             'website' => ['nullable', 'string', 'max:255', WebsiteAddress::rule($request->input('website_scheme'))],
-            'logo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
+            /*
+             * The same door Branding Settings opens: `file` with an explicit
+             * mime list rather than `image`, because `image` rejects SVG and
+             * a logo may be one. Spelled once in Branding so the two screens
+             * cannot drift into accepting different formats.
+             */
+            'logo' => ['nullable', 'file', 'mimes:'.implode(',', Branding::LOGO_MIMES), 'max:'.Branding::MAX_KB],
         ], [
             'business_type_ids.required' => 'Choose at least one business type.',
             'slug.regex' => 'Use lowercase letters, numbers and hyphens only.',
             'slug.not_in' => 'That address is reserved. Please choose another.',
-            'logo.max' => 'The logo must be 2 MB or smaller.',
+            'logo.mimes' => __('branding.upload.mimes', ['formats' => mb_strtoupper(implode(', ', Branding::LOGO_MIMES))]),
+            'logo.max' => __('branding.upload.too_large'),
         ]);
 
         $attributes = [
@@ -172,7 +179,7 @@ class OnboardingController extends Controller
 
         if ($request->hasFile('logo')) {
             // No-JavaScript path: the file rides along with the form.
-            $attributes['logo_path'] = $request->file('logo')->store('logos', 'brand');
+            $attributes['logo_path'] = Branding::store($request->file('logo'), Branding::LOGO_DIR);
         } elseif ($uploaded = $request->session()->pull('onboarding.logo_path')) {
             // Already uploaded asynchronously by the progress-bar flow.
             $attributes['logo_path'] = $uploaded;
@@ -243,18 +250,19 @@ class OnboardingController extends Controller
     public function uploadLogo(Request $request): JsonResponse
     {
         $request->validate([
-            'logo' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
+            'logo' => ['required', 'file', 'mimes:'.implode(',', Branding::LOGO_MIMES), 'max:'.Branding::MAX_KB],
         ], [
-            'logo.max' => 'The logo must be 2 MB or smaller.',
+            'logo.mimes' => __('branding.upload.mimes', ['formats' => mb_strtoupper(implode(', ', Branding::LOGO_MIMES))]),
+            'logo.max' => __('branding.upload.too_large'),
         ]);
 
-        $path = $request->file('logo')->store('logos', 'brand');
+        $path = Branding::store($request->file('logo'), Branding::LOGO_DIR);
 
         $request->session()->put('onboarding.logo_path', $path);
 
         return response()->json([
             'path' => $path,
-            'url' => Storage::disk('brand')->url($path),
+            'url' => Branding::url($path),
         ]);
     }
 

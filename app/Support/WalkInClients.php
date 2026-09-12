@@ -17,25 +17,36 @@ use Illuminate\Support\Str;
  * at the desk and then went nowhere, so the same person walking in twice was
  * two strangers, and nothing they were told could be followed up.
  *
- * What this does is narrow on purpose. It never merges two records and never
- * edits one it finds — matching is a warning everywhere else in this
- * application, and a wrongly merged history is not something a receptionist
- * can unpick. Finding somebody means attaching the booking to them and leaving
- * their record exactly as it was; the details typed at the desk are already
- * kept on the booking itself, where they can be read against the record later.
+ * This runs the moment the details are worth keeping — while the booking is
+ * still a lead — rather than at the end. A booking that is never finished is
+ * the case where the record matters most: somebody stood at the desk, gave
+ * their number and left, and waiting for a completed appointment is how that
+ * person was lost.
+ *
+ * What it does is narrow on purpose. It never merges two records, and it only
+ * ever fills a blank on one it finds — matching is a warning everywhere else
+ * in this application, and a wrongly merged history is not something a
+ * receptionist can unpick. Where the address is one person and the number is
+ * another it attaches nothing at all and says so, because choosing between
+ * them is a decision and this is not the thing that gets to make it.
  */
 class WalkInClients
 {
     /**
      * The client this walk-in is, creating the record if they are new.
      *
-     * Null when there is nothing to go on, which is the common case and not a
-     * failure: a walk-in who gives only a first name cannot be matched to
-     * anybody and cannot be matched against later either, so a record for them
-     * is a row nobody can ever use and one more "John" between the desk and
-     * the person it is looking for.
+     * Nothing to go on is the common case and not a failure: a walk-in who
+     * gives only a first name cannot be matched to anybody and cannot be
+     * matched against later either, so a record for them is a row nobody can
+     * ever use and one more "John" between the desk and the person it is
+     * looking for.
      *
-     * @param  array{name?: string|null, phone?: string|null, email?: string|null}  $guest
+     * Neither is an invalid one. "973555" is a number somebody is halfway
+     * through typing and "sarah@" is an address nobody can be reached at;
+     * both would be stored as fact and neither could ever be corrected by the
+     * person who mistyped it, because they have already left.
+     *
+     * @param  array{name?: string|null, phone?: string|null, email?: string|null, country?: string|null}  $guest
      */
     public static function resolve(
         Tenant $tenant,
@@ -43,17 +54,30 @@ class WalkInClients
         ?int $locationId = null,
         ?int $staffId = null,
         ?string $visitedOn = null,
-    ): ?Client {
-        $phone = trim((string) ($guest['phone'] ?? ''));
-        $email = Str::lower(trim((string) ($guest['email'] ?? '')));
+    ): WalkInClient {
         $name = trim((string) ($guest['name'] ?? ''));
+
+        /* Validated before anything is looked up, let alone written. An
+           address that is not an address matches nobody and would be stored
+           as one, and a half-typed number would create a record on every
+           keystroke that happened to land on a plausible length. */
+        $email = EmailAddress::looksValid($guest['email'] ?? null)
+            ? Str::lower(trim((string) $guest['email']))
+            : null;
+
+        $phone = trim((string) ($guest['phone'] ?? ''));
+        $e164 = PhoneNumber::normalise($phone, $guest['country'] ?? null);
+
+        if ($e164 === null) {
+            $phone = '';
+        }
 
         /* A way to reach them, or nothing doing. Name alone is not identity:
            it cannot be matched on — the duplicate rules are all built from a
            number or an address — so a record made from one could never be
            found again by the person who needed it. */
-        if ($phone === '' && $email === '') {
-            return null;
+        if ($phone === '' && $email === null) {
+            return WalkInClient::none('incomplete');
         }
 
         $settings = ClientSettings::forTenant($tenant);
@@ -62,32 +86,103 @@ class WalkInClients
            salon that has switched walk-ins off has said it does not want the
            client list filling from the front door. */
         if (! self::mayCreateFromWalkIn($settings)) {
-            return null;
+            return WalkInClient::none('not_allowed');
         }
 
         $candidate = [
             'first_name' => self::firstName($name),
             'last_name' => self::lastName($name),
             'mobile' => $phone,
-            'email' => $email,
+            'email' => $email ?? '',
+            'phone_country' => $guest['country'] ?? null,
         ];
 
-        /* The same engine the client form runs, against the rules this
-           business configured — one set of rules, in one place. Only the
-           contact rules are consulted here: name_mobile would need a name the
-           desk may not have taken, and its answer is already covered by the
-           number on its own. */
-        $existing = Client::possibleDuplicates(
-            $tenant->getTenantKey(),
-            $candidate,
-            array_values(array_intersect($settings->duplicate_rules ?? [], ['email', 'mobile'])),
-        )->first();
+        /* Asked one field at a time rather than both together, because which
+           field matched is the answer. Both matching the same person is a
+           recognition; both matching different people is a conflict; and a
+           single query returning two rows cannot tell those apart. */
+        $rules = array_values(array_intersect($settings->duplicate_rules ?? [], ['email', 'mobile']));
 
-        if ($existing !== null) {
-            return $existing;
+        $byEmail = $email === null ? null : self::matchOn($tenant, ['email' => $email], $rules, 'email');
+        $byPhone = $phone === '' ? null : self::matchOn(
+            $tenant,
+            ['mobile' => $phone, 'phone_country' => $guest['country'] ?? null],
+            $rules,
+            'mobile',
+        );
+
+        if ($byEmail !== null && $byPhone !== null && $byEmail->id !== $byPhone->id) {
+            return WalkInClient::conflict([$byEmail, $byPhone]);
         }
 
-        return self::create($tenant, $candidate, $locationId, $staffId, $visitedOn);
+        $existing = $byEmail ?? $byPhone;
+
+        if ($existing !== null) {
+            self::fillBlanks($existing, $candidate);
+
+            return WalkInClient::matched($existing);
+        }
+
+        return WalkInClient::created(self::create($tenant, $candidate, $locationId, $staffId, $visitedOn));
+    }
+
+    /**
+     * The one client this field points at, where exactly one does.
+     *
+     * The same engine the client form runs, against the rules this business
+     * configured — one set of rules, in one place. Only the contact rules are
+     * consulted: name_mobile would need a name the desk may not have taken,
+     * and its answer is already covered by the number on its own.
+     *
+     * @param  array<string, mixed>  $field
+     * @param  array<int, string>  $rules
+     */
+    private static function matchOn(Tenant $tenant, array $field, array $rules, string $rule): ?Client
+    {
+        if (! in_array($rule, $rules, true)) {
+            return null;
+        }
+
+        return Client::possibleDuplicates($tenant->getTenantKey(), $field, [$rule])->first();
+    }
+
+    /**
+     * Add what the record is missing, and change nothing it already has.
+     *
+     * A walk-in who gives an address the record does not hold is filling in a
+     * blank, and that is worth having. A walk-in whose number differs from
+     * the one on file is not a correction — it might be their new phone, or
+     * it might be their partner's, or the receptionist's own typo — so the
+     * stored one stands and the typed one stays on the booking, where the two
+     * can be read against each other by somebody who can ask.
+     *
+     * @param  array{first_name: string, last_name: string|null, mobile: string, email: string, phone_country?: string|null}  $candidate
+     */
+    private static function fillBlanks(Client $client, array $candidate): void
+    {
+        if ($candidate['mobile'] !== '' && $client->phones()->count() === 0) {
+            $client->syncPhones([[
+                'number' => $candidate['mobile'],
+                'country' => $candidate['phone_country'] ?? null,
+                'type' => 'mobile',
+                'is_primary' => true,
+            ]]);
+        }
+
+        if ($candidate['email'] !== '' && $client->emails()->count() === 0) {
+            $client->syncEmails([[
+                'email' => $candidate['email'],
+                'type' => 'personal',
+                'is_primary' => true,
+            ]]);
+        }
+
+        /* A surname where the record has none. The given name is left alone:
+           it is never blank, and "Sarah" on file against "Sara" typed at the
+           desk is not something to resolve by overwriting. */
+        if (blank($client->last_name) && filled($candidate['last_name'])) {
+            $client->forceFill(['last_name' => $candidate['last_name']])->save();
+        }
     }
 
     /**
@@ -105,7 +200,7 @@ class WalkInClients
     }
 
     /**
-     * @param  array{first_name: string, last_name: string|null, mobile: string, email: string}  $candidate
+     * @param  array{first_name: string, last_name: string|null, mobile: string, email: string, phone_country?: string|null}  $candidate
      */
     private static function create(
         Tenant $tenant,
@@ -136,6 +231,7 @@ class WalkInClients
         if ($candidate['mobile'] !== '') {
             $client->syncPhones([[
                 'number' => $candidate['mobile'],
+                'country' => $candidate['phone_country'] ?? null,
                 'type' => 'mobile',
                 'is_primary' => true,
             ]]);

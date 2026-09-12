@@ -15,6 +15,7 @@ use Database\Seeders\BusinessTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -382,6 +383,69 @@ class OnboardingTest extends TestCase
         $this->assertFileExists($root.'/'.$path);
     }
 
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function logoFormats(): array
+    {
+        return [
+            'jpg' => ['logo.jpg'],
+            'png' => ['logo.png'],
+            'svg' => ['logo.svg'],
+            'webp' => ['logo.webp'],
+        ];
+    }
+
+    #[DataProvider('logoFormats')]
+    public function test_every_accepted_logo_format_uploads(string $name): void
+    {
+        Storage::fake('brand');
+
+        // SVG is the one that needs saying: the `image` rule rejects it, so
+        // the endpoint validates an explicit mime list instead.
+        $path = $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/logo', [
+                'logo' => UploadedFile::fake()->createWithContent($name, self::logoBytes($name)),
+            ])
+            ->assertOk()
+            ->json('path');
+
+        Storage::disk('brand')->assertExists($path);
+    }
+
+    public function test_a_logo_in_an_unsupported_format_is_rejected(): void
+    {
+        Storage::fake('brand');
+
+        $this->actingAs($this->user())
+            ->post('http://styledesk.test/onboarding/logo', [
+                'logo' => UploadedFile::fake()->createWithContent('brochure.pdf', '%PDF-1.4 fake'),
+            ])
+            ->assertSessionHasErrors('logo');
+
+        Storage::disk('brand')->assertDirectoryEmpty('logos');
+    }
+
+    /** Real bytes, because `mimes` reads the file rather than its name. */
+    private static function logoBytes(string $name): string
+    {
+        if (str_ends_with($name, '.svg')) {
+            return '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#000"/></svg>';
+        }
+
+        $image = imagecreatetruecolor(64, 64);
+
+        ob_start();
+
+        match (true) {
+            str_ends_with($name, '.jpg') => imagejpeg($image),
+            str_ends_with($name, '.webp') => imagewebp($image),
+            default => imagepng($image),
+        };
+
+        return (string) ob_get_clean();
+    }
+
     public function test_an_oversized_logo_is_rejected(): void
     {
         Storage::fake('brand');
@@ -614,6 +678,44 @@ class OnboardingTest extends TestCase
     }
 
     /**
+     * The location phone is the same control as every other phone in the app.
+     *
+     * It used to be a bare text input, so the dialling code had to be typed
+     * into the number — and `phone_country` beside it stayed null, leaving
+     * nothing to tell +1 from +44 when the number is later dialled or texted.
+     */
+    public function test_the_location_phone_offers_a_country_and_stores_it(): void
+    {
+        $user = $this->user();
+        $tenant = Tenant::create(['name' => 'Nadia Hair Studio', 'slug' => 'nadia', 'country_code' => 'GB']);
+        $user->tenant_id = $tenant->getTenantKey();
+        $user->save();
+        TenantOnboarding::create(['tenant_id' => $tenant->getTenantKey(), 'current_step' => 'location']);
+
+        /* Defaulted to the country chosen on the business step, not to US. */
+        $this->actingAs($user->fresh())
+            ->get('http://styledesk.test/onboarding/location')
+            ->assertOk()
+            ->assertSee('data-phone-country="GB"', false)
+            ->assertSee('name="phone_country"', false);
+
+        $this->post('http://styledesk.test/onboarding/location', [
+            'name' => 'Main Location',
+            'address_line1' => '1 River Street',
+            'city' => 'London',
+            'postal_code' => 'EC1A 1BB',
+            'timezone' => 'Europe/London',
+            'phone' => '20 7946 0100',
+            'phone_country' => 'GB',
+        ])->assertRedirect(route('onboarding.services'));
+
+        $location = $tenant->locations()->first();
+
+        $this->assertSame('20 7946 0100', $location->phone);
+        $this->assertSame('GB', $location->phone_country);
+    }
+
+    /**
      * Onboarding asks the simplest version of the question.
      *
      * Split periods belong to Location settings; turning them on here would
@@ -665,9 +767,11 @@ class OnboardingTest extends TestCase
         $this->assertStringNotContainsString('value="America/New_York" selected', $content);
         $this->assertStringContainsString('Search or select a timezone', $content);
 
-        /* Continue fires once, and the phone refuses letters as they land. */
+        /* Continue fires once, and the phone refuses letters as they land —
+           the phone widget strips non-digits on input, which is what replaced
+           the bare data-digits-only field here. */
         $this->assertStringContainsString('data-submit-once', $content);
-        $this->assertStringContainsString('data-digits-only', $content);
+        $this->assertStringContainsString('data-phone-input', $content);
 
         /* The read-only country sits centred in its field rather than
            against the top of it — the flex utility loses to prototype.css. */

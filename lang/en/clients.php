@@ -884,6 +884,7 @@ return [
             'first_name_required' => 'First name is required.',
             'email_taken' => 'A client with this email address already exists.',
             'email_invalid' => 'Enter a valid email address.',
+            'mobile_invalid' => 'Enter a valid mobile number.',
             'dob_past' => 'A date of birth must be in the past.',
         ],
     ],

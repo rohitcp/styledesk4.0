@@ -34,13 +34,16 @@ use App\Payments\StripeGateway;
 use App\Support\BookingAvailability;
 use App\Support\BookingDuplicates;
 use App\Support\BookingTotals;
+use App\Support\BusinessClock;
 use App\Support\ClientActivityLog;
 use App\Support\ClientBookingContext;
 use App\Support\ClientInsights;
 use App\Support\Currencies;
+use App\Support\EmailAddress;
 use App\Support\MembershipCredits;
 use App\Support\MembershipPurchase;
 use App\Support\Money;
+use App\Support\PhoneNumber;
 use App\Support\Promotions;
 use App\Support\ResourceAllocator;
 use App\Support\TimeFormat;
@@ -851,8 +854,16 @@ class BookingController extends Controller
             'lead_id' => ['nullable', 'integer', Rule::exists('booking_leads', 'id')],
             'client_id' => ['nullable', 'integer', Rule::exists('clients', 'id')],
             'guest_name' => ['nullable', 'string', 'max:120'],
+            /* Deliberately loose, and looser than `store()` or the walk-in
+               save. This fires on a debounce while somebody is still typing,
+               so every address on the way to a whole one — "t", "to",
+               "tom@ex" — would be refused, and the receptionist would be
+               told off once per keystroke about a field they are in the
+               middle of. The lead is a scratchpad; what is typed into it is
+               held to its shape when it is used, not while it is being
+               written. */
             'guest_phone' => ['nullable', 'string', 'max:40'],
-            'guest_email' => ['nullable', 'email', 'max:255'],
+            'guest_email' => ['nullable', 'string', 'max:255'],
             'staff_id' => ['nullable', 'integer', Rule::exists('staff', 'id')],
             'location_id' => ['nullable', 'integer', Rule::exists('locations', 'id')],
             'date' => ['nullable', 'date_format:Y-m-d'],
@@ -993,8 +1004,131 @@ class BookingController extends Controller
                 'status' => $lead->status,
                 'status_label' => $lead->statusLabel(),
                 'saved_at' => $lead->updated_at?->toIso8601String(),
+                'client_id' => $lead->client_id,
             ],
         ], $created ? 201 : 200);
+    }
+
+    /**
+     * Put the walk-in on the client list, because somebody asked for it.
+     *
+     * Its own endpoint, and deliberately not part of the auto-save. The
+     * screen writes the lead on a debounce as a receptionist types, and a
+     * client record created on that same trigger is one created halfway
+     * through a phone number: the list filled from the front door with
+     * half-typed strangers, and a duplicate lookup that quietly attached the
+     * booking to whoever the first six digits happened to match.
+     *
+     * So typing is a read-only act. The match check still runs as they type —
+     * that is `matchClient()`, which reads and writes nothing — and this is
+     * the only thing on the walk-in card that touches the client list.
+     *
+     * Still not the only way a walk-in becomes a client: confirming the
+     * booking does it too, in `store()`. Both are somebody pressing a button
+     * and meaning it, which is the line that matters.
+     */
+    public function saveWalkInClient(Request $request): JsonResponse
+    {
+        $this->allow($request, 'appointments.create');
+
+        $data = $request->validate([
+            'lead_id' => ['required', 'integer', Rule::exists('booking_leads', 'id')],
+            'guest_name' => ['nullable', 'string', 'max:120'],
+            /* Held to their real shape here, where the loose rule on the
+               auto-save would let a mistyped address onto a client record
+               nobody can correct afterwards — the walk-in has left. */
+            'guest_phone' => PhoneNumber::rules(),
+            'guest_email' => EmailAddress::rules(),
+        ], [], [
+            'guest_phone' => __('bookings.client.guest_phone'),
+            'guest_email' => __('bookings.client.guest_email'),
+        ]);
+
+        $lead = BookingLead::query()
+            ->whereNotIn('status', BookingLead::SETTLED)
+            ->findOrFail($data['lead_id']);
+
+        /* A receptionist who searched and chose somebody has already answered
+           this question, and the details typed afterwards must not retarget
+           the lead onto a different record. */
+        if ($lead->client_id !== null) {
+            return response()->json(['walk_in_client' => null]);
+        }
+
+        $outcome = WalkInClients::resolve(
+            $request->user()->tenant,
+            [
+                'name' => $data['guest_name'] ?? null,
+                'phone' => $data['guest_phone'] ?? null,
+                'email' => $data['guest_email'] ?? null,
+            ],
+            $lead->location_id,
+            $lead->staff_id,
+            $lead->expected_date?->toDateString(),
+        );
+
+        /* The address is one person and the number is another. Nothing is
+           attached and nothing is written: the screen shows both records and
+           a person chooses, because merging two histories on a guess is the
+           one mistake here that cannot be undone. */
+        if ($outcome->hasConflict()) {
+            return response()->json([
+                'walk_in_client' => [
+                    'conflict' => true,
+                    'matches' => array_map(fn (Client $client) => $this->walkInMatch($client), $outcome->conflicts),
+                ],
+            ]);
+        }
+
+        if ($outcome->client === null) {
+            /* A name and nothing else. Not a failure: it is the walk-in who
+               gave no way to reach them, and the lead keeps what was typed. */
+            return response()->json(['walk_in_client' => null]);
+        }
+
+        $lead->forceFill(['client_id' => $outcome->client->id])->save();
+
+        $lead->note(
+            $outcome->created ? 'client-created' : 'client-matched',
+            $outcome->client->client_ref,
+        );
+
+        return response()->json([
+            'walk_in_client' => [
+                'conflict' => false,
+                'created' => $outcome->created,
+                'client' => $this->walkInMatch($outcome->client),
+            ],
+        ]);
+    }
+
+    /**
+     * The branch this booking is at, where one was named.
+     *
+     * Its timezone is what "today" and "already passed" are measured in, so
+     * this is resolved before the booking is written rather than read off the
+     * saved row afterwards.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function locationFor(array $data): ?Location
+    {
+        return empty($data['location_id'])
+            ? null
+            : Location::query()->find((int) $data['location_id']);
+    }
+
+    /** One client, as the booking screen names them. */
+    private function walkInMatch(Client $client): array
+    {
+        return [
+            'id' => $client->id,
+            'name' => $client->displayName(),
+            'initials' => $client->initials(),
+            'ref' => $client->client_ref,
+            'mobile' => $client->mobile,
+            'email' => $client->email,
+        ];
     }
 
     /**
@@ -1087,6 +1221,24 @@ class BookingController extends Controller
 
         $minutes = (int) $services->sum(fn (Service $service) => (int) $service->duration_minutes);
         $starts = CarbonImmutable::parse($data['date'].' '.$data['starts_at']);
+
+        /* A time today that has already been and gone.
+         *
+         * The screen stops offering these, but the screen is not the rule:
+         * a tab left open since this morning still holds this morning's list,
+         * and the request can be made by hand. Measured on the branch's own
+         * clock, because a desk in Austin booking the London branch is asking
+         * what time it is in London.
+         *
+         * Only today. A date wholly in the past is somebody writing up
+         * yesterday's walk-in, which is a thing salons do and not something
+         * to refuse.
+         */
+        if (BusinessClock::hasPassed($this->locationFor($data), $data['date'], $data['starts_at'])) {
+            throw ValidationException::withMessages([
+                'starts_at' => __('bookings.when.already_passed'),
+            ]);
+        }
 
         /* The same client, booked for the same service, twice on one day.
 
@@ -1278,7 +1430,12 @@ class BookingController extends Controller
                transaction: a client created for a booking that then fails to
                save is a stranger in the client list. */
             if ($isWalkIn && ! ($data['draft'] ?? false)) {
-                $data['client_id'] = WalkInClients::resolve(
+                /* The record the lead already made, before anything else is
+                   considered. The walk-in was put on file the moment their
+                   number was whole, and resolving again here would hand the
+                   completed booking a second record for the same person on
+                   any detail edited between the two moments. */
+                $data['client_id'] = $lead?->client_id ?? WalkInClients::resolve(
                     $request->user()->tenant,
                     [
                         'name' => $data['guest_name'] ?? null,
@@ -1288,7 +1445,7 @@ class BookingController extends Controller
                     isset($data['location_id']) ? (int) $data['location_id'] : null,
                     isset($data['staff_id']) ? (int) $data['staff_id'] : null,
                     $data['date'],
-                )?->id;
+                )->clientId();
             }
 
             $attributes = [

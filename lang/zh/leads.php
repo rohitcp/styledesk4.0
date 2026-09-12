@@ -136,6 +136,8 @@ return [
         'step' => '已完成：:step',
         'cancelled' => '已取消——:reason',
         'converted' => '已转化为预约',
+        'client-created' => 'Client record created from walk-in details',
+        'client-matched' => 'Matched to an existing client record',
         'contacted' => '已联系客户',
     ],
 
