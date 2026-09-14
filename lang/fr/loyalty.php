@@ -41,8 +41,8 @@ return [
     'purchases' => [
         'services' => 'Prestations',
         'products' => 'Produits',
-        'memberships' => 'Abonnements',
-        'packages' => 'Forfaits',
+        'membership_package' => 'Forfaits',
+        'membership_recurring' => 'Abonnements',
         'gift_cards' => 'Cartes cadeaux',
         'tips' => 'Pourboires',
         'taxes' => 'Taxes',
@@ -178,6 +178,71 @@ return [
 
         'by' => 'par :name',
         'expires' => 'Expire le :date',
+    ],
+
+    /*
+     * The reward catalogue on App Settings → Loyalty & Rewards.
+     *
+     * A reward is what a balance actually buys, as opposed to the conversion
+     * rule above it, which is what a balance is worth. Both are needed: a
+     * business may want nothing more than "points off the bill", and another
+     * wants to give away an upgrade it can afford rather than cash it cannot.
+     */
+    'rewards' => [
+        'title' => 'Reward catalogue',
+        'intro' => 'What your clients can spend their points on. Leave it empty and points simply come off the bill at the rate above.',
+        'add' => '+ Add reward',
+        'edit' => 'Edit reward',
+        'empty' => 'No rewards yet. Clients can still redeem points against the bill at the rate you set above.',
+        'name' => 'Reward name',
+        'name_placeholder' => '$10 Off Any Service',
+        'description' => 'Description',
+        'description_hint' => 'Shown to the client beside the reward. Optional.',
+        'type' => 'Reward type',
+        'points_required' => 'Points required',
+        'value' => 'Amount off',
+        'percent' => 'Percentage off',
+        'service' => 'Service given',
+        'scope' => 'Can be used on',
+        'scope_services' => 'Choose services',
+        'scope_categories' => 'Choose categories',
+        'active' => 'Available to clients',
+        'active_hint' => 'Switch off to take it out of the catalogue without losing the rewards already given.',
+        'save' => 'Save reward',
+        'cancel' => 'Cancel',
+        'remove' => 'Remove',
+        'remove_confirm' => 'Remove this reward from the catalogue? Rewards clients have already redeemed keep their history.',
+        'added' => 'Reward added.',
+        'saved' => 'Reward saved.',
+        'removed' => 'Reward removed.',
+        'retired' => 'Reward taken off the catalogue. Redemptions already made keep their history.',
+        'no_service' => 'No service chosen',
+        'value_varies' => 'Set at the till',
+        'inactive' => 'Not available',
+        'points' => ':count points',
+
+        'types' => [
+            'fixed_discount' => 'Amount off',
+            'percentage_discount' => 'Percentage off',
+            'free_service' => 'Free service',
+            'free_add_on' => 'Free add-on',
+            'service_upgrade' => 'Service upgrade',
+            'free_product' => 'Free product',
+            'custom' => 'Something else',
+        ],
+
+        'scopes' => [
+            'all_services' => 'Any service',
+            'services' => 'Chosen services only',
+            'categories' => 'Chosen categories only',
+        ],
+
+        'validation' => [
+            'amount_required' => 'Say how much comes off.',
+            'percent_required' => 'Say what percentage comes off.',
+            'service_required' => 'Choose the service this reward gives.',
+            'scope_required' => 'Choose at least one, or make it available on any service.',
+        ],
     ],
 
     'activity' => [

@@ -22,13 +22,22 @@
         @endphp
 
         @php
-            /* Email opens the drawer rather than the reader's mail client
-               once the business has switched client email on: a message sent
-               from here is on the client's record, and one sent from Outlook
-               is not. Falls back to mailto: when the feature is off, so the
-               button never becomes dead furniture. */
-            $canSendEmail = \App\Support\ClientEmailSender::enabledFor(auth()->user()?->tenant)
-                && auth()->user()?->hasPermission('email.send', 'own');
+            /* Email opens the compose drawer, not the reader's mail client: a
+               message sent from here is on the client's record, and one sent
+               from Outlook is not.
+
+               It opens even when the business has not switched client email
+               on yet. That used to fall through to mailto:, on the argument
+               that a button which cannot send is dead furniture — but the
+               drawer is not dead in that state. It says which setting is
+               missing and names the screen that fixes it, and its Send button
+               disables itself. Handing somebody Outlook instead quietly took
+               the message off the record and told them nothing.
+
+               Permission is the one thing that still falls back. Somebody who
+               may not send from StyleDesk is not helped by a drawer that
+               refuses them; a plain mail link is what they actually want. */
+            $canSendEmail = (bool) auth()->user()?->hasPermission('email.send', 'own');
         @endphp
 
         @if ($email && $canSendEmail)

@@ -6,6 +6,7 @@ namespace App\Mail;
 
 use App\Models\BookingPaymentLink;
 use App\Support\BookingTotals;
+use App\Support\EmailSender;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -35,6 +36,11 @@ class BookingPaymentLinkMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
+            /* The business's own sender name and reply-to, which
+               were configured in App Settings and reaching nothing
+               but manually written client mail until now. */
+            from: EmailSender::fromAddress($this->booking->tenant),
+            replyTo: EmailSender::replyTo($this->booking->tenant),
             subject: __('bookings.email.link_subject', [
                 'business' => $this->businessName,
                 'date' => $this->link->booking->date->translatedFormat('j M'),

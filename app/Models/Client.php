@@ -52,6 +52,7 @@ class Client extends Model
             'consent_recorded_at' => 'datetime',
             'last_visit_at' => 'datetime',
             'first_visit_at' => 'datetime',
+            'loyalty_enrolled_at' => 'datetime',
             'next_booking_at' => 'datetime',
             'comm_email' => 'boolean',
             'comm_sms' => 'boolean',
@@ -489,6 +490,76 @@ class Client extends Model
     public static function compareNumber(?string $number): string
     {
         return preg_replace('/\D+/', '', (string) $number) ?? '';
+    }
+
+    // -------------------------------------------------------- loyalty
+
+    /**
+     * Whether this client has joined the rewards scheme.
+     *
+     * The joining date is the whole answer — there is no status column to
+     * disagree with it. A client who has points and no joining date is one
+     * who earned them before the business ran an enrolment step, which is a
+     * real state and not a broken one.
+     */
+    public function isEnrolledInLoyalty(): bool
+    {
+        return $this->loyalty_enrolled_at !== null;
+    }
+
+    /**
+     * What state their membership is in.
+     *
+     * Null joining date is the one answer this column does not hold: somebody
+     * who never joined has no membership to be in a state, so they are not
+     * "unenrolled" — they were never enrolled.
+     */
+    public function loyaltyStatus(): ?string
+    {
+        return $this->isEnrolledInLoyalty() ? ($this->loyalty_status ?: 'active') : null;
+    }
+
+    /** Whether they may earn and spend right now. */
+    public function loyaltyIsActive(): bool
+    {
+        return $this->loyaltyStatus() === 'active';
+    }
+
+    public function loyaltyStatusLabel(): ?string
+    {
+        $status = $this->loyaltyStatus();
+
+        return $status === null ? null : __('loyalty.member_statuses.'.$status);
+    }
+
+    /** The badge class the listing and the profile read it by. */
+    public function loyaltyStatusClass(): string
+    {
+        return match ($this->loyaltyStatus()) {
+            'active' => 'styledesk_badge--success',
+            'paused' => 'styledesk_badge--soon',
+            'suspended' => 'styledesk_badge--attention',
+            'unenrolled' => 'styledesk_badge--info',
+            default => 'styledesk_badge--soon',
+        };
+    }
+
+    public function loyaltyEnrolledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'loyalty_enrolled_by');
+    }
+
+    public function loyaltyEnrollmentLocation(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'loyalty_enrollment_location_id');
+    }
+
+    /** Where they joined from, in the reader's language. */
+    public function loyaltyEnrollmentSourceLabel(): ?string
+    {
+        return $this->loyalty_enrollment_source === null
+            ? null
+            : __('loyalty.enrollment.sources.'.$this->loyalty_enrollment_source);
     }
 
     // --------------------------------------------------------- client ref

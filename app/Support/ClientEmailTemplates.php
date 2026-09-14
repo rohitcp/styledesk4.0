@@ -33,7 +33,34 @@ class ClientEmailTemplates
             'name' => __('client_email.templates.'.$key.'.name'),
             'subject' => self::render(__('client_email.templates.'.$key.'.subject'), $values),
             'body' => self::render(__('client_email.templates.'.$key.'.body'), $values),
+            /* Whether this wording asks about an appointment.
+               Read from the template itself rather than from what came back
+               rendered: a template that names a booking still needs one even
+               on a client whose booking happens to fill it in, and the drawer
+               uses this to decide whether to ask at all. */
+            'needs_booking' => self::mentionsBooking($key),
         ], config('client_email.templates'));
+    }
+
+    /**
+     * Whether a template's wording depends on an appointment.
+     *
+     * The four groups of variable that only a booking can answer. A thank-you
+     * for a visit needs one; "your card is about to expire" does not, and
+     * asking which appointment it is about would be a question with no
+     * answer.
+     */
+    private static function mentionsBooking(string $key): bool
+    {
+        $text = __('client_email.templates.'.$key.'.subject').' '.__('client_email.templates.'.$key.'.body');
+
+        foreach (['booking_', 'service_', 'staff_', 'balance_'] as $prefix) {
+            if (str_contains($text, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

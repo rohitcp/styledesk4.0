@@ -32,6 +32,7 @@ class LoyaltySettings extends Model
     {
         return [
             'is_enabled' => 'boolean',
+            'welcome_points' => 'integer',
             'eligible_purchases' => 'array',
             'notify_earned_email' => 'boolean',
             'notify_earned_sms' => 'boolean',
@@ -72,6 +73,8 @@ class LoyaltySettings extends Model
             'is_enabled' => false,
             'program_name' => $defaults['program_name'],
             'description' => null,
+            'enrollment_mode' => 'default_on',
+            'welcome_points' => 0,
             'spend_amount' => $defaults['spend_amount'],
             'points_earned' => $defaults['points_earned'],
             'eligible_purchases' => self::defaultPurchases(),

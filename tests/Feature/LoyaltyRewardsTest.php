@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Client;
 use App\Models\ClientLoyaltyPoint;
 use App\Models\Location;
+use App\Models\LoyaltyReward;
 use App\Models\LoyaltySettings;
 use App\Models\Service;
 use App\Models\Staff;
@@ -97,6 +98,8 @@ class LoyaltyRewardsTest extends TestCase
             'reward_value_minor' => 500,
             'minimum_redemption' => 500,
             'expiry' => 'never',
+            'enrollment_mode' => 'default_on',
+            'welcome_points' => 0,
         ]);
     }
 
@@ -459,6 +462,8 @@ class LoyaltyRewardsTest extends TestCase
                 'minimum_redemption' => 400,
                 'maximum_reward' => '25',
                 'expiry' => '12m',
+                'enrollment_mode' => 'default_on',
+                'welcome_points' => 0,
             ])
             ->assertRedirect();
 
@@ -490,6 +495,8 @@ class LoyaltyRewardsTest extends TestCase
                 'reward_value' => '5',
                 'minimum_redemption' => 500,
                 'expiry' => 'never',
+                'enrollment_mode' => 'default_on',
+                'welcome_points' => 0,
             ])
             ->assertSessionHasErrors('eligible_purchases.0');
     }
@@ -508,5 +515,151 @@ class LoyaltyRewardsTest extends TestCase
             ->assertSee(__('clients.module.workspace.tabs.rewards'))
             ->assertSee(__('loyalty.client.available'))
             ->assertSee(__('loyalty.client.to_go', ['points' => '400', 'value' => '$5.00']));
+    }
+
+    // ------------------------------------------- the tab's newer half
+
+    /**
+     * The figure that is a warning rather than a count.
+     *
+     * Only ever non-zero for a business that set a deadline, which is not the
+     * default: a balance that evaporates costs more goodwill than the scheme
+     * buys, so StyleDesk does not set one for anybody.
+     */
+    public function test_points_about_to_lapse_are_reported_on_their_own(): void
+    {
+        $this->loyaltyOn(['expiry' => '12m']);
+        $client = $this->client();
+        $booking = $this->booking($client, 'completed');
+
+        $this->pay($booking, 10000);
+
+        /* Nothing is close to lapsing yet: a twelve-month deadline is not a
+           warning on the day it is earned. */
+        $this->assertSame(0, LoyaltyPoints::summaryFor($client->fresh())['expiring_soon']);
+
+        ClientLoyaltyPoint::withoutGlobalScopes()
+            ->where('client_id', $client->id)
+            ->update(['expires_at' => now()->addDays(10)]);
+
+        $this->assertSame(100, LoyaltyPoints::summaryFor($client->fresh())['expiring_soon']);
+    }
+
+    public function test_a_deadline_that_is_still_far_off_is_not_a_warning(): void
+    {
+        $this->loyaltyOn(['expiry' => '12m']);
+        $client = $this->client();
+        $this->pay($this->booking($client, 'completed'), 10000);
+
+        ClientLoyaltyPoint::withoutGlobalScopes()
+            ->where('client_id', $client->id)
+            ->update(['expires_at' => now()->addDays(200)]);
+
+        $this->assertSame(0, LoyaltyPoints::summaryFor($client->fresh())['expiring_soon']);
+    }
+
+    /**
+     * Every line says what became of it.
+     *
+     * Derived rather than stored: a status column would need something to
+     * keep it true, and the only thing that changes on its own is the clock.
+     */
+    public function test_each_line_reports_its_own_status(): void
+    {
+        $this->loyaltyOn();
+        $client = $this->client();
+        $booking = $this->booking($client, 'completed');
+        $this->pay($booking, 10000);
+
+        $earned = ClientLoyaltyPoint::withoutGlobalScopes()->where('client_id', $client->id)->sole();
+        $this->assertSame('available', $earned->status());
+
+        LoyaltyPoints::redeem($client->fresh(), 50);
+        $redeemed = ClientLoyaltyPoint::withoutGlobalScopes()->where('type', 'redeemed')->sole();
+        $this->assertSame('redeemed', $redeemed->status());
+
+        /* A credit whose deadline has gone. It was still earned — the line
+           reads as earned — but what it is worth now is nothing. */
+        $earned->forceFill(['expires_at' => now()->subDay()])->save();
+        $this->assertSame('expired', $earned->fresh()->status());
+    }
+
+    /** A refund's line is a reversal, not a redemption. */
+    public function test_a_reversal_is_not_reported_as_a_redemption(): void
+    {
+        $this->loyaltyOn();
+        $client = $this->client();
+        $booking = $this->booking($client, 'completed');
+        $this->pay($booking, 10000);
+        $this->pay($booking->fresh(), 10000, 'refunded');
+
+        $reversal = ClientLoyaltyPoint::withoutGlobalScopes()
+            ->where('type', 'refund_adjustment')->sole();
+
+        $this->assertSame('reversed', $reversal->status());
+    }
+
+    public function test_the_history_table_names_the_appointment_the_branch_and_the_stylist(): void
+    {
+        $this->loyaltyOn();
+        $client = $this->client();
+        $booking = $this->booking($client, 'completed');
+        $this->pay($booking, 10000);
+
+        $line = ClientLoyaltyPoint::withoutGlobalScopes()->where('client_id', $client->id)->sole();
+
+        $this->assertSame($booking->reference, $line->sourceLabel());
+        $this->assertNotNull($line->location?->name);
+        $this->assertSame($booking->staff?->displayName(), $line->staffName());
+    }
+
+    public function test_the_profile_shows_the_reward_catalogue_and_what_is_affordable(): void
+    {
+        $this->loyaltyOn();
+        $client = $this->client();
+        $this->pay($this->booking($client, 'completed'), 10000);
+
+        LoyaltyReward::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Free brow tidy', 'type' => 'fixed_discount',
+            'points_required' => 60, 'value_minor' => 1000, 'scope' => 'all_services',
+            'is_active' => true,
+        ]);
+
+        LoyaltyReward::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Spa afternoon', 'type' => 'fixed_discount',
+            'points_required' => 5000, 'value_minor' => 9000, 'scope' => 'all_services',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->owner())
+            ->get(route('clients.show', $client))
+            ->assertOk()
+            ->assertSee('Free brow tidy')
+            ->assertSee('Spa afternoon')
+            /* 100 earned against a 60-point reward. */
+            ->assertSee(__('loyalty.client.affordable'))
+            /* ...and 4,900 short of the other. */
+            ->assertSee(__('loyalty.client.short_by', ['points' => '4,900']));
+    }
+
+    /** A retired reward is not offered to a client. */
+    public function test_an_inactive_reward_is_not_shown_on_the_profile(): void
+    {
+        $this->loyaltyOn();
+        $client = $this->client();
+
+        LoyaltyReward::withoutGlobalScopes()->create([
+            'tenant_id' => $this->tenant->getTenantKey(),
+            'name' => 'Last winter special', 'type' => 'fixed_discount',
+            'points_required' => 10, 'value_minor' => 500, 'scope' => 'all_services',
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($this->owner())
+            ->get(route('clients.show', $client))
+            ->assertOk()
+            ->assertDontSee('Last winter special');
     }
 }

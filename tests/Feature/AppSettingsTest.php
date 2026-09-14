@@ -8,6 +8,7 @@ use App\Models\TenantOnboarding;
 use App\Models\User;
 use App\Support\Icon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -156,7 +157,12 @@ class AppSettingsTest extends TestCase
     {
         $count = collect(config('app_settings.groups'))->sum(fn ($g) => count($g['modules']));
 
-        $this->assertSame(39, $count, 'The spec lists 36 modules, plus Shift Rules, Reasons, Email and Reviews & Feedback, less Business Hours.');
+        /* 38, not 39: "Email" under Clients and "Email Settings" under
+           Communication were two cards for one screen. The Communication one
+           is the card that survives — its group is literally "what StyleDesk
+           sends, to whom, and how it reads" — and it now carries the route
+           the Clients duplicate was holding. */
+        $this->assertSame(38, $count, 'The spec lists 36 modules, plus Shift Rules, Reasons and Reviews & Feedback, less Business Hours.');
     }
 
     /** Business Hours is off the directory, and stays off. */
@@ -258,5 +264,55 @@ class AppSettingsTest extends TestCase
         $response = $this->actingAs($this->member('owner'))->get('http://styledesk.test/settings');
 
         $response->assertOk()->assertSee('Coming soon');
+    }
+
+    /**
+     * A card that names a finished screen must open it.
+     *
+     * Email Settings and Email Templates sat in Communication as "Coming
+     * soon" long after both screens were built and routed: no route key, so
+     * the index drew them as placeholders and they went nowhere. A card that
+     * describes a feature and then refuses to open it is worse than no card.
+     */
+    public function test_every_active_card_points_at_a_route_that_exists(): void
+    {
+        foreach (config('app_settings.groups') as $group) {
+            foreach ($group['modules'] ?? [] as $module) {
+                if (($module['status'] ?? null) !== 'active') {
+                    continue;
+                }
+
+                $this->assertArrayHasKey(
+                    'route',
+                    $module,
+                    $module['key'].' is marked active with nowhere to go.',
+                );
+
+                $this->assertTrue(
+                    Route::has($module['route']),
+                    $module['key'].' points at a route that does not exist: '.$module['route'],
+                );
+            }
+        }
+    }
+
+    /** One screen, one card. */
+    public function test_no_two_cards_lead_to_the_same_screen(): void
+    {
+        $routes = [];
+
+        foreach (config('app_settings.groups') as $group) {
+            foreach ($group['modules'] ?? [] as $module) {
+                if (isset($module['route'])) {
+                    $routes[] = $module['route'];
+                }
+            }
+        }
+
+        $this->assertSame(
+            array_values(array_unique($routes)),
+            $routes,
+            'Two settings cards lead to the same screen.',
+        );
     }
 }

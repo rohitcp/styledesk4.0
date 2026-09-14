@@ -23,6 +23,9 @@ return [
         'sender_hint' => 'How your emails are signed, whichever method sends them.',
         'sender_name' => 'Sender Name',
         'sender_name_hint' => 'The name your clients see. Defaults to your business name.',
+        'from_address' => 'Sender email (From address)',
+        'from_address_hint' => 'Sent through StyleDesk, so the From address is StyleDesk’s own. Your sender name above is what clients see, and replies go to the address below.',
+        'from_address_gmail' => 'Your connected Gmail account. Clients see it as the sender and replies land in that inbox.',
         'reply_to' => 'Reply-To Email',
         'reply_to_hint' => 'Where a client’s reply goes. Without one, replies reach nobody.',
         'reply_to_gmail' => 'Not used while Gmail is sending — replies go straight to your connected inbox.',
@@ -61,6 +64,16 @@ return [
         'title' => 'Send Email',
         'to' => 'To',
         'from' => 'From',
+        'reply_to' => 'Reply-to',
+        'new_message' => 'New message',
+        'minimise' => 'Minimise',
+        'expand' => 'Expand',
+        'discard' => 'Discard',
+        'discard_title' => 'Discard this draft?',
+        'discard_body' => 'This message has not been sent. Discarding it cannot be undone.',
+        'keep_draft' => 'Keep draft',
+        'unresolved' => 'This wording still has placeholders in it. Choose the related booking below to fill them in, or edit them out by hand.',
+        'search_templates' => 'Search templates…',
         /* What the client actually sees in their inbox. Said plainly on the
            settings screen too, because an owner who expected their own address
            should find out here rather than from a client. */

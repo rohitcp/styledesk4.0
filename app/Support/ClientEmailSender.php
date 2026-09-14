@@ -117,6 +117,7 @@ class ClientEmailSender
         ?User $sender = null,
         ?Booking $booking = null,
         ?string $templateKey = null,
+        ?string $to = null,
     ): ClientEmailMessage {
         $tenant = $client->tenant ?? tenant();
 
@@ -138,7 +139,31 @@ class ClientEmailSender
 
         /* The client's own address, and it has to be one. A send to nobody is
            a row in the history claiming a client was written to. */
+        /* The address that was chosen, where one was and it is genuinely
+           theirs. Checked against the client's own rows rather than taken on
+           trust: a request naming somebody else's address would send this
+           client's history to a stranger and file it as delivered. */
         $recipient = (string) $client->email;
+
+        if ($to !== null && trim($to) !== '') {
+            $wanted = mb_strtolower(trim($to));
+
+            /* `collect(...)` around the plucked values on purpose: an
+               Eloquent collection's `contains()` reads a bare string as a key
+               and calls getKey() on every row, which is a fatal rather than a
+               false. */
+            $owned = collect($client->emails()->pluck('email')->all())
+                ->push($client->email)
+                ->map(fn ($address) => mb_strtolower(trim((string) $address)))
+                ->filter()
+                ->contains($wanted);
+
+            if (! $owned) {
+                throw ValidationException::withMessages(['subject' => __('client_email.errors.no_address')]);
+            }
+
+            $recipient = $wanted;
+        }
 
         if ($recipient === '' || ! filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
             throw ValidationException::withMessages(['subject' => __('client_email.errors.no_address')]);

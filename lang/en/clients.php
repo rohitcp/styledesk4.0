@@ -238,6 +238,7 @@ return [
 
         'choose_birth_date' => 'Choose a date of birth',
         'created' => 'Client added successfully',
+        'created_enrolled' => 'Client created and enrolled in :program.',
         'saved' => 'Client updated successfully.',
         'archived' => ':name has been archived. Their appointments and history are unchanged.',
         'restored' => ':name is active again.',
@@ -524,6 +525,8 @@ return [
                 | appears when nobody did.
                 */
                 'events' => [
+                    'loyalty_enrolled' => 'Client enrolled in Loyalty & Rewards',
+                    'loyalty_welcome_points' => 'Welcome points issued',
                     'booking_created' => 'Booking created',
                     'booking_rescheduled' => 'Booking rescheduled',
                     'booking_cancelled' => 'Booking cancelled',

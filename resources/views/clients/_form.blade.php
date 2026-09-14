@@ -85,8 +85,16 @@
 <section class="bg-white border border-line rounded-card p-5 space-y-4">
   <h2 class="text-[15px] font-semibold text-head">{{ __('clients.module.cards.about') }}</h2>
 
-  <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
-    @foreach (['first_name', 'last_name', 'preferred_name'] as $key)
+  {{-- The three that identify somebody, on one row: a receptionist reads a
+       registration card across — name, name, date of birth — and a
+       two-column grid pushed the birthday onto a second row beneath a field
+       most businesses do not even use.
+
+       Three columns rather than a flex row so the boxes stay the same width
+       as each other and as the cards below; a disabled field simply leaves
+       its column empty rather than stretching its neighbours. --}}
+  <div class="grid sm:grid-cols-3 gap-x-4 gap-y-4">
+    @foreach (['first_name', 'last_name'] as $key)
       @if ($enabled->has($key))
         <div>
           <label for="{{ $key }}" class="block text-[13px] font-medium text-ink mb-1.5">
@@ -120,6 +128,24 @@
                     :rules="($enabled['date_of_birth']['required'] ?? false) ? 'required|date' : 'date'"
                     :dialog-label="__('clients.module.choose_birth_date')" />
     @endif
+  </div>
+
+  {{-- What is left of the card: the two fields a business may or may not
+       ask for, on their own row so neither ends up alone beside a birthday. --}}
+  @if ($enabled->hasAny(['preferred_name', 'gender']))
+  <div class="grid sm:grid-cols-2 gap-x-4 gap-y-4">
+    @if ($enabled->has('preferred_name'))
+      <div>
+        <label for="preferred_name" class="block text-[13px] font-medium text-ink mb-1.5">
+          {{ $enabled['preferred_name']['label'] }} {!! $req('preferred_name') !!}
+        </label>
+        <input id="preferred_name" name="preferred_name" type="text" class="sd-input" data-capitalize
+               data-rules="{{ collect([($enabled['preferred_name']['required'] ?? false) ? 'required' : null, 'max:100'])->filter()->implode('|') }}"
+               value="{{ $fieldValue('preferred_name') }}">
+        <p data-error-for="preferred_name" role="alert" class="mt-1.5 text-[12px] text-danger"
+           @unless ($errors->has('preferred_name')) hidden @endunless>{{ $errors->first('preferred_name') }}</p>
+      </div>
+    @endif
 
     @if ($enabled->has('gender'))
       <div>
@@ -134,6 +160,7 @@
       </div>
     @endif
   </div>
+  @endif
 </section>
 
 {{-- ----------------------------------------------------- contact --}}
@@ -308,6 +335,56 @@
     <p class="mt-2 text-[12px] text-sub">{{ __('clients.communication.stored_separately') }}</p>
   </fieldset>
 </section>
+
+{{-- ------------------------------------------------- loyalty & rewards --}}
+@if ($loyalty->is_enabled && $client === null)
+  {{-- Only where the business runs a scheme, and only when adding somebody.
+       An existing client's membership is changed from their profile, where
+       the joining date and the member number they already hold are visible —
+       a tick box on an edit form could silently re-enrol somebody and hand
+       them a second welcome bonus.
+
+       Deliberately below the communication card and outside it. Joining the
+       scheme is not a marketing consent and must not read as one: a client
+       may collect points and want nothing promotional, which is the whole
+       reason the two are separate questions. --}}
+  <section class="sd-card p-5 space-y-4">
+    <h2 class="text-[15px] font-semibold text-head">{{ __('loyalty.enrollment.section') }}</h2>
+
+    @php
+        $enrollByDefault = \App\Support\LoyaltyEnrollment::defaultsToEnrolled($loyalty);
+        $mayOptOut = \App\Support\LoyaltyEnrollment::isOptional($loyalty);
+    @endphp
+
+    @if ($mayOptOut)
+      <x-choice name="loyalty_enroll" value="1"
+                :label="__('loyalty.enrollment.enroll', ['program' => $loyalty->program_name])"
+                :hint="__('loyalty.enrollment.enroll_hint')"
+                :checked="(bool) old('loyalty_enroll', $enrollByDefault)" />
+    @else
+      {{-- The business enrols everybody. Stated rather than shown as a
+           ticked box nobody may untick, which reads as a control that is
+           broken. The hidden field is what actually posts. --}}
+      <p class="text-[13px] text-sub leading-relaxed">
+        {{ __('loyalty.enrollment.automatic', ['program' => $loyalty->program_name]) }}
+      </p>
+      <input type="hidden" name="loyalty_enroll" value="1">
+    @endif
+
+    @if ($loyalty->welcome_points > 0)
+      <div class="sd-alert sd-alert--info" role="note">
+        <div class="min-w-0">
+          <p class="font-semibold">
+            {{ __('loyalty.enrollment.welcome_badge', ['points' => number_format($loyalty->welcome_points)]) }}
+          </p>
+          {{-- Not editable here on purpose: what a business gives for joining
+               is a rule, not something decided per client at the desk. --}}
+          <p class="mt-0.5">{{ __('loyalty.enrollment.welcome_note') }}</p>
+        </div>
+      </div>
+    @endif
+  </section>
+@endif
 
 {{-- ------------------------------------------------------- notes --}}
 @if ($enabled->has('notes'))

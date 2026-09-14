@@ -46,7 +46,8 @@
 
                         {{-- The business's own list, in the order they put it
                              in and without the ones they switched off. --}}
-                        <select id="reason-{{ $action }}" name="reason_code_id" class="sd-input" required data-status-reason>
+                        <select id="reason-{{ $action }}" name="reason_code_id" class="sd-input" required data-status-reason
+                                data-search-label="{{ __('bookings.status.search_reason') }}">
                             <option value="">{{ __('bookings.status.choose_reason') }}</option>
                             @foreach ($reasons[$action] as $reason)
                                 <option value="{{ $reason->id }}" data-requires-details="{{ $reason->requires_details ? '1' : '0' }}">
@@ -156,7 +157,8 @@
                         <label for="reason-reschedule" class="block text-[13px] font-medium text-ink mb-1.5">
                             {{ __('bookings.status.reschedule.reason') }} <span class="text-danger" aria-hidden="true">*</span>
                         </label>
-                        <select id="reason-reschedule" name="reason_code_id" class="sd-input" required data-status-reason>
+                        <select id="reason-reschedule" name="reason_code_id" class="sd-input" required data-status-reason
+                                data-search-label="{{ __('bookings.status.search_reason') }}">
                             <option value="">{{ __('bookings.status.choose_reason') }}</option>
                             @foreach ($reasons['reschedule'] as $reason)
                                 <option value="{{ $reason->id }}" data-requires-details="{{ $reason->requires_details ? '1' : '0' }}">

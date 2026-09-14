@@ -7,7 +7,10 @@ namespace App\Support;
 use App\Models\Booking;
 use App\Models\Client;
 use App\Models\ClientLoyaltyPoint;
+use App\Models\ClientMembership;
+use App\Models\LoyaltyReward;
 use App\Models\LoyaltySettings;
+use App\Models\MembershipPayment;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -155,6 +158,190 @@ class LoyaltyPoints
         );
     }
 
+    /**
+     * Bring a membership payment's points into line with what it is worth.
+     *
+     * The same reconciler as `settle()`, against a different kind of money:
+     * what this payment should have earned, minus what it already has, write
+     * the difference. That shape is why calling it twice is harmless and why
+     * a payment later marked unpaid takes its points back with no branch of
+     * its own.
+     *
+     * Which switch it obeys depends on the plan. A package is bought once and
+     * a subscription bills again, and a salon happy to give points on a
+     * one-off purchase has not thereby agreed to give them every month for
+     * the life of a subscription — so they are two settings and this asks the
+     * one that applies.
+     *
+     * Swallows and logs like its sibling: taking money for a membership must
+     * never fail over a points balance.
+     */
+    public static function settleMembershipPayment(MembershipPayment $payment, ?int $userId = null): ?ClientLoyaltyPoint
+    {
+        try {
+            $membership = $payment->membership;
+            $client = $membership?->client;
+
+            if ($client === null) {
+                return null;
+            }
+
+            $settings = LoyaltySettings::forTenant($client->tenant);
+
+            if (! $settings->is_enabled) {
+                return null;
+            }
+
+            $target = self::targetPointsForMembership($payment, $membership, $settings);
+            $already = (int) ClientLoyaltyPoint::query()
+                ->where('membership_payment_id', $payment->id)
+                ->whereIn('type', self::EARNING_TYPES)
+                ->sum('points');
+
+            $delta = $target - $already;
+
+            if ($delta === 0) {
+                return null;
+            }
+
+            return self::write(
+                clientId: (int) $client->id,
+                tenantId: (string) $client->tenant_id,
+                type: $delta > 0 ? 'earned' : 'refund_adjustment',
+                points: $delta,
+                userId: $userId,
+                attributes: [
+                    'membership_payment_id' => $payment->id,
+                    'location_id' => $membership->location_id,
+                    'eligible_amount_minor' => self::eligibleMinorForMembership($payment, $membership, $settings),
+                    'currency_code' => $payment->currency_code,
+                    'expires_at' => $delta > 0 ? self::expiryFor($settings) : null,
+                ],
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Could not settle loyalty points for a membership payment.', [
+                'membership_payment_id' => $payment->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * What this membership payment is worth in points.
+     *
+     * Nothing at all unless the money actually landed: a payment recorded as
+     * pending, failed or refunded is not a purchase, and points on one would
+     * be points for a membership the client does not have.
+     */
+    private static function targetPointsForMembership(
+        MembershipPayment $payment,
+        ClientMembership $membership,
+        LoyaltySettings $settings,
+    ): int {
+        $eligible = self::eligibleMinorForMembership($payment, $membership, $settings);
+
+        return $eligible <= 0 ? 0 : $settings->pointsFor($eligible);
+    }
+
+    /**
+     * How much of a membership payment earns.
+     *
+     * The whole of it or none of it. A membership is one price for one thing
+     * — there is no subtotal to separate from a tax line the way a booking
+     * has — so the question is only whether this kind of membership earns at
+     * all.
+     */
+    private static function eligibleMinorForMembership(
+        MembershipPayment $payment,
+        ClientMembership $membership,
+        LoyaltySettings $settings,
+    ): int {
+        if ($payment->status !== 'paid') {
+            return 0;
+        }
+
+        $switch = $membership->plan?->isRecurring()
+            ? 'membership_recurring'
+            : 'membership_package';
+
+        return $settings->earnsOn($switch) ? max(0, (int) $payment->amount_minor) : 0;
+    }
+
+    /**
+     * A reward taken from the catalogue.
+     *
+     * The reward's price in points, not a figure the caller chose: the
+     * catalogue is what the business decided a reward costs, and a till that
+     * could pass its own number would be a second place that knows.
+     *
+     * Refused rather than allowed to go negative. Everywhere else in this
+     * class a balance is reconciled and a correction may push it under zero —
+     * that is a fact being recorded. This is a client asking for something,
+     * and handing it over on points they do not have is the one case where
+     * the honest answer is no.
+     *
+     * What it was worth is copied onto the line, because the catalogue is
+     * what the business offers today and a reward repriced in June must not
+     * rewrite what somebody was given in March.
+     *
+     * @throws \RuntimeException when the balance will not cover it
+     */
+    public static function redeemReward(
+        Client $client,
+        LoyaltyReward $reward,
+        ?Booking $booking = null,
+        ?int $userId = null,
+        ?int $valueMinor = null,
+    ): ClientLoyaltyPoint {
+        $points = (int) $reward->points_required;
+
+        if (self::balanceFor($client) < $points) {
+            throw new \RuntimeException('Not enough points to redeem this reward.');
+        }
+
+        return self::write(
+            clientId: (int) $client->id,
+            tenantId: (string) $client->tenant_id,
+            type: 'redeemed',
+            points: -abs($points),
+            userId: $userId,
+            attributes: [
+                'booking_id' => $booking?->id,
+                'location_id' => $booking?->location_id,
+                'currency_code' => $booking?->currency_code,
+                'loyalty_reward_id' => $reward->id,
+                /* What the client actually got off, where the till worked it
+                   out — a percentage is worth what the bill was, and the bill
+                   is not something this class can see. Falls back to the
+                   reward's own figure for the types that carry one. */
+                'reward_value_minor' => $valueMinor ?? $reward->value_minor,
+            ],
+        );
+    }
+
+    /**
+     * Points given for a reason that is not a purchase.
+     *
+     * A joining bonus is not an adjustment somebody made and not something a
+     * booking earned, so it gets its own type rather than being filed as
+     * either — the history should say what it was for.
+     */
+    public static function credit(Client $client, int $points, string $type, ?int $userId = null): ClientLoyaltyPoint
+    {
+        $settings = LoyaltySettings::forTenant($client->tenant);
+
+        return self::write(
+            clientId: (int) $client->id,
+            tenantId: (string) $client->tenant_id,
+            type: $type,
+            points: abs($points),
+            userId: $userId,
+            attributes: ['expires_at' => self::expiryFor($settings)],
+        );
+    }
+
     // ------------------------------------------------------------- reading
 
     /**
@@ -191,7 +378,38 @@ class LoyaltyPoints
                were still earned. */
             'lifetime_earned' => (int) (clone $rows)->where('points', '>', 0)->sum('points'),
             'lifetime_redeemed' => abs((int) (clone $rows)->where('type', 'redeemed')->sum('points')),
+            /* What the client loses if they do nothing. The one figure here
+               that is a warning rather than a fact, which is why it is worth
+               its own tile: a balance that quietly evaporates costs more
+               goodwill than never having run a scheme. */
+            'expiring_soon' => self::expiringSoonFor($client),
         ];
+    }
+
+    /**
+     * Points that will lapse within the warning window.
+     *
+     * Only credits, and only ones with a deadline: a business that has set no
+     * expiry has nothing expiring, which is the default and the common case.
+     * Read at the moment the question is asked, like the balance itself —
+     * there is no nightly sweep marking anything.
+     */
+    public static function expiringSoonFor(Client $client, ?int $days = null): int
+    {
+        $days ??= (int) config('loyalty.expiring_soon_days', 30);
+
+        return max(0, (int) ClientLoyaltyPoint::query()
+            ->where('client_id', $client->id)
+            ->where('points', '>', 0)
+            ->whereNotNull('expires_at')
+            ->whereBetween('expires_at', [now(), now()->addDays($days)])
+            ->sum('points'));
+    }
+
+    /** How many days ahead "expiring soon" looks. */
+    public static function expiringWindowDays(): int
+    {
+        return (int) config('loyalty.expiring_soon_days', 30);
     }
 
     /**

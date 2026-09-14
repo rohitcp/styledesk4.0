@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Models\BookingReview;
+use App\Support\EmailSender;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -35,6 +36,14 @@ class ReviewRequestMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
+            /* The business's own sender name and reply-to, which were
+               configured in App Settings and reaching nothing but manually
+               written client mail until now.
+
+               Read off the review rather than from `tenant()`: this one is
+               queued, and a worker has no tenant in context. */
+            from: EmailSender::fromAddress($this->review->booking?->tenant),
+            replyTo: EmailSender::replyTo($this->review->booking?->tenant),
             subject: __('reviews.email.subject', ['business' => $this->businessName]),
         );
     }

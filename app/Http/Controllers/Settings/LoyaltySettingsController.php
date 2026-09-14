@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\LoyaltyReward;
 use App\Models\LoyaltySettings;
+use App\Models\Service;
+use App\Models\ServiceCategory;
 use App\Support\Currencies;
+use App\Support\LoyaltyEnrollment;
 use App\Support\Money;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -43,7 +47,20 @@ class LoyaltySettingsController extends Controller
                would silently award nothing. */
             'purchases' => config('loyalty.purchases'),
             'expiries' => LoyaltySettings::expiries(),
+            'enrollmentModes' => LoyaltyEnrollment::MODES,
             'notifications' => config('loyalty.notifications'),
+
+            /* The catalogue, inactive rewards included: a retired reward is
+               still on this screen so the business can bring it back, and it
+               is the client-facing lists that show only the live ones. */
+            'rewards' => LoyaltyReward::query()->inOrder()->with('service')->get(),
+            'rewardTypes' => config('loyalty.reward_types'),
+            'rewardScopes' => config('loyalty.reward_scopes'),
+            /* What a reward can be pointed at. Both lists shipped with the
+               page rather than fetched: a salon has tens of services, not
+               thousands, and the form is unusable while it waits. */
+            'services' => Service::query()->active()->with('category')->inOrder()->get(),
+            'categories' => ServiceCategory::query()->orderBy('name')->get(),
             'currency' => Currencies::resolve(),
             'symbol' => Money::symbol(),
             /* Whether this reader may change any of it. The settings group
@@ -81,6 +98,12 @@ class LoyaltySettingsController extends Controller
             'maximum_reward' => ['nullable', 'numeric', 'min:0.01', 'max:100000'],
 
             'expiry' => ['required', Rule::in(LoyaltySettings::expiries())],
+
+            /* Who joins, and what joining is worth. Zero is a legitimate
+               bonus — most businesses give nothing for signing up — so this
+               is min:0 rather than min:1. */
+            'enrollment_mode' => ['required', Rule::in(LoyaltyEnrollment::MODES)],
+            'welcome_points' => ['required', 'integer', 'min:0', 'max:1000000'],
         ]);
 
         LoyaltySettings::updateOrCreate(
@@ -105,6 +128,8 @@ class LoyaltySettingsController extends Controller
                     ? (int) round(((float) $data['maximum_reward']) * 100)
                     : null,
                 'expiry' => $data['expiry'],
+                'enrollment_mode' => $data['enrollment_mode'],
+                'welcome_points' => (int) $data['welcome_points'],
             ],
         );
 

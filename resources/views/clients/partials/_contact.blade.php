@@ -56,12 +56,33 @@
         <div>
             <p class="styledesk_label">{{ __('clients.module.workspace.contact.email') }}</p>
 
+            @php
+                /* Clicking an address writes to the client from StyleDesk, not
+                   from the reader's own mail app. A message sent here is on
+                   the client's record and in the email log; one sent from
+                   Outlook is a conversation nobody else in the salon can see.
+
+                   mailto: only for a reader who may not send from StyleDesk at
+                   all — a compose window that refuses them is no use, and a
+                   plain mail link is what they actually want. */
+                $composesInApp = (bool) auth()->user()?->hasPermission('email.send', 'own');
+            @endphp
+
             @if ($primaryEmail)
                 <div class="flex items-start gap-2 mt-1">
                     <div class="min-w-0 flex-1">
-                        <a href="mailto:{{ $primaryEmail->email }}" class="text-[13px] text-head font-medium hover:text-link transition-colors break-all">
-                            {{ $primaryEmail->email }}
-                        </a>
+                        @if ($composesInApp)
+                            <button type="button" data-send-email
+                                    data-compose-url="{{ route('clients.emails.compose', $client) }}"
+                                    data-send-url="{{ route('clients.emails.store', $client) }}"
+                                    class="text-[13px] text-head font-medium hover:text-link transition-colors break-all text-left">
+                                {{ $primaryEmail->email }}
+                            </button>
+                        @else
+                            <a href="mailto:{{ $primaryEmail->email }}" class="text-[13px] text-head font-medium hover:text-link transition-colors break-all">
+                                {{ $primaryEmail->email }}
+                            </a>
+                        @endif
                         <p class="text-[12px] text-sub">{{ $primaryEmail->typeLabel() }} · {{ __('clients.module.contacts.primary') }}</p>
                     </div>
 
@@ -81,7 +102,14 @@
                         <ul class="mt-1.5 space-y-1">
                             @foreach ($client->emails->skip(1) as $email)
                                 <li class="text-[12px] text-ink break-all">
-                                    <a href="mailto:{{ $email->email }}" class="hover:text-link transition-colors">{{ $email->email }}</a>
+                                    @if ($composesInApp)
+                                        <button type="button" data-send-email
+                                                data-compose-url="{{ route('clients.emails.compose', $client) }}"
+                                                data-send-url="{{ route('clients.emails.store', $client) }}"
+                                                class="hover:text-link transition-colors text-left">{{ $email->email }}</button>
+                                    @else
+                                        <a href="mailto:{{ $email->email }}" class="hover:text-link transition-colors">{{ $email->email }}</a>
+                                    @endif
                                     <span class="text-sub">· {{ $email->typeLabel() }}</span>
                                 </li>
                             @endforeach

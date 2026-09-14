@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Mail\BookingCancelledMail;
 use App\Models\Booking;
 use App\Models\Location;
 use App\Models\ReasonCode;
 use App\Support\BookingAvailability;
 use App\Support\BookingStatusHistory;
 use App\Support\ClientActivityLog;
+use App\Support\EmailRenderer;
+use App\Support\EmailTemplates;
+use App\Support\EmailVariables;
 use App\Support\LoyaltyPoints;
 use App\Support\MembershipCredits;
 use App\Support\ResourceAllocator;
@@ -19,6 +23,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\ValidationException;
@@ -183,6 +189,66 @@ class BookingStatusController extends Controller
      * list they ask from — and the moment they are three methods is the
      * moment one of them forgets to write its history.
      */
+    /**
+     * Tell the client, the business and whoever was going to do the work.
+     *
+     * One template, three recipients. What the business writes about a
+     * cancelled appointment does not change according to who is reading it —
+     * only the address does — and a template per recipient would be three
+     * things to keep saying the same thing.
+     *
+     * Rendered here rather than inside the mailable: the wording is the
+     * business's own, resolved against this tenant, and a queue worker with
+     * no tenant in context would quietly substitute StyleDesk's default.
+     *
+     * Swallows everything and logs. The appointment is cancelled whether or
+     * not the mail went, the client has been told at the desk, and a red page
+     * over an SMTP timeout would leave the receptionist believing it had not
+     * worked — the same bargain LoyaltyPoints and ReviewRequests make.
+     */
+    private function mailCancellation(Booking $booking, Request $request, ?string $reason, ?string $note): void
+    {
+        try {
+            $tenant = $booking->tenant;
+            $booking->loadMissing(['client', 'staff', 'location', 'services']);
+
+            $rendered = EmailRenderer::render(
+                EmailTemplates::resolve($tenant, 'booking.cancelled'),
+                $tenant,
+                $booking->client,
+                $booking,
+                EmailVariables::cancellation(
+                    reason: $reason,
+                    note: $note,
+                    by: $request->user()?->name,
+                ),
+            );
+
+            /* The client's own address first, then the business, then the
+               person whose day just changed. Deduplicated, because an owner
+               who is also the stylist is one person and two copies of the
+               same email reads as a system that has lost track. */
+            $recipients = collect([
+                $booking->client?->email ?: $booking->guest_email,
+                $tenant?->business_email,
+                $booking->staff?->email,
+            ])->filter()->map(fn (string $address) => mb_strtolower(trim($address)))->unique()->values();
+
+            foreach ($recipients as $address) {
+                Mail::to($address)->send(new BookingCancelledMail(
+                    $rendered['subject'],
+                    $rendered['html'],
+                    $tenant,
+                ));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Could not send the booking cancellation email.', [
+                'booking_id' => $booking->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
     private function settle(Request $request, Booking $booking, string $status): RedirectResponse
     {
         $this->permit($request, $booking, $status);
@@ -231,6 +297,14 @@ class BookingStatusController extends Controller
            Idempotent: only redemptions still held are released, so a status
            handler that fires twice does not hand the same credit back twice. */
         MembershipCredits::release($booking);
+
+        /* And the three people who need telling. Cancelled only: a no-show
+           and a decline are different conversations, and one email that
+           covered all three would be one that says nothing precise about
+           any. */
+        if ($status === 'cancelled') {
+            $this->mailCancellation($booking, $request, $label, $data['note'] ?? null);
+        }
 
         return back()->with('toast', [
             'type' => 'success',

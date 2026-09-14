@@ -54,6 +54,27 @@
           </button>
         @endforeach
 
+        {{-- Write to the client about this appointment.
+
+             The same composer the client profile opens, fixed to this
+             booking: everything written from here is about it, so the
+             templates render against it and the Related booking field has
+             nothing left to ask.
+
+             Only where there is a client record to write to and a history to
+             file it against — a walk-in nobody put on the book has neither,
+             and their address lives on the booking rather than on a record
+             this can reach. --}}
+        @if ($client?->email && auth()->user()?->hasPermission('email.send', 'own'))
+          <button type="button" data-send-email
+                  data-compose-url="{{ route('clients.emails.compose', $client) }}"
+                  data-send-url="{{ route('clients.emails.store', $client) }}"
+                  class="styledesk_action shrink-0">
+            <x-icon name="envelope" size="14" />
+            {{ __('client_email.send.action') }}
+          </button>
+        @endif
+
         <a href="{{ route('bookings.receipt', $booking) }}" target="_blank" rel="noopener" class="styledesk_action shrink-0">
           {{ __('bookings.confirmation.print') }}
         </a>
@@ -214,8 +235,19 @@
   {{-- Rendered only where the act is on offer, so a reader without the
        permission is not sent the dialogue for it. --}}
   @include('bookings.partials._status-modals')
+
+  {{-- The Send Email composer, the same one the client profile opens. --}}
+  @if ($client?->email && auth()->user()?->hasPermission('email.send', 'own'))
+    @include('clients.partials._email-drawer')
+  @endif
 @endsection
 
 @push('scripts')
   @include('bookings.partials._status-scripts')
+
+  {{-- The composer's behaviour, shared with the client profile and fixed to
+       this appointment. --}}
+  @if ($client?->email && auth()->user()?->hasPermission('email.send', 'own'))
+    @include('clients.partials._email-drawer-scripts', ['emailBookingId' => $booking->id])
+  @endif
 @endpush

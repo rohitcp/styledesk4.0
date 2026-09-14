@@ -205,7 +205,31 @@
           </div>
         </div>
 
-        {{-- ---------------------------------------- Card 3: redeem points --}}
+        {{-- ------------------------------------------ Card 3: enrolment --}}
+        <div class="sd-card p-5">
+          <h2 class="text-[15px] font-semibold text-head">{{ __('loyalty.enrollment.title') }}</h2>
+          <p class="text-[12.5px] text-sub mt-1 leading-relaxed">{{ __('loyalty.enrollment.hint') }}</p>
+
+          <h3 class="text-[13px] font-semibold text-head mt-4">{{ __('loyalty.enrollment.mode') }}</h3>
+
+          <div class="mt-3 grid gap-2">
+            @foreach ($enrollmentModes as $mode)
+              <x-choice type="radio" name="enrollment_mode" :value="$mode"
+                        :label="__('loyalty.enrollment.modes.'.$mode)"
+                        :hint="__('loyalty.enrollment.mode_hints.'.$mode)"
+                        :checked="old('enrollment_mode', $settings->enrollment_mode) === $mode" />
+            @endforeach
+          </div>
+
+          <div class="mt-5 w-[200px]">
+            <label for="welcome_points" class="block text-[13px] font-medium text-ink mb-1.5">{{ __('loyalty.enrollment.welcome_points') }}</label>
+            <input id="welcome_points" name="welcome_points" type="number" min="0" step="1" required
+                   class="sd-input" value="{{ old('welcome_points', $settings->welcome_points) }}">
+            <p class="mt-1.5 text-[12px] text-sub">{{ __('loyalty.enrollment.welcome_hint') }}</p>
+          </div>
+        </div>
+
+        {{-- ---------------------------------------- Card 4: redeem points --}}
         <div class="sd-card p-5">
           <h2 class="text-[15px] font-semibold text-head">{{ __('loyalty.settings.redeem') }}</h2>
           <p class="text-[12.5px] text-sub mt-1 leading-relaxed">{{ __('loyalty.settings.redeem_hint') }}</p>
@@ -308,8 +332,15 @@
 
         </fieldset>
 
+        {{-- Set apart from the cards above it.
+
+             The form's `space-y-5` gives this the same gap two cards get from
+             each other, so the one control that ends the form read as another
+             row in the stack — and with the reward catalogue below it, as
+             something sandwiched between two sections rather than the action
+             that finishes the one above. --}}
         @if ($canManage)
-          <div>
+          <div class="pt-3">
             <button type="submit"
                     class="h-9 px-4 rounded-lg bg-brand hover:bg-brand-dark text-white text-[13px] font-semibold transition-colors">
               {{ __('common.save') }}
@@ -317,6 +348,18 @@
           </div>
         @endif
       </form>
+
+      {{-- The catalogue, after the form rather than inside it: each reward
+           saves and removes on its own, and a form cannot hold a form. --}}
+      @include('settings.loyalty._rewards', [
+          'rewards' => $rewards,
+          'rewardTypes' => $rewardTypes,
+          'rewardScopes' => $rewardScopes,
+          'services' => $services,
+          'categories' => $categories,
+          'symbol' => $symbol,
+          'canManage' => $canManage,
+      ])
       @endif
 
     </div>
@@ -344,6 +387,46 @@
 
       toggle.addEventListener('change', function () {
         form.submit();
+      });
+    }());
+
+    /* A reward is worth something in a different way depending on what kind
+       it is, so the form asks one question rather than three and ignores two.
+
+       Per form rather than per page: the catalogue renders the add form and
+       one edit form for every reward, and a single querySelector would drive
+       the first and leave the rest showing every field at once. */
+    (function () {
+      function sync(form) {
+        var type = form.querySelector('[data-reward-type]');
+        var scope = form.querySelector('[data-reward-scope]');
+        if (!type || !scope) return;
+
+        var needs = type.options[type.selectedIndex]?.dataset.needs || 'none';
+
+        form.querySelectorAll('[data-reward-needs]').forEach(function (field) {
+          field.hidden = field.dataset.rewardNeeds !== needs;
+        });
+
+        form.querySelectorAll('[data-reward-scope-list]').forEach(function (list) {
+          list.hidden = list.dataset.rewardScopeList !== scope.value;
+
+          /* A hidden list must not post. Its boxes keep their ticks so
+             switching back and forth does not lose the choice, but a reward
+             narrowed to categories should not arrive carrying service ids
+             from a list nobody can see. */
+          list.querySelectorAll('input[type="checkbox"]').forEach(function (box) {
+            box.disabled = list.hidden;
+          });
+        });
+      }
+
+      document.querySelectorAll('[data-reward-form]').forEach(function (form) {
+        form.addEventListener('change', function (event) {
+          if (event.target.matches('[data-reward-type], [data-reward-scope]')) sync(form);
+        });
+
+        sync(form);
       });
     }());
   </script>

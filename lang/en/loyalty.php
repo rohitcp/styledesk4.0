@@ -24,6 +24,7 @@ return [
         'expired' => 'Points expired',
         'refund_adjustment' => 'Refund adjustment',
         'cancellation_adjustment' => 'Cancellation adjustment',
+        'welcome' => 'Welcome bonus',
         'manual_add' => 'Manual addition',
         'manual_deduct' => 'Manual deduction',
     ],
@@ -40,12 +41,12 @@ return [
 
     'purchases' => [
         'services' => 'Services',
-        'products' => 'Products',
-        'memberships' => 'Memberships',
-        'packages' => 'Packages',
-        'gift_cards' => 'Gift cards',
-        'tips' => 'Tips',
+        'membership_package' => 'Membership package',
+        'membership_recurring' => 'Membership recurring',
         'taxes' => 'Taxes',
+        'tips' => 'Tips',
+        'products' => 'Product',
+        'gift_cards' => 'Gift card',
     ],
 
     'expiry' => [
@@ -178,6 +179,200 @@ return [
 
         'by' => 'by :name',
         'expires' => 'Expires :date',
+        'expiring_soon' => 'Expiring soon',
+        'expiring_hint' => 'Within :days days',
+        'membership_sale' => 'Membership',
+        'source' => 'Joined via',
+        'table_date' => 'Date',
+        'table_activity' => 'Activity',
+        'table_points' => 'Points',
+        'table_balance' => 'Balance',
+        'table_source' => 'Booking / sale',
+        'table_location' => 'Location',
+        'table_staff' => 'Staff',
+        'table_status' => 'Status',
+        'catalogue' => 'Rewards',
+        'catalogue_hint' => 'What this balance can be spent on. Rewards are applied during booking or checkout.',
+        'catalogue_empty' => 'No rewards have been set up yet. Points come off the bill at the rate above.',
+        'affordable' => 'Can be used now',
+        'short_by' => ':points more points needed',
+        'reward_any' => 'Any service',
+    ],
+
+    /*
+     * The reward catalogue on App Settings → Loyalty & Rewards.
+     *
+     * A reward is what a balance actually buys, as opposed to the conversion
+     * rule above it, which is what a balance is worth. Both are needed: a
+     * business may want nothing more than "points off the bill", and another
+     * wants to give away an upgrade it can afford rather than cash it cannot.
+     */
+    'rewards' => [
+        'title' => 'Reward catalogue',
+        'intro' => 'What your clients can spend their points on. Leave it empty and points simply come off the bill at the rate above.',
+        'add' => '+ Add reward',
+        'edit' => 'Edit reward',
+        'empty' => 'No rewards yet. Clients can still redeem points against the bill at the rate you set above.',
+        'name' => 'Reward name',
+        'name_placeholder' => '$10 Off Any Service',
+        'description' => 'Description',
+        'description_hint' => 'Shown to the client beside the reward. Optional.',
+        'type' => 'Reward type',
+        'points_required' => 'Points required',
+        'value' => 'Amount off',
+        'percent' => 'Percentage off',
+        'service' => 'Service given',
+        'scope' => 'Can be used on',
+        'scope_services' => 'Choose services',
+        'scope_categories' => 'Choose categories',
+        'active' => 'Available to clients',
+        'active_hint' => 'Switch off to take it out of the catalogue without losing the rewards already given.',
+        'save' => 'Save reward',
+        'cancel' => 'Cancel',
+        'remove' => 'Remove',
+        'remove_confirm' => 'Remove this reward from the catalogue? Rewards clients have already redeemed keep their history.',
+        'added' => 'Reward added.',
+        'saved' => 'Reward saved.',
+        'removed' => 'Reward removed.',
+        'retired' => 'Reward taken off the catalogue. Redemptions already made keep their history.',
+        'no_service' => 'No service chosen',
+        'value_varies' => 'Set at the till',
+        'inactive' => 'Not available',
+        'points' => ':count points',
+
+        'types' => [
+            'fixed_discount' => 'Amount off',
+            'percentage_discount' => 'Percentage off',
+            'free_service' => 'Free service',
+            'free_add_on' => 'Free add-on',
+            'service_upgrade' => 'Service upgrade',
+            'free_product' => 'Free product',
+            'custom' => 'Something else',
+        ],
+
+        'scopes' => [
+            'all_services' => 'Any service',
+            'services' => 'Chosen services only',
+            'categories' => 'Chosen categories only',
+        ],
+
+        'validation' => [
+            'amount_required' => 'Say how much comes off.',
+            'percent_required' => 'Say what percentage comes off.',
+            'service_required' => 'Choose the service this reward gives.',
+            'scope_required' => 'Choose at least one, or make it available on any service.',
+        ],
+    ],
+
+    /*
+     * What became of one line of the history.
+     *
+     * "Pending" is absent on purpose: pending points are computed from the
+     * diary and never written to the ledger, so no line can be in that state.
+     * The figure above the table is where they are reported.
+     */
+    'statuses' => [
+        'available' => 'Available',
+        'redeemed' => 'Redeemed',
+        'expired' => 'Expired',
+        'reversed' => 'Reversed',
+    ],
+
+    /*
+     * Joining the scheme: how it is decided, and what it is worth.
+     */
+    'enrollment' => [
+        'title' => 'Enrolment',
+        'hint' => 'Who joins the rewards scheme, and what they get for joining.',
+        'mode' => 'Default for new clients',
+        'modes' => [
+            'auto' => 'Enrol every new client automatically',
+            'default_on' => 'Ticked by default, staff can opt out',
+            'opt_in' => 'Not ticked, staff must opt in',
+        ],
+        'mode_hints' => [
+            'auto' => 'Nobody is asked. Every client added anywhere joins the scheme.',
+            'default_on' => 'The highest enrolment rate that still leaves the client a say.',
+            'opt_in' => 'The receptionist has to tick the box for every client.',
+        ],
+        'welcome_points' => 'Welcome bonus',
+        'welcome_hint' => 'Points credited when a client joins. Leave at zero to give nothing.',
+
+        /* On the create-client form. */
+        'section' => 'Loyalty & Rewards',
+        'enroll' => 'Enrol this client in :program',
+        'enroll_hint' => 'The client can earn points, receive rewards and use loyalty benefits.',
+        'automatic' => 'Every new client joins :program automatically.',
+        'welcome_badge' => 'Welcome bonus: :points points',
+        'welcome_note' => 'These points are issued according to the rules of the scheme.',
+        'no_contact' => 'This client has no email address or mobile number, so they cannot be told about their points.',
+
+        /* On the client profile. */
+        'status' => 'Membership',
+        'enrolled' => 'Enrolled',
+        'not_enrolled' => 'Not enrolled',
+        'not_enrolled_hint' => 'This client earns points but never formally joined the scheme.',
+        'member_id' => 'Member ID',
+        'member_since' => 'Member since',
+        'enrolled_by' => 'Enrolled by :name',
+
+        'sources' => [
+            'client_creation' => 'Client creation',
+            'booking' => 'Booking',
+            'walk_in' => 'Walk-in',
+            'import' => 'Import',
+        ],
+    ],
+
+    /*
+     * Clients → Loyalty: the list of everybody in the scheme.
+     */
+    'members' => [
+        'title' => 'Loyalty',
+        'intro' => 'Everybody enrolled in your rewards scheme, and what they are sitting on.',
+        'search' => 'Search members…',
+        'none' => 'Nobody has joined yet. Clients can be enrolled when they are added, or from their profile.',
+        'showing' => 'Showing',
+        'actions_for' => 'Actions for :name',
+        'results' => [
+            'zero' => 'No members match',
+            'one' => ':count member',
+            'many' => ':count members',
+            'clear' => 'Clear search',
+        ],
+        'disabled' => 'Loyalty & Rewards is not switched on',
+        'disabled_hint' => 'Turn it on in App Settings to start enrolling clients, awarding points and offering rewards.',
+        'enable' => 'Enable Loyalty & Rewards',
+        'ask_an_owner' => 'Ask the account owner or an administrator to switch it on.',
+        'open_profile' => 'Open client profile',
+        'back' => 'Back to Loyalty',
+        'columns' => [
+            'client' => 'Client',
+            'member_id' => 'Member ID',
+            'mobile' => 'Phone',
+            'email' => 'Email',
+            'status' => 'Status',
+            'enrolled' => 'Enrolled',
+            'balance' => 'Balance',
+            'earned' => 'Lifetime',
+            'redeemed' => 'Redeemed',
+            'tier' => 'Tier',
+            'last_activity' => 'Last activity',
+        ],
+    ],
+
+    /*
+     * What state a membership of the scheme is in.
+     *
+     * Separate from `statuses`, which is what became of one LINE of the
+     * ledger. A client is paused; a transaction is redeemed. Reading one list
+     * for both would put "Expired" beside somebody's name.
+     */
+    'member_statuses' => [
+        'active' => 'Active',
+        'paused' => 'Paused',
+        'suspended' => 'Suspended',
+        'unenrolled' => 'Unenrolled',
     ],
 
     'activity' => [

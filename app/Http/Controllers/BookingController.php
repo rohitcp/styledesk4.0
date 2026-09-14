@@ -17,6 +17,7 @@ use App\Models\Client;
 use App\Models\ClientPaymentMethod;
 use App\Models\ClientSettings;
 use App\Models\Location;
+use App\Models\LoyaltySettings;
 use App\Models\MembershipPlan;
 use App\Models\MembershipPlanService;
 use App\Models\MembershipSettings;
@@ -40,6 +41,9 @@ use App\Support\ClientBookingContext;
 use App\Support\ClientInsights;
 use App\Support\Currencies;
 use App\Support\EmailAddress;
+use App\Support\LoyaltyEnrollment;
+use App\Support\LoyaltyPoints;
+use App\Support\LoyaltyRedemption;
 use App\Support\MembershipCredits;
 use App\Support\MembershipPurchase;
 use App\Support\Money;
@@ -335,6 +339,10 @@ class BookingController extends Controller
                offered it without a processor would be one that fails at the
                last step. */
             'cardVault' => $this->cardVault(),
+            /* For the Add Client dialog: which dialling code to open on, and
+               whether to offer enrolment in the rewards scheme. */
+            'tenant' => $request->user()->tenant,
+            'loyaltySettings' => LoyaltySettings::forTenant($request->user()->tenant),
             'currency' => $currency,
             'services' => Service::query()->active()->with(['prices', 'resources', 'locations'])->inOrder()->get()
                 ->map(fn (Service $service) => [
@@ -467,9 +475,21 @@ class BookingController extends Controller
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:80'],
             'last_name' => ['nullable', 'string', 'max:80'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'mobile' => ['nullable', 'string', 'max:40'],
+            /* The same shapes the client form holds them to. This dialog is
+               a shortcut past that form, not past its rules: a mistyped
+               address saved here is one nobody can correct, because the
+               client is on the phone and the receptionist has moved on. */
+            'email' => EmailAddress::rules(),
+            'mobile' => PhoneNumber::rules(),
+            /* Which country the dialling code came from, so the number is
+               normalised as the desk meant it rather than as the server's
+               default country would read it. */
+            'mobile_country' => ['nullable', 'string', 'size:2'],
+            'loyalty_enroll' => ['nullable', 'boolean'],
             'confirm_duplicate' => ['nullable', 'boolean'],
+        ], [], [
+            'mobile' => __('bookings.new_client.mobile'),
+            'email' => __('bookings.new_client.email'),
         ]);
 
         /* One of the two, so the confirmation has somewhere to go. */
@@ -487,6 +507,11 @@ class BookingController extends Controller
             'last_name' => $data['last_name'] ?? null,
             'emails' => array_filter([$data['email'] ?? null]),
             'phones' => array_filter([$data['mobile'] ?? null]),
+            /* Passed through so the matcher normalises the typed number the
+               same way it will be stored — "(201) 555-1234" and
+               "+1 201-555-1234" are one number, and a check that missed that
+               is the duplicate this dialog exists to prevent. */
+            'phone_country' => $data['mobile_country'] ?? null,
         ];
 
         if (! ($data['confirm_duplicate'] ?? false) && $settings->duplicate_warning) {
@@ -522,7 +547,12 @@ class BookingController extends Controller
                here is not a client with a phone number the phones table has
                never heard of. */
             if (filled($data['mobile'] ?? null)) {
-                $client->syncPhones([['number' => $data['mobile'], 'type' => 'mobile', 'is_primary' => true]]);
+                $client->syncPhones([[
+                    'number' => $data['mobile'],
+                    'country' => $data['mobile_country'] ?? null,
+                    'type' => 'mobile',
+                    'is_primary' => true,
+                ]]);
             }
 
             if (filled($data['email'] ?? null)) {
@@ -531,6 +561,17 @@ class BookingController extends Controller
 
             return $client->fresh();
         });
+
+        /* Joining the scheme, after the client exists and never before —
+           the same rule the Add Client form follows. Enrolling is its own
+           transaction, so a rewards balance that could not be written does
+           not take a saved client down with it. */
+        $enrolled = ($data['loyalty_enroll'] ?? false)
+            && LoyaltyEnrollment::enroll(
+                client: $client,
+                userId: $request->user()->id,
+                source: 'booking',
+            );
 
         /* The same shape the search returns, so the screen adopts it without
            knowing where it came from. */
@@ -543,6 +584,7 @@ class BookingController extends Controller
                 'mobile' => $client->mobile,
                 'email' => $client->email,
             ],
+            'enrolled' => $enrolled,
         ], 201);
     }
 
@@ -631,6 +673,11 @@ class BookingController extends Controller
             'name' => ['nullable', 'string', 'max:120'],
             'mobile' => ['nullable', 'string', 'max:40'],
             'email' => ['nullable', 'string', 'max:255'],
+            /* The dialling code the number was typed against. Without it a
+               bare "201 555 1234" is normalised against the tenant's country
+               rather than the one the desk chose, and the check looks for a
+               number nobody stored. */
+            'country' => ['nullable', 'string', 'size:2'],
         ]);
 
         $tenant = $request->user()->tenant;
@@ -655,6 +702,7 @@ class BookingController extends Controller
                 'first_name' => $data['name'] ?? null,
                 'emails' => array_filter([$data['email'] ?? null]),
                 'phones' => array_filter([$data['mobile'] ?? null]),
+                'phone_country' => $data['country'] ?? null,
             ],
             $settings->duplicate_rules ?? [],
         );
@@ -1039,6 +1087,11 @@ class BookingController extends Controller
                nobody can correct afterwards — the walk-in has left. */
             'guest_phone' => PhoneNumber::rules(),
             'guest_email' => EmailAddress::rules(),
+            /* The dialling code the number was typed against, so it is
+               normalised as the desk meant it rather than against the
+               tenant's country. */
+            'guest_country' => ['nullable', 'string', 'size:2'],
+            'loyalty_enroll' => ['nullable', 'boolean'],
         ], [], [
             'guest_phone' => __('bookings.client.guest_phone'),
             'guest_email' => __('bookings.client.guest_email'),
@@ -1061,6 +1114,7 @@ class BookingController extends Controller
                 'name' => $data['guest_name'] ?? null,
                 'phone' => $data['guest_phone'] ?? null,
                 'email' => $data['guest_email'] ?? null,
+                'country' => $data['guest_country'] ?? null,
             ],
             $lead->location_id,
             $lead->staff_id,
@@ -1093,10 +1147,23 @@ class BookingController extends Controller
             $outcome->client->client_ref,
         );
 
+        /* Joining the scheme, after the record exists. Idempotent, so a
+           walk-in who turned out to be an existing member keeps the joining
+           date and the bonus they already had — the one thing that must not
+           happen here is a second loyalty account for the same person. */
+        $enrolled = ($data['loyalty_enroll'] ?? false)
+            && LoyaltyEnrollment::enroll(
+                client: $outcome->client,
+                userId: $request->user()->id,
+                locationId: $lead->location_id,
+                source: 'walk_in',
+            );
+
         return response()->json([
             'walk_in_client' => [
                 'conflict' => false,
                 'created' => $outcome->created,
+                'enrolled' => $enrolled,
                 'client' => $this->walkInMatch($outcome->client),
             ],
         ]);
@@ -1155,6 +1222,9 @@ class BookingController extends Controller
             'services' => ['required', 'array', 'min:1'],
             /* The duplicate warning was shown and answered. A booking that
                arrives without it has not been past the check. */
+            /* Points the desk put towards this bill. A request: resolved
+               against the live balance below, never banked as sent. */
+            'loyalty_points' => ['nullable', 'integer', 'min:0'],
             'duplicate_ack' => ['nullable', 'boolean'],
             /* Which room each service should go in, where somebody chose
                rather than letting the engine pick. Keyed by service id. */
@@ -1332,7 +1402,22 @@ class BookingController extends Controller
            business giving money away and a credit is the client spending
            something they already bought, and a receipt that called them the
            same thing is one nobody can reconcile. */
-        $totals = BookingTotals::of($prices, $currency, $discountMinor + $creditMinor);
+        /* The client's own points, against what is left once the coupon and
+           the credits have done their work. Re-answered here rather than
+           trusted from the screen, exactly as the quote re-answers it: what
+           arrived is what somebody typed into a box, and what is written down
+           has to be what they could legitimately spend. */
+        $loyaltyPayable = max(0, (int) $prices->sum() - $discountMinor - $creditMinor);
+
+        $loyalty = LoyaltyRedemption::resolve(
+            $creditClient,
+            (int) ($data['loyalty_points'] ?? 0),
+            $loyaltyPayable,
+        );
+
+        $loyaltyMinor = $loyalty['minor'];
+
+        $totals = BookingTotals::of($prices, $currency, $discountMinor + $creditMinor + $loyaltyMinor);
 
         /* What was agreed as a tip. Not money yet — that lands on a payment
            — but the answer the till should open with.
@@ -1425,7 +1510,7 @@ class BookingController extends Controller
            how it happened because of what it led to. */
         $isWalkIn = empty($data['client_id']);
 
-        $booking = DB::transaction(function () use ($data, $lead, $services, $minutes, $starts, $currency, $totals, $request, $depositMinor, $collectionMethod, $pricedFor, $promotion, $tipPercent, $tipMinor, $discountMinor, $creditMinor, $creditClient, $coveredServiceIds, $creditValues, $isWalkIn) {
+        $booking = DB::transaction(function () use ($data, $lead, $services, $minutes, $starts, $currency, $totals, $request, $depositMinor, $collectionMethod, $pricedFor, $promotion, $tipPercent, $tipMinor, $discountMinor, $creditMinor, $creditClient, $coveredServiceIds, $creditValues, $isWalkIn, $loyalty, $loyaltyMinor) {
             /* The walk-in who is, or becomes, somebody on file. Inside the
                transaction: a client created for a booking that then fails to
                save is a stranger in the client list. */
@@ -1481,6 +1566,11 @@ class BookingController extends Controller
                    and "what did members spend" one unanswerable number. */
                 'discount_minor' => $discountMinor,
                 'membership_credit_minor' => $creditMinor,
+                /* What was spent and what it was worth, kept apart from the
+                   coupon: one is the business giving money away and the other
+                   is the client spending something they earned. */
+                'loyalty_points' => $loyalty['points'],
+                'loyalty_discount_minor' => $loyaltyMinor,
                 'tax_minor' => $totals->taxMinor,
                 'total_minor' => $totals->totalMinor,
                 'currency_code' => $currency,
@@ -1561,6 +1651,23 @@ class BookingController extends Controller
                 MembershipCredits::apply(
                     $booking, $creditClient, $coveredServiceIds, $creditValues, $request->user(),
                 );
+            }
+
+            /* The points, taken inside the same transaction and for the same
+               reason: an appointment that fails to save has not spent
+               anybody's balance. Never for a draft — a booking promised to
+               nobody has not been paid for with anything.
+
+               Guarded against a second deduction. Everything else in the
+               loyalty engine reconciles, so calling it twice is harmless;
+               this one cannot, because nothing afterwards could say which of
+               two identical deductions was the duplicate. */
+            if ($creditClient !== null
+                && $loyalty['points'] > 0
+                && $booking->status !== 'draft'
+                && ! LoyaltyRedemption::alreadyRedeemed($booking)
+            ) {
+                LoyaltyPoints::redeem($creditClient, $loyalty['points'], $booking, $request->user()->id);
             }
 
             return $booking;

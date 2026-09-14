@@ -9,6 +9,7 @@ use App\Models\ClientEmailMessage;
 use App\Models\Tenant;
 use App\Support\ClientEmailSender;
 use App\Support\ClientEmailTemplates;
+use App\Support\EmailSender;
 use App\Support\Gmail;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -121,6 +122,11 @@ class EmailSettingsController extends Controller
             'providers' => config('client_email.providers'),
             'activeProvider' => ClientEmailSender::providerFor($tenant),
             'senderName' => $tenant->email_sender_name ?: $tenant->name,
+            /* What a client's inbox will actually show in From. Resolved
+               through the same class every outgoing message uses, so the
+               screen cannot claim one address while the mail carries
+               another. */
+            'fromAddress' => EmailSender::for($tenant)['address'],
             /* Null when nothing is connected. The card tells the three states
                apart — never connected, connected, connected and broken —
                because what the owner has to do differs in each. */

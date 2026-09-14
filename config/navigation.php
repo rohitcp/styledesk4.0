@@ -67,7 +67,7 @@ return [
                 ['key' => 'add_client', 'label' => 'Add Client', 'route' => 'clients.create'],
                 ['key' => 'coupons_offers', 'label' => 'Coupons & Offers', 'route' => 'promotions.index'],
                 ['key' => 'gift_cards', 'label' => 'Gift Cards'],
-                ['key' => 'loyalty', 'label' => 'Loyalty'],
+                ['key' => 'loyalty', 'label' => 'Loyalty', 'route' => 'clients.loyalty'],
                 ['key' => 'groups', 'label' => 'Groups'],
                 ['key' => 'forms_waivers', 'label' => 'Forms & Waivers'],
                 /* Only where the business has switched Membership on in App

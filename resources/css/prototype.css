@@ -613,8 +613,23 @@ input.sd-input.is-picker:read-only:focus { outline: 2px solid var(--sd-brand); o
   white-space: nowrap;
   transition: background-color 0.1s ease, color 0.1s ease;
 }
+/* Hover wears the selected state's clothes.
+
+   It used to be the brand colour and white text — loud, on the argument that
+   hover is what happens next and selection is where you are. Two different
+   treatments for "this row is the one you mean" made the menu read as two
+   unrelated signals, and the loud one drowned the quiet one: the page you
+   were actually on disappeared the moment the pointer entered the menu.
+
+   One treatment now, so moving down the list previews exactly what being
+   there looks like. The selected row keeps its own marking underneath, which
+   is why `is-active` still carries the weight change. */
 .sd-menu__item:hover,
-.sd-menu__item:focus-visible { background-color: var(--sd-brand); color: #fff; outline: none; }
+.sd-menu__item:focus-visible {
+  background-color: #eef1f4;        /* sel */
+  color: #23272f;
+  outline: none;
+}
 
 /* A menu entry for a screen that has not been built. Dimmed and inert, with
    the reason spelled out: an entry that looks like every other link and then
@@ -647,7 +662,9 @@ input.sd-input.is-picker:read-only:focus { outline: 2px solid var(--sd-brand); o
 .sd-navicon--soon:hover { background-color: transparent; color: rgba(255, 255, 255, 0.38); }
 
 /* The page the reader is on, marked without the pointer being anywhere near
-   it. Quieter than hover: hover is what happens next, this is where you are. */
+   it. The same ground as hover — one treatment for "this row" — with the
+   weight it does not share, so the selected row is still findable while the
+   pointer is somewhere else in the list. */
 .sd-menu__item.is-active {
   background-color: #eef1f4;        /* sel */
   font-weight: 600;

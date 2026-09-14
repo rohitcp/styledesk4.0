@@ -193,6 +193,38 @@ class ClientActivityLog
         ]);
     }
 
+    /* ---------------------------------------------------------- loyalty -- */
+
+    /**
+     * They joined the rewards scheme.
+     *
+     * On the client's own timeline rather than only in the points ledger: the
+     * ledger answers "where did this balance come from", and the timeline
+     * answers "what has happened to this person" — joining is the second kind
+     * of fact, and somebody reading the profile should not have to open a
+     * different tab to find it.
+     */
+    public static function loyaltyEnrolled(Client $client, ?int $userId = null): void
+    {
+        self::write($client->id, 'loyalty.enrolled', 'client', [
+            'subject_type' => Client::class,
+            'subject_id' => $client->id,
+            'user_id' => $userId,
+            'description' => $client->loyalty_member_id,
+        ]);
+    }
+
+    /** The joining bonus, where the business gives one. */
+    public static function loyaltyWelcomePoints(Client $client, int $points, ?int $userId = null): void
+    {
+        self::write($client->id, 'loyalty.welcome_points', 'client', [
+            'subject_type' => Client::class,
+            'subject_id' => $client->id,
+            'user_id' => $userId,
+            'meta' => ['points' => $points],
+        ]);
+    }
+
     /* ------------------------------------------------------------- tags -- */
 
     public static function tagAdded(Client $client, string $label, string $kind = 'tag', ?int $userId = null): void

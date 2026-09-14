@@ -9,10 +9,13 @@ use App\Models\BookingLead;
 use App\Models\Client;
 use App\Models\ClientSettings;
 use App\Models\Location;
+use App\Models\LoyaltySettings;
 use App\Models\Service;
 use App\Models\Tenant;
 use App\Models\TenantOnboarding;
 use App\Models\User;
+use App\Support\LoyaltyEnrollment;
+use App\Support\LoyaltyPoints;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -492,6 +495,98 @@ class WalkInLeadClientTest extends TestCase
             ->assertSee('guest_conflict', false)
             /* And the endpoint the button posts to. */
             ->assertSee('saveWalkInUrl', false);
+    }
+
+    // ------------------------------------------------- country and loyalty
+
+    /**
+     * The dialling code the desk chose, not the tenant's.
+     *
+     * A salon in Austin taking a London client's number has to be able to say
+     * so, or the number is normalised against the wrong country and matches
+     * nobody ever again.
+     */
+    public function test_the_chosen_country_decides_what_a_bare_number_means(): void
+    {
+        $leadId = $this->walkIn(['guest_name' => 'Tom Fletcher'])->assertCreated()->json('lead.id');
+
+        $this->saveWalkIn($leadId, [
+            'guest_name' => 'Tom Fletcher',
+            'guest_phone' => '020 7946 0100',
+            'guest_country' => 'GB',
+        ])->assertOk();
+
+        $this->assertSame('+442079460100', Client::withoutGlobalScopes()->sole()->phones()->sole()->number_e164);
+    }
+
+    public function test_a_walk_in_can_be_enrolled_in_the_rewards_scheme(): void
+    {
+        LoyaltySettings::updateOrCreate(
+            ['tenant_id' => $this->tenant->getTenantKey()],
+            array_merge(LoyaltySettings::defaults(), ['is_enabled' => true, 'welcome_points' => 50]),
+        );
+
+        $leadId = $this->walkIn(['guest_name' => 'Tom Fletcher'])->assertCreated()->json('lead.id');
+
+        $response = $this->saveWalkIn($leadId, [
+            'guest_name' => 'Tom Fletcher',
+            'guest_phone' => '(973) 555-1234',
+            'loyalty_enroll' => true,
+        ])->assertOk();
+
+        $client = Client::withoutGlobalScopes()->sole();
+
+        $this->assertTrue($response->json('walk_in_client.enrolled'));
+        $this->assertTrue($client->isEnrolledInLoyalty());
+        $this->assertSame('walk_in', $client->loyalty_enrollment_source);
+        $this->assertSame(50, LoyaltyPoints::balanceFor($client));
+    }
+
+    public function test_a_walk_in_saved_without_the_toggle_joins_nothing(): void
+    {
+        LoyaltySettings::updateOrCreate(
+            ['tenant_id' => $this->tenant->getTenantKey()],
+            array_merge(LoyaltySettings::defaults(), ['is_enabled' => true, 'welcome_points' => 50]),
+        );
+
+        $leadId = $this->walkIn(['guest_name' => 'Tom Fletcher'])->assertCreated()->json('lead.id');
+
+        $this->saveWalkIn($leadId, [
+            'guest_name' => 'Tom Fletcher',
+            'guest_phone' => '(973) 555-1234',
+        ])->assertOk();
+
+        $this->assertFalse(Client::withoutGlobalScopes()->sole()->isEnrolledInLoyalty());
+    }
+
+    /** A walk-in who turns out to be a member keeps the account they have. */
+    public function test_a_matched_member_is_never_given_a_second_account(): void
+    {
+        LoyaltySettings::updateOrCreate(
+            ['tenant_id' => $this->tenant->getTenantKey()],
+            array_merge(LoyaltySettings::defaults(), ['is_enabled' => true, 'welcome_points' => 50]),
+        );
+
+        $existing = $this->existing('Thomas', 'Fletcher', '+1 973 555 1234');
+        LoyaltyEnrollment::enroll($existing);
+
+        $memberId = $existing->fresh()->loyalty_member_id;
+        $joined = $existing->fresh()->loyalty_enrolled_at;
+
+        $leadId = $this->walkIn(['guest_name' => 'Tom Fletcher'])->assertCreated()->json('lead.id');
+
+        $this->saveWalkIn($leadId, [
+            'guest_name' => 'Tom Fletcher',
+            'guest_phone' => '(973) 555-1234',
+            'loyalty_enroll' => true,
+        ])->assertOk();
+
+        $existing = $existing->fresh();
+
+        $this->assertSame(1, Client::withoutGlobalScopes()->count());
+        $this->assertSame($memberId, $existing->loyalty_member_id);
+        $this->assertEquals($joined, $existing->loyalty_enrolled_at);
+        $this->assertSame(50, LoyaltyPoints::balanceFor($existing), 'One welcome bonus, not two.');
     }
 
     // ----------------------------------------------------------- the setting

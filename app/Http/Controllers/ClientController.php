@@ -14,6 +14,7 @@ use App\Models\ClientPaymentMethod;
 use App\Models\ClientSettings;
 use App\Models\ClientTag;
 use App\Models\Location;
+use App\Models\LoyaltyReward;
 use App\Models\LoyaltySettings;
 use App\Models\MembershipSettings;
 use App\Models\Service;
@@ -28,6 +29,7 @@ use App\Support\ClientOptions;
 use App\Support\ClientServiceHistory;
 use App\Support\ClientVisitSummary;
 use App\Support\InputCase;
+use App\Support\LoyaltyEnrollment;
 use App\Support\LoyaltyPoints;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -398,7 +400,29 @@ class ClientController extends Controller
             return $client;
         });
 
-        $toast = ['type' => 'success', 'message' => __('clients.module.created')];
+        /* Joining the scheme, after the client exists and not before.
+         *
+         * Outside the transaction above rather than inside it: enrolling is
+         * its own transaction, and a rewards balance that could not be
+         * written must not take a saved client down with it. The client is
+         * the thing the receptionist typed; the bonus is a nicety.
+         */
+        $enrolled = $request->boolean('loyalty_enroll')
+            && LoyaltyEnrollment::enroll(
+                client: $client,
+                userId: $request->user()->id,
+                locationId: $client->preferred_location_id,
+                source: 'client_creation',
+            );
+
+        $toast = [
+            'type' => 'success',
+            'message' => $enrolled
+                ? __('clients.module.created_enrolled', [
+                    'program' => LoyaltySettings::forTenant($tenant)->program_name,
+                ])
+                : __('clients.module.created'),
+        ];
 
         /**
          * Back to an empty form for someone working through a stack of
@@ -659,8 +683,21 @@ class ClientController extends Controller
                that is never rendered. */
             'loyaltySummary' => $canViewRewards
                 ? LoyaltyPoints::summaryFor($client, $loyalty)
-                : ['available' => 0, 'pending' => 0, 'lifetime_earned' => 0, 'lifetime_redeemed' => 0],
-            'loyaltyHistory' => $canViewRewards ? LoyaltyPoints::historyFor($client) : collect(),
+                : ['available' => 0, 'pending' => 0, 'lifetime_earned' => 0, 'lifetime_redeemed' => 0, 'expiring_soon' => 0],
+            /* The relations the history table reads. Eager, because a line
+               names its appointment, its branch and the stylist who did the
+               work, and a hundred lines asking for those one at a time is
+               the profile's slowest screen. */
+            'loyaltyHistory' => $canViewRewards
+                ? LoyaltyPoints::historyFor($client)->load(['booking.staff', 'location', 'createdBy'])
+                : collect(),
+            /* What the balance can be spent on. Only the live ones: a retired
+               reward stays on the settings screen so it can be brought back,
+               and has no business being offered to a client. */
+            'loyaltyRewards' => $canViewRewards && $loyalty->is_enabled
+                ? LoyaltyReward::query()->active()->inOrder()->with('service')->get()
+                : collect(),
+            'loyaltyExpiryDays' => LoyaltyPoints::expiringWindowDays(),
 
             'membershipSettings' => $membershipSettings,
             'canViewMemberships' => $canViewMemberships,
@@ -1408,6 +1445,10 @@ class ClientController extends Controller
             'staff' => $tenant->staff()->where('is_active', true)->orderBy('first_name')->get(),
             'preferences' => $settings->preferences_enabled ? $tenant->clientPreferences()->active()->inOrder()->get() : collect(),
             'tags' => $settings->tags_enabled ? $tenant->clientTags()->active()->inOrder()->get() : collect(),
+            /* The rewards scheme, so the form can offer to enrol. Passed
+               whether or not it is switched on — the section asks the
+               settings themselves rather than being decided here. */
+            'loyalty' => LoyaltySettings::forTenant($tenant),
         ];
     }
 

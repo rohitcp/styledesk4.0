@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\LoyaltySettings;
 use App\Models\Service;
 use App\Models\TipSettings;
 use App\Support\BookingTotals;
 use App\Support\Currencies;
+use App\Support\LoyaltyPoints;
+use App\Support\LoyaltyRedemption;
 use App\Support\MembershipCredits;
 use App\Support\Promotions;
 use App\Support\Tips;
@@ -60,6 +63,10 @@ class BookingQuoteController extends Controller
                A request rather than an instruction: what is actually coverable
                is decided here, against the credits that exist right now. */
             'membership_credits' => ['nullable', 'array'],
+            /* Points the desk is offering to put towards this bill. A
+               request, not an instruction: the server re-answers it against
+               the live balance below. */
+            'loyalty_points' => ['nullable', 'integer', 'min:0'],
             'membership_credits.*' => ['integer'],
             /* Either a percentage of the discounted subtotal, or an amount
                somebody typed. Never both — see the note in the tip block. */
@@ -174,6 +181,31 @@ class BookingQuoteController extends Controller
         $tippable = max(0, $subtotal - $discount);
         $discounted = max(0, $tippable - $creditMinor);
 
+        /* 3b — the client's own points, against what is left after the
+         * coupon and the credits.
+         *
+         * Last of the three reductions on purpose. Credits remove whole lines
+         * and a coupon is a percentage of what remains; points are a flat sum
+         * and the only one of the three that has to be capped by the bill, so
+         * it is taken against the smallest number rather than the largest.
+         *
+         * Re-answered rather than trusted. What the browser sent is what
+         * somebody typed into a box; what comes back is what they may
+         * legitimately spend, which is what the summary must show and what
+         * store() will write. */
+        $loyaltySettings = LoyaltySettings::forTenant($tenant);
+        $loyaltyMax = LoyaltyRedemption::maxPointsFor($client, $discounted, $loyaltySettings);
+
+        $loyalty = LoyaltyRedemption::resolve(
+            $client,
+            (int) ($data['loyalty_points'] ?? 0),
+            $discounted,
+            $loyaltySettings,
+        );
+
+        $loyaltyMinor = $loyalty['minor'];
+        $discounted = max(0, $discounted - $loyaltyMinor);
+
         /* 4 — the tip.
          *
          * A percentage is worked out again every time anything moves; an
@@ -226,7 +258,7 @@ class BookingQuoteController extends Controller
            that is what they do to the bill; they are reported apart from it
            because a coupon is the business giving money away and a credit is
            the client spending something they already bought. */
-        $totals = BookingTotals::of($lines->pluck('price_minor'), $currency, $discount + $creditMinor);
+        $totals = BookingTotals::of($lines->pluck('price_minor'), $currency, $discount + $creditMinor + $loyaltyMinor);
 
         return response()->json([
             'currency' => $currency,
@@ -248,6 +280,32 @@ class BookingQuoteController extends Controller
             'membership_covered' => $covered,
             'membership_credit_minor' => $creditMinor,
             'membership_credit' => $totals->money($creditMinor),
+            /* What the client has, what they may spend here, and what they
+               are spending. The first two are the offer the screen makes; the
+               third is what it has taken off. */
+            'loyalty' => $client === null ? null : [
+                'balance' => LoyaltyPoints::balanceFor($client),
+                'max_points' => $loyaltyMax,
+                'points' => $loyalty['points'],
+                'discount_minor' => $loyaltyMinor,
+                'discount' => $totals->money($loyaltyMinor),
+                /* The ceiling in money, and whether this request hit it.
+                   Both, because the warning has to name the figure: "that is
+                   too many" leaves the desk guessing how many is not. */
+                'max_minor' => $loyalty['max_points'] > 0
+                    ? $loyalty['max_minor']
+                    : $loyaltySettings->rewardMinorFor($loyaltyMax),
+                'max_value' => $totals->money($loyalty['max_points'] > 0
+                    ? $loyalty['max_minor']
+                    : $loyaltySettings->rewardMinorFor($loyaltyMax)),
+                'capped' => $loyalty['capped'],
+                'points_required' => (int) $loyaltySettings->points_required,
+                'reward_value' => $totals->money((int) $loyaltySettings->reward_value_minor),
+                'minimum' => (int) $loyaltySettings->minimum_redemption,
+                /* Whether to offer the control at all. A scheme switched off,
+                   or a membership paused, is not a box to type into. */
+                'open' => LoyaltyRedemption::isOpenTo($client, $loyaltySettings),
+            ],
             /* What is left of the service charge once the credits have paid
                their share. Nought on a fully covered booking, and stated
                rather than inferred: a summary that jumps from a subtotal to a

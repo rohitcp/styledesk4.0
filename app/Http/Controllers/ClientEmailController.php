@@ -40,14 +40,48 @@ class ClientEmailController extends Controller
         $tenant = $request->user()->tenant;
         $from = ClientEmailTemplates::sender($tenant);
 
+        /* The appointment the templates should read against.
+         *
+         * Without one, "Thank you for coming in on {{booking_date}}" renders
+         * with nothing to put there and the variable is left standing in the
+         * text — deliberately, because a placeholder in somebody's inbox is
+         * reported within the hour where a silently blanked sentence is never
+         * noticed at all. The drawer asks again with a booking once the
+         * sender picks one, and the wording fills in.
+         *
+         * Scoped to this client's own bookings: another client's id would
+         * write somebody else's appointment into this message.
+         */
+        $context = $request->filled('booking_id')
+            ? $client->bookings()->whereKey($request->integer('booking_id'))->first()
+            : null;
+
         return response()->json([
             'to' => [
                 'name' => $client->displayName(),
                 'email' => $client->email,
+                /* Every address on file, not only the cached primary: a
+                   client whose work address is the one they answer should be
+                   reachable at it without editing their record first. */
+                'options' => $client->emails()
+                    ->orderByDesc('is_primary')
+                    ->orderBy('position')
+                    ->get()
+                    ->map(fn ($row) => [
+                        'email' => $row->email,
+                        'label' => $row->typeLabel(),
+                    ])
+                    ->values()
+                    ->all(),
             ],
             'from' => [
                 'name' => $from['name'],
-                'email' => $from['reply_to'] ?? $from['from'],
+                'email' => $from['from'],
+                /* Where a reply lands, which is not always where it was sent
+                   from: "Smile Spa via StyleDesk" goes out on StyleDesk's
+                   own sending domain and comes back to the salon. Read-only
+                   here — it is a setting, not a per-message decision. */
+                'reply_to' => $from['reply_to'] ?? $from['from'],
                 /* What the client will actually see in their inbox. Shown
                    because "Smile Spa via StyleDesk" surprises an owner who
                    expected their own address, and the settings screen is
@@ -59,7 +93,10 @@ class ClientEmailController extends Controller
             /* Every reason the drawer might have to refuse, answered before it
                opens rather than after the sender has typed a message. */
             'blocked' => $this->blockedReason($client, $tenant),
-            'templates' => ClientEmailTemplates::all($client),
+            'templates' => ClientEmailTemplates::all($client, $context),
+            /* Which booking the wording above was rendered against, so the
+               drawer knows whether what it is holding is current. */
+            'context_booking_id' => $context?->id,
             'bookings' => $client->bookings()
                 ->latest('date')
                 ->limit(20)
@@ -90,6 +127,10 @@ class ClientEmailController extends Controller
                 'nullable',
                 Rule::exists('bookings', 'id')->where('client_id', $client->id),
             ],
+            /* Which of this client's addresses. Shape only here; that it is
+               one of theirs is checked by the sender, which is the boundary
+               every path to a send passes through. */
+            'to' => ['nullable', 'email', 'max:255'],
         ]);
 
         $email = ClientEmailSender::send(
@@ -99,6 +140,7 @@ class ClientEmailController extends Controller
             sender: $request->user(),
             booking: isset($data['booking_id']) ? Booking::find($data['booking_id']) : null,
             templateKey: $data['template_key'] ?? null,
+            to: $data['to'] ?? null,
         );
 
         /* A send that failed on the wire is reported as one. The row exists

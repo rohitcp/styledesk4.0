@@ -834,7 +834,7 @@ a.styledesk_settingcard:focus-visible {
     color: #9ca3af;
     cursor: default;
 }
-.styledesk_drawersub--soon:hover { background: transparent; }
+
 
 /* The count beside a drawer label. Pushed to the end of the row rather than
    sat against the word, so a column of links keeps one right edge. */
@@ -888,7 +888,33 @@ a.styledesk_settingcard:focus-visible {
     text-decoration: none;
 }
 
-.styledesk_drawersub:hover { color: #0f0f10; }
+/* The same pair the desktop menu draws, so the two sub-menus behave alike.
+
+   `is-active` had no style here at all: the markup has always added the
+   class and nothing painted it, so on a phone the page you were on was the
+   one row you could not pick out. */
+.styledesk_drawersub:hover,
+.styledesk_drawersub:focus-visible,
+.styledesk_drawersub.is-active {
+    background: #eef1f4;
+    border-radius: 6px;
+    color: #23272f;
+    outline: none;
+}
+
+.styledesk_drawersub.is-active { font-weight: 600; }
+
+/* An entry for a screen that does not exist yet must not light up.
+
+   Restated here rather than beside the rest of its own styles: it has the
+   same specificity as the hover above, so whichever is written last wins —
+   and written first it lost, which lit up every "coming soon" row the moment
+   the pointer crossed it. */
+.styledesk_drawersub--soon:hover,
+.styledesk_drawersub--soon:focus-visible {
+    background: transparent;
+    color: #9ca3af;
+}
 
 .styledesk_drawer__rule {
     height: 1px;
@@ -3236,6 +3262,10 @@ fieldset:disabled :where(button, input, select, textarea),
 .styledesk_metric--violet { --metric-ink: #6d28d9; }
 .styledesk_metric--teal { --metric-ink: #0f766e; }
 .styledesk_metric--amber { --metric-ink: #b45309; }
+/* The one metric that is a warning rather than a count: points a client
+   loses if they do nothing. Red rather than amber so it is not read as
+   another shade of "earned". */
+.styledesk_metric--rose { --metric-ink: #be123c; }
 
 /* ------------------------------------------------------------------
    The hidden attribute means hidden
@@ -5958,3 +5988,143 @@ fieldset:disabled :where(button, input, select, textarea),
 }
 
 .styledesk_activity__link:hover { text-decoration: underline; }
+
+/* ------------------------------------------------------------------
+   The email composer
+
+   A panel that floats at the bottom right rather than a dialog that takes
+   the screen over. The sender is nearly always looking at the thing they are
+   writing about — a balance, a missed appointment — and a scrim over the
+   profile hides the one screen they need open.
+
+   Three states on one element, switched by data-state: open, minimised (the
+   title bar alone, so a half-written message survives a look at the client's
+   history) and full (the whole viewport, for a long message).
+   ------------------------------------------------------------------ */
+.styledesk_compose {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 0;
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    width: min(30rem, calc(100vw - 3rem));
+    max-height: min(40rem, calc(100vh - 2rem));
+    border: 1px solid var(--color-stroke);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    background: #fff;
+    box-shadow: 0 12px 40px rgb(0 0 0 / 0.22);
+    overflow: hidden;
+}
+
+/* Full screen, for a message long enough that the small panel is in its own
+   way. Centred rather than edge-to-edge: a composer that touches every side
+   reads as a page, and this is still a thing floating over a profile. */
+.styledesk_compose[data-state='full'] {
+    right: 50%;
+    bottom: 50%;
+    transform: translate(50%, 50%);
+    width: min(56rem, calc(100vw - 3rem));
+    max-height: calc(100vh - 4rem);
+    height: calc(100vh - 4rem);
+    border-bottom: 1px solid var(--color-stroke);
+    border-radius: 10px;
+}
+
+/* Minimised: the bar and nothing else. The body is hidden rather than
+   emptied, so every field keeps what was typed into it. */
+.styledesk_compose[data-state='minimised'] {
+    max-height: none;
+    width: min(20rem, calc(100vw - 3rem));
+}
+
+.styledesk_compose[data-state='minimised'] .styledesk_compose__body {
+    display: none;
+}
+
+.styledesk_compose__head {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+    background: #23272f;
+    color: #fff;
+    cursor: pointer;
+}
+
+.styledesk_compose__title {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.styledesk_compose__icon {
+    display: grid;
+    place-items: center;
+    height: 1.75rem;
+    width: 1.75rem;
+    border-radius: 6px;
+    color: inherit;
+    opacity: 0.85;
+    transition: background-color 0.12s ease, opacity 0.12s ease;
+}
+
+.styledesk_compose__icon:hover {
+    background: rgb(255 255 255 / 0.14);
+    opacity: 1;
+}
+
+/* The footer's icons sit on white, so they take the page's own ink rather
+   than the header bar's. */
+.styledesk_compose__foot .styledesk_compose__icon {
+    color: var(--color-sub);
+}
+
+.styledesk_compose__foot .styledesk_compose__icon:hover {
+    background: var(--color-hover);
+    color: var(--color-ink);
+}
+
+.styledesk_compose__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.styledesk_compose__foot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    padding: 0.625rem 0.875rem;
+    border-top: 1px solid var(--color-stroke);
+    background: #fff;
+}
+
+/* On a phone there is no "beside": the composer is the screen. */
+@media (max-width: 640px) {
+    .styledesk_compose,
+    .styledesk_compose[data-state='full'] {
+        right: 0;
+        bottom: 0;
+        transform: none;
+        width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+    }
+
+    .styledesk_compose[data-state='minimised'] {
+        height: auto;
+        width: 100vw;
+    }
+}

@@ -49,6 +49,7 @@ use App\Http\Controllers\Settings\EmailTemplateController;
 use App\Http\Controllers\Settings\GmailConnectionController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
+use App\Http\Controllers\Settings\LoyaltyRewardController;
 use App\Http\Controllers\Settings\LoyaltySettingsController;
 use App\Http\Controllers\Settings\MembershipSettingsController;
 use App\Http\Controllers\Settings\PaymentSettingsController;
@@ -539,6 +540,22 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
             ->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::patch('/', 'update')->name('update');
+            });
+
+        /*
+        | What a balance can actually buy. A list rather than a row, so it is
+        | its own controller: the screen above saves one set of rules, and
+        | this keeps a catalogue. Gated on the same permission — deciding what
+        | a point is worth and deciding what a thousand of them buy are the
+        | same decision said two ways.
+        */
+        Route::controller(LoyaltyRewardController::class)
+            ->prefix('loyalty/rewards')
+            ->name('loyalty.rewards.')
+            ->group(function () {
+                Route::post('/', 'store')->name('store');
+                Route::patch('{reward}', 'update')->name('update');
+                Route::delete('{reward}', 'destroy')->name('destroy');
             });
 
         /*
@@ -1215,6 +1232,20 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded'])->group(funct
             Route::post('/', 'store')->middleware('throttle:30,1')->name('store');
             Route::get('{email}', 'show')->name('show');
         });
+
+    /*
+    | Clients → Loyalty: everybody who has joined the scheme.
+    |
+    | A list of members rather than a filter on the client list — the columns
+    | that make it useful (balance, lifetime, redeemed) mean nothing against
+    | somebody who never joined. Sits before the {client} routes below so
+    | "loyalty" is never read as a client id.
+    */
+    Route::get('clients/loyalty', [ClientLoyaltyController::class, 'index'])->name('clients.loyalty');
+    Route::get('clients/loyalty/data', [ClientLoyaltyController::class, 'data'])->name('clients.loyalty.data');
+    /* One member's rewards, the module's own page for them. After `data` so
+       that segment is never read as a client id. */
+    Route::get('clients/loyalty/{client}', [ClientLoyaltyController::class, 'show'])->name('clients.loyalty.show');
 
     Route::controller(ClientController::class)
         ->prefix('clients')

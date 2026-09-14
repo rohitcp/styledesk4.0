@@ -127,10 +127,27 @@
                 </span>
 
                 @if ($available)
-                  <label class="mt-3 flex items-center gap-2 cursor-pointer w-fit">
-                    <input type="radio" name="email_provider" value="{{ $key }}" class="sd-check"
-                           @checked($isActive)>
-                    <span class="text-[12.5px] font-medium text-ink">{{ __('client_email.settings.use_this') }}</span>
+                  {{-- A switch to look at and a radio underneath.
+
+                       Exactly one provider sends, so the control has to be
+                       one that cannot leave both on or both off — which is a
+                       radio's whole job. The switch is what it wears: the
+                       same treatment as every other "turn this on" on the
+                       screen, rather than a bare circle that reads as a
+                       lesser kind of choice.
+
+                       `--bare`: the boxed form is for a list of settings that
+                       each need their own edge, and this one already sits
+                       inside the provider's card. --}}
+                  <label class="styledesk_toggle styledesk_toggle--bare mt-3 w-fit">
+                    <input type="radio" name="email_provider" value="{{ $key }}"
+                           class="styledesk_toggle__input" @checked($isActive)>
+
+                    <span class="styledesk_toggle__track" aria-hidden="true">
+                      <span class="styledesk_toggle__knob"></span>
+                    </span>
+
+                    <span class="styledesk_toggle__label">{{ __('client_email.settings.use_this') }}</span>
                   </label>
                 @endif
 
@@ -222,6 +239,33 @@
                      placeholder="{{ $tenant->name }}"
                      value="{{ old('email_sender_name', $tenant->email_sender_name) }}">
               <p class="mt-1.5 text-[12px] text-sub">{{ __('client_email.settings.sender_name_hint') }}</p>
+            </div>
+
+            {{-- The From address, shown and not offered.
+
+                 On StyleDesk SMTP it is StyleDesk's own address and has to
+                 be: claiming to send from the salon's domain without being
+                 authorised to sign for it lands the message in spam, if it
+                 leaves at all. The sender name above is what carries their
+                 identity, and Reply-To below is what carries the
+                 conversation back to them.
+
+                 On Gmail it is the connected mailbox, because then the
+                 business genuinely is the sender. --}}
+            <div>
+              <span class="block text-[13px] font-medium text-ink mb-1.5">
+                {{ __('client_email.settings.from_address') }}
+              </span>
+
+              <div class="sd-input styledesk_readonlyfield text-sub">
+                <span class="break-all">{{ $fromAddress }}</span>
+              </div>
+
+              <p class="mt-1.5 text-[12px] text-sub">
+                {{ $activeProvider === 'gmail'
+                    ? __('client_email.settings.from_address_gmail')
+                    : __('client_email.settings.from_address_hint') }}
+              </p>
             </div>
 
             <div>

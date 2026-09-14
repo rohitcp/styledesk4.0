@@ -23,23 +23,38 @@ return [
     |
     | `available` false renders the option disabled and labelled "Coming
     | soon", the same way config/reviews.php treats a channel nothing can
-    | deliver yet. Products, memberships, packages and gift cards are not
-    | things StyleDesk sells yet — present so the screen tells the truth about
-    | what is planned, inert so nobody switches on an earning rule that would
-    | quietly award nothing.
+    | deliver yet.
     |
-    | `default` is the MVP recommendation: services and products earn, the
-    | rest do not. Tips and taxes are off because points on money that was
-    | never the business's to keep is a rounding error a salon has to explain.
+    | `default` is the MVP recommendation: services earn and nothing else
+    | does, so a business that never opens this screen gives points on the
+    | thing a booking is made of and on nothing it has not thought about.
+    | Tips and taxes are off because points on money that was never the
+    | business's to keep is a rounding error a salon has to explain.
     */
     'purchases' => [
         'services' => ['available' => true, 'default' => true],
-        'products' => ['available' => false, 'default' => true],
-        'memberships' => ['available' => false, 'default' => false],
-        'packages' => ['available' => false, 'default' => false],
-        'gift_cards' => ['available' => false, 'default' => false],
-        'tips' => ['available' => true, 'default' => false],
+
+        /* A membership is money the business took, so it can earn — but
+           which kind matters enough to be two switches. A package is bought
+           once and a subscription bills again, and a salon that is happy to
+           give points on a one-off purchase is not necessarily happy to give
+           them every month for the life of a subscription.
+
+           Both earn on a payment that actually happened. StyleDesk does not
+           bill renewals yet, so in practice `membership_recurring` awards on
+           the first payment of a subscription; when renewals arrive they
+           come through the same door. */
+        'membership_package' => ['available' => true, 'default' => false],
+        'membership_recurring' => ['available' => true, 'default' => false],
+
         'taxes' => ['available' => true, 'default' => false],
+        'tips' => ['available' => true, 'default' => false],
+
+        /* Nothing StyleDesk sells yet. Present so the screen tells the truth
+           about what is planned, inert so nobody switches on an earning rule
+           that would quietly award nothing. */
+        'products' => ['available' => false, 'default' => false],
+        'gift_cards' => ['available' => false, 'default' => false],
     ],
 
     /*
@@ -58,6 +73,16 @@ return [
     ],
 
     /*
+    | How far ahead the client's profile warns about points running out.
+    |
+    | Thirty days: long enough that somebody can book an appointment to spend
+    | them, short enough that the warning still reads as urgent. Only ever
+    | shown to a business that set an expiry at all — the default is never,
+    | and a business with no deadline has nothing to warn about.
+    */
+    'expiring_soon_days' => 30,
+
+    /*
     | Every line a rewards history can hold, and the icon it is read by.
     |
     | One list, because the history is one list. `sign` says which direction
@@ -73,6 +98,10 @@ return [
         'expired' => ['icon' => 'clock', 'sign' => 'negative'],
         'refund_adjustment' => ['icon' => 'arrow-right-arrow-left', 'sign' => 'negative'],
         'cancellation_adjustment' => ['icon' => 'calendar-xmark', 'sign' => 'negative'],
+        /* Given for joining rather than for spending. Its own type because
+           the history should say what it was for, and "manual_add" would say
+           a person did it. */
+        'welcome' => ['icon' => 'star', 'sign' => 'positive'],
         'manual_add' => ['icon' => 'plus', 'sign' => 'positive'],
         'manual_deduct' => ['icon' => 'sliders', 'sign' => 'negative'],
     ],
@@ -84,11 +113,60 @@ return [
     */
     'filters' => [
         'all' => [],
-        'earned' => ['earned'],
+        'earned' => ['earned', 'welcome'],
         'redeemed' => ['redeemed'],
         'adjustments' => ['manual_add', 'manual_deduct'],
         'expired' => ['expired'],
         'refunds' => ['refund_adjustment', 'cancellation_adjustment'],
+    ],
+
+    /*
+    | What a reward can be.
+    |
+    | The catalogue is the difference between a scheme that gives money back
+    | and one that gives something worth having: "$10 off" and "a free
+    | aromatherapy upgrade" cost the business differently and read to the
+    | client completely differently, and a business should be able to offer
+    | either.
+    |
+    | `available` false renders the type disabled and labelled the same way
+    | the purchase list does. A free product needs products, which StyleDesk
+    | does not sell yet; offering the type would let a business build a
+    | reward nothing could ever hand over.
+    |
+    | `needs` says which field the type is configured by, because the form
+    | asks a different question for each: an amount off, a percentage off, or
+    | which service is being given. A type that needs nothing is worth
+    | whatever the note beside it says — that is what `custom` is for, and it
+    | is why it is the only one the till cannot price on its own.
+    */
+    'reward_types' => [
+        'fixed_discount' => ['available' => true, 'needs' => 'amount'],
+        'percentage_discount' => ['available' => true, 'needs' => 'percent'],
+        'free_service' => ['available' => true, 'needs' => 'service'],
+        'free_add_on' => ['available' => true, 'needs' => 'service'],
+        'service_upgrade' => ['available' => true, 'needs' => 'service'],
+        'free_product' => ['available' => false, 'needs' => 'amount'],
+        'custom' => ['available' => true, 'needs' => 'none'],
+    ],
+
+    /*
+    | What a reward may be spent on.
+    |
+    | Three answers, not a matrix. "Any service", "these services" and "these
+    | categories" is the whole question a salon actually asks, and a reward
+    | restricted by location as well is a reward the desk cannot explain to
+    | the client standing in front of it.
+    |
+    | Locations are deliberately absent: §15 of the loyalty brief makes the
+    | balance one balance for the whole business, and a reward earnable
+    | everywhere but spendable at one branch is the same promise broken at
+    | the counter.
+    */
+    'reward_scopes' => [
+        'all_services',
+        'services',
+        'categories',
     ],
 
     /*
@@ -119,6 +197,18 @@ return [
         'earned_sms' => ['available' => false],
         'reward_email' => ['available' => false],
         'reward_sms' => ['available' => false],
+    ],
+
+    /*
+    | The number a member quotes.
+    |
+    | Separate from client_ref because a member number is the thing printed on
+    | a card and read out over a counter: it outlives the record's internal
+    | identifier and should not change if the client list is ever renumbered.
+    */
+    'member_id' => [
+        'prefix' => 'RW-',
+        'padding' => 6,
     ],
 
     /*

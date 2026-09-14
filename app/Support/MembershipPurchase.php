@@ -129,7 +129,7 @@ class MembershipPurchase
             self::grantCredits($membership, $plan, $settings, $startsOn);
 
             if ($payment !== null && $payment['amount_minor'] > 0) {
-                MembershipPayment::create([
+                $row = MembershipPayment::create([
                     'tenant_id' => $client->tenant_id,
                     'client_membership_id' => $membership->id,
                     'method' => $payment['method'],
@@ -141,6 +141,17 @@ class MembershipPurchase
                     'paid_at' => now(),
                     'recorded_by' => $seller?->id,
                 ]);
+
+                /* Points, where the business gives them on memberships. Set
+                   the relation rather than letting it lazy-load: the sale is
+                   still inside its transaction, and the reconciler would
+                   otherwise re-read a membership that is not committed yet.
+
+                   Swallows its own errors like every other caller of this
+                   engine — a membership sale must not fail over a balance. */
+                $row->setRelation('membership', $membership);
+
+                LoyaltyPoints::settleMembershipPayment($row, $seller?->id);
             }
 
             return $membership->fresh(['credits.service', 'plan', 'client', 'payments']);

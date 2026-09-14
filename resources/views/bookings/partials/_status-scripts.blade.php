@@ -13,6 +13,33 @@
       document.body.style.overflow = '';
     }
 
+    /* The reason list, made searchable.
+
+       Done as the dialog opens rather than at page load, for two reasons that
+       both had to be got right. This file is a plain inline script and runs
+       while the page is still parsing, so `window.SD` — defined by the module
+       bundle, which executes later — is not there yet; and the dialog is
+       `hidden` until it is opened, so a widget built inside it has nothing to
+       measure itself against.
+
+       SD.combo keeps the native select underneath as the value holder, takes
+       it out of the tab order and dispatches `change` on it when a choice is
+       made. So the form posts exactly as it did and the requires-details
+       check below goes on reading `.options` and `.selectedIndex` as though
+       nothing had happened. It no-ops on a select it has already upgraded. */
+    function makeReasonSearchable(modal) {
+      var select = modal.querySelector('[data-status-reason]');
+
+      if (!select || select.dataset.comboReady || !window.SD || typeof window.SD.combo !== 'function') {
+        return;
+      }
+
+      window.SD.combo(select, {
+        searchPlaceholder: select.dataset.searchLabel || '',
+        width: '100%',
+      });
+    }
+
     document.querySelectorAll('[data-status-action]').forEach(function (button) {
       button.addEventListener('click', function () {
         var modal = modalFor(button.dataset.statusAction);
@@ -21,8 +48,14 @@
         modal.hidden = false;
         document.body.style.overflow = 'hidden';
 
+        makeReasonSearchable(modal);
+
+        /* The combo's button, where there is one: focusing the select itself
+           would put the cursor on a control that is now sr-only. */
         var first = modal.querySelector('[data-status-reason]');
-        if (first) first.focus();
+        var target = first && first.id ? document.getElementById(first.id + '-combo') : null;
+
+        if (target || first) (target || first).focus();
       });
     });
 

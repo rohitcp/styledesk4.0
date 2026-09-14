@@ -30,8 +30,9 @@ class EmailRenderer
         ?Tenant $tenant,
         ?Client $client = null,
         ?Booking $booking = null,
+        array $extra = [],
     ): array {
-        $values = EmailVariables::for($client, $booking, $tenant);
+        $values = EmailVariables::for($client, $booking, $tenant, $extra);
 
         return self::compose($template, $tenant, $values, $booking);
     }

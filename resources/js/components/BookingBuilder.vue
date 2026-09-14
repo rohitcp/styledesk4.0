@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { initPhoneFields } from '../phone';
 import MultiSelect from './MultiSelect.vue';
 import PaymentPanel from './PaymentPanel.vue';
 
@@ -30,6 +31,10 @@ const props = defineProps({
     matchClientUrl: { type: String, default: '' },
     /** Where Save walk-in details writes. Nothing else on that card writes. */
     saveWalkInUrl: { type: String, default: '' },
+    /** The dialling code the Add Client dialog opens on. */
+    phoneCountry: { type: String, default: 'US' },
+    /** The rewards scheme, as far as that dialog needs to know about it. */
+    loyalty: { type: Object, default: () => ({}) },
     /** Where the screen saves itself as it is filled in, as a booking lead. */
     autosaveUrl: { type: String, default: '' },
     /** Whether this reader may let a booking off its payment. */
@@ -245,6 +250,13 @@ const hasTwoPrices = computed(() => chosen.value.some((service) => service.two_p
 const quote = ref(null);
 const couponCode = ref('');
 const couponError = ref('');
+
+/* Points the desk is putting towards this bill.
+
+   A request rather than an answer: the quote re-resolves it against the live
+   balance and hands back what may actually be spent, so this ref is what
+   somebody typed and `quote.loyalty` is what it came to. */
+const loyaltyPoints = ref(0);
 /* The code that has actually been applied, as opposed to what is typed. */
 const appliedCoupon = ref('');
 const tipPercent = ref(null);
@@ -295,6 +307,7 @@ async function refreshQuote() {
                 client_id: client.value?.id ?? null,
                 location_id: locationId.value || null,
                 coupon: appliedCoupon.value || null,
+                loyalty_points: loyaltyPoints.value || 0,
                 membership_credits: creditsApplied.value,
                 /* One or the other, never both: a typed amount is a decision
                    and a percentage is a share, and sending both would leave
@@ -517,6 +530,27 @@ function applyCoupon() {
     couponError.value = '';
     appliedCoupon.value = couponCode.value.trim().toUpperCase();
     refreshQuote();
+}
+
+/**
+ * Put the typed points towards the bill.
+ *
+ * Clamped here only to spare a round trip on an obvious overshoot; the server
+ * clamps again and its answer is the one the summary shows. Rounded down to a
+ * whole reward, because points between two of them buy nothing.
+ */
+function applyLoyaltyPoints() {
+    /* Sent as typed, deliberately. Clamping here would mean the server never
+       sees the excess and never says it was too much — the total would move
+       by an amount nobody chose, with nothing on the screen explaining it.
+       The server answers with what may be spent and whether that was less
+       than was asked for. */
+    loyaltyPoints.value = Math.max(0, Math.floor(Number(loyaltyPoints.value) || 0));
+}
+
+/** Take them back off. The quote re-answers and the summary follows. */
+function clearLoyaltyPoints() {
+    loyaltyPoints.value = 0;
 }
 
 function removeCoupon() {
@@ -1358,6 +1392,68 @@ const guestErrors = ref({ phone: '', email: '' });
    write is in the air is a second client record. */
 const guestSaving = ref(false);
 
+/* Whether the walk-in should join the rewards scheme, answered from the
+   business's own default. */
+const enrollWalkIn = ref(false);
+
+/* The walk-in's phone control.
+
+   The dialling-code widget is the prototype's own and is driven by the DOM:
+   it rewrites the input's value as the number is typed. `guest.phone` still
+   has to follow it — the auto-save, the match check and the save all read
+   that — so the widget is upgraded once the card is on screen and a listener
+   is attached AFTER it, which is what makes the value we read the formatted
+   one rather than the keystroke that preceded it. */
+const guestPhoneBox = ref(null);
+let guestPhoneReady = false;
+
+function mountGuestPhone() {
+    const box = guestPhoneBox.value;
+
+    if (! box || guestPhoneReady) {
+        return;
+    }
+
+    initPhoneFields(box);
+
+    const input = box.querySelector('[data-phone-input]');
+
+    if (! input) {
+        return;
+    }
+
+    guestPhoneReady = true;
+    input.value = guest.value.phone ?? '';
+
+    /* Registered after the widget's own handler, so it reads what the widget
+       has just written rather than what was typed. */
+    input.addEventListener('input', () => {
+        guest.value.phone = input.value;
+    });
+}
+
+/** Which country the walk-in's number was typed against. */
+function guestPhoneCountry() {
+    return guestPhoneBox.value?.querySelector('[data-phone-country-value]')?.value || null;
+}
+
+/* The card does not exist until the reader switches to it, so the widget is
+   built the first time it appears — and again after a reset, which throws the
+   old element away. */
+watch(() => mode.value, (now) => {
+    if (now !== 'walkin') {
+        /* The card is gone and so is its input, so the next visit has to
+           build a new one rather than talking to a detached element. */
+        guestPhoneReady = false;
+
+        return;
+    }
+
+    enrollWalkIn.value = Boolean(props.loyalty?.enabled && props.loyalty?.enroll_by_default);
+
+    nextTick(mountGuestPhone);
+}, { immediate: true });
+
 /* What became of the walk-in on the client list: put on file, recognised, or
    matching two different people. Null until the details are worth an answer. */
 const walkInClient = ref(null);
@@ -1440,6 +1536,7 @@ async function findExistingClient() {
             name: guest.value.name.trim() || null,
             mobile: guest.value.phone.trim() || null,
             email: guest.value.email.trim() || null,
+            country: guestPhoneCountry(),
         });
 
         guestMatches.value = ok ? (json.matches ?? []) : [];
@@ -1508,6 +1605,8 @@ async function saveGuest() {
             guest_name: guest.value.name.trim() || null,
             guest_phone: guest.value.phone.trim() || null,
             guest_email: guest.value.email.trim() || null,
+            guest_country: guestPhoneCountry(),
+            loyalty_enroll: enrollWalkIn.value,
         });
 
         if (! ok) {
@@ -1544,6 +1643,13 @@ function useExistingClient(match) {
     guestErrors.value = { phone: '', email: '' };
     guestTouched.value = { phone: false, email: false };
     guest.value = { name: '', phone: '', email: '' };
+
+    /* The widget owns its input's value, so emptying the model is not enough
+       to empty the box the reader is looking at. */
+    const input = guestPhoneBox.value?.querySelector('[data-phone-input]');
+
+    if (input) input.value = '';
+
     chooseClient(match);
 }
 
@@ -1557,6 +1663,25 @@ const saving = ref(false);
 const fresh = ref({ first_name: '', last_name: '', email: '', mobile: '' });
 const errors = ref({});
 const duplicates = ref([]);
+
+/* Whether this client should join the rewards scheme. Answered from the
+   business's own default rather than started at false — a setting that says
+   "ticked by default" has to arrive ticked. */
+const enrollInLoyalty = ref(false);
+
+/* The phone field's container. The dialling-code widget is the prototype's
+   own, driven by the DOM rather than by Vue: it rewrites the input's value as
+   the number is typed, and a v-model racing it would sometimes read the
+   half-formatted string. So the number is read out of the DOM when it is
+   needed, and nowhere else. */
+const phoneBox = ref(null);
+
+function readPhone() {
+    return {
+        number: phoneBox.value?.querySelector('[data-phone-input]')?.value?.trim() ?? '',
+        country: phoneBox.value?.querySelector('[data-phone-country-value]')?.value ?? '',
+    };
+}
 
 function openNewClient() {
     /* Seeded from whatever was typed into the search: somebody who has just
@@ -1572,12 +1697,50 @@ function openNewClient() {
 
     errors.value = {};
     duplicates.value = [];
+    enrollInLoyalty.value = Boolean(props.loyalty?.enabled && props.loyalty?.enroll_by_default);
     adding.value = true;
+
+    /* The dialog's markup does not exist until it is open, so the widget is
+       upgraded once it does. Guarded by its own data-phoneReady flag, so
+       opening the dialog twice does not build the country list twice. */
+    nextTick(() => {
+        if (phoneBox.value) initPhoneFields(phoneBox.value);
+    });
 }
 
 function closeNewClient() {
     adding.value = false;
     saving.value = false;
+}
+
+/**
+ * Whether this contact detail already belongs to somebody.
+ *
+ * Runs as the reader leaves the address and once the number is whole, so the
+ * match is on screen before they press Add rather than after. Read-only: it
+ * looks, and the save is the only thing that writes.
+ */
+async function checkNewClientDuplicates() {
+    const phone = readPhone();
+
+    if (! props.matchClientUrl || (! fresh.value.email.trim() && ! phone.number)) {
+        return;
+    }
+
+    try {
+        const { ok, json } = await send(props.matchClientUrl, {
+            name: fresh.value.first_name.trim() || null,
+            mobile: phone.number || null,
+            email: fresh.value.email.trim() || null,
+            country: phone.country || null,
+        });
+
+        duplicates.value = ok ? (json.matches ?? []) : [];
+    } catch (error) {
+        /* An assist, not a gate. A receptionist mid-call is not helped by an
+           error about a lookup they did not ask for. */
+        duplicates.value = [];
+    }
 }
 
 /**
@@ -1595,7 +1758,16 @@ async function saveNewClient(force = false) {
                 Accept: 'application/json',
                 'X-CSRF-TOKEN': props.csrf,
             },
-            body: JSON.stringify({ ...fresh.value, confirm_duplicate: force }),
+            body: JSON.stringify({
+                ...fresh.value,
+                ...(() => {
+                    const phone = readPhone();
+
+                    return { mobile: phone.number, mobile_country: phone.country || null };
+                })(),
+                loyalty_enroll: enrollInLoyalty.value,
+                confirm_duplicate: force,
+            }),
         });
 
         /* A warning, never a block: two people can share a phone, and the
@@ -3122,6 +3294,7 @@ function bookingBody() {
          */
         payment_method: paymentMethod.value,
         coupon: appliedCoupon.value || null,
+        loyalty_points: loyaltyPoints.value || 0,
         /* Which lines the client is paying for with what they already bought.
            Sent for the same reason the coupon is: the quote endpoint was told,
            and a save that was not would write a bill the screen never showed. */
@@ -4347,12 +4520,32 @@ const summaryOf = (section) => {
                             <label for="guestPhone" class="block text-[13px] font-medium text-ink mb-1.5">
                                 {{ labels.client?.guest_phone }}
                             </label>
-                            <input id="guestPhone" v-model="guest.phone" type="tel" class="sd-input"
-                                   autocomplete="off" inputmode="tel"
-                                   @blur="touchGuest('phone')"
-                                   :class="guestPhoneError ? 'is-invalid' : ''"
-                                   :aria-invalid="guestPhoneError ? 'true' : null"
-                                   aria-describedby="guestPhone-error">
+
+                            <!-- The same control as the Add Client dialog and
+                                 the client form: the dialling code beside the
+                                 number rather than typed into it. -->
+                            <div ref="guestPhoneBox" class="relative" data-phone :data-phone-country="phoneCountry">
+                                <div class="sd-phone">
+                                    <button type="button" class="sd-phone__country" data-phone-toggle
+                                            aria-haspopup="listbox" aria-expanded="false"
+                                            :aria-label="labels.client?.guest_phone">
+                                        <span class="sd-phone__flag" data-phone-flag>&#127482;&#127480;</span>
+                                        <span class="font-medium" data-phone-code>+1</span>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </button>
+
+                                    <input id="guestPhone" type="tel" class="sd-phone__field"
+                                           data-phone-input autocomplete="off"
+                                           @blur="touchGuest('phone')"
+                                           :class="guestPhoneError ? 'is-invalid' : ''"
+                                           :aria-invalid="guestPhoneError ? 'true' : null"
+                                           aria-describedby="guestPhone-error">
+                                </div>
+
+                                <div class="sd-pop" data-phone-pop hidden></div>
+                                <input type="hidden" data-phone-country-value :value="phoneCountry">
+                            </div>
+
                             <p v-if="guestPhoneError" id="guestPhone-error" role="alert"
                                class="mt-1.5 text-[12px] text-danger">{{ guestPhoneError }}</p>
                         </div>
@@ -4419,6 +4612,39 @@ const summaryOf = (section) => {
                         </div>
 
                         <p class="text-[12px] text-faint leading-relaxed">{{ labels.client?.guest_hint }}</p>
+
+                        <!-- Joining the scheme, offered here for the same
+                             reason the Add Client dialog offers it: this is
+                             the moment a walk-in becomes somebody on file,
+                             and it is the only moment the desk has them in
+                             front of them. Acted on by Save walk-in details,
+                             never before. -->
+                        <div v-if="loyalty.enabled" class="sd-card p-4">
+                            <p class="text-[13px] font-semibold text-head">{{ labels.new_client?.loyalty }}</p>
+
+                            <label v-if="loyalty.optional" class="styledesk_toggle styledesk_toggle--bare mt-2">
+                                <input v-model="enrollWalkIn" type="checkbox" class="styledesk_toggle__input">
+
+                                <span class="styledesk_toggle__track" aria-hidden="true">
+                                    <span class="styledesk_toggle__knob"></span>
+                                </span>
+
+                                <span class="min-w-0 flex-1">
+                                    <span class="styledesk_toggle__label">
+                                        {{ labels.new_client?.loyalty_enroll?.replace(':program', loyalty.program) }}
+                                    </span>
+                                    <span class="styledesk_toggle__hint">{{ labels.new_client?.loyalty_hint }}</span>
+                                </span>
+                            </label>
+
+                            <p v-else class="text-[12.5px] text-sub mt-1.5 leading-relaxed">
+                                {{ labels.new_client?.loyalty_automatic?.replace(':program', loyalty.program) }}
+                            </p>
+
+                            <p v-if="loyalty.welcome_points > 0" class="text-[12.5px] font-semibold text-brand mt-2">
+                                {{ labels.new_client?.loyalty_welcome?.replace(':points', loyalty.welcome_points.toLocaleString()) }}
+                            </p>
+                        </div>
 
                         <div class="flex flex-wrap items-center gap-3 pt-0.5">
                             <button type="button" class="styledesk_action"
@@ -5429,27 +5655,97 @@ const summaryOf = (section) => {
                         </div>
                     </div>
 
+                    <!-- The dialling code beside the number, not typed into
+                         it: the same control as the client form, the walk-in
+                         card and Location settings. It opens on the country
+                         the business operates in, and the receptionist can
+                         change it for a client from anywhere else. -->
+                    <div class="mt-3">
+                        <label for="ncMobile" class="block text-[13px] font-medium text-ink mb-1.5">
+                            {{ labels.new_client?.mobile }}
+                        </label>
+
+                        <div ref="phoneBox" class="relative" data-phone :data-phone-country="phoneCountry">
+                            <div class="sd-phone">
+                                <button type="button" class="sd-phone__country" data-phone-toggle
+                                        aria-haspopup="listbox" aria-expanded="false"
+                                        :aria-label="labels.new_client?.mobile">
+                                    <span class="sd-phone__flag" data-phone-flag>&#127482;&#127480;</span>
+                                    <span class="font-medium" data-phone-code>+1</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-faint shrink-0" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+
+                                <input id="ncMobile" type="tel" class="sd-phone__field"
+                                       data-phone-input autocomplete="off"
+                                       :class="errors.mobile ? 'is-invalid' : ''"
+                                       @blur="checkNewClientDuplicates">
+                            </div>
+
+                            <div class="sd-pop" data-phone-pop hidden></div>
+                            <input type="hidden" data-phone-country-value :value="phoneCountry">
+                        </div>
+
+                        <p v-if="errors.mobile" class="text-[12px] text-danger mt-1.5">{{ errors.mobile[0] }}</p>
+                    </div>
+
                     <div class="mt-3">
                         <label for="ncEmail" class="block text-[13px] font-medium text-ink mb-1.5">
                             {{ labels.new_client?.email }}
                         </label>
                         <input id="ncEmail" v-model="fresh.email" type="email" class="sd-input"
                                placeholder="name@example.com" autocomplete="off"
+                               :class="errors.email ? 'is-invalid' : ''"
+                               @blur="checkNewClientDuplicates"
                                @keydown.enter.prevent="saveNewClient(false)">
                         <p v-if="errors.email" class="text-[12px] text-danger mt-1.5">{{ errors.email[0] }}</p>
                     </div>
 
-                    <div class="mt-3">
-                        <label for="ncMobile" class="block text-[13px] font-medium text-ink mb-1.5">
-                            {{ labels.new_client?.mobile }}
-                        </label>
-                        <input id="ncMobile" v-model="fresh.mobile" type="tel" class="sd-input"
-                               placeholder="(202) 555-0123" autocomplete="off"
-                               @keydown.enter.prevent="saveNewClient(false)">
-                        <p v-if="errors.mobile" class="text-[12px] text-danger mt-1.5">{{ errors.mobile[0] }}</p>
-                    </div>
-
                     <p class="text-[12px] text-faint mt-2">{{ labels.new_client?.contact_hint }}</p>
+
+                    <!-- Joining the rewards scheme. Only where the business
+                         runs one, and ticked or not according to what it set
+                         as the default. Nothing is created here: the answer
+                         travels with Add Client and is acted on after the
+                         client exists. -->
+                    <!-- Its own card rather than a rule across the dialog:
+                         joining the scheme is a separate decision from the
+                         client's details, and a heading with a line above it
+                         reads as the same form carrying on. -->
+                    <div v-if="loyalty.enabled" class="sd-card p-4 mt-4">
+                        <p class="text-[13px] font-semibold text-head">{{ labels.new_client?.loyalty }}</p>
+
+                        <!-- A switch, because this takes effect as itself
+                             rather than being one option chosen from several.
+
+                             `--bare`: the boxed form is right for a list of
+                             settings that each need their own edge. Inside a
+                             card already about one thing it would be a second
+                             border around a single row. -->
+                        <label v-if="loyalty.optional" class="styledesk_toggle styledesk_toggle--bare mt-2">
+                            <input v-model="enrollInLoyalty" type="checkbox" class="styledesk_toggle__input">
+
+                            <span class="styledesk_toggle__track" aria-hidden="true">
+                                <span class="styledesk_toggle__knob"></span>
+                            </span>
+
+                            <span class="min-w-0 flex-1">
+                                <span class="styledesk_toggle__label">
+                                    {{ labels.new_client?.loyalty_enroll?.replace(':program', loyalty.program) }}
+                                </span>
+                                <span class="styledesk_toggle__hint">{{ labels.new_client?.loyalty_hint }}</span>
+                            </span>
+                        </label>
+
+                        <!-- The business enrols everybody. Said rather than
+                             shown as a switch nobody may move. -->
+                        <p v-else class="text-[12.5px] text-sub mt-1.5 leading-relaxed">
+                            {{ labels.new_client?.loyalty_automatic?.replace(':program', loyalty.program) }}
+                        </p>
+
+                        <p v-if="loyalty.welcome_points > 0" class="text-[12.5px] font-semibold text-brand mt-2">
+                            {{ labels.new_client?.loyalty_welcome?.replace(':points', loyalty.welcome_points.toLocaleString()) }}
+                        </p>
+                    </div>
 
                     <!-- A warning, never a block: two people can share a
                          phone, and a wrongly merged history is not something
@@ -6018,27 +6314,110 @@ const summaryOf = (section) => {
                 <div v-if="chosen.length" class="mt-4 pt-3.5 border-t border-line">
                     <p class="text-[12px] font-medium text-ink mb-1.5">{{ labels.pay?.coupon }}</p>
 
-                    <div v-if="quote?.coupon" class="flex items-center gap-2 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2">
+                    <!-- Compact, like the search fields elsewhere in the app.
+                         A full-height input and a full-height button made a
+                         44px row for eight characters, in a panel where every
+                         other control beside it — the tip chips, the payment
+                         methods — is half that. It read as the most important
+                         thing on the card, which a coupon box is not.
+
+                         `!h-9` is 36px, which is also what styledesk_action
+                         is: the old pairing of a 44px field with a 36px
+                         button never lined up along the bottom either. -->
+                    <div v-if="quote?.coupon" class="flex items-center gap-2 rounded-lg border border-brand/30 bg-brand/5 px-2.5 py-1.5">
                         <span class="min-w-0 flex-1">
-                            <span class="block text-[12.5px] font-semibold text-head font-mono">{{ quote.coupon.code }}</span>
-                            <span class="block text-[11.5px] text-sub">{{ quote.coupon.name }} · {{ quote.coupon.label }}</span>
+                            <span class="block text-[12.5px] font-semibold text-head font-mono leading-tight">{{ quote.coupon.code }}</span>
+                            <span class="block text-[11.5px] text-sub leading-tight">{{ quote.coupon.name }} · {{ quote.coupon.label }}</span>
                         </span>
-                        <span class="text-[13px] font-semibold text-head shrink-0">−{{ quote.discount }}</span>
+                        <span class="text-[12.5px] font-semibold text-head shrink-0">−{{ quote.discount }}</span>
                         <button type="button" class="text-[12px] font-semibold text-link hover:underline shrink-0"
                                 @click="removeCoupon">{{ labels.pay?.remove_coupon }}</button>
                     </div>
 
-                    <div v-else class="flex gap-2">
-                        <input v-model="couponCode" type="text" class="sd-input font-mono uppercase"
+                    <div v-else class="flex gap-1.5">
+                        <input v-model="couponCode" type="text" class="sd-input font-mono uppercase !h-9 text-[12.5px]"
                                :placeholder="labels.pay?.coupon_placeholder"
                                @keydown.enter.prevent="applyCoupon">
-                        <button type="button" class="styledesk_action shrink-0" :disabled="! couponCode.trim()"
+                        <button type="button" class="styledesk_action shrink-0"
+                                :disabled="! couponCode.trim()"
                                 @click="applyCoupon">{{ labels.pay?.apply }}</button>
                     </div>
 
                     <!-- Why, rather than "invalid": the desk has to tell
                          the client something they can act on. -->
                     <p v-if="couponError" class="mt-1.5 text-[12px] text-danger">{{ couponError }}</p>
+                </div>
+
+                <!-- The client's own points, beside the coupon because they
+                     are the same kind of decision: something that comes off
+                     this bill, settled on the server and only asked for here.
+
+                     Shown only where there is a scheme, a client and a
+                     balance worth offering. A control that says "0 available"
+                     is a control that teaches the desk to ignore it. -->
+                <div v-if="chosen.length && quote?.loyalty?.open && quote.loyalty.balance > 0"
+                     class="mt-4 pt-3.5 border-t border-line">
+                    <div class="flex flex-wrap items-baseline gap-x-2">
+                        <p class="text-[12px] font-medium text-ink">{{ labels.pay?.loyalty }}</p>
+                        <p class="text-[12px] text-sub ml-auto">
+                            {{ labels.pay?.loyalty_rate
+                                ?.replace(':points', quote.loyalty.points_required.toLocaleString())
+                                ?.replace(':value', quote.loyalty.reward_value) }}
+                        </p>
+                    </div>
+
+                    <p class="text-[13px] font-semibold text-head mt-0.5">
+                        {{ labels.pay?.loyalty_available?.replace(':points', quote.loyalty.balance.toLocaleString()) }}
+                    </p>
+
+                    <!-- Applied. The line the summary shows, with a way back
+                         out: a discount the desk cannot remove is one they
+                         have to abandon the whole booking to undo.
+
+                         The warning below applies to this branch too: a
+                         request cut down to the ceiling still applies
+                         something, and that is exactly the case where the
+                         desk needs telling why the figure is not theirs. -->
+                    <div v-if="quote.loyalty.points > 0"
+                         class="flex items-center gap-2 rounded-lg border border-brand/30 bg-brand/5 px-2.5 py-1.5 mt-2">
+                        <span class="min-w-0 flex-1 text-[12.5px] font-semibold text-head">
+                            {{ labels.pay?.loyalty_applied?.replace(':points', quote.loyalty.points.toLocaleString()) }}
+                        </span>
+                        <span class="text-[12.5px] font-semibold text-head shrink-0">−{{ quote.loyalty.discount }}</span>
+                        <button type="button" class="text-[12px] font-semibold text-link hover:underline shrink-0"
+                                @click="clearLoyaltyPoints">{{ labels.pay?.remove_coupon }}</button>
+                    </div>
+
+                    <template v-else>
+                        <!-- Nothing they could spend here. Either the balance
+                             is under the floor the business set, or the bill
+                             is smaller than one reward. Said plainly rather
+                             than offered as a box that refuses everything. -->
+                        <p v-if="quote.loyalty.max_points < 1" class="text-[12px] text-sub mt-1.5">
+                            {{ labels.pay?.loyalty_none }}
+                        </p>
+
+                        <div v-else class="flex gap-1.5 mt-2">
+                            <input v-model.number="loyaltyPoints" type="number" min="0"
+                                   :max="quote.loyalty.max_points" :step="quote.loyalty.points_required"
+                                   class="sd-input !h-9 text-[12.5px]"
+                                   :placeholder="labels.pay?.loyalty_placeholder">
+                            <button type="button" class="styledesk_action shrink-0"
+                                    :disabled="! loyaltyPoints"
+                                    @click="applyLoyaltyPoints">{{ labels.pay?.apply }}</button>
+                        </div>
+
+                        <p v-if="quote.loyalty.max_points > 0" class="text-[12px] text-faint mt-1.5">
+                            {{ labels.pay?.loyalty_max?.replace(':points', quote.loyalty.max_points.toLocaleString()) }}
+                        </p>
+                    </template>
+
+                    <!-- Asked for more than this booking allows. Named with
+                         the figure, because "too many" leaves the desk
+                         guessing how many is not. -->
+                    <p v-if="quote.loyalty.capped" class="mt-1.5 text-[12px] text-danger">
+                        {{ labels.pay?.loyalty_capped?.replace(':value', quote.loyalty.max_value) }}
+                    </p>
                 </div>
 
                 <!-- The tip. Percentages come from App settings → Tips,
@@ -6114,6 +6493,17 @@ const summaryOf = (section) => {
                         <div v-if="quote?.membership_credit_minor > 0" class="flex items-baseline justify-between gap-3">
                             <dt class="min-w-0 text-sub truncate">{{ labels.credits?.line }}</dt>
                             <dd class="text-head shrink-0">−{{ quote.membership_credit }}</dd>
+                        </div>
+
+                        <!-- The points, on their own line and named with the
+                             number spent. "-$5.00" alone tells the client
+                             what came off; it does not tell them what it cost
+                             them, which is the half they are counting. -->
+                        <div v-if="quote?.loyalty?.discount_minor > 0" class="flex items-baseline justify-between gap-3">
+                            <dt class="min-w-0 text-sub truncate">
+                                {{ labels.pay?.loyalty_applied?.replace(':points', quote.loyalty.points.toLocaleString()) }}
+                            </dt>
+                            <dd class="text-head shrink-0">−{{ quote.loyalty.discount }}</dd>
                         </div>
 
                         <!-- What it cost in credits, beside what it took off

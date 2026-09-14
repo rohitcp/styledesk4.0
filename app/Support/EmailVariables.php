@@ -11,6 +11,7 @@ use App\Models\Promotion;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
+use Illuminate\Support\Carbon;
 
 /**
  * `{{client.first_name}}` → "Sarah".
@@ -38,13 +39,19 @@ class EmailVariables
         ?Client $client = null,
         ?Booking $booking = null,
         ?Tenant $tenant = null,
+        array $extra = [],
     ): array {
         $tenant ??= $client?->tenant ?? $booking?->tenant ?? tenant();
         $booking?->loadMissing(['services', 'staff', 'location', 'payments']);
 
         return array_map(
             fn ($value) => (string) ($value ?? ''),
-            self::client($client)
+            /* `$extra` first, because the union operator keeps the LEFT side
+               on a duplicate key. What the caller knows about this particular
+               email — why a booking was called off, and by whom — is not
+               something the booking row can be asked for. */
+            $extra
+                + self::client($client)
                 + self::business($tenant)
                 + self::booking($booking)
                 + self::service($booking)
@@ -52,6 +59,32 @@ class EmailVariables
                 + self::location($booking?->location)
                 + self::payment($booking),
         );
+    }
+
+    /**
+     * What a cancellation adds to an email about one.
+     *
+     * Not derived from the booking: the row says a booking is cancelled, not
+     * why or by whom — those are on the status-change line that was written
+     * at the same moment, and the caller has them to hand.
+     *
+     * @return array<string, string>
+     */
+    public static function cancellation(
+        ?string $reason = null,
+        ?string $note = null,
+        ?string $by = null,
+        ?Carbon $at = null,
+    ): array {
+        $at ??= now();
+
+        return [
+            'cancellation.reason' => (string) $reason,
+            'cancellation.note' => (string) $note,
+            'cancellation.by' => (string) $by,
+            'cancellation.date' => $at->translatedFormat('j F Y'),
+            'cancellation.time' => TimeFormat::time($at->format('H:i')),
+        ];
     }
 
     /**

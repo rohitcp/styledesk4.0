@@ -184,15 +184,6 @@ return [
                     'keywords' => ['customer', 'contact', 'guest', 'record', 'tags', 'preferences', 'consent'],
                 ],
                 [
-                    'key' => 'email',
-                    'name' => 'Email',
-                    'description' => 'How you send email to your clients, and who it comes from.',
-                    'icon' => 'envelope',
-                    'route' => 'settings.email.show',
-                    'status' => 'active',
-                    'keywords' => ['send email', 'gmail', 'sender', 'reply to', 'templates', 'message'],
-                ],
-                [
                     'key' => 'reviews',
                     'name' => 'Reviews & Feedback',
                     'description' => 'Whether clients are asked how their visit went, when they are asked, and where the happy ones are sent afterwards.',
@@ -268,12 +259,19 @@ return [
                     'icon' => 'bell',
                     'keywords' => ['alert', 'reminder', 'push', 'in app'],
                 ],
+                /* Both of these were placeholders long after the screens
+                   behind them were built: no route and no status, so the
+                   index drew them as "Coming soon" and they went nowhere.
+                   A card that describes a finished feature and refuses to
+                   open it is worse than no card. */
                 [
                     'key' => 'email-settings',
                     'name' => 'Email Settings',
                     'description' => 'Sender name and address, reply-to and email defaults.',
                     'icon' => 'envelope',
-                    'keywords' => ['smtp', 'sender', 'from', 'reply to', 'mail'],
+                    'route' => 'settings.email.show',
+                    'status' => 'active',
+                    'keywords' => ['smtp', 'sender', 'from', 'reply to', 'mail', 'gmail'],
                 ],
                 [
                     'key' => 'email-templates',

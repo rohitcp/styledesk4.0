@@ -88,6 +88,20 @@
                route is built here so the URL is never assembled by hand. */
             'clientContextUrl' => route('bookings.clients.context', ['client' => ':id']),
             'newClientUrl' => route('clients.create'),
+            /* The dialling code the Add Client dialog opens on: where the
+               business operates, not where the server is. A desk in London
+               typing a local number should not have it read as American. */
+            'phoneCountry' => $tenant?->countryCode() ?? config('phone.default_country'),
+            /* The rewards scheme, so the dialog can offer to enrol. Only what
+               the dialog needs — whether it runs, what it is called, what
+               joining is worth, and whether the receptionist gets a say. */
+            'loyalty' => [
+                'enabled' => (bool) $loyaltySettings->is_enabled,
+                'program' => $loyaltySettings->program_name,
+                'welcome_points' => (int) $loyaltySettings->welcome_points,
+                'enroll_by_default' => \App\Support\LoyaltyEnrollment::defaultsToEnrolled($loyaltySettings),
+                'optional' => \App\Support\LoyaltyEnrollment::isOptional($loyaltySettings),
+            ],
             'createClientUrl' => route('bookings.clients.store'),
             /* Whether the walk-in being typed is already on the book. Posted,
                not asked in the query string: a number and an address in a URL
