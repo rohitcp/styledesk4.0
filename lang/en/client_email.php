@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 return [
 
-    'title' => 'Email',
+    'title' => 'Email - Rohit Phiip',
     'intro' => 'Send email to your clients from StyleDesk.',
 
     'settings' => [
-        'enable' => 'Enable Client Email',
+        'enable' => 'Enable Client Email - Rohit Philip',
         'enable_hint' => 'When this is off, Send Email is hidden from client profiles. Email history stays where it is.',
         'enabled' => 'Enabled',
         'disabled' => 'Disabled',
