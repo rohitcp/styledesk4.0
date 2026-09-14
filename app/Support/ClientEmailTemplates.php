@@ -131,10 +131,16 @@ class ClientEmailTemplates
      */
     public static function sender(Tenant $tenant): array
     {
+        /* Deferred to EmailSender rather than rebuilt: a business sending
+           through its own connected mailbox sends from its own address, and a
+           second answer to "who is this from" is how the drawer came to
+           promise StyleDesk's noreply on mail that left from Gmail. */
+        $sender = EmailSender::for($tenant);
+
         return [
-            'name' => (string) ($tenant->email_sender_name ?: $tenant->name),
-            'from' => (string) config('mail.from.address'),
-            'reply_to' => $tenant->email_reply_to ?: null,
+            'name' => $sender['name'],
+            'from' => $sender['address'],
+            'reply_to' => $sender['reply_to'],
         ];
     }
 }

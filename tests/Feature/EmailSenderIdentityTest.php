@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\Tenant;
+use App\Models\TenantGmailConnection;
 use App\Support\EmailSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -28,6 +29,26 @@ class EmailSenderIdentityTest extends TestCase
             'slug' => 'smile-spa-'.bin2hex(random_bytes(3)),
             'country_code' => 'US',
         ], $overrides));
+    }
+
+    /** A business sending through its own Gmail, connected and working. */
+    private function connectedToGmail(array $overrides = []): Tenant
+    {
+        config(['client_email.providers.gmail.available' => true]);
+
+        $tenant = $this->tenant(array_merge(['email_provider' => 'gmail'], $overrides));
+
+        TenantGmailConnection::create([
+            'tenant_id' => $tenant->getTenantKey(),
+            'email' => 'bella@bellastudio.test',
+            'access_token' => 'token',
+            'refresh_token' => 'refresh',
+            'access_expires_at' => now()->addHour(),
+            'status' => TenantGmailConnection::STATUS_CONNECTED,
+            'connected_at' => now(),
+        ]);
+
+        return $tenant;
     }
 
     public function test_the_business_name_is_what_the_client_sees(): void
@@ -87,6 +108,57 @@ class EmailSenderIdentityTest extends TestCase
     public function test_no_reply_to_set_adds_no_header(): void
     {
         $this->assertSame([], EmailSender::replyTo($this->tenant()));
+    }
+
+    /**
+     * A connected mailbox is the business's own address.
+     *
+     * The whole point of connecting one: the salon genuinely is the sender,
+     * so the address is theirs and a client pressing Reply writes back into
+     * the inbox they are watching.
+     */
+    public function test_a_connected_mailbox_sends_from_its_own_address(): void
+    {
+        $tenant = $this->connectedToGmail();
+
+        $this->assertSame('bella@bellastudio.test', EmailSender::for($tenant)['address']);
+    }
+
+    /** And drops the qualifier, because "via StyleDesk" would be a lie. */
+    public function test_a_connected_mailbox_is_not_qualified_with_via(): void
+    {
+        $tenant = $this->connectedToGmail(['email_sender_name' => 'Bella Studio']);
+
+        $this->assertSame('Bella Studio', EmailSender::fromAddress($tenant)->name);
+    }
+
+    /**
+     * Connected and broken is not connected.
+     *
+     * Falling back to StyleDesk's address is what keeps the business sending
+     * while they reconnect; claiming their address on a connection that
+     * cannot send would put nothing in anybody's inbox.
+     */
+    public function test_a_connection_needing_attention_falls_back_to_styledesk(): void
+    {
+        $tenant = $this->connectedToGmail();
+
+        TenantGmailConnection::query()->where('tenant_id', $tenant->getTenantKey())
+            ->update(['status' => TenantGmailConnection::STATUS_NEEDS_ATTENTION]);
+
+        $sender = EmailSender::for($tenant->fresh());
+
+        $this->assertSame(config('mail.from.address'), $sender['address']);
+    }
+
+    /** Chosen but never connected is the same answer. */
+    public function test_gmail_chosen_without_a_mailbox_falls_back_to_styledesk(): void
+    {
+        config(['client_email.providers.gmail.available' => true]);
+
+        $tenant = $this->tenant(['email_provider' => 'gmail']);
+
+        $this->assertSame(config('mail.from.address'), EmailSender::for($tenant)['address']);
     }
 
     public function test_nothing_at_all_still_answers(): void

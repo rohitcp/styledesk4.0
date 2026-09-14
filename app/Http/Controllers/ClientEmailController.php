@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\ClientEmailMessage;
 use App\Support\ClientEmailSender;
 use App\Support\ClientEmailTemplates;
+use App\Support\EmailSender;
 use App\Support\TimeFormat;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,6 +40,7 @@ class ClientEmailController extends Controller
 
         $tenant = $request->user()->tenant;
         $from = ClientEmailTemplates::sender($tenant);
+        $provider = ClientEmailSender::providerFor($tenant);
 
         /* The appointment the templates should read against.
          *
@@ -80,16 +82,20 @@ class ClientEmailController extends Controller
                 /* Where a reply lands, which is not always where it was sent
                    from: "Smile Spa via StyleDesk" goes out on StyleDesk's
                    own sending domain and comes back to the salon. Read-only
-                   here — it is a setting, not a per-message decision. */
-                'reply_to' => $from['reply_to'] ?? $from['from'],
+                   here — it is a setting, not a per-message decision.
+                   Gmail sends carry no reply-to at all, because a reply to
+                   the connected mailbox already arrives in it. */
+                'reply_to' => $provider === 'gmail'
+                    ? $from['from']
+                    : ($from['reply_to'] ?? $from['from']),
                 /* What the client will actually see in their inbox. Shown
                    because "Smile Spa via StyleDesk" surprises an owner who
-                   expected their own address, and the settings screen is
-                   where that is changed. */
-                'label' => __('client_email.send.from_via', ['name' => $from['name']]),
+                   expected their own address — and so does the qualifier
+                   still sitting there once they have connected their own. */
+                'label' => EmailSender::displayName($from['name'], $from['from']),
             ],
             'enabled' => ClientEmailSender::readyFor($tenant),
-            'provider' => ClientEmailSender::providerFor($tenant),
+            'provider' => $provider,
             /* Every reason the drawer might have to refuse, answered before it
                opens rather than after the sender has typed a message. */
             'blocked' => $this->blockedReason($client, $tenant),

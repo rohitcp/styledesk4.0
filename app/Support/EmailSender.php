@@ -72,14 +72,26 @@ class EmailSender
     public static function fromAddress(?Tenant $tenant): Address
     {
         $sender = self::for($tenant);
-        $ours = $sender['address'] === (string) config('mail.from.address');
 
         return new Address(
             $sender['address'],
-            $ours
-                ? __('client_email.send.from_via', ['name' => $sender['name']])
-                : $sender['name'],
+            self::displayName($sender['name'], $sender['address']),
         );
+    }
+
+    /**
+     * The name to show beside an address, qualified only where that is honest.
+     *
+     * Takes the pair rather than the tenant so a stored message can be asked
+     * the same question: history is what was actually sent, and a business
+     * that has since connected or disconnected a mailbox must not rewrite the
+     * sender on messages that already went out.
+     */
+    public static function displayName(string $name, string $address): string
+    {
+        return $address === (string) config('mail.from.address')
+            ? __('client_email.send.from_via', ['name' => $name])
+            : $name;
     }
 
     /**

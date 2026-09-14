@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Models\ClientEmailMessage;
+use App\Support\EmailSender;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -32,13 +33,16 @@ class ClientMessageMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            /* "Smile Spa via StyleDesk". The address is StyleDesk's because
+            /* "Smile Spa via StyleDesk" on StyleDesk's own address, because
                StyleDesk is what is putting it on the wire — claiming to send
                from the salon's own domain without being authorised to would
-               land the message in spam, if it left at all. */
+               land the message in spam, if it left at all. Plain "Smile Spa"
+               from a connected mailbox, where the business genuinely is the
+               sender. Read off the stored address, so a connection made or
+               broken since cannot rewrite what already went out. */
             from: new Address(
                 $this->email->sender_email,
-                __('client_email.send.from_via', ['name' => $this->email->sender_name]),
+                EmailSender::displayName($this->email->sender_name, $this->email->sender_email),
             ),
             subject: $this->email->subject,
             /* Where Reply goes: the salon's own inbox, when they have set
