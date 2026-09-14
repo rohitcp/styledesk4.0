@@ -482,6 +482,75 @@ class LoyaltyRewardsTest extends TestCase
         $this->assertContains('tips', $settings->eligible_purchases);
     }
 
+    /**
+     * The switch can actually switch it on.
+     *
+     * Driven through the form the screen really renders rather than a payload
+     * written here, because the bug this guards was the gap between the two:
+     * the switch posts on its own and carries every other answer as a hidden
+     * field, and two of them were missing. Both are `required`, so flicking
+     * the toggle failed validation and reloaded the page unchanged — with the
+     * fields that ask about them sitting in the form below, which is not
+     * rendered at all while the scheme is off.
+     */
+    public function test_the_switch_on_its_own_turns_the_scheme_on(): void
+    {
+        $page = $this->actingAs($this->owner())
+            ->get(route('settings.loyalty.index'))
+            ->assertOk()
+            ->getContent();
+
+        $this->actingAs($this->owner())
+            ->patch(route('settings.loyalty.update'), ['is_enabled' => 1] + $this->switchFormFields($page))
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertTrue(LoyaltySettings::withoutGlobalScopes()->first()->is_enabled);
+    }
+
+    /**
+     * Everything the enable switch's own form would post.
+     *
+     * @return array<string, mixed>
+     */
+    private function switchFormFields(string $html): array
+    {
+        $form = preg_match('/<form[^>]*data-loyalty-switch.*?<\/form>/s', $html, $matches) === 1
+            ? $matches[0]
+            : '';
+
+        $this->assertNotSame('', $form, 'The enable switch has no form on the page.');
+
+        preg_match_all(
+            '/<input[^>]*type="hidden"[^>]*name="([^"]+)"[^>]*value="([^"]*)"/',
+            $form,
+            $fields,
+            PREG_SET_ORDER,
+        );
+
+        $posted = [];
+
+        foreach ($fields as $field) {
+            [, $name, $value] = $field;
+
+            if ($name === '_token' || $name === '_method') {
+                continue;
+            }
+
+            /* `eligible_purchases[]` is a list, and flattening it to one
+               value would post a different answer than the screen does. */
+            if (str_ends_with($name, '[]')) {
+                $posted[substr($name, 0, -2)][] = $value;
+
+                continue;
+            }
+
+            $posted[$name] = $value;
+        }
+
+        return $posted;
+    }
+
     public function test_the_settings_screen_refuses_a_purchase_type_nothing_can_sell_yet(): void
     {
         $this->actingAs($this->owner())

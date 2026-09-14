@@ -69,6 +69,14 @@
           <input type="hidden" name="maximum_reward" value="{{ number_format($settings->maximum_reward_minor / 100, 2, '.', '') }}">
         @endif
         <input type="hidden" name="expiry" value="{{ $settings->expiry }}">
+        {{-- Who joins and what joining is worth. Carried like the rest, and
+             easy to miss because the fields that ask about them live in the
+             form below — which is not on the page at all while the scheme is
+             off. Without these two the switch posts an incomplete answer,
+             fails validation on both, and reloads unchanged: the scheme could
+             not be turned on from this screen. --}}
+        <input type="hidden" name="enrollment_mode" value="{{ $settings->enrollment_mode }}">
+        <input type="hidden" name="welcome_points" value="{{ $settings->welcome_points }}">
         @foreach ($settings->eligible_purchases ?? [] as $purchase)
           <input type="hidden" name="eligible_purchases[]" value="{{ $purchase }}">
         @endforeach
