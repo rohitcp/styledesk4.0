@@ -31,6 +31,7 @@ use App\Http\Controllers\MembershipSaleController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\PromotionController;
+use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\ResourceAvailabilityController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\ResourceUtilizationController;
@@ -46,6 +47,7 @@ use App\Http\Controllers\Settings\ClientSettingsController;
 use App\Http\Controllers\Settings\CurrencyController;
 use App\Http\Controllers\Settings\EmailSettingsController;
 use App\Http\Controllers\Settings\EmailTemplateController;
+use App\Http\Controllers\Settings\FormController;
 use App\Http\Controllers\Settings\GmailConnectionController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\LocationController;
@@ -182,6 +184,26 @@ Route::middleware(['throttle:30,1'])
            link, so "did they actually go to Google" is a fact the reports
            have rather than a guess. */
         Route::get('{token}/google', 'google')->name('google');
+    });
+
+/*
+| A form, filled in by the person it was sent to — on the application's own
+| domain.
+|
+| The same controller as the tenant-subdomain route in routes/tenant.php, and
+| registered here as well because a tenant subdomain has to be SERVED: wildcard
+| DNS and a vhost that answers for it. Where that is not true — most
+| development machines — a form link on the subdomain is one nobody can open.
+|
+| Outside every auth and tenancy middleware on purpose: the visitor has no
+| account and there is no tenant in the host to resolve from. The controller
+| reads it from the form's own token, which is globally unique.
+*/
+Route::middleware(['throttle:60,1'])
+    ->controller(PublicFormController::class)
+    ->group(function () {
+        Route::get('form/{token}', 'show')->name('public.form.central.show');
+        Route::post('form/{token}', 'store')->name('public.form.central.store');
     });
 
 /*
@@ -925,6 +947,48 @@ Route::middleware(['auth', 'verified', 'tenant.user', 'onboarded', 'can-manage-s
         | completed by somebody signed into the business it is for — the
         | callback reads the tenant from the user, not from the request.
         */
+        /*
+        | Forms & Waivers.
+        |
+        | The administrative half: what forms exist and whether they are live.
+        | Assigning and sending them lives on the client profile, under its
+        | own permissions — a receptionist sends forms all day and never
+        | rewords one.
+        */
+        Route::controller(FormController::class)
+            ->prefix('forms')
+            ->name('forms.')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/', 'store')->name('store');
+
+                /* Where creating a form lands: the form itself, not the list.
+                   Its settings today and its questions when the builder
+                   arrives — one address either way, so nothing that links
+                   here has to move. */
+                Route::get('{form}/edit', 'edit')->name('edit');
+                Route::patch('{form}', 'update')->name('update');
+
+                /*
+                | The builder, and the two calls it makes while somebody works.
+                |
+                | Its own window, so the list it was opened from is still
+                | there afterwards. The schema and publish routes answer json
+                | rather than redirecting: the panel saves itself as it is
+                | worked on, and a redirect would take it apart mid-sentence.
+                */
+                Route::get('{form}/build', 'build')->name('build');
+                Route::put('{form}/schema', 'saveSchema')->name('schema');
+                Route::post('{form}/publish', 'publish')->name('publish');
+
+                Route::delete('{form}', 'destroy')->name('destroy');
+
+                Route::post('{form}/duplicate', 'duplicate')->name('duplicate');
+                Route::patch('{form}/toggle', 'toggle')->name('toggle');
+                Route::patch('{form}/archive', 'archive')->name('archive');
+                Route::patch('{form}/restore', 'restore')->name('restore');
+            });
+
         Route::controller(GmailConnectionController::class)
             ->prefix('email/gmail')
             ->name('email.gmail.')

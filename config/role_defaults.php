@@ -228,6 +228,20 @@ return [
             'security.view' => 'all',
             'security.view_login_activity' => 'all',
 
+            /* Forms & Waivers. Full access, sensitive answers included: an
+               administrator is the person a therapist asks when a
+               contraindication needs checking out of hours. */
+            'forms.view' => 'all',
+            'forms.create' => 'all',
+            'forms.edit' => 'all',
+            'forms.publish' => 'all',
+            'forms.archive' => 'all',
+            'forms.view_responses' => 'all',
+            'forms.assign' => 'all',
+            'forms.send' => 'all',
+            'forms.download' => 'all',
+            'forms.view_sensitive' => 'all',
+
             /* Loyalty. Full access, settings included: how the scheme works
                is an administrative decision. */
             'loyalty.view_settings' => 'all',
@@ -376,6 +390,19 @@ return [
              * narrower of the two rules stands until it is asked for.
              */
 
+            /* Forms & Waivers. They build and send them, and read what came
+               back for their own locations. Sensitive answers are withheld
+               until the business says otherwise: a manager runs a rota, and
+               somebody's medication list is not part of that job. */
+            'forms.view' => 'all',
+            'forms.create' => 'all',
+            'forms.edit' => 'all',
+            'forms.publish' => 'all',
+            'forms.view_responses' => 'location',
+            'forms.assign' => 'all',
+            'forms.send' => 'all',
+            'forms.download' => 'all',
+
             /* Loyalty. Their clients' balances, and the authority to correct
                and spend one. Not the rules — what a point is worth is one
                decision for the whole business, not five. */
@@ -455,6 +482,15 @@ return [
             'inventory.view_levels' => 'all',
             'notifications.view' => 'all',
             'notifications.manage_own' => 'all',
+
+            /* Forms & Waivers. The desk's job is getting them completed, not
+               reading them: assign, send, chase, and see whether a client is
+               ready to be taken through. `forms.view` is the forms list, so
+               they can tell which form somebody still needs — the answers
+               themselves are not theirs. */
+            'forms.view' => 'all',
+            'forms.assign' => 'all',
+            'forms.send' => 'all',
 
             /* Loyalty. Reads a balance and spends it at the till. Inventing
                points is somebody else's decision. */
@@ -537,6 +573,12 @@ return [
             /* Loyalty. The balances of the clients they see, and nothing
                else — so "you have enough for a reward" can be said in the
                chair. */
+            /* Forms & Waivers. The intake answers for the clients they are
+               treating, which is the point of taking an intake form. Not
+               sensitive ones by default, and nothing about building or
+               sending them. */
+            'forms.view_responses' => 'own',
+
             'loyalty.view_rewards' => 'own',
         ],
     ],

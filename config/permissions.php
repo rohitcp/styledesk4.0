@@ -207,6 +207,46 @@ return [
             ],
         ],
 
+        /*
+        | Forms & Waivers.
+        |
+        | Split the way the work is: deciding what a form asks is an
+        | administrative job done once, and asking a client to fill one in
+        | happens fifty times a day at the desk. A receptionist who may send
+        | an intake form is not somebody who should be able to reword the
+        | consent clients are signing.
+        */
+        'forms' => [
+            'label' => 'Forms & Waivers',
+            'icon' => 'clipboard-list',
+            'permissions' => [
+                'forms.view' => ['label' => 'View forms'],
+                'forms.create' => ['label' => 'Create forms'],
+                'forms.edit' => ['label' => 'Edit forms'],
+                /* Separate from editing: an edit is a draft, publishing is
+                   what starts sending it to clients. */
+                'forms.publish' => ['label' => 'Publish forms'],
+                'forms.archive' => ['label' => 'Archive forms'],
+
+                /* Scoped, so a stylist can be given the intake answers of the
+                   clients they are actually treating and no others. */
+                'forms.view_responses' => ['label' => 'View client responses', 'scopes' => $readScopes],
+                'forms.assign' => ['label' => 'Assign forms to clients'],
+                'forms.send' => ['label' => 'Send and resend forms'],
+                'forms.download' => ['label' => 'Download completed forms'],
+
+                /*
+                 * Medical history, medications, pregnancy status.
+                 *
+                 * Its own key on top of view_responses, and given to nobody
+                 * by default but the owner and the administrator: a business
+                 * that wants its therapists to read contraindications should
+                 * have to say so rather than discover they already could.
+                 */
+                'forms.view_sensitive' => ['label' => 'View sensitive responses', 'scopes' => $readScopes],
+            ],
+        ],
+
         'email' => [
             'label' => 'Email',
             'icon' => 'envelope',

@@ -36,7 +36,16 @@
                     </svg>
                 @endif
             </span>
-            <span class="min-w-0 flex-1">{{ $toast['message'] }}</span>
+            {{-- A second line where one was flashed, and no markup at all
+                 where one was not: every existing caller flashes a message
+                 only, and an empty element under it would still take space. --}}
+            <span class="min-w-0 flex-1">
+                {{ $toast['message'] }}
+
+                @if (! empty($toast['hint']))
+                    <span class="block text-[12px] opacity-80 mt-0.5">{{ $toast['hint'] }}</span>
+                @endif
+            </span>
             <button type="button" class="styledesk_toast__close" data-toast-close aria-label="{{ __('common.dismiss') }}">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\PublicFormController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,4 +43,20 @@ Route::domain('{tenantSubdomain}.'.config('tenancy.tenant_domain_suffix'))
         Route::get('/', function () {
             return 'Public booking site for '.tenant('name').' ('.tenant('id').')';
         })->name('booking.home');
+
+        /*
+        | A form, filled in by the person it was sent to.
+        |
+        | The token in the URL is the whole of the authorisation — there is no
+        | account and no session worth the name — so these are throttled by
+        | IP. An unauthenticated route that looks a token up is one somebody
+        | will try to guess their way through, the same reasoning as the
+        | review links in routes/web.php.
+        */
+        Route::middleware(['throttle:60,1'])
+            ->controller(PublicFormController::class)
+            ->group(function () {
+                Route::get('form/{token}', 'show')->name('public.form.show');
+                Route::post('form/{token}', 'store')->name('public.form.store');
+            });
     });

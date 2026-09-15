@@ -30,6 +30,16 @@
         <env name="DB_DATABASE" value="styledesk_v2_testing"/>
         <env name="DB_URL" value=""/>
         <env name="CENTRAL_DOMAINS" value="localhost,127.0.0.1,styledesk.test"/>
+        <!-- Pinned beside the central domains, not left to .env. The two have
+             to agree — stancl refuses a subdomain whose host does not end in a
+             central domain — and a suite that read one from here and the other
+             from a developer's own .env broke the day somebody changed their
+             local hostname. -->
+        <env name="TENANT_DOMAIN_SUFFIX" value="styledesk.test"/>
+        <env name="APP_URL" value="https://styledesk.test"/>
+        <!-- The suite asserts the subdomain form of the link, so it states
+             which form it expects rather than inheriting a developer's own. -->
+        <env name="FORMS_PUBLIC_LINK_HOST" value="subdomain"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

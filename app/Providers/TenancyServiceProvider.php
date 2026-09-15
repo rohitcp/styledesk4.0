@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Actions\Roles\ProvisionSystemRoles;
 use App\Models\BehavioralTag;
 use App\Models\ClientTag;
+use App\Models\FormCategory;
 use App\Models\ReasonCode;
 use App\Models\ResourceCategory;
 use App\Models\ServiceCategory;
@@ -55,6 +56,10 @@ class TenancyServiceProvider extends ServiceProvider
                        business should not have to invent "client cancelled"
                        before it can record one. */
                     ReasonCode::seedDefaultsFor($event->tenant);
+                    /* And the form categories, so a business filing its
+                       first intake form has somewhere to put it rather than
+                       having to invent "Consent". */
+                    FormCategory::seedDefaultsFor($event->tenant);
                 },
 
                 /**

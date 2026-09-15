@@ -38,6 +38,8 @@
      */
     'readonly' => false,
     'hint' => null,
+    /** Shown in an empty field as an example of what belongs in it. */
+    'placeholder' => null,
 ])
 
 @php
@@ -71,6 +73,7 @@
             @if ($required) required @endif
             @if ($autofocus) autofocus @endif
             @if ($maxlength) maxlength="{{ $maxlength }}" @endif
+            @if ($placeholder) placeholder="{{ $placeholder }}" @endif
             @if ($rules) data-rules="{{ $rules }}" @endif
             @if ($remoteCheck) data-remote-check="{{ $remoteCheck }}" @endif
             @if ($readonly) readonly aria-readonly="true" @endif

@@ -42,7 +42,7 @@ class LanguageTest extends TestCase
         'roles', 'currency', 'languages', 'branding', 'hours', 'tips',
         'reviews', 'staff_schedules', 'shifts', 'marketing', 'client_email',
         'loyalty', 'business', 'schedule', 'shift_rules', 'promotions',
-        'email_templates',
+        'email_templates', 'forms',
     ];
 
     private Tenant $tenant;

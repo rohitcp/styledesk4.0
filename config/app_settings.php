@@ -208,10 +208,12 @@ return [
                 ],
                 [
                     'key' => 'forms',
-                    'name' => 'Forms',
+                    'name' => 'Forms & Waivers',
                     'description' => 'Intake, consent and consultation forms, and when clients are asked to fill them.',
                     'icon' => 'clipboard-list',
-                    'keywords' => ['intake', 'consent', 'consultation', 'waiver', 'questionnaire'],
+                    'route' => 'settings.forms.index',
+                    'status' => 'active',
+                    'keywords' => ['intake', 'consent', 'consultation', 'waiver', 'questionnaire', 'forms', 'signature'],
                 ],
                 [
                     'key' => 'memberships',
